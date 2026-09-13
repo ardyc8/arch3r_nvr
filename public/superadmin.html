@@ -214,7 +214,12 @@
                             <div style="width:300px; padding-left:1.5rem; border-left:1px solid var(--border);">
                                 <h3 style="font-size:1rem; margin-top:0; margin-bottom:0.75rem; color:#ef4444;">🚨 Zona Bahaya</h3>
                                 <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">
-                                    Tindakan ini akan mengembalikan seluruh pengaturan database (User, Kamera, Storage) ke kondisi default pabrik. Rekaman MP4 di penyimpanan tidak dihapus.
+                                    Tindakan ini akan menghapus dan membuat ulang file database inti NVR. Berikut rincian data yang akan <strong>dihapus permanen</strong>:<br>
+                                    <ul style="margin-top:0.5rem; margin-bottom:0.5rem; padding-left:1.2rem; color:#ef4444;">
+                                        <li><strong>File:</strong> <code>/data/nvr_db.json</code> (Berisi User, Kamera, Log, Storage)</li>
+                                        <li>Lisensi NVR akan dinonaktifkan.</li>
+                                    </ul>
+                                    <em>*File rekaman video (MP4) di Hardisk/Flashdisk TIDAK akan terhapus.</em>
                                 </p>
                                 <button id="saBtnFactoryReset" class="btn btn-primary" style="background:#ef4444; width:100%; font-size:0.85rem; border-color:#ef4444;">
                                     ⚠️ Reset Pengaturan Pabrik

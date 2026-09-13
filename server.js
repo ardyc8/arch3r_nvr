@@ -211,7 +211,6 @@ let cameras = [];
 let ffProcesses = {}; // { 'cam1': { main: ChildProcess, sub: ChildProcess } }
 let reconnectTimers = {};
 let cameraStatuses = {}; // camId -> { main: { status, error, lastUpdate }, sub: { status, error, lastUpdate } }
-let settings = {};
 
 function getSettings() {
     const dbData = getNvrDb();
@@ -240,6 +239,7 @@ function getActualBaseStoragePath(skipAutoDetect = false) {
     if (dbData && dbData.recording_path && dbData.recording_path.trim() !== '') {
         return dbData.recording_path;
     }
+    const settings = getSettings();
     if (settings.globalStoragePath && settings.globalStoragePath.trim() !== '') {
         return settings.globalStoragePath;
     }
@@ -482,8 +482,7 @@ app.post('/api/superadmin/factory-reset', verifyToken, requireSuperadmin, (req, 
     try {
         const initial = getDefaultDb();
         saveNvrDb(initial);
-        settings = getSettings();
-        sysLog('WARNING', 'SuperAdmin triggered a Factory Reset.');
+                sysLog('WARNING', 'SuperAdmin triggered a Factory Reset.');
         res.json({ message: 'Factory reset completed successfully. Please login again.' });
     } catch(err) {
         res.status(500).json({ error: 'Failed to factory reset' });
@@ -626,6 +625,7 @@ for (const f of files) {
 
 // Notification Helper
 async function sendTelegramAlert(msg) {
+    const settings = getSettings();
     if (!settings.telegramBotToken || !settings.telegramChatId) return;
     const url = `https://api.telegram.org/bot${settings.telegramBotToken}/sendMessage`;
     try {
@@ -881,7 +881,7 @@ function syncMediaMtxConfig() {
 function spawnRecordingFFmpeg(cam) {
     if (!cam || !cam.enabled) return;
     if (cam.recordMode !== 'continuous') return;
-    if (settings.globalStorageMode === 'disabled') return;
+    if (getSettings().globalStorageMode === 'disabled') return;
 
     const recQuality = settings.recordingQuality || 'main';
     const hasDistinctSub = cam.subStreamUrl && cam.subStreamUrl.trim() && cam.subStreamUrl.trim() !== cam.mainStreamUrl.trim();
@@ -1532,7 +1532,7 @@ function sampleNetworkStats() {
             let totalRx = 0;
             let totalTx = 0;
             
-            const prefIf = settings.netInterface || 'auto';
+            const prefIf = getSettings().netInterface || 'auto';
 
             // Temukan interface aktif berdasarkan OS networkInterfaces (yang punya IPv4)
             const os = require('os');
@@ -1966,31 +1966,34 @@ app.get('/api/logs', verifyToken, (req, res) => {
 });
 
 app.post('/api/settings', verifyToken, requireAdmin, (req, res) => {
-    const prevQuality = settings.recordingQuality;
-    const prevStorageMode = settings.globalStorageMode;
-    const prevStoragePath = settings.globalStoragePath;
-
-    settings = { ...settings, ...req.body };
-
-    // Jika globalStoragePath atau recording_path di-update, simpan juga ke data/nvr_db.json
-    const targetStorage = req.body.recording_path || req.body.globalStoragePath;
     const dbData = getNvrDb();
-    dbData.super_settings = settings;
-
+    const curSettings = dbData.super_settings || {};
+    
+    const prevQuality = curSettings.recordingQuality;
+    const prevStorageMode = curSettings.globalStorageMode;
+    const prevStoragePath = curSettings.globalStoragePath;
+    
+    const newSettings = { ...curSettings, ...req.body };
+    const targetStorage = req.body.recording_path || req.body.globalStoragePath;
+    
     if (targetStorage !== undefined) {
+        newSettings.globalStoragePath = targetStorage;
         dbData.recording_path = targetStorage;
-        settings.globalStoragePath = targetStorage;
     }
+    
+    dbData.super_settings = newSettings;
     saveNvrDb(dbData);
-    sysLog('INFO', `Pengaturan Sistem Diperbarui (Storage: ${settings.globalStoragePath || settings.globalStorageMode}, Recording Quality: ${settings.recordingQuality || 'main'}, MediaMTX Port: ${settings.mediamtxPort || 8889})`);
-
-    syncMediaMtxConfig();
-
-    if (prevQuality !== settings.recordingQuality || prevStorageMode !== settings.globalStorageMode || prevStoragePath !== settings.globalStoragePath) {
+    
+    sysLog('INFO', `Pengaturan Sistem Diperbarui (Storage: ${newSettings.globalStoragePath || newSettings.globalStorageMode}, Recording Quality: ${newSettings.recordingQuality || 'main'})`);
+    
+    if (prevQuality !== newSettings.recordingQuality || prevStorageMode !== newSettings.globalStorageMode || prevStoragePath !== newSettings.globalStoragePath) {
         ensureRecordFolders();
         startAllStreams();
+        syncRecordingsToDB();
     }
-    res.json({ success: true, settings });
+    
+    res.json({ success: true, settings: newSettings });
+});
 });
 
 // Streams Middleware with HLS Cache-Control & CORS
@@ -2016,8 +2019,7 @@ app.use(express.static(publicDir));
 // App Initialization
 function boot() {
     initDB();
-    settings = getSettings();
-    startAllStreams();
+        startAllStreams();
     
     syncRecordingsToDB();
     autoCleanupTempSegments();
