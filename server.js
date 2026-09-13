@@ -1080,7 +1080,7 @@ app.get('/api/cameras', verifyToken, (req, res) => {
 });
 
 app.post('/api/cameras', verifyToken, requireAdmin, (req, res) => {
-    const { id, name, enabled, mainStreamUrl, subStreamUrl, rtspUrl, storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec, transcode } = req.body;
+    const { id, name, enabled, mainStreamUrl, subStreamUrl, rtspUrl, storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec, transcode, ptzEnabled, ptzUrl, ptzUser, ptzPass } = req.body;
     const cams = getCameras();
     
     const rawMainUrl = mainStreamUrl || rtspUrl || "";
@@ -1100,6 +1100,10 @@ app.post('/api/cameras', verifyToken, requireAdmin, (req, res) => {
         recordMode: recordMode || 'disabled',
         storagePath: storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', newCamId),
         maxStorageDays: parseInt(maxStorageDays) || 7,
+        ptzEnabled: !!ptzEnabled,
+        ptzUrl: ptzUrl || '',
+        ptzUser: ptzUser || '',
+        ptzPass: ptzPass || '',
         maxFolderSizeGB: parseFloat(maxFolderSizeGB) || 10,
         segmentDurationSec: parseInt(segmentDurationSec) || 900
     };
@@ -1122,7 +1126,7 @@ app.put('/api/cameras/:id', verifyToken, requireAdmin, (req, res) => {
     const index = cams.findIndex(c => c.id === req.params.id);
     if (index === -1) return res.status(404).json({error: 'Not found'});
     
-    const { name, enabled, mainStreamUrl, subStreamUrl, rtspUrl, storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec, transcode } = req.body;
+    const { name, enabled, mainStreamUrl, subStreamUrl, rtspUrl, storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec, transcode, ptzEnabled, ptzUrl, ptzUser, ptzPass } = req.body;
     
     stopCameraRecording(req.params.id);
 
@@ -1138,6 +1142,10 @@ app.put('/api/cameras/:id', verifyToken, requireAdmin, (req, res) => {
         mainStreamUrl: finalMainUrl,
         subStreamUrl: finalSubUrl,
         transcode: transcode !== undefined ? transcode : (cams[index].transcode || 'auto'),
+        ptzEnabled: ptzEnabled !== undefined ? !!ptzEnabled : !!cams[index].ptzEnabled,
+        ptzUrl: ptzUrl !== undefined ? ptzUrl : (cams[index].ptzUrl || ''),
+        ptzUser: ptzUser !== undefined ? ptzUser : (cams[index].ptzUser || ''),
+        ptzPass: ptzPass !== undefined ? ptzPass : (cams[index].ptzPass || ''),
         resolution: resolution || cams[index].resolution,
         fps: fps || cams[index].fps,
         recordMode: recordMode || cams[index].recordMode,
@@ -1176,6 +1184,30 @@ app.post('/api/cameras/:id/restart', verifyToken, requireAdmin, (req, res) => {
     }, 500);
 });
 
+
+
+app.get('/api/system/scan-onvif', verifyToken, requireAdmin, async (req, res) => {
+    try {
+        const onvif = require('node-onvif');
+        const devices = await onvif.startProbe();
+        
+        const results = devices.map(info => {
+            return {
+                urn: info.urn,
+                name: info.name,
+                hardware: info.hardware,
+                location: info.location,
+                xaddrs: info.xaddrs,
+                mainIp: info.xaddrs && info.xaddrs.length > 0 ? new URL(info.xaddrs[0]).hostname : 'unknown'
+            };
+        });
+        
+        res.json({ success: true, devices: results });
+    } catch (error) {
+        console.error('ONVIF Scan error:', error);
+        res.status(500).json({ error: 'Gagal melakukan scan jaringan ONVIF: ' + error.message });
+    }
+});
 
 app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
     const { direction } = req.body;

@@ -239,6 +239,86 @@ async function handleLogout() {
     function initAdminDashboard() {
         startLiveClock();
         initNavigation();
+        initBottomPlayerControls();
+
+    const btnScanNetwork = document.getElementById('btnScanNetwork');
+    const scanResults = document.getElementById('scanResults');
+    const scanStatus = document.getElementById('scanStatus');
+
+    if (btnScanNetwork) {
+        btnScanNetwork.addEventListener('click', async () => {
+            if (!scanResults || !scanStatus) return;
+            scanResults.style.display = 'block';
+            scanStatus.innerHTML = '<span style="color:#eab308;">Mencari perangkat ONVIF di jaringan lokal... (Mohon tunggu sekitar 5 detik)</span>';
+            
+            // Hapus list lama jika ada
+            const oldList = document.getElementById('scanDeviceList');
+            if (oldList) oldList.remove();
+
+            try {
+                const res = await authFetch('/api/system/scan-onvif');
+                const data = await res.json();
+                
+                if (data.success && data.devices && data.devices.length > 0) {
+                    scanStatus.innerHTML = `<span style="color:#22c55e;">Ditemukan ${data.devices.length} perangkat ONVIF.</span>`;
+                    
+                    const listCont = document.createElement('div');
+                    listCont.id = 'scanDeviceList';
+                    listCont.style.display = 'flex';
+                    listCont.style.flexDirection = 'column';
+                    listCont.style.gap = '0.5rem';
+                    listCont.style.marginTop = '0.75rem';
+
+                    data.devices.forEach(dev => {
+                        const devItem = document.createElement('div');
+                        devItem.style.background = '#1e293b';
+                        devItem.style.padding = '0.75rem';
+                        devItem.style.borderRadius = '6px';
+                        devItem.style.display = 'flex';
+                        devItem.style.justifyContent = 'space-between';
+                        devItem.style.alignItems = 'center';
+                        devItem.style.border = '1px solid #334155';
+
+                        const mainIp = dev.mainIp !== 'unknown' ? dev.mainIp : (dev.xaddrs[0] || 'Unknown IP');
+                        
+                        devItem.innerHTML = `
+                            <div>
+                                <div style="font-weight:bold; font-size:0.9rem; color:#e2e8f0;">${dev.name || 'Kamera ONVIF'}</div>
+                                <div style="font-size:0.75rem; color:#94a3b8;">IP: ${mainIp}</div>
+                            </div>
+                            <button class="btn-sm btn-primary" style="font-size:0.75rem;">Gunakan</button>
+                        `;
+                        
+                        const useBtn = devItem.querySelector('button');
+                        useBtn.onclick = () => {
+                            // Buka form
+                            const formBox = document.getElementById('cameraFormBox');
+                            if(formBox) formBox.style.display = 'block';
+                            
+                            // Auto-fill
+                            document.getElementById('camName').value = dev.name || 'Kamera Baru';
+                            document.getElementById('camMainUrl').value = `rtsp://admin:password@${mainIp}:554/stream1`;
+                            document.getElementById('camSubUrl').value = `rtsp://admin:password@${mainIp}:554/stream2`;
+                            
+                            // Enable PTZ tab and auto fill ONVIF url
+                            document.getElementById('camPtzEnabled').checked = true;
+                            document.getElementById('camPtzUrl').value = dev.xaddrs && dev.xaddrs.length > 0 ? dev.xaddrs[0] : `http://${mainIp}/onvif/device_service`;
+                            
+                            scanResults.style.display = 'none';
+                            alert('Data kamera berhasil disalin ke formulir. Silakan sesuaikan Username dan Password RTSP & PTZ.');
+                        };
+                        listCont.appendChild(devItem);
+                    });
+                    scanResults.appendChild(listCont);
+                } else {
+                    scanStatus.innerHTML = '<span style="color:#ef4444;">Tidak ada perangkat ONVIF yang ditemukan di jaringan. Pastikan kamera terhubung ke jaringan yang sama dan mendukung ONVIF.</span>';
+                }
+            } catch (err) {
+                scanStatus.innerHTML = `<span style="color:#ef4444;">Error: ${err.message}</span>`;
+            }
+        });
+    }
+
         initCameraTabs();
         startSystemMonitoring();
         fetchCameras();
@@ -873,11 +953,83 @@ async function fetchCameras() {
         updatePtzVisibility();
     }
 
+    
+    let selectedVideoElement = null;
+
+    function initBottomPlayerControls() {
+        const btnPlay = document.getElementById('btnPlayerPlay');
+        const btnMute = document.getElementById('btnPlayerMute');
+        const sliderVol = document.getElementById('playerVolume');
+        const btnFull = document.getElementById('btnPlayerFullscreen');
+
+        if(btnPlay) btnPlay.addEventListener('click', () => {
+            if(!selectedVideoElement) return;
+            if(selectedVideoElement.paused) {
+                selectedVideoElement.play();
+                btnPlay.textContent = '⏸️';
+            } else {
+                selectedVideoElement.pause();
+                btnPlay.textContent = '▶️';
+            }
+        });
+
+        if(btnMute) btnMute.addEventListener('click', () => {
+            if(!selectedVideoElement) return;
+            selectedVideoElement.muted = !selectedVideoElement.muted;
+            btnMute.textContent = selectedVideoElement.muted ? '🔇' : '🔊';
+        });
+
+        if(sliderVol) sliderVol.addEventListener('input', (e) => {
+            if(!selectedVideoElement) return;
+            selectedVideoElement.volume = e.target.value;
+            if(e.target.value > 0) {
+                selectedVideoElement.muted = false;
+                if(btnMute) btnMute.textContent = '🔊';
+            }
+        });
+
+        if(btnFull) btnFull.addEventListener('click', () => {
+            if(!selectedVideoElement) return;
+            if(selectedVideoElement.requestFullscreen) {
+                selectedVideoElement.requestFullscreen();
+            } else if (selectedVideoElement.webkitRequestFullscreen) {
+                selectedVideoElement.webkitRequestFullscreen();
+            }
+        });
+    }
+
+    function updateBottomPlayerUI() {
+        const pCtrl = document.getElementById('playerControls');
+        if(!pCtrl) return;
+
+        if(!selectedVideoElement) {
+            pCtrl.style.opacity = '0.5';
+            pCtrl.style.pointerEvents = 'none';
+        } else {
+            pCtrl.style.opacity = '1';
+            pCtrl.style.pointerEvents = 'auto';
+            
+            const btnPlay = document.getElementById('btnPlayerPlay');
+            const btnMute = document.getElementById('btnPlayerMute');
+            const sliderVol = document.getElementById('playerVolume');
+            
+            if(btnPlay) btnPlay.textContent = selectedVideoElement.paused ? '▶️' : '⏸️';
+            if(btnMute) btnMute.textContent = selectedVideoElement.muted ? '🔇' : '🔊';
+            if(sliderVol) sliderVol.value = selectedVideoElement.volume;
+        }
+    }
+
     window.selectCellForPtz = function(camId) {
         selectedCamIdForPtz = camId;
         document.querySelectorAll('.cam-cell').forEach(cell => cell.classList.remove('selected'));
         const activeCell = document.getElementById('cell_' + camId);
-        if (activeCell) activeCell.classList.add('selected');
+        if (activeCell) {
+            activeCell.classList.add('selected');
+            selectedVideoElement = activeCell.querySelector('video');
+        } else {
+            selectedVideoElement = null;
+        }
+        updateBottomPlayerUI();
         updatePtzVisibility();
     };
 
@@ -888,10 +1040,17 @@ async function fetchCameras() {
         const mPtzController = document.getElementById('mPtzController');
         
         const cam = cameras.find(c => c.id === selectedCamIdForPtz);
-        const hasPtz = cam ? true : false;
+        const hasPtz = (cam && cam.ptzEnabled) ? true : false;
         
         if (ptzController) ptzController.style.display = hasPtz ? 'grid' : 'none';
-        if (ptzPlaceholder) ptzPlaceholder.style.display = hasPtz ? 'none' : 'block';
+        if (ptzPlaceholder) {
+            ptzPlaceholder.style.display = hasPtz ? 'none' : 'block';
+            if (cam && !cam.ptzEnabled) {
+                ptzPlaceholder.textContent = "Kamera ini tidak memiliki konfigurasi PTZ.";
+            } else if (!cam) {
+                ptzPlaceholder.textContent = "Pilih kamera di layar untuk mengaktifkan PTZ";
+            }
+        }
         if (mPtzController) mPtzController.style.display = hasPtz ? 'grid' : 'none';
     }
     window.ptzMoveSelected = async function(direction) {
@@ -1047,9 +1206,13 @@ async function fetchCameras() {
                     const videoId = "cam_video_admin_" + i;
                     
                     cell.innerHTML = `
-                        <video id="${videoId}" class="cam-player-video" autoplay muted playsinline controls></video>
-                        <div style="position:absolute; top:5px; left:5px; background:rgba(0,0,0,0.6); color:white; padding:2px 6px; font-size:0.75rem; border-radius:4px; pointer-events:none; z-index:10;">
-                            ${cam.name}
+                        <div style="display:flex; flex-direction:column; width:100%; height:100%;">
+                            <div style="flex:1; min-height:0; position:relative; background: #000; overflow: hidden;">
+                                <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; pointer-events:none;"></video>
+                            </div>
+                            <div class="cam-title-bar" style="background:var(--surface); text-align:center; padding: 4px; font-size: 11px; font-weight: bold; color:var(--text-muted); border-top:1px solid var(--border); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
+                                ${cam.name}
+                            </div>
                         </div>
                     `;
                     inits.push(() => { if (cam.enabled) initHlsPlayer(videoId, hlsUrl); });
@@ -1078,9 +1241,13 @@ async function fetchCameras() {
                     const videoId = "cam_video_mobile_" + i;
                     
                     mCell.innerHTML = `
-                        <video id="${videoId}" class="cam-player-video" autoplay muted playsinline controls></video>
-                        <div style="position:absolute; top:5px; left:5px; background:rgba(0,0,0,0.6); color:white; padding:2px 6px; font-size:0.75rem; border-radius:4px; pointer-events:none; z-index:10;">
-                            ${cam.name}
+                        <div style="display:flex; flex-direction:column; width:100%; height:100%;">
+                            <div style="flex:1; min-height:0; position:relative; background: #000; overflow: hidden;">
+                                <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; pointer-events:none;"></video>
+                            </div>
+                            <div class="cam-title-bar" style="background:var(--surface); text-align:center; padding: 4px; font-size: 11px; font-weight: bold; color:var(--text-muted); border-top:1px solid var(--border); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
+                                ${cam.name}
+                            </div>
                         </div>
                     `;
                     inits.push(() => { if (cam.enabled) initHlsPlayer(videoId, hlsUrl); });

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.0.0 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <title>Arch3r NVR Ver. 9.0.1 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.0.0</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.0.1</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Armbian STB Multi-Tenant NVR &bull; Arsitektur Shinobi CCTV
@@ -66,7 +66,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.0.0</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.0.1</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -126,7 +126,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.0.0</h3>
+                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.0.1</h3>
             </header>
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
@@ -167,21 +167,35 @@
                         <div id="videoGrid" class="video-grid grid-1" style="flex:1; width:100%;"></div>
                     </div>
 
-                    <!-- PTZ Controller (Di Bawah Halaman) -->
-                    <div id="ptzPanel" style="background: var(--surface); border-top: 1px solid var(--border); padding: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 1rem;">
-                        <span style="font-weight:bold; color:var(--text-muted); font-size:12px;">PTZ:</span>
-                        <div id="ptzController" class="ptz-controller" style="display:none; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap:4px; align-items:center; justify-items:center;">
-                            <div></div>
-                            <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('up')">▲</button>
-                            <div></div>
-                            <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('left')">◀</button>
-                            <div style="display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:bold; color:#64748b;">PTZ</div>
-                            <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('right')">▶</button>
-                            <div></div>
-                            <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('down')">▼</button>
-                            <div></div>
+                    <!-- Bottom Control Panel (Player & PTZ) -->
+                    <div id="bottomControlPanel" style="background: var(--surface); border-top: 1px solid var(--border); padding: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                        
+                        <!-- Player Controls -->
+                        <div id="playerControls" style="display:flex; align-items:center; gap: 0.5rem; opacity: 0.5; pointer-events: none;">
+                            <button id="btnPlayerPlay" class="btn-sm btn-secondary" style="border-radius:50%; width: 35px; height: 35px; padding:0; font-size:12px;">⏯️</button>
+                            <button id="btnPlayerMute" class="btn-sm btn-secondary" style="border-radius:50%; width: 35px; height: 35px; padding:0; font-size:12px;">🔊</button>
+                            <input type="range" id="playerVolume" min="0" max="1" step="0.05" value="1" style="width: 80px; accent-color: var(--primary);">
+                            <button id="btnPlayerFullscreen" class="btn-sm btn-secondary" style="border-radius:50%; width: 35px; height: 35px; padding:0; font-size:12px;">⛶</button>
                         </div>
-                        <div id="ptzPlaceholder" style="font-size:12px; color:var(--text-muted); font-style:italic;">Pilih kamera di layar untuk mengaktifkan PTZ</div>
+
+                        <div style="width:1px; height:30px; background:var(--border);"></div>
+
+                        <!-- PTZ Controls -->
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-weight:bold; color:var(--text-muted); font-size:12px;">PTZ:</span>
+                            <div id="ptzController" class="ptz-controller" style="display:none; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap:4px; align-items:center; justify-items:center;">
+                                <div></div>
+                                <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('up')">▲</button>
+                                <div></div>
+                                <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('left')">◀</button>
+                                <div style="display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:bold; color:#64748b;">PTZ</div>
+                                <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('right')">▶</button>
+                                <div></div>
+                                <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('down')">▼</button>
+                                <div></div>
+                            </div>
+                            <div id="ptzPlaceholder" style="font-size:12px; color:var(--text-muted); font-style:italic;">Pilih kamera di layar</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -248,10 +262,11 @@
                         <h3 id="formTitle" style="font-size:1.05rem; margin-bottom:1rem; color:#60a5fa;">Tambah / Edit Kamera</h3>
                         <button type="button" id="btnCancelEdit" class="btn-sm btn-secondary" style="display:none; margin-bottom:1rem;">✕ Batalkan Edit</button>
 
-                        <div class="cam-inner-tabs">
+                                                <div class="cam-inner-tabs">
                             <button type="button" class="ctab-btn active" data-target="ctab-general">General</button>
                             <button type="button" class="ctab-btn" data-target="ctab-streams">Streams</button>
-                            <button type="button" class="ctab-btn" data-target="ctab-storage">Recording & Storage</button>
+                            <button type="button" class="ctab-btn" data-target="ctab-storage">Storage</button>
+                            <button type="button" class="ctab-btn" data-target="ctab-ptz">PTZ</button>
                         </div>
 
                         <form id="cameraForm">
@@ -313,6 +328,29 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <div id="ctab-ptz" class="ctab-pane">
+                                <div class="form-group row-check" style="margin-bottom:1rem;">
+                                    <input type="checkbox" id="camPtzEnabled">
+                                    <label for="camPtzEnabled" style="font-weight:600;">Aktifkan Kontrol PTZ (ONVIF)</label>
+                                </div>
+                                <div class="form-group">
+                                    <label>URL ONVIF / IP PTZ</label>
+                                    <input type="text" id="camPtzUrl" placeholder="http://192.168.1.100:80/onvif/device_service (Atau cukup IP saja)">
+                                    <small style="color:var(--text-muted);">Isi dengan IP Kamera atau URL lengkap ONVIF.</small>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group flex-1">
+                                        <label>Username PTZ</label>
+                                        <input type="text" id="camPtzUser">
+                                    </div>
+                                    <div class="form-group flex-1">
+                                        <label>Password PTZ</label>
+                                        <input type="password" id="camPtzPass">
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="form-actions mt-3">
                                 <button type="submit" class="btn btn-primary w-full">Simpan & Sinkronkan Kamera</button>
                             </div>
@@ -524,7 +562,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.0.0</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.0.1</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>
