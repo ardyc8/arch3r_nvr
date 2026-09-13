@@ -194,14 +194,19 @@ function scheduleDbSave() {
 }
 
 // Logger
-function sysLog(level, message) {
+function sysLog(level, message, category = 'SYSTEM') {
     const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] [${level}] ${message}`);
+    console.log(`[${timestamp}] [${level}] [${category}] ${message}`);
     try {
         const dbData = getNvrDb();
         if (!dbData.system_logs) dbData.system_logs = [];
-        dbData.system_logs.push({ id: Date.now(), timestamp, level, message });
-        if (dbData.system_logs.length > 1000) dbData.system_logs.shift(); // Keep last 1000 logs
+        
+        // Auto cleanup > 60 days
+        const cutoff = Date.now() - (60 * 24 * 60 * 60 * 1000);
+        dbData.system_logs = dbData.system_logs.filter(log => log.id > cutoff);
+        
+        dbData.system_logs.push({ id: Date.now(), timestamp, level, category, message });
+        if (dbData.system_logs.length > 5000) dbData.system_logs.shift(); // Keep last 5000 logs
         saveNvrDb(dbData);
     } catch (e) {}
 }
@@ -482,7 +487,7 @@ app.post('/api/superadmin/factory-reset', verifyToken, requireSuperadmin, (req, 
     try {
         const initial = getDefaultDb();
         saveNvrDb(initial);
-                sysLog('WARNING', 'SuperAdmin triggered a Factory Reset.');
+                sysLog('WARNING', 'SuperAdmin triggered a Factory Reset.', 'SECURITY');
         res.json({ message: 'Factory reset completed successfully. Please login again.' });
     } catch(err) {
         res.status(500).json({ error: 'Failed to factory reset' });
@@ -519,7 +524,7 @@ app.post('/api/superadmin/admins', verifyToken, requireSuperadmin, (req, res) =>
     };
     dbData.administrators.push(newAdmin);
     saveNvrDb(dbData);
-    sysLog('INFO', `[Superadmin] Akun Administrator baru dibuat: ${newAdmin.username}`);
+    sysLog('INFO', `[Superadmin] Akun Administrator baru dibuat: ${newAdmin.username}`, 'SECURITY');
     res.json({ success: true, administrator: { id: newAdmin.id, username: newAdmin.username, name: newAdmin.name } });
 });
 
@@ -530,7 +535,7 @@ app.delete('/api/superadmin/admins/:id', verifyToken, requireSuperadmin, (req, r
     if (index === -1) return res.status(404).json({ error: 'Administrator tidak ditemukan' });
     const removed = dbData.administrators.splice(index, 1)[0];
     saveNvrDb(dbData);
-    sysLog('INFO', `[Superadmin] Akun Administrator dihapus: ${removed.username}`);
+    sysLog('INFO', `[Superadmin] Akun Administrator dihapus: ${removed.username}`, 'SECURITY');
     res.json({ success: true });
 });
 
@@ -571,7 +576,7 @@ app.post('/api/admin/users', verifyToken, requireAdministrator, (req, res) => {
     };
     dbData.users.push(newUser);
     saveNvrDb(dbData);
-    sysLog('INFO', `[Administrator] Akun User (Klien) baru dibuat: ${newUser.username}`);
+    sysLog('INFO', `[Administrator] Akun User (Klien) baru dibuat: ${newUser.username}`, 'SECURITY');
     res.json({ success: true, user: { id: newUser.id, username: newUser.username, name: newUser.name } });
 });
 
@@ -586,7 +591,7 @@ app.delete('/api/admin/users/:id', verifyToken, requireAdministrator, (req, res)
     }
     const removed = dbData.users.splice(index, 1)[0];
     saveNvrDb(dbData);
-    sysLog('INFO', `[Administrator] Akun User (Klien) dihapus: ${removed.username}`);
+    sysLog('INFO', `[Administrator] Akun User (Klien) dihapus: ${removed.username}`, 'SECURITY');
     res.json({ success: true });
 });
 
@@ -617,7 +622,7 @@ for (const f of files) {
 }
 
         } catch (e) {
-            sysLog('ERROR', `Sync failed for ${cam.id}: ${e.message}`);
+            sysLog('ERROR', `Sync failed for ${cam.id}: ${e.message}`, 'CAMERA');
         }
     }
     saveNvrDb(dbData);
@@ -890,7 +895,7 @@ function spawnRecordingFFmpeg(cam) {
     const sourceUrl = formatStreamUrl(rawUrl);
 
     if (!sourceUrl) {
-        sysLog('WARN', `[${cam.id}] URL RTSP tidak tersedia untuk perekaman.`);
+        sysLog('WARN', `[${cam.id}] URL RTSP tidak tersedia untuk perekaman.`, 'CAMERA');
         return;
     }
 
@@ -938,7 +943,7 @@ function spawnRecordingFFmpeg(cam) {
         path.join(recBase, "%Y-%m-%d_%H-%M-%S.mp4")
     ];
 
-    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (-c:v copy -c:a copy) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`);
+    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (-c:v copy -c:a copy) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`, 'CAMERA');
 
     const child = spawn('ffmpeg', args);
     child.killedByUser = false;
@@ -949,7 +954,7 @@ function spawnRecordingFFmpeg(cam) {
         }
 
         if (!child.killedByUser) {
-            sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Reconnect otomatis dalam 10 detik...`);
+            sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Reconnect otomatis dalam 10 detik...`, 'CAMERA');
             const timerKey = `rec_${cam.id}`;
             if (reconnectTimers[timerKey]) clearTimeout(reconnectTimers[timerKey]);
             
@@ -1016,7 +1021,7 @@ function stopCamera(camId) {
 
 // Retention (Cleaning old files locally)
 function runRetention() {
-    sysLog('INFO', 'Running retention check...');
+    sysLog('INFO', 'Running retention check...', 'STORAGE');
     ensureRecordFolders();
     const cams = getCameras();
     let filesDeleted = false;
@@ -1050,7 +1055,7 @@ function runRetention() {
                 try { 
                     fs.unlinkSync(file.path);
                     filesDeleted = true;
-                    sysLog('INFO', `[Retention] Deleted by age (${cam.id}): ${file.path}`);
+                    sysLog('INFO', `[Retention] Deleted by age (${cam.id}): ${file.path}`, 'STORAGE');
                 } catch(e) {}
             }
         }
@@ -1068,7 +1073,7 @@ function runRetention() {
                     fs.unlinkSync(file.path); 
                     totalSizeBytes -= file.size;
                     filesDeleted = true;
-                    sysLog('INFO', `[Retention] Deleted by quota (${cam.id}): ${file.path}`);
+                    sysLog('INFO', `[Retention] Deleted by quota (${cam.id}): ${file.path}`, 'STORAGE');
                 } catch(e) {}
             }
         }
@@ -1093,7 +1098,7 @@ function checkGlobalDiskSpace() {
         const stats = fs.statfsSync(getActualBaseStoragePath());
         const percent = (stats.blocks - stats.bfree) / stats.blocks;
         if (percent > 0.90) { 
-            sysLog('WARN', `Global storage capacity > 90% (${(percent*100).toFixed(1)}%). Executing emergency cleanup.`);
+            sysLog('WARN', `Global storage capacity > 90% (${(percent*100).toFixed(1)}%). Executing emergency cleanup.`, 'STORAGE');
             
             const dbData = getNvrDb();
             let recordings = dbData.recordings.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -1105,13 +1110,13 @@ function checkGlobalDiskSpace() {
                     try {
                         fs.unlinkSync(rec.file_path);
                         deleted = true;
-                        sysLog('INFO', `[Emergency Cleanup] Deleted ${rec.file_path}`);
+                        sysLog('INFO', `[Emergency Cleanup] Deleted ${rec.file_path}`, 'STORAGE');
                     } catch(e) {}
                 }
             }
             if (deleted) syncRecordingsToDB();
         }
-    } catch(e) { sysLog('ERROR', `Disk check failed: ${e.message}`); }
+    } catch(e) { sysLog('ERROR', `Disk check failed : ${e.message}`, 'STORAGE'); }
 }
 
 
@@ -1124,8 +1129,10 @@ app.get('/api/cameras', verifyToken, (req, res) => {
         const hasDistinctSub = c.subStreamUrl && c.subStreamUrl.trim() && c.subStreamUrl.trim() !== c.mainStreamUrl.trim();
         const mainStat = (cameraStatuses[c.id] && cameraStatuses[c.id].main) || { status: c.enabled ? 'online' : 'offline', error: null };
         const subStat = (cameraStatuses[c.id] && cameraStatuses[c.id].sub) || { status: c.enabled ? 'online' : 'offline', error: null };
+        const isRecording = !!ffProcesses[c.id];
         return {
             ...c,
+            isRecording,
             mediaMtxPath: safeId,
             mediaMtxSubPath: hasDistinctSub ? `${safeId}_sub` : safeId,
             mainHls: `/streams/${c.id}/main.m3u8`,
@@ -1176,7 +1183,7 @@ app.post('/api/cameras', verifyToken, requireAdmin, (req, res) => {
         if (typeof newCam !== "undefined") { spawnRecordingFFmpeg(newCam); }
     }
     
-    sysLog('INFO', `Kamera Ditambahkan: ${newCam.name} (MediaMTX config updated)`);
+    sysLog('INFO', `Kamera Ditambahkan: ${newCam.name} (MediaMTX config updated)`, 'CAMERA');
     res.json({ success: true, camera: newCam });
 });
 
@@ -1223,7 +1230,7 @@ app.put('/api/cameras/:id', verifyToken, requireAdmin, (req, res) => {
         spawnRecordingFFmpeg(cams[index]);
     }
 
-    sysLog('INFO', `Kamera Diperbarui: ${cams[index].name} (MediaMTX config updated)`);
+    sysLog('INFO', `Kamera Diperbarui: ${cams[index].name} (MediaMTX config updated)`, 'CAMERA');
     res.json({ success: true });
 });
 
@@ -1422,10 +1429,10 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
             device.ptzStop({'profileToken': profile['token'], 'panTilt': true, 'zoom': true}).catch(() => {});
         }, 500);
         
-        sysLog('INFO', `[PTZ] Kamera ${cam.name} (${host}) bergerak ke ${direction}`);
+        sysLog('INFO', `[PTZ] Kamera ${cam.name} (${host}) bergerak ke ${direction}`, 'CAMERA');
         res.json({ success: true, message: 'PTZ command sent' });
     } catch (e) {
-        sysLog('ERROR', `[PTZ] Gagal ONVIF untuk ${cam ? cam.name : req.params.id}: ${e.message}`);
+        sysLog('ERROR', `[PTZ] Gagal ONVIF untuk ${cam ? cam.name : req.params.id}: ${e.message}`, 'CAMERA');
         res.status(500).json({ error: 'Gagal mengontrol PTZ. ' + e.message });
     }
 });
@@ -1442,7 +1449,7 @@ app.delete('/api/cameras/:id', verifyToken, requireAdmin, (req, res) => {
     // Sinkronisasi MediaMTX otomatis setelah hapus kamera
     syncMediaMtxConfig();
 
-    sysLog('INFO', `Kamera Dihapus: ${req.params.id} (MediaMTX config updated)`);
+    sysLog('INFO', `Kamera Dihapus: ${req.params.id} (MediaMTX config updated)`, 'CAMERA');
     res.json({ success: true });
 });
 
@@ -1915,7 +1922,7 @@ app.post('/api/system/storage-devices/select', verifyToken, requireAdmin, (req, 
         dbData.super_settings = settings;
         saveNvrDb(dbData);
 
-        sysLog('INFO', `Lokasi Penyimpanan Rekaman Diperbarui: ${trimmedPath} (Tersimpan di data/nvr_db.json)`);
+        sysLog('INFO', `Lokasi Penyimpanan Rekaman Diperbarui: ${trimmedPath} (Tersimpan di data/nvr_db.json)`, 'STORAGE');
 
         // 3. Restart stream recording jika path berubah
         if (prevPath !== trimmedPath) {
@@ -1984,7 +1991,7 @@ app.post('/api/settings', verifyToken, requireAdmin, (req, res) => {
     dbData.super_settings = newSettings;
     saveNvrDb(dbData);
     
-    sysLog('INFO', `Pengaturan Sistem Diperbarui (Storage: ${newSettings.globalStoragePath || newSettings.globalStorageMode}, Recording Quality: ${newSettings.recordingQuality || 'main'})`);
+    sysLog('INFO', `Pengaturan Sistem Diperbarui (Storage: ${newSettings.globalStoragePath || newSettings.globalStorageMode}, Recording Quality: ${newSettings.recordingQuality || 'main'})`, 'STORAGE');
     
     if (prevQuality !== newSettings.recordingQuality || prevStorageMode !== newSettings.globalStorageMode || prevStoragePath !== newSettings.globalStoragePath) {
         ensureRecordFolders();
@@ -1993,7 +2000,6 @@ app.post('/api/settings', verifyToken, requireAdmin, (req, res) => {
     }
     
     res.json({ success: true, settings: newSettings });
-});
 });
 
 // Streams Middleware with HLS Cache-Control & CORS
