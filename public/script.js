@@ -245,79 +245,112 @@ async function handleLogout() {
     const scanResults = document.getElementById('scanResults');
     const scanStatus = document.getElementById('scanStatus');
 
-    if (btnScanNetwork) {
-        btnScanNetwork.addEventListener('click', async () => {
-            if (!scanResults || !scanStatus) return;
-            scanResults.style.display = 'block';
-            scanStatus.innerHTML = '<span style="color:#eab308;">Mencari perangkat ONVIF di jaringan lokal... (Mohon tunggu sekitar 5 detik)</span>';
+    
+    const btnStartAdvancedScan = document.getElementById('btnStartAdvancedScan');
+    if (btnStartAdvancedScan) {
+        btnStartAdvancedScan.addEventListener('click', async () => {
+            const startIp = document.getElementById('scanStartIp').value;
+            const endIp = document.getElementById('scanEndIp').value;
+            const ports = document.getElementById('scanPorts').value;
             
-            // Hapus list lama jika ada
+            const scanResults = document.getElementById('scanResults');
+            const scanStatus = document.getElementById('scanStatus');
+            
+            if(!scanResults || !scanStatus) return;
+            
+            scanResults.style.display = 'block';
+            scanStatus.innerHTML = '<span style="color:#eab308;">Mencari (0%)...</span>';
+            
             const oldList = document.getElementById('scanDeviceList');
             if (oldList) oldList.remove();
+            
+            const listCont = document.createElement('div');
+            listCont.id = 'scanDeviceList';
+            listCont.style.display = 'flex';
+            listCont.style.flexDirection = 'column';
+            listCont.style.gap = '0.5rem';
+            listCont.style.marginTop = '0.75rem';
+            scanResults.appendChild(listCont);
 
             try {
-                const res = await authFetch('/api/system/scan-onvif');
-                const data = await res.json();
-                
-                if (data.success && data.devices && data.devices.length > 0) {
-                    scanStatus.innerHTML = `<span style="color:#22c55e;">Ditemukan ${data.devices.length} perangkat ONVIF.</span>`;
-                    
-                    const listCont = document.createElement('div');
-                    listCont.id = 'scanDeviceList';
-                    listCont.style.display = 'flex';
-                    listCont.style.flexDirection = 'column';
-                    listCont.style.gap = '0.5rem';
-                    listCont.style.marginTop = '0.75rem';
+                const response = await fetch('/api/system/scan-advanced', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + getAuthToken()
+                    },
+                    body: JSON.stringify({ startIp, endIp, ports })
+                });
 
-                    data.devices.forEach(dev => {
-                        const devItem = document.createElement('div');
-                        devItem.style.background = '#1e293b';
-                        devItem.style.padding = '0.75rem';
-                        devItem.style.borderRadius = '6px';
-                        devItem.style.display = 'flex';
-                        devItem.style.justifyContent = 'space-between';
-                        devItem.style.alignItems = 'center';
-                        devItem.style.border = '1px solid #334155';
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let done = false;
+                let foundDevices = 0;
 
-                        const mainIp = dev.mainIp !== 'unknown' ? dev.mainIp : (dev.xaddrs[0] || 'Unknown IP');
-                        
-                        devItem.innerHTML = `
-                            <div>
-                                <div style="font-weight:bold; font-size:0.9rem; color:#e2e8f0;">${dev.name || 'Kamera ONVIF'}</div>
-                                <div style="font-size:0.75rem; color:#94a3b8;">IP: ${mainIp}</div>
-                            </div>
-                            <button class="btn-sm btn-primary" style="font-size:0.75rem;">Gunakan</button>
-                        `;
-                        
-                        const useBtn = devItem.querySelector('button');
-                        useBtn.onclick = () => {
-                            // Buka form
-                            const formBox = document.getElementById('cameraFormBox');
-                            if(formBox) formBox.style.display = 'block';
-                            
-                            // Auto-fill
-                            document.getElementById('camName').value = dev.name || 'Kamera Baru';
-                            document.getElementById('camMainUrl').value = `rtsp://admin:password@${mainIp}:554/stream1`;
-                            document.getElementById('camSubUrl').value = `rtsp://admin:password@${mainIp}:554/stream2`;
-                            
-                            // Enable PTZ tab and auto fill ONVIF url
-                            document.getElementById('camPtzEnabled').checked = true;
-                            document.getElementById('camPtzUrl').value = dev.xaddrs && dev.xaddrs.length > 0 ? dev.xaddrs[0] : `http://${mainIp}/onvif/device_service`;
-                            
-                            scanResults.style.display = 'none';
-                            alert('Data kamera berhasil disalin ke formulir. Silakan sesuaikan Username dan Password RTSP & PTZ.');
-                        };
-                        listCont.appendChild(devItem);
-                    });
-                    scanResults.appendChild(listCont);
-                } else {
-                    scanStatus.innerHTML = '<span style="color:#ef4444;">Tidak ada perangkat ONVIF yang ditemukan di jaringan. Pastikan kamera terhubung ke jaringan yang sama dan mendukung ONVIF.</span>';
+                while (!done) {
+                    const { value, done: readerDone } = await reader.read();
+                    done = readerDone;
+                    if (value) {
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n\n');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const dataStr = line.replace('data: ', '');
+                                try {
+                                    const data = JSON.parse(dataStr);
+                                    if (data.progress) {
+                                        scanStatus.innerHTML = `<span style="color:#eab308;">Mencari (${data.progress}%)... Ditemukan ${foundDevices} perangkat.</span>`;
+                                    } else if (data.found) {
+                                        foundDevices++;
+                                        const dev = data.found;
+                                        const devItem = document.createElement('div');
+                                        devItem.style.background = '#1e293b';
+                                        devItem.style.padding = '0.75rem';
+                                        devItem.style.borderRadius = '6px';
+                                        devItem.style.display = 'flex';
+                                        devItem.style.justifyContent = 'space-between';
+                                        devItem.style.alignItems = 'center';
+                                        devItem.style.border = '1px solid #334155';
+                                        
+                                        let portStr = dev.ports.join(', ');
+                                        
+                                        devItem.innerHTML = `
+                                            <div>
+                                                <div style="font-weight:bold; font-size:0.9rem; color:#e2e8f0;">${dev.name} (${dev.ip})</div>
+                                                <div style="font-size:0.75rem; color:#94a3b8;">Port Terbuka: ${portStr}</div>
+                                            </div>
+                                            <button class="btn-sm btn-primary" style="font-size:0.75rem;">Gunakan</button>
+                                        `;
+                                        
+                                        devItem.querySelector('button').onclick = () => {
+                                            document.getElementById('cameraFormBox').style.display = 'block';
+                                            document.getElementById('camName').value = 'Kamera ' + dev.ip;
+                                            document.getElementById('camMainUrl').value = `rtsp://admin:password@${dev.ip}:554/stream1`;
+                                            document.getElementById('camSubUrl').value = `rtsp://admin:password@${dev.ip}:554/stream2`;
+                                            document.getElementById('camPtzEnabled').checked = dev.isOnvif;
+                                            
+                                            // Asumsi port ONVIF pertama
+                                            const onvifPort = dev.ports.find(p => p !== 554) || 80;
+                                            document.getElementById('camPtzUrl').value = `http://${dev.ip}:${onvifPort}/onvif/device_service`;
+                                            
+                                            document.getElementById('advancedScanBox').style.display = 'none';
+                                            alert('Data IP disalin. Sesuaikan Username dan Password!');
+                                        };
+                                        listCont.appendChild(devItem);
+                                    } else if (data.status === 'done') {
+                                        scanStatus.innerHTML = `<span style="color:#22c55e;">Selesai! Ditemukan ${foundDevices} perangkat terbuka.</span>`;
+                                    }
+                                } catch (e) {}
+                            }
+                        }
+                    }
                 }
-            } catch (err) {
-                scanStatus.innerHTML = `<span style="color:#ef4444;">Error: ${err.message}</span>`;
+            } catch(e) {
+                scanStatus.innerHTML = `<span style="color:#ef4444;">Error: ${e.message}</span>`;
             }
         });
     }
+
 
         initCameraTabs();
         startSystemMonitoring();
@@ -957,6 +990,71 @@ async function fetchCameras() {
     let selectedVideoElement = null;
 
     function initBottomPlayerControls() {
+
+    const pbPlayer = document.getElementById('playbackPlayer');
+    const pbTimeline = document.getElementById('pbTimeline');
+    const pbCurrentTime = document.getElementById('pbCurrentTime');
+    const pbTotalTime = document.getElementById('pbTotalTime');
+    const btnPbPlay = document.getElementById('btnPbPlay');
+    const btnPbMute = document.getElementById('btnPbMute');
+    const btnPbFull = document.getElementById('btnPbFullscreen');
+
+    function formatTime(seconds) {
+        if(isNaN(seconds)) return "00:00:00";
+        const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+        const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    }
+
+    if (pbPlayer) {
+        pbPlayer.addEventListener('timeupdate', () => {
+            if (pbPlayer.duration) {
+                const pct = (pbPlayer.currentTime / pbPlayer.duration) * 100;
+                if(pbTimeline) pbTimeline.value = pct;
+                if(pbCurrentTime) pbCurrentTime.textContent = formatTime(pbPlayer.currentTime);
+            }
+        });
+        pbPlayer.addEventListener('loadedmetadata', () => {
+            if(pbTotalTime) pbTotalTime.textContent = formatTime(pbPlayer.duration);
+        });
+        pbPlayer.addEventListener('play', () => { if(btnPbPlay) btnPbPlay.textContent = '⏸️'; });
+        pbPlayer.addEventListener('pause', () => { if(btnPbPlay) btnPbPlay.textContent = '▶️'; });
+    }
+
+    if (pbTimeline) {
+        pbTimeline.addEventListener('input', (e) => {
+            if (pbPlayer && pbPlayer.duration) {
+                const targetTime = (e.target.value / 100) * pbPlayer.duration;
+                pbPlayer.currentTime = targetTime;
+            }
+        });
+    }
+
+    if (btnPbPlay) {
+        btnPbPlay.addEventListener('click', () => {
+            if (!pbPlayer) return;
+            if (pbPlayer.paused) pbPlayer.play();
+            else pbPlayer.pause();
+        });
+    }
+
+    if (btnPbMute) {
+        btnPbMute.addEventListener('click', () => {
+            if (!pbPlayer) return;
+            pbPlayer.muted = !pbPlayer.muted;
+            btnPbMute.textContent = pbPlayer.muted ? '🔇' : '🔊';
+        });
+    }
+
+    if (btnPbFull) {
+        btnPbFull.addEventListener('click', () => {
+            if (!pbPlayer) return;
+            if (pbPlayer.requestFullscreen) pbPlayer.requestFullscreen();
+            else if (pbPlayer.webkitRequestFullscreen) pbPlayer.webkitRequestFullscreen();
+        });
+    }
+
         const btnPlay = document.getElementById('btnPlayerPlay');
         const btnMute = document.getElementById('btnPlayerMute');
         const sliderVol = document.getElementById('playerVolume');
@@ -1075,6 +1173,19 @@ async function fetchCameras() {
 
     
     
+    
+    window.toggleClipList = function() {
+        const sidebar = document.getElementById('pbClipSidebar');
+        if(!sidebar) return;
+        if(sidebar.style.width === '0px') {
+            sidebar.style.width = '300px';
+            sidebar.style.opacity = '1';
+        } else {
+            sidebar.style.width = '0px';
+            sidebar.style.opacity = '0';
+        }
+    };
+
     window.toggleTopControls = function() {
         const panel = document.getElementById('topControlPanel');
         const btn = document.getElementById('btnToggleControls');
@@ -1206,14 +1317,12 @@ async function fetchCameras() {
                     const videoId = "cam_video_admin_" + i;
                     
                     cell.innerHTML = `
-                        <div style="display:flex; flex-direction:column; width:100%; height:100%;">
-                            <div style="flex:1; min-height:0; position:relative; background: #000; overflow: hidden;">
-                                <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; pointer-events:none;"></video>
+                        <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
+                                <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill; pointer-events:none;"></video>
+                                <div class="cam-title-bar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(15, 23, 42, 0.7); text-align:center; padding: 2px 4px; font-size: 10px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
+                                    ${cam.name}
+                                </div>
                             </div>
-                            <div class="cam-title-bar" style="background:var(--surface); text-align:center; padding: 4px; font-size: 11px; font-weight: bold; color:var(--text-muted); border-top:1px solid var(--border); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
-                                ${cam.name}
-                            </div>
-                        </div>
                     `;
                     inits.push(() => { if (cam.enabled) initHlsPlayer(videoId, hlsUrl); });
                 } else {
@@ -1241,14 +1350,12 @@ async function fetchCameras() {
                     const videoId = "cam_video_mobile_" + i;
                     
                     mCell.innerHTML = `
-                        <div style="display:flex; flex-direction:column; width:100%; height:100%;">
-                            <div style="flex:1; min-height:0; position:relative; background: #000; overflow: hidden;">
-                                <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; pointer-events:none;"></video>
+                        <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
+                                <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill; pointer-events:none;"></video>
+                                <div class="cam-title-bar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(15, 23, 42, 0.7); text-align:center; padding: 2px 4px; font-size: 10px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
+                                    ${cam.name}
+                                </div>
                             </div>
-                            <div class="cam-title-bar" style="background:var(--surface); text-align:center; padding: 4px; font-size: 11px; font-weight: bold; color:var(--text-muted); border-top:1px solid var(--border); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
-                                ${cam.name}
-                            </div>
-                        </div>
                     `;
                     inits.push(() => { if (cam.enabled) initHlsPlayer(videoId, hlsUrl); });
                 } else {

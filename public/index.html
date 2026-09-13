@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.0.1 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <title>Arch3r NVR Ver. 9.0.2 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.0.1</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.0.2</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Armbian STB Multi-Tenant NVR &bull; Arsitektur Shinobi CCTV
@@ -66,7 +66,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.0.1</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.0.2</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -126,7 +126,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.0.1</h3>
+                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.0.2</h3>
             </header>
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
@@ -202,30 +202,59 @@
 
             <!-- 2. VIEW PLAYBACK -->
             <div id="view-playback" class="view-pane">
-                <div style="height:100%; display:flex; flex-direction:column;">
-                    <div style="padding:1rem; background:var(--surface); border-bottom:1px solid var(--border); display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                <div style="height:100%; display:flex; flex-direction:column; background:var(--background);">
+                    <!-- Top Bar -->
+                    <div style="padding:0.75rem 1rem; background:var(--surface); border-bottom:1px solid var(--border); display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
                         <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <label style="font-size:0.85rem; color:var(--text-muted);">Pilih Kamera:</label>
+                            <label style="font-size:0.85rem; color:var(--text-muted);">Kamera:</label>
                             <select id="selRecCam" class="form-control" style="width:auto; padding:0.4rem 0.8rem;"></select>
                         </div>
                         <div style="display:flex; align-items:center; gap:0.5rem;">
                             <label style="font-size:0.85rem; color:var(--text-muted);">Tanggal:</label>
                             <input type="date" id="selRecDate" class="form-control" style="width:auto; padding:0.4rem 0.8rem;">
                         </div>
-                        <button id="btnFetchRecordings" class="btn btn-primary" style="padding:0.45rem 1rem; font-size:0.85rem;">Cari Rekaman</button>
+                        <button id="btnFetchRecordings" class="btn-sm btn-primary" style="padding:0.4rem 1rem; font-size:0.85rem;">🔍 Cari Rekaman</button>
+                        <div style="flex:1;"></div>
+                        <button id="btnToggleClipList" class="btn-sm btn-secondary" onclick="window.toggleClipList()" style="font-size:0.85rem;">☰ Daftar Klip</button>
                     </div>
+
+                    <!-- Main Area -->
                     <div style="flex:1; display:flex; overflow:hidden; flex-direction:row;">
-                        <div style="flex:1; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative;">
-                            <video id="playbackPlayer" controls playsinline style="width:100%; height:100%; max-height:80vh; background:#000;"></video>
-                            <div id="pbTitle" style="position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:4px 10px; border-radius:4px; font-size:0.8rem; color:#fff;">Pilih klip rekaman untuk memutar</div>
+                        <!-- Video & Timeline Area -->
+                        <div style="flex:1; background:#000; display:flex; flex-direction:column; position:relative;">
+                            
+                            <div style="flex:1; position:relative; display:flex; align-items:center; justify-content:center;">
+                                <video id="playbackPlayer" playsinline style="width:100%; height:100%; object-fit:contain; background:#000;"></video>
+                                <div id="pbTitle" style="position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:4px 10px; border-radius:4px; font-size:0.8rem; color:#fff; pointer-events:none;">Menunggu rekaman...</div>
+                            </div>
+                            
+                            <!-- Professional Timeline & Controls -->
+                            <div style="background:var(--surface); border-top:1px solid var(--border); padding:0.75rem 1rem; display:flex; flex-direction:column; gap:0.5rem;">
+                                <!-- Time info -->
+                                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); font-family:monospace;">
+                                    <span id="pbCurrentTime">00:00:00</span>
+                                    <span id="pbTotalTime">00:00:00</span>
+                                </div>
+                                <!-- Range Slider as Timeline -->
+                                <input type="range" id="pbTimeline" min="0" max="100" value="0" style="width:100%; accent-color:var(--primary); cursor:pointer; height:6px;">
+                                
+                                <!-- Video Controls -->
+                                <div style="display:flex; justify-content:center; align-items:center; gap:1rem; margin-top:0.25rem;">
+                                    <button id="btnPbPlay" class="btn-sm btn-secondary" style="border-radius:50%; width:40px; height:40px; padding:0; display:flex; justify-content:center; align-items:center; font-size:14px;">▶️</button>
+                                    <button id="btnPbMute" class="btn-sm btn-secondary" style="border-radius:50%; width:35px; height:35px; padding:0; display:flex; justify-content:center; align-items:center; font-size:12px;">🔊</button>
+                                    <button id="btnPbFullscreen" class="btn-sm btn-secondary" style="border-radius:50%; width:35px; height:35px; padding:0; display:flex; justify-content:center; align-items:center; font-size:12px;">⛶</button>
+                                </div>
+                            </div>
                         </div>
-                        <div style="width:320px; background:var(--surface-dark); border-left:1px solid var(--border); overflow-y:auto; flex-shrink:0;">
-                            <h3 style="padding:1rem; border-bottom:1px solid var(--border); font-size:0.95rem; margin:0; display:flex; justify-content:space-between; align-items:center;">
+                        
+                        <!-- Collapsible Clip List -->
+                        <div id="pbClipSidebar" style="width:300px; background:var(--surface-dark); border-left:1px solid var(--border); overflow-y:auto; flex-shrink:0; transition: width 0.3s, opacity 0.3s;">
+                            <h3 style="padding:1rem; border-bottom:1px solid var(--border); font-size:0.95rem; margin:0; display:flex; justify-content:space-between; align-items:center; background:var(--surface);">
                                 <span>Daftar Klip Video</span>
-                                <span id="clipCount" class="badge" style="background:var(--surface-lighter);">0 Klip</span>
+                                <span id="clipCount" class="badge" style="background:var(--primary); color:#fff;">0 Klip</span>
                             </h3>
-                            <ul id="playbackList" class="playback-list">
-                                <li style="padding:1.5rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">Pilih tanggal rekaman lalu klik "Cari Rekaman".</li>
+                            <ul id="playbackList" class="playback-list" style="margin:0; padding:0; list-style:none;">
+                                <li style="padding:1.5rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">Pilih tanggal dan klik "Cari Rekaman".</li>
                             </ul>
                         </div>
                     </div>
@@ -247,14 +276,41 @@
 
                     <div class="camera-form-section" style="margin-bottom:2rem;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <h3 style="font-size:1rem; margin:0;">Daftar Kamera Terpasang</h3>
-        <button id="btnScanNetwork" class="btn btn-secondary" style="font-size:0.8rem;">🔍 Scan ONVIF/RTSP Lokal</button>
-     </div>
-     <div id="scanResults" style="display:none; background:var(--surface); padding:1rem; border:1px solid var(--border); border-radius:6px; margin-bottom:1rem;">
-        <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem;">Hasil Scan Jaringan</h4>
-        <div id="scanStatus" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Menunggu...</div>
-        <ul id="scanList" style="list-style:none; padding:0; margin:0; font-size:0.85rem;"></ul>
-     </div>
+                            <h3 style="font-size:1rem; margin:0;">Daftar Kamera Terpasang</h3>
+                            <button onclick="document.getElementById('advancedScanBox').style.display = 'block';" class="btn btn-secondary" style="font-size:0.8rem;">🔍 Advanced IP Scanner</button>
+                        </div>
+                        
+                        <!-- Advanced Scanner Box -->
+                        <div id="advancedScanBox" style="display:none; background:var(--surface); padding:1rem; border:1px solid var(--border); border-radius:6px; margin-bottom:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                                <h4 style="margin:0; font-size:0.95rem; color:#60a5fa;">Advanced ONVIF/RTSP Scanner</h4>
+                                <button onclick="document.getElementById('advancedScanBox').style.display='none'" class="btn-sm btn-secondary" style="padding:2px 8px;">✕ Tutup</button>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group flex-1">
+                                    <label>Start IP</label>
+                                    <input type="text" id="scanStartIp" placeholder="192.168.1.1" value="192.168.1.1">
+                                </div>
+                                <div class="form-group flex-1">
+                                    <label>End IP</label>
+                                    <input type="text" id="scanEndIp" placeholder="192.168.1.254" value="192.168.1.254">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Target Ports (Pisahkan dengan koma)</label>
+                                <input type="text" id="scanPorts" placeholder="80, 8080, 8899, 554" value="80, 8080, 8899, 554">
+                                <small style="color:var(--text-muted);">Tidak perlu modul khusus Armbian, NVR akan melakukan TCP Ping internal.</small>
+                            </div>
+                            
+                            <button id="btnStartAdvancedScan" class="btn btn-primary w-full" style="margin-top:0.5rem;">Mulai Scanning Jaringan</button>
+                            
+                            <div id="scanResults" style="display:none; margin-top:1rem; border-top:1px solid var(--border); padding-top:1rem;">
+                                <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem;">Hasil Scan Jaringan</h4>
+                                <div id="scanStatus" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Menunggu...</div>
+                                <ul id="scanList" style="list-style:none; padding:0; margin:0; font-size:0.85rem;"></ul>
+                            </div>
+                        </div>
                         <div id="modalCameraList" class="modal-camera-list"></div>
                     </div>
 
@@ -562,7 +618,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.0.1</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.0.2</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>
