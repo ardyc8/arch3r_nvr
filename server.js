@@ -129,25 +129,8 @@ function getDefaultDb() {
             showTopMonitor: false, 
             netInterface: 'auto' 
         },
-        administrators: [
-            {
-                id: 'admin_root',
-                username: 'admin',
-                password: bcrypt.hashSync('admin123', 8),
-                name: 'Administrator Utama',
-                createdAt: new Date().toISOString()
-            }
-        ],
-        users: [
-            {
-                id: 'user_default',
-                username: 'user',
-                password: bcrypt.hashSync('user123', 8),
-                admin_id: 'admin_root',
-                name: 'Pengguna Mobile Client',
-                createdAt: new Date().toISOString()
-            }
-        ],
+        administrators: [],
+        users: [],
         cameras: [],
         recordings: [],
         system_logs: [],
@@ -385,10 +368,7 @@ app.post('/api/auth/login', (req, res) => {
     
     // 2. Check Administrators
     const adminUser = (dbData.administrators || []).find(u => u.username === username);
-    const isAdminPasswordValid = adminUser && (
-        bcrypt.compareSync(password, adminUser.password) ||
-        (adminUser.username === 'admin' && (password === 'admin123' || password === 'admin' || password === 'password123'))
-    );
+    const isAdminPasswordValid = adminUser && bcrypt.compareSync(password, adminUser.password);
     if (isAdminPasswordValid) {
         const token = jwt.sign({ id: adminUser.id, username: adminUser.username, role: 'administrator', adminId: adminUser.id }, JWT_SECRET, { expiresIn: '24h' });
         res.cookie('nvr_auth_token', token, cookieOpts);
@@ -397,10 +377,7 @@ app.post('/api/auth/login', (req, res) => {
     
     // 3. Check Users
     const standardUser = (dbData.users || []).find(u => u.username === username);
-    const isUserPasswordValid = standardUser && (
-        bcrypt.compareSync(password, standardUser.password) ||
-        (standardUser.username === 'user' && (password === 'user123' || password === 'user'))
-    );
+    const isUserPasswordValid = standardUser && bcrypt.compareSync(password, standardUser.password);
     if (isUserPasswordValid) {
         const token = jwt.sign({ id: standardUser.id, username: standardUser.username, role: 'user', adminId: standardUser.admin_id }, JWT_SECRET, { expiresIn: '24h' });
         res.cookie('nvr_auth_token', token, cookieOpts);

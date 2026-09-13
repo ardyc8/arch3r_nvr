@@ -1,11 +1,13 @@
-<!DOCTYPE html>
+const fs = require('fs');
+
+const htmlContent = `<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
     <title>Arch3r NVR Ver. 9.0.4 - Superadmin Console</title>
-    <link rel="stylesheet" href="style.css?v=1789336876961">
+    <link rel="stylesheet" href="style.css?v=${Date.now()}">
     <meta name="theme-color" content="#0f172a">
 </head>
 <body>
@@ -228,6 +230,9 @@
         </main>
     </div>
 
-    <script src="superadmin.js?v=1789336876961"></script>
+    <script src="superadmin.js?v=${Date.now()}"></script>
 </body>
 </html>
+`;
+fs.writeFileSync('public/superadmin.html', htmlContent);
+console.log('Rewrote superadmin.html with sidebar layout.');
