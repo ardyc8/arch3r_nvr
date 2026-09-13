@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     // 1. AUTHENTICATION & ROLE ROUTING
     // =========================================================================
-    async function checkAuth() {
+async function checkAuth() {
         try {
             const res = await authFetch('/api/auth/status');
             if (!res.ok) throw new Error('Authentication failed');
@@ -216,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function handleLogout() {
+async function handleLogout() {
         try {
             await authFetch('/api/auth/logout', { method: 'POST' });
         } catch (e) {}
@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sysStatsInterval = setInterval(updateHardwareStats, 5000);
     }
 
-    async function updateHardwareStats() {
+async function updateHardwareStats() {
         try {
             const res = await authFetch('/api/system/stats');
             if (!res.ok) return;
@@ -674,6 +674,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+
+        if (systemForm) systemForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                netInterface: document.getElementById('sysNetInterface') ? document.getElementById('sysNetInterface').value : 'auto',
+                mediamtxPort: document.getElementById('sysMediaMtxPort') ? parseInt(document.getElementById('sysMediaMtxPort').value) : 8889,
+                playerMode: document.getElementById('sysPlayerMode') ? document.getElementById('sysPlayerMode').value : 'iframe',
+                telegramBotToken: document.getElementById('sysTgBot') ? document.getElementById('sysTgBot').value : '',
+                telegramChatId: document.getElementById('sysTgChat') ? document.getElementById('sysTgChat').value : ''
+            };
+            try {
+                const res = await authFetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('Gagal menyimpan pengaturan sistem');
+                alert('Konfigurasi sistem berhasil disimpan!');
+            } catch (err) {
+                alert(err.message);
+            }
+        });
+
                 if (!res.ok) throw new Error('Gagal menyimpan pengaturan storage');
                 
                 // Juga panggil storage-devices/select jika finalPath valid agar di-bind sbg default NVR 
@@ -695,7 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Refresh Storage button
     /* second btnRefreshStorage removed */
 
-    async function loadStorageDevices() {
+async function loadStorageDevices() {
         const selEl = document.getElementById('sysStorageDevice');
         const customInput = document.getElementById('sysCustomStoragePath');
         if (!selEl) return;
@@ -777,7 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Camera Fetch & Grid Rendering ---
-    async function fetchCameras() {
+async function fetchCameras() {
         try {
             const res = await authFetch('/api/cameras');
             if (res.status === 401) {
@@ -813,14 +836,15 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const btnAll = document.createElement('button');
             btnAll.className = 'btn-sm ' + (activeChannel === 'all' ? 'btn-primary' : 'btn-secondary');
-            btnAll.textContent = 'Semua Kamera';
+            btnAll.textContent = 'ALL';
+            btnAll.style.fontWeight = 'bold';
             btnAll.onclick = () => { activeChannel = 'all'; updateGridDisplay(); };
             bar.appendChild(btnAll);
 
             cameras.forEach((cam, idx) => {
                 const btn = document.createElement('button');
                 btn.className = 'btn-sm ' + (activeChannel === cam.id ? 'btn-primary' : 'btn-secondary');
-                btn.textContent = 'CH ' + (idx + 1) + ' - ' + cam.name;
+                btn.textContent = 'CH' + (idx + 1) + ' : ' + cam.name;
                 btn.onclick = () => { activeChannel = cam.id; updateGridDisplay(); };
                 bar.appendChild(btn);
             });
@@ -860,14 +884,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function updatePtzVisibility() {
         const ptzController = document.getElementById('ptzController');
+        const ptzPlaceholder = document.getElementById('ptzPlaceholder');
         const mPtzController = document.getElementById('mPtzController');
-        const cam = cameras.find(c => c.id === selectedCamIdForPtz);
-        const displayVal = (cam && cam.ptzEnabled) ? 'grid' : 'none';
         
-        if (ptzController) ptzController.style.display = displayVal;
-        if (mPtzController) mPtzController.style.display = displayVal;
+        const cam = cameras.find(c => c.id === selectedCamIdForPtz);
+        const hasPtz = cam ? true : false;
+        
+        if (ptzController) ptzController.style.display = hasPtz ? 'grid' : 'none';
+        if (ptzPlaceholder) ptzPlaceholder.style.display = hasPtz ? 'none' : 'block';
+        if (mPtzController) mPtzController.style.display = hasPtz ? 'grid' : 'none';
     }
-
     window.ptzMoveSelected = async function(direction) {
         if (!selectedCamIdForPtz) {
             alert('Pilih kamera di grid terlebih dahulu!');
@@ -887,6 +913,27 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Kesalahan jaringan: ' + e.message);
         }
     };
+
+    
+    
+    window.toggleTopControls = function() {
+        const panel = document.getElementById('topControlPanel');
+        const btn = document.getElementById('btnToggleControls');
+        if (panel) {
+            if (panel.style.display === 'none') {
+                panel.style.display = 'flex';
+                btn.style.opacity = '1';
+                btn.style.background = '#3b82f6';
+                btn.style.color = '#fff';
+            } else {
+                panel.style.display = 'none';
+                btn.style.opacity = '0.7';
+                btn.style.background = 'var(--surface)';
+                btn.style.color = '';
+            }
+        }
+    };
+
 
     window.toggleGridFullscreen = function(gridId) {
         const elem = document.getElementById(gridId);
@@ -1253,7 +1300,7 @@ let recordingsMap = {};
         }
     });
 
-    async function fetchRecordings() {
+async function fetchRecordings() {
         try {
             const res = await authFetch('/api/recordings');
             recordingsMap = await res.json(); 
@@ -1405,6 +1452,28 @@ let recordingsMap = {};
         });
     }
 
+
+async function fetchSystemSettings() {
+        try {
+            const res = await authFetch('/api/settings');
+            const data = await res.json();
+            
+            const sysNetInterface = document.getElementById('sysNetInterface');
+            const sysMediaMtxPort = document.getElementById('sysMediaMtxPort');
+            const sysPlayerMode = document.getElementById('sysPlayerMode');
+            const sysTgBot = document.getElementById('sysTgBot');
+            const sysTgChat = document.getElementById('sysTgChat');
+            
+            if (sysNetInterface && data.netInterface) sysNetInterface.value = data.netInterface;
+            if (sysMediaMtxPort && data.mediamtxPort) sysMediaMtxPort.value = data.mediamtxPort;
+            if (sysPlayerMode && data.playerMode) sysPlayerMode.value = data.playerMode;
+            if (sysTgBot && data.telegramBotToken) sysTgBot.value = data.telegramBotToken;
+            if (sysTgChat && data.telegramChatId) sysTgChat.value = data.telegramChatId;
+        } catch(e) {
+            console.error('Failed fetch settings', e);
+        }
+    }
+
     async function loadUsersList() {
         if (!userTableBody) return;
         try {
@@ -1454,7 +1523,7 @@ let recordingsMap = {};
     // =========================================================================
     // ADMINISTRATOR - SYSTEM LOGS
     // =========================================================================
-    async function fetchLogs() {
+async function fetchLogs() {
         if (!logsContainer) return;
         try {
             const res = await authFetch('/api/logs');
