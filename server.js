@@ -888,6 +888,7 @@ function spawnRecordingFFmpeg(cam) {
     if (cam.recordMode !== 'continuous') return;
     if (getSettings().globalStorageMode === 'disabled') return;
 
+    const settings = getSettings();
     const recQuality = settings.recordingQuality || 'main';
     const hasDistinctSub = cam.subStreamUrl && cam.subStreamUrl.trim() && cam.subStreamUrl.trim() !== cam.mainStreamUrl.trim();
     const useSub = recQuality === 'sub' && hasDistinctSub;
@@ -1917,8 +1918,8 @@ app.post('/api/system/storage-devices/select', verifyToken, requireAdmin, (req, 
         saveNvrDb(dbData);
 
         // 2. Sinkronkan juga ke super_settings
-        settings.globalStoragePath = trimmedPath;
-        settings.globalStorageMode = 'custom';
+        dbData.super_settings.globalStoragePath = trimmedPath;
+        dbData.super_settings.globalStorageMode = 'custom';
         dbData.super_settings = settings;
         saveNvrDb(dbData);
 
