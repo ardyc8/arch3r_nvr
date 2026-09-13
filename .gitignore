@@ -7,3 +7,4 @@ public/recordings/
 public/streams/
 *.log
 nvr.db.json
+keygen.js
