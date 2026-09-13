@@ -8,3 +8,4 @@ public/streams/
 *.log
 nvr.db.json
 keygen.js
+AGENTS.md
