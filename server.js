@@ -1096,7 +1096,7 @@ function spawnRecordingFFmpeg(cam) {
     } else {
         const isRtsp = sourceUrl.startsWith('rtsp://');
         inputArgs = [
-            ...(isRtsp ? ['-rtsp_transport', 'tcp', '-stimeout', '10000000'] : []),
+            ...(isRtsp ? ['-rtsp_transport', 'tcp'] : []),
             '-i', sourceUrl
         ];
     }
