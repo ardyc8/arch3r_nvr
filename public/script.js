@@ -2092,18 +2092,13 @@ let allLogsCache = [];
         if (!logsContainer) return;
         
         const catFilter = document.getElementById('logCategoryFilter') ? document.getElementById('logCategoryFilter').value : 'ALL';
-        const timeFilter = document.getElementById('logTimeFilter') ? parseInt(document.getElementById('logTimeFilter').value) : 0;
+        const levelFilter = document.getElementById('logLevelFilter') ? document.getElementById('logLevelFilter').value : 'ALL';
         const searchInput = document.getElementById('logSearchInput') ? document.getElementById('logSearchInput').value.toLowerCase() : '';
         
-        const now = Date.now();
         const filtered = allLogsCache.filter(log => {
             const logCat = log.category || 'SYSTEM';
             if (catFilter !== 'ALL' && logCat !== catFilter) return false;
-            
-            if (timeFilter > 0) {
-                const limitMs = timeFilter * 24 * 60 * 60 * 1000;
-                if ((now - log.timestamp) > limitMs) return false;
-            }
+            if (levelFilter !== 'ALL' && log.level !== levelFilter) return false;
             
             if (searchInput) {
                 if (!log.message.toLowerCase().includes(searchInput)) return false;
@@ -2111,11 +2106,14 @@ let allLogsCache = [];
             return true;
         });
         
+        // Reverse array to put newest logs at the top
+        filtered.reverse();
+        
         if (filtered.length === 0) {
             logsContainer.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#64748b;">Tidak ada log yang ditemukan.</td></tr>';
             return;
         }
-
+        
         logsContainer.innerHTML = filtered.map(log => {
             let color = '#a3be8c';
             if (log.level === 'ERROR') color = '#ef4444';
@@ -2139,13 +2137,55 @@ let allLogsCache = [];
         }).join('');
     }
     
+    let autoLogInterval = null;
+    let isAutoLog = true;
+    
+    window.toggleAutoLog = function() {
+        isAutoLog = !isAutoLog;
+        const icon = document.getElementById('autoLogIcon');
+        const text = document.getElementById('autoLogText');
+        if (isAutoLog) {
+            if (icon) icon.textContent = '⏸️';
+            if (text) text.textContent = 'Stop';
+            autoLogInterval = setInterval(fetchLogs, 3000);
+            fetchLogs();
+        } else {
+            if (icon) icon.textContent = '▶️';
+            if (text) text.textContent = 'Play';
+            if (autoLogInterval) clearInterval(autoLogInterval);
+        }
+    };
+    
+    window.copyLogs = function() {
+        if (!allLogsCache || allLogsCache.length === 0) return alert('Tidak ada log untuk dicopy');
+        
+        // Reverse array to put newest logs at the top
+        const filtered = [...allLogsCache].reverse();
+        
+        const text = filtered.map(log => {
+            const timeStr = new Date(log.timestamp).toLocaleString('id-ID');
+            return `[${timeStr}] [${log.level}] [${log.category || 'SYSTEM'}] ${log.message}`;
+        }).join('\n');
+        
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Log berhasil dicopy ke clipboard!');
+        }).catch(err => {
+            alert('Gagal mencopy log: ' + err);
+        });
+    };
+    
     // Attach event listeners for filters
     const catEl = document.getElementById('logCategoryFilter');
-    const timeEl = document.getElementById('logTimeFilter');
+    const levelEl = document.getElementById('logLevelFilter');
     if (catEl) catEl.addEventListener('change', renderFilteredLogs);
-    if (timeEl) timeEl.addEventListener('change', renderFilteredLogs);
+    if (levelEl) levelEl.addEventListener('change', renderFilteredLogs);
     const searchEl = document.getElementById('logSearchInput');
     if (searchEl) searchEl.addEventListener('input', renderFilteredLogs);
+    
+    // Auto start logs if in index
+    if (document.getElementById('view-logs')) {
+        autoLogInterval = setInterval(fetchLogs, 3000);
+    }
 
     
     window.fetchLogs = fetchLogs;

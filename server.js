@@ -1069,7 +1069,11 @@ function spawnRecordingFFmpeg(cam) {
     const hasDistinctSub = cam.subStreamUrl && cam.subStreamUrl.trim() && cam.subStreamUrl.trim() !== cam.mainStreamUrl.trim();
     const useSub = recQuality === 'sub' && hasDistinctSub;
     const rawUrl = useSub ? cam.subStreamUrl : cam.mainStreamUrl;
-    const sourceUrl = formatStreamUrl(rawUrl);
+    const isDemo = formatStreamUrl(rawUrl) === 'demo';
+    
+    // Tarik dari MediaMTX lokal (kecuali demo) agar tidak double-connect ke IP Camera
+    const safeId = (cam.id || '').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const sourceUrl = isDemo ? 'demo' : `rtsp://127.0.0.1:8554/${safeId}${useSub ? '_sub' : ''}`;
 
     if (!sourceUrl) {
         sysLog('WARN', `[${cam.id}] URL RTSP tidak tersedia untuk perekaman.`, 'CAMERA');
@@ -1084,7 +1088,7 @@ function spawnRecordingFFmpeg(cam) {
     }
 
     const segSec = cam.segmentDurationSec || 900;
-    const isDemo = sourceUrl === 'demo';
+    
 
     let inputArgs = [];
     if (isDemo) {

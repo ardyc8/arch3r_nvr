@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.1.8 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <title>Arch3r NVR Ver. 9.1.9 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.1.8</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.1.9</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -74,7 +74,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.1.8</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.1.9</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -142,7 +142,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.1.8</h3>
+                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.1.9</h3>
             </header>
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
@@ -680,12 +680,43 @@
             <!-- 8. VIEW SYSTEM LOGS -->
             <div id="view-logs" class="view-pane">
                 <div class="content-wrapper" style="padding:1.5rem; height:100%; display:flex; flex-direction:column;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap: wrap; gap: 10px;">
                         <h2 style="margin:0; font-size:1.2rem;">System Logs Real-time</h2>
-                        <button id="btnRefreshLogs" class="btn btn-secondary">🔄 Refresh</button>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="text" id="logSearchInput" class="form-control" placeholder="Cari pesan log..." style="width:200px; padding:6px 10px; font-size:0.85rem; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:4px;">
+                            <select id="logCategoryFilter" class="form-control" style="padding:6px 10px; font-size:0.85rem; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:4px;">
+                                <option value="ALL">Semua Kategori</option>
+                                <option value="SYSTEM">System</option>
+                                <option value="CAMERA">Camera</option>
+                                <option value="STORAGE">Storage</option>
+                                <option value="SECURITY">Security</option>
+                            </select>
+                            <select id="logLevelFilter" class="form-control" style="padding:6px 10px; font-size:0.85rem; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:4px;">
+                                <option value="ALL">Semua Level</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARN">WARN</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
+                            <button id="btnToggleAutoLog" class="btn btn-secondary" style="display:flex; align-items:center; gap:5px;" onclick="window.toggleAutoLog()">
+                                <span id="autoLogIcon">⏸️</span> <span id="autoLogText">Stop</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="window.copyLogs()" style="display:flex; align-items:center; gap:5px;">📋 Copy</button>
+                        </div>
                     </div>
-                    <div id="logsContainer" style="flex:1; background:#000; border:1px solid var(--border); border-radius:8px; padding:1rem; overflow-y:auto; font-family:monospace; font-size:0.85rem; color:#a3be8c; line-height:1.5;">
-                        Memuat logs sistem...
+                    <div style="flex:1; background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow-y:auto;">
+                        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem; font-family:monospace;">
+                            <thead style="background:rgba(0,0,0,0.3); position:sticky; top:0; z-index:10;">
+                                <tr>
+                                    <th style="padding:10px; border-bottom:1px solid var(--border); width:160px; color:var(--text-muted);">Waktu</th>
+                                    <th style="padding:10px; border-bottom:1px solid var(--border); width:80px; color:var(--text-muted);">Level</th>
+                                    <th style="padding:10px; border-bottom:1px solid var(--border); width:100px; color:var(--text-muted);">Kategori</th>
+                                    <th style="padding:10px; border-bottom:1px solid var(--border); color:var(--text-muted);">Pesan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsContainer">
+                                <tr><td colspan="4" style="padding:20px; text-align:center; color:var(--text-muted);">Memuat logs sistem...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -734,7 +765,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.1.8</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.1.9</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>
