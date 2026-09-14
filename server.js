@@ -789,7 +789,7 @@ app.delete('/api/admin/users/:id', verifyToken, requireAdministrator, (req, res)
 });
 
 // Background Sync Task
-function syncRecordingsToDB() {
+async function syncRecordingsToDB() {
     const cams = getCameras();
     const dbData = getNvrDb();
     dbData.recordings = [];
@@ -800,26 +800,34 @@ function syncRecordingsToDB() {
         if (!fs.existsSync(storageDir)) continue;
 
         try {
-            
-const files = fs.readdirSync(storageDir).filter(f => f.endsWith(".mp4") || f.endsWith(".ts"));
-for (const f of files) {
-    const filePath = path.join(storageDir, f);
-    const stats = fs.statSync(filePath);
-    dbData.recordings.push({
-        id: `${cam.id}_${f}`,
-        camera_id: cam.id,
-        file_path: filePath,
-        file_size: stats.size,
-        start_time: new Date(stats.mtimeMs).toISOString()
-    });
-}
-
+            const scanDir = async (dir) => {
+                if (!fs.existsSync(dir)) return;
+                const items = await fs.promises.readdir(dir, { withFileTypes: true });
+                for (const item of items) {
+                    const fullPath = path.join(dir, item.name);
+                    if (item.isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(item.name)) {
+                        await scanDir(fullPath);
+                    } else if (item.isFile() && (item.name.endsWith(".mp4") || item.name.endsWith(".ts"))) {
+                        try {
+                            const stats = await fs.promises.stat(fullPath);
+                            dbData.recordings.push({
+                                id: `${cam.id}_${item.name}`,
+                                camera_id: cam.id,
+                                file_path: fullPath,
+                                file_size: stats.size,
+                                start_time: new Date(stats.mtimeMs).toISOString()
+                            });
+                        } catch(e) {}
+                    }
+                }
+            };
+            await scanDir(storageDir);
         } catch (e) {
             sysLog('ERROR', `Sync failed for ${cam.id}: ${e.message}`, 'CAMERA');
         }
     }
     saveNvrDb(dbData);
-    enforceAdminStorageQuotas();
+    await enforceAdminStorageQuotas();
 }
 
 // Enforce max_storage_gb Quota per Administrator (Tenant)
@@ -1174,7 +1182,7 @@ function spawnRecordingFFmpeg(cam) {
         '-segment_format', 'mp4',
         '-reset_timestamps', '1',
         '-strftime', '1',
-        path.join(recBase, "%Y-%m-%d_%H-%M-%S.mp4")
+        path.join(recBase, "%Y-%m-%d", "%H-%M-%S.mp4")
     ];
 
     sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (-c:v copy -c:a copy) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`, 'CAMERA');
@@ -1808,7 +1816,10 @@ app.get('/api/recordings/:camId/:date/:filename', verifyToken, (req, res) => {
     if (!cam) return res.status(403).send('Forbidden: Akses rekaman kamera ini tidak diizinkan');
     
     const base = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
-    const filePath = path.join(base, filename);
+    let filePath = path.join(base, filename);
+    if (!fs.existsSync(filePath)) {
+        filePath = path.join(base, date, filename);
+    }
     
     if (fs.existsSync(filePath)) {
         res.sendFile(filePath);
@@ -1829,8 +1840,14 @@ app.get('/api/recordings', verifyToken, (req, res) => {
             if (!allowedCamIds.has(camId)) return; // Isolasi data: Rekaman gedung/kamera lain disembunyikan
             const parts = row.file_path.split(path.sep);
             const filename = parts.pop();
+            const parent = parts.pop();
+            let date = "Unknown";
             const dateMatch = filename.match(/^(\d{4}-\d{2}-\d{2})/);
-            const date = dateMatch ? dateMatch[1] : "Unknown";
+            if (dateMatch) {
+                date = dateMatch[1];
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(parent)) {
+                date = parent;
+            }
             
             if (!result[camId]) result[camId] = {};
             if (!result[camId][date]) result[camId][date] = [];
