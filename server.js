@@ -446,7 +446,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.1.2",
+        appVersion: "9.1.3",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -517,7 +517,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.1.2',
+        version: '9.1.3',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),

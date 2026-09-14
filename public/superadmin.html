@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.1.2 - Superadmin Console</title>
+    <title>Arch3r NVR Ver. 9.1.3 - Superadmin Console</title>
     <link rel="stylesheet" href="style.css?v=1789336876961">
     <meta name="theme-color" content="#0f172a">
 </head>
@@ -13,7 +13,7 @@
         <div class="auth-card" style="max-width:440px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.1rem;">Arch3r NVR <span class="badge" style="background:#8b5cf6; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.1.2 Superadmin</span></h2>
+                <h2 style="margin:0; font-size:1.1rem;">Arch3r NVR <span class="badge" style="background:#8b5cf6; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.1.3 Superadmin</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">Console Pengembang &bull; Arsitektur Eksklusif Arch3r NVR Multi-Tenant</p>
             <form id="saLoginForm">
@@ -43,7 +43,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge" style="background:#8b5cf6;">Ver. 9.1.2</span></h2>
+                    <h2>Arch3r NVR <span class="badge" style="background:#8b5cf6;">Ver. 9.1.3</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👑</div>
@@ -192,6 +192,23 @@
             </div>
 
             <!-- VIEW: SYSTEM -->
+            
+            <style>
+                @media (max-width: 768px) {
+                    .zone-bahaya-mobile {
+                        padding-left: 0 !important;
+                        border-left: none !important;
+                        border-top: 1px solid var(--border);
+                        padding-top: 1.5rem;
+                        margin-top: 1rem;
+                        width: 100% !important;
+                    }
+                    .view-content {
+                        overflow-y: auto !important;
+                        height: calc(100vh - 120px);
+                    }
+                }
+            </style>
             <div id="view-system" class="view-pane">
                 <div class="view-header">
                     <h2>Sistem & Reset</h2>
@@ -234,7 +251,7 @@
                                     Memuat data...
                                 </div>
                             </div>
-                            <div style="width:300px; padding-left:1.5rem; border-left:1px solid var(--border);">
+                            <div style="flex: 1; min-width: 250px; padding-left:1.5rem; border-left:1px solid var(--border);" class="zone-bahaya-mobile">
                                 <h3 style="font-size:1rem; margin-top:0; margin-bottom:0.75rem; color:#ef4444;">🚨 Zona Bahaya</h3>
                                 <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">
                                     Tindakan ini akan menghapus dan membuat ulang file database inti NVR. Berikut rincian data yang akan <strong>dihapus permanen</strong>:<br>
