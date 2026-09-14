@@ -53,9 +53,9 @@ function validateLicense(key, email, machineId) {
         const payload = JSON.parse(payloadStr);
         if (payload.email !== email) return { valid: false, reason: "Email tidak cocok dengan lisensi ini" };
         if (payload.machineId !== machineId) return { valid: false, reason: "Lisensi ini diperuntukkan bagi mesin STB lain (Machine ID tidak cocok)" };
-        if (Date.now() > payload.exp) return { valid: false, reason: "Masa aktif lisensi telah habis/kedaluwarsa" };
+        if (Date.now() > payload.exp) return { valid: false, reason: "Masa aktif lisensi telah habis/kedaluwarsa", expiresAt: payload.exp };
         
-        return { valid: true, reason: "Lisensi Valid & Aktif" };
+        return { valid: true, reason: "Lisensi Valid & Aktif", expiresAt: payload.exp };
     } catch (e) {
         return { valid: false, reason: "Kunci Lisensi Invalid" };
     }
@@ -437,6 +437,26 @@ app.get('/admin', (req, res) => {
 
 // --- Superadmin APIs (Lisensi, Relay P2P, Buat Akun Administrator) ---
 
+
+app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
+    const currentSettings = getSettings();
+    const machineId = getMachineId();
+    const installDate = currentSettings.install_date || Date.now();
+    const trialDaysLeft = 30 - Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24));
+    const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
+    
+    res.json({
+        appVersion: "9.1.1",
+        machineId,
+        trialDaysLeft,
+        isTrialActive: trialDaysLeft > 0,
+        licenseValid: licenseCheck.valid,
+        licenseReason: licenseCheck.reason,
+        licenseExpiresAt: licenseCheck.expiresAt || null,
+        registeredEmail: currentSettings.email || "-"
+    });
+});
+
 app.get('/api/superadmin/license-info', verifyToken, requireSuperadmin, (req, res) => {
     const currentSettings = getSettings();
     const machineId = getMachineId();
@@ -451,6 +471,7 @@ app.get('/api/superadmin/license-info', verifyToken, requireSuperadmin, (req, re
         isTrialActive: trialDaysLeft > 0,
         licenseValid: licenseCheck.valid,
         licenseReason: licenseCheck.reason,
+        licenseExpiresAt: licenseCheck.expiresAt || null,
         settings: currentSettings
     });
 });

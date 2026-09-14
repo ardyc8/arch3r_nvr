@@ -198,7 +198,17 @@
             if (data.licenseValid) {
                 badge.textContent = 'LISENSI AKTIF';
                 badge.style.background = '#10b981';
-                trialBox.style.display = 'none';
+                trialBox.style.display = 'block';
+                trialBox.style.background = 'rgba(16, 185, 129, 0.2)';
+                trialBox.style.border = '1px solid #10b981';
+                trialBox.style.color = '#a7f3d0';
+                
+                let expStr = 'Seumur Hidup';
+                if (data.licenseExpiresAt) {
+                    const days = Math.floor((data.licenseExpiresAt - Date.now()) / (1000 * 60 * 60 * 24));
+                    expStr = `${days} Hari (Hingga ${new Date(data.licenseExpiresAt).toLocaleDateString('id-ID')})`;
+                }
+                trialBox.innerHTML = `<strong style="font-size:0.9rem;">Status Lisensi Premium</strong><br>Sisa Masa Aktif: <strong>${expStr}</strong>`;
             } else {
                 badge.textContent = 'TIDAK AKTIF';
                 badge.style.background = '#ef4444';

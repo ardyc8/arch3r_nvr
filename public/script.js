@@ -357,6 +357,7 @@ async function handleLogout() {
         fetchCameras();
         loadStorageDevices();
         fetchSystemSettings();
+        fetchAboutInfo();
         loadUsersList();
 
         // Default set date to today
@@ -1925,3 +1926,45 @@ let allLogsCache = [];
     // Mulai Eksekusi Autentikasi
     checkAuth();
 });
+
+    async function fetchAboutInfo() {
+        try {
+            const res = await authFetch('/api/about');
+            if (!res.ok) return;
+            const data = await res.json();
+            
+            const elVersion = document.getElementById('aboutAppVersion');
+            const elMachineId = document.getElementById('aboutMachineId');
+            const elStatus = document.getElementById('aboutLicenseStatus');
+            const elDays = document.getElementById('aboutLicenseDays');
+            const elEmail = document.getElementById('aboutLicenseEmail');
+            
+            if (elVersion) elVersion.textContent = 'Versi ' + data.appVersion;
+            if (elMachineId) elMachineId.textContent = data.machineId;
+            if (elEmail) elEmail.textContent = data.registeredEmail;
+            
+            if (elStatus && elDays) {
+                if (data.licenseValid) {
+                    elStatus.innerHTML = '<span style="color:#10b981; font-weight:600;">Valid & Aktif</span>';
+                    if (data.licenseExpiresAt) {
+                        const days = Math.floor((data.licenseExpiresAt - Date.now()) / (1000 * 60 * 60 * 24));
+                        elDays.textContent = `${days} Hari (Hingga ${new Date(data.licenseExpiresAt).toLocaleDateString('id-ID')})`;
+                        elDays.style.color = '#10b981';
+                    } else {
+                        elDays.textContent = 'Seumur Hidup / Lifetime';
+                        elDays.style.color = '#10b981';
+                    }
+                } else if (data.isTrialActive) {
+                    elStatus.innerHTML = '<span style="color:#eab308; font-weight:600;">Mode Evaluasi / Trial</span>';
+                    elDays.textContent = `${data.trialDaysLeft} Hari`;
+                    elDays.style.color = '#eab308';
+                } else {
+                    elStatus.innerHTML = '<span style="color:#ef4444; font-weight:600;">Kedaluwarsa / Terkunci</span>';
+                    elDays.textContent = '0 Hari';
+                    elDays.style.color = '#ef4444';
+                }
+            }
+        } catch(e) {
+            console.error('Gagal memuat info About', e);
+        }
+    }
