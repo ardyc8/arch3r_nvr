@@ -1007,6 +1007,7 @@ async function fetchCameras() {
             }
             const data = await res.json();
             cameras = data.cameras || [];
+            window.globalStorageMode = data.globalStorageMode || 'disabled';
 
             // Update Kuota UI untuk Administrator Gedung
             if (data.quota) {
@@ -1729,6 +1730,11 @@ let recordingsMap = {};
 
 async function fetchRecordings() {
         try {
+            if (window.globalStorageMode === 'disabled') {
+                selRecDate.innerHTML = '<option>Pilih Kamera Dulu</option>';
+                playbackList.innerHTML = '<div style="color:var(--accent); text-align:center; padding: 2rem;">⚠️ Perekaman dimatikan. Hubungi Superadmin untuk memilih Storage Drive.</div>';
+                return;
+            }
             const res = await authFetch('/api/recordings');
             recordingsMap = await res.json(); 
             

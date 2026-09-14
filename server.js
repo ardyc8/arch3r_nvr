@@ -1421,6 +1421,7 @@ app.get('/api/cameras', verifyToken, (req, res) => {
         quota: quotaInfo,
         role: req.userRole,
         isReadOnly: req.userRole === 'user',
+        globalStorageMode: currentSettings.globalStorageMode || 'disabled',
         mediamtxPort: currentSettings.mediamtxPort || 8889,
         mediamtxHost: currentSettings.mediamtxHost || ''
     });
