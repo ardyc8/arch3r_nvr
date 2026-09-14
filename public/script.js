@@ -92,6 +92,74 @@ document.addEventListener('DOMContentLoaded', () => {
         return fetch(url, opts);
     }
 
+    
+    window.renderRecordCameraList = function() {
+        const list = document.getElementById('recordCameraList');
+        if(!list) return;
+        
+        list.innerHTML = '';
+        if(cameras.length === 0) {
+            list.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">Tidak ada kamera untuk diatur.</div>';
+            return;
+        }
+        
+        cameras.forEach(cam => {
+            const isCont = cam.recordMode === 'continuous';
+            const div = document.createElement('div');
+            div.style.cssText = 'background:rgba(0,0,0,0.2); border:1px solid var(--border); padding:1rem; border-radius:8px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:1rem; align-items:center;';
+            div.innerHTML = `
+                <div style="flex:1; min-width:200px;">
+                    <div style="font-weight:600; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
+                        ${cam.name}
+                        ${isCont ? '<span class="badge-rec" style="position:static;">REC</span>' : '<span style="font-size:0.7rem; color:#64748b; border:1px solid #64748b; padding:2px 4px; border-radius:4px;">DISABLED</span>'}
+                    </div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">
+                        Retention: ${cam.maxStorageDays || 7} Hari / ${cam.maxFolderSizeGB || 10} GB
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <select id="qRecMode_${cam.id}" class="form-control" style="width:140px; font-size:0.85rem; padding:0.4rem;">
+                        <option value="disabled" ${!isCont ? 'selected' : ''}>Disabled</option>
+                        <option value="continuous" ${isCont ? 'selected' : ''}>Continuous</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="window.quickSaveRecord('${cam.id}')" style="padding:0.4rem 0.8rem; font-size:0.85rem;">Simpan</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    };
+    
+    window.quickSaveRecord = async function(id) {
+        const cam = cameras.find(c => c.id === id);
+        if(!cam) return;
+        const newMode = document.getElementById('qRecMode_'+id).value;
+        const payload = {
+            name: cam.name,
+            enabled: cam.enabled,
+            mainStreamUrl: cam.mainStreamUrl,
+            subStreamUrl: cam.subStreamUrl,
+            recordMode: newMode,
+            maxStorageDays: cam.maxStorageDays || 7,
+            maxFolderSizeGB: cam.maxFolderSizeGB || 10,
+            segmentDurationSec: cam.segmentDurationSec || 900,
+            transcode: cam.transcode || 'auto',
+            storagePath: cam.storagePath || ''
+        };
+        
+        try {
+            const res = await authFetch('/api/cameras/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if(!res.ok) throw new Error('Failed to update record setting');
+            alert('Pengaturan rekam untuk ' + cam.name + ' berhasil disimpan!');
+            fetchCameras();
+        } catch(e) {
+            alert('Error: ' + e.message);
+        }
+    };
+
     // --- Password Peek Handler ---
     function initPasswordPeeks() {
         document.querySelectorAll('.btn-peek-pwd').forEach(btn => {
@@ -441,6 +509,10 @@ async function handleLogout() {
                 const targetId = item.getAttribute('data-target');
                 const targetPane = document.getElementById(targetId);
                 if (targetPane) targetPane.classList.add('active');
+                
+                if(targetId === 'view-about') {
+                    if (typeof fetchAboutInfo === 'function') fetchAboutInfo();
+                }
 
                 // Close mobile sidebar if open
                 if (sidebar) sidebar.classList.remove('mobile-open');
@@ -930,6 +1002,7 @@ async function fetchCameras() {
             renderAdminGrid(currentGridCount);
             renderModalCameraList();
             populateCameraSelects();
+            if(typeof renderRecordCameraList === 'function') renderRecordCameraList();
         } catch (err) {
         }
     }
