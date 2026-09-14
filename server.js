@@ -918,7 +918,7 @@ function spawnRecordingFFmpeg(cam) {
         ];
     } else {
         inputArgs = [
-            '-rtsp_transport', 'tcp',
+            '-rtsp_transport', 'tcp', '-stimeout', '10000000',
             '-err_detect', 'ignore_err',
             '-fflags', '+genpts+discardcorrupt',
             '-i', sourceUrl
