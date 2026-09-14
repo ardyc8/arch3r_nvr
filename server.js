@@ -1084,6 +1084,7 @@ function spawnRecordingFFmpeg(cam) {
     }
 
     const segSec = cam.segmentDurationSec || 900;
+    const isDemo = sourceUrl === 'demo';
     
 
     let inputArgs = [];
@@ -1122,7 +1123,6 @@ function spawnRecordingFFmpeg(cam) {
 
     sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (-c:v copy -c:a copy) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`, 'CAMERA');
 
-    const isDemo = sourceUrl === 'demo';
     const child = spawn('ffmpeg', args);
     child.killedByUser = false;
     child.lastErr = '';
