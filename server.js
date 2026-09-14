@@ -700,7 +700,7 @@ app.delete('/api/superadmin/admins/:id', verifyToken, requireSuperadmin, (req, r
     dbData.users = (dbData.users || []).filter(u => u.admin_id !== id);
     saveNvrDb(dbData);
     cameras = dbData.cameras;
-    syncMediaMtxConfig();
+    syncMediaMtxConfig(); ensureRecordFolders();
 
     sysLog('INFO', `[Superadmin] Akun Administrator dihapus: ${removed.username} beserta kamera dan data terkait`, 'SECURITY');
     res.json({ success: true });
@@ -885,13 +885,19 @@ async function sendTelegramAlert(msg) {
 
 // Folders Setup for FFmpeg
 function ensureRecordFolders() {
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const getLocal = (offsetDays = 0) => {
+        const d = new Date(Date.now() + offsetDays * 86400000);
+        const pad = n => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    };
+    const yesterday = getLocal(-1);
+    const today = getLocal(0);
+    const tomorrow = getLocal(1);
     
     getCameras().forEach(cam => {
         if (cam.recordMode === 'continuous') {
             const base = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
-            [today, tomorrow].forEach(date => {
+            [yesterday, today, tomorrow].forEach(date => {
                 const d = path.join(base, date);
                 if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
             });
@@ -899,95 +905,24 @@ function ensureRecordFolders() {
     });
 }
 
+// Auto-cleanup segmen .ts lama agar penyimpanan internal STB Armbian tidak membengkak
+
 function sanitizeRtspUrl(url) {
     if (!url || typeof url !== 'string') return '';
     let clean = url.trim();
     if (!clean) return '';
     if (clean.toLowerCase() === 'demo' || clean.toLowerCase() === 'test') return 'demo';
-
-    // If starts with :// (e.g. ://192.168.1.5)
-    clean = clean.replace(/^:\/\//, 'rtsp://');
-
-    // If starts with colon before IP/host (e.g. :192.168.1.5/live) without scheme
-    if (!/^[a-zA-Z]+:\/\//.test(clean)) {
-        if (clean.startsWith(':')) {
-            clean = clean.replace(/^:+/, '');
-        }
-        clean = 'rtsp://' + clean;
-    }
-
-    // Parse scheme and rest
-    const schemeMatch = clean.match(/^([a-zA-Z]+:\/\/)(.*)$/);
-    if (!schemeMatch) return clean;
-    const scheme = schemeMatch[1];
-    let rest = schemeMatch[2].trim();
-
-    // Clean stray leading colon right after scheme without username, e.g. rtsp://:192.168.1.5/live/ch00_1
-    const firstSlash = rest.search(/[\/\?]/);
-    const authOrHostPart = firstSlash === -1 ? rest : rest.substring(0, firstSlash);
-
-    if (rest.startsWith(':@')) {
-        rest = rest.substring(2);
-    } else if (rest.startsWith('@')) {
-        rest = rest.substring(1);
-    } else if (rest.startsWith(':') && !authOrHostPart.includes('@')) {
-        rest = rest.replace(/^:+/, '');
-    }
-
-    // Handle stray colon before host when credentials exist: rtsp://admin:pass@:192.168.1.5
-    rest = rest.replace(/@:+/, '@');
-
-    // Separate auth credentials from host/port/path
-    const atIdx = rest.lastIndexOf('@');
-    const userAuth = atIdx !== -1 ? rest.substring(0, atIdx + 1) : '';
-    const afterAuth = atIdx !== -1 ? rest.substring(atIdx + 1) : rest;
-
-    const pathIdx = afterAuth.search(/[\/\?]/);
-    const hostPort = pathIdx !== -1 ? afterAuth.substring(0, pathIdx) : afterAuth;
-    const pathQuery = pathIdx !== -1 ? afterAuth.substring(pathIdx) : '';
-
-    // Check port (standard RTSP port is 554)
-    let newHostPort = hostPort;
-    if (hostPort.startsWith('[')) {
-        // IPv6 bracketed address e.g. [::1]
-        const closeBracket = hostPort.indexOf(']');
-        if (closeBracket !== -1) {
-            const afterBracket = hostPort.substring(closeBracket + 1);
-            if (!afterBracket.startsWith(':')) {
-                newHostPort = `${hostPort}:554`;
-            }
-        }
-    } else if (!hostPort.includes(':')) {
-        // IPv4 or hostname without port, default to :554
-        if (hostPort.length > 0) {
-            newHostPort = `${hostPort}:554`;
-        }
-    }
-
-    return `${scheme}${userAuth}${newHostPort}${pathQuery}`;
+    return clean;
 }
 
 function formatStreamUrl(url) {
-    return sanitizeRtspUrl(url);
+    if (!url) return '';
+    if (url === 'demo') {
+        return 'rtsp://rtspstream:2dc42abedfc9621360155b1f@zephyr.rtsp.stream/pattern';
+    }
+    return url;
 }
 
-function cleanStreamDir(camId, streamType) {
-    try {
-        const streamDir = path.join(streamBaseDir, camId);
-        if (!fs.existsSync(streamDir)) {
-            fs.mkdirSync(streamDir, { recursive: true });
-        } else {
-            const files = fs.readdirSync(streamDir);
-            for (const file of files) {
-                if (file.startsWith(streamType)) {
-                    try { fs.unlinkSync(path.join(streamDir, file)); } catch (e) {}
-                }
-            }
-        }
-    } catch (e) {}
-}
-
-// Auto-cleanup segmen .ts lama agar penyimpanan internal STB Armbian tidak membengkak
 function autoCleanupTempSegments() {
     try {
         if (!fs.existsSync(streamBaseDir)) return;
@@ -1182,13 +1117,18 @@ function spawnRecordingFFmpeg(cam) {
         '-segment_format', 'mp4',
         '-reset_timestamps', '1',
         '-strftime', '1',
-        path.join(recBase, "%Y-%m-%d", "%H-%M-%S.mp4")
+        path.join(recBase, "%Y-%m-%d_%H-%M-%S.mp4")
     ];
 
     sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (-c:v copy -c:a copy) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`, 'CAMERA');
 
     const child = spawn('ffmpeg', args);
     child.killedByUser = false;
+    child.lastErr = '';
+    child.stderr.on('data', d => {
+        let str = d.toString();
+        child.lastErr = str;
+    });
 
     child.on('close', (code) => {
         if (ffProcesses[cam.id]) {
@@ -1230,7 +1170,7 @@ function stopCameraRecording(camId) {
 
 function startAllStreams() {
     // 1. Auto-generate konfigurasi MediaMTX & restart via PM2
-    syncMediaMtxConfig();
+    syncMediaMtxConfig(); ensureRecordFolders();
 
     // 2. Bersihkan timer & proses rekaman lama
     Object.keys(reconnectTimers).forEach(key => {
@@ -1258,7 +1198,7 @@ function startAllStreams() {
 
 function stopCamera(camId) {
     stopCameraRecording(camId);
-    syncMediaMtxConfig();
+    syncMediaMtxConfig(); ensureRecordFolders();
 }
 
 // Retention (Cleaning old files locally)
@@ -1491,7 +1431,7 @@ app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
     cameras = dbData.cameras;
     
     // Sinkronisasi MediaMTX otomatis
-    syncMediaMtxConfig();
+    syncMediaMtxConfig(); ensureRecordFolders();
 
     if (newCam.enabled && newCam.recordMode === 'continuous') {
         spawnRecordingFFmpeg(newCam);
@@ -1552,7 +1492,7 @@ app.put('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
     cameras = dbData.cameras;
 
     // Sinkronisasi MediaMTX otomatis
-    syncMediaMtxConfig();
+    syncMediaMtxConfig(); ensureRecordFolders();
 
     if (dbData.cameras[index].enabled && dbData.cameras[index].recordMode === 'continuous') {
         spawnRecordingFFmpeg(dbData.cameras[index]);
@@ -1572,7 +1512,7 @@ app.post('/api/cameras/:id/restart', verifyToken, requireAdministrator, (req, re
     }
 
     stopCameraRecording(cam.id);
-    syncMediaMtxConfig();
+    syncMediaMtxConfig(); ensureRecordFolders();
 
     setTimeout(() => {
         if (cam.enabled && cam.recordMode === 'continuous') {
@@ -1802,7 +1742,7 @@ app.delete('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => 
     cameras = dbData.cameras;
     
     // Sinkronisasi MediaMTX otomatis setelah hapus kamera
-    syncMediaMtxConfig();
+    syncMediaMtxConfig(); ensureRecordFolders();
 
     sysLog('INFO', `[Gedung] Kamera Dihapus: ${targetCam.name}`, 'CAMERA');
     res.json({ success: true });
