@@ -274,7 +274,8 @@
                 <div class="content-wrapper" style="padding: 2rem; height:100%; display:flex; flex-direction:column; max-height:100vh;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
                         <h2 style="margin:0;">Riwayat Log Sistem</h2>
-                        <div style="display:flex; gap:10px; align-items:center;">
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <input type="text" id="logSearchInput" class="form-control" placeholder="Cari pesan log..." style="width:200px; padding:4px 8px; font-size:0.85rem;">
                             <select id="logCategoryFilter" class="form-control" style="width:auto; padding:4px 8px; font-size:0.85rem;">
                                 <option value="ALL">Semua Kategori</option>
                                 <option value="SYSTEM">Sistem</option>
@@ -283,16 +284,31 @@
                                 <option value="SECURITY">Keamanan & Akun</option>
                             </select>
                             <select id="logTimeFilter" class="form-control" style="width:auto; padding:4px 8px; font-size:0.85rem;">
-                                <option value="0">Semua Waktu (Maks 60 Hari)</option>
+                                <option value="0">Semua Waktu</option>
                                 <option value="1">1 Hari Terakhir</option>
                                 <option value="7">7 Hari Terakhir</option>
-                                <option value="30">30 Hari Terakhir</option>
                             </select>
                             <button id="btnRefreshLogs" class="btn btn-secondary" style="padding:4px 12px; font-size:0.85rem;">🔄 Segarkan</button>
                         </div>
                     </div>
-                    <div id="logsContainer" style="flex:1; background:#0f172a; border:1px solid var(--border); border-radius:8px; padding:1rem; overflow-y:auto; font-family:monospace; font-size:0.85rem; color:#cbd5e1; display:flex; flex-direction:column; gap:8px;">
-                        Memuat logs...
+                    <div style="flex:1; background:#0f172a; border:1px solid var(--border); border-radius:8px; overflow:hidden; display:flex; flex-direction:column;">
+                        <table class="w-full" style="text-align:left; font-size:0.85rem; border-collapse:collapse;">
+                            <thead style="background:#1e293b; color:#94a3b8;">
+                                <tr>
+                                    <th style="padding:10px; width:160px;">Waktu</th>
+                                    <th style="padding:10px; width:100px;">Level</th>
+                                    <th style="padding:10px; width:120px;">Kategori</th>
+                                    <th style="padding:10px;">Pesan</th>
+                                </tr>
+                            </thead>
+                        </table>
+                        <div style="flex:1; overflow-y:auto;">
+                            <table class="w-full" style="text-align:left; font-size:0.8rem; border-collapse:collapse;">
+                                <tbody id="logsContainer">
+                                    <tr><td colspan="4" style="padding:10px; text-align:center;">Memuat logs...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

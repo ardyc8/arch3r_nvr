@@ -321,3 +321,24 @@ body {
     color: #fca5a5;
     font-size: 8px;
 }
+
+.scale-mark {
+    border-left: 1px solid #475569;
+    height: 100%;
+    position: relative;
+    font-size: 9px;
+    color: #94a3b8;
+    padding-left: 2px;
+}
+.track-block {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    background: rgba(59, 130, 246, 0.6);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.track-block:hover {
+    background: rgba(59, 130, 246, 0.9);
+}

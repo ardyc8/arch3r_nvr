@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.0.8 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <title>Arch3r NVR Ver. 9.0.9 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.0.8</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.0.9</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -51,7 +51,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.0.8</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.0.9</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -111,7 +111,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.0.8</h3>
+                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.0.9</h3>
             </header>
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
@@ -215,13 +215,23 @@
                             
                             <!-- Professional Timeline & Controls -->
                             <div style="background:var(--surface); border-top:1px solid var(--border); padding:0.75rem 1rem; display:flex; flex-direction:column; gap:0.5rem;">
-                                <!-- Time info -->
-                                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); font-family:monospace;">
+                                <!-- NVR Advanced Timeline -->
+                                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); font-family:monospace; margin-bottom: 2px;">
                                     <span id="pbCurrentTime">00:00:00</span>
-                                    <span id="pbTotalTime">00:00:00</span>
+                                    <div>
+                                        <button class="z-btn active btn-sm btn-secondary" style="padding:2px 6px; font-size:10px;" data-zoom="24">24J</button>
+                                        <button class="z-btn btn-sm btn-secondary" style="padding:2px 6px; font-size:10px;" data-zoom="12">12J</button>
+                                        <button class="z-btn btn-sm btn-secondary" style="padding:2px 6px; font-size:10px;" data-zoom="6">6J</button>
+                                        <button class="z-btn btn-sm btn-secondary" style="padding:2px 6px; font-size:10px;" data-zoom="1">1J</button>
+                                    </div>
                                 </div>
-                                <!-- Range Slider as Timeline -->
-                                <input type="range" id="pbTimeline" min="0" max="100" value="0" style="width:100%; accent-color:var(--primary); cursor:pointer; height:6px;">
+                                <div id="timelineContainer" style="position:relative; width:100%; height:40px; background:#1e293b; border:1px solid #334155; border-radius:4px; overflow-x:auto; overflow-y:hidden;">
+                                    <div id="timelineScrollArea" style="position:relative; height:100%; width:100%;">
+                                        <div id="timelineScale" style="position:absolute; top:0; left:0; right:0; height:15px; display:flex; justify-content:space-between; pointer-events:none;"></div>
+                                        <div id="timelineTracks" style="position:absolute; top:15px; bottom:0; left:0; right:0; background:rgba(0,0,0,0.2);"></div>
+                                        <div id="timelineScrubber" style="position:absolute; top:0; bottom:0; width:2px; background:#ef4444; left:0%; z-index:10; pointer-events:none;"></div>
+                                    </div>
+                                </div>
                                 
                                 <!-- Video Controls -->
                                 <div style="display:flex; justify-content:center; align-items:center; gap:1rem; margin-top:0.25rem;">
@@ -233,7 +243,7 @@
                         </div>
                         
                         <!-- Collapsible Clip List -->
-                        <div id="pbClipSidebar" style="width:300px; background:var(--surface-dark); border-left:1px solid var(--border); overflow-y:auto; flex-shrink:0; transition: width 0.3s, opacity 0.3s;">
+                        <div id="pbClipSidebar" style="width:300px; background:var(--surface-dark); border-left:1px solid var(--border); overflow-y:auto; flex-shrink:0; transition: width 0.3s, opacity 0.3s; display:none;">
                             <h3 style="padding:1rem; border-bottom:1px solid var(--border); font-size:0.95rem; margin:0; display:flex; justify-content:space-between; align-items:center; background:var(--surface);">
                                 <span>Daftar Klip Video</span>
                                 <span id="clipCount" class="badge" style="background:var(--primary); color:#fff;">0 Klip</span>
@@ -603,7 +613,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.0.8</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.0.9</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>

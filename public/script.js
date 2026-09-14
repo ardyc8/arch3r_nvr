@@ -1451,29 +1451,38 @@ let recordingsMap = {};
         return 0;
     }
 
+    
+
+
     function renderTimeline() {
+        const scrollArea = document.getElementById('timelineScrollArea');
+        const scale = document.getElementById('timelineScale');
+        const tracks = document.getElementById('timelineTracks');
+        if (!scrollArea || !scale || !tracks) return;
+
         const widthPercent = (24 / currentZoom) * 100;
         scrollArea.style.width = `${widthPercent}%`;
 
         scale.innerHTML = '';
-        for (let i = 0; i < 24; i++) {
+        const step = currentZoom <= 6 ? 1 : (currentZoom <= 12 ? 2 : 4);
+        for (let i = 0; i <= 24; i += step) {
             const mark = document.createElement('div');
             mark.className = 'scale-mark';
+            mark.style.position = 'absolute';
+            mark.style.left = `${(i / 24) * 100}%`;
             mark.textContent = `${i.toString().padStart(2, '0')}:00`;
             scale.appendChild(mark);
         }
 
         tracks.innerHTML = '';
-        // Assume default segment is ~15 mins (900s) if not known
-        const chunkDuration = 900; 
-        
         currentPlaybackChunks.forEach(chunk => {
             const block = document.createElement('div');
             block.className = 'track-block';
             const leftPercent = (chunk.startSec / 86400) * 100;
-            const widthPct = (chunkDuration / 86400) * 100;
+            const widthPct = (chunk.duration / 86400) * 100;
             block.style.left = `${leftPercent}%`;
             block.style.width = `${widthPct}%`;
+            block.style.minWidth = '2px';
             
             block.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -1483,6 +1492,34 @@ let recordingsMap = {};
             tracks.appendChild(block);
         });
     }
+
+    const scrollAreaEl = document.getElementById('timelineScrollArea');
+    if (scrollAreaEl) {
+        scrollAreaEl.addEventListener('click', (e) => {
+            if (e.target.className === 'track-block') return; // Handled by block click
+            
+            const rect = scrollAreaEl.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickPercent = clickX / rect.width;
+            const clickedSec = Math.floor(clickPercent * 86400);
+            
+            // Find a chunk that contains this time, or the NEXT available chunk
+            let targetChunk = currentPlaybackChunks.find(c => clickedSec >= c.startSec && clickedSec <= (c.startSec + c.duration));
+            let startOffset = 0;
+            
+            if (targetChunk) {
+                startOffset = clickedSec - targetChunk.startSec;
+            } else {
+                // Find next available
+                targetChunk = currentPlaybackChunks.find(c => c.startSec > clickedSec);
+            }
+            
+            if (targetChunk) {
+                playChunk(targetChunk, startOffset);
+            }
+        });
+    }
+
 
     function updateScrubberFromEvent(e) {
         const rect = scrollArea.getBoundingClientRect();
@@ -1825,23 +1862,26 @@ let allLogsCache = [];
         
         const catFilter = document.getElementById('logCategoryFilter') ? document.getElementById('logCategoryFilter').value : 'ALL';
         const timeFilter = document.getElementById('logTimeFilter') ? parseInt(document.getElementById('logTimeFilter').value) : 0;
+        const searchInput = document.getElementById('logSearchInput') ? document.getElementById('logSearchInput').value.toLowerCase() : '';
         
         const now = Date.now();
         const filtered = allLogsCache.filter(log => {
-            // Category Filter
             const logCat = log.category || 'SYSTEM';
             if (catFilter !== 'ALL' && logCat !== catFilter) return false;
             
-            // Time Filter
             if (timeFilter > 0) {
                 const limitMs = timeFilter * 24 * 60 * 60 * 1000;
-                if ((now - log.id) > limitMs) return false;
+                if ((now - log.timestamp) > limitMs) return false;
+            }
+            
+            if (searchInput) {
+                if (!log.message.toLowerCase().includes(searchInput)) return false;
             }
             return true;
         });
         
         if (filtered.length === 0) {
-            logsContainer.innerHTML = '<div style="color:#64748b; text-align:center; margin-top:2rem;">Tidak ada log yang sesuai dengan filter.</div>';
+            logsContainer.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#64748b;">Tidak ada log yang ditemukan.</td></tr>';
             return;
         }
 
@@ -1857,18 +1897,15 @@ let allLogsCache = [];
             if (cat === 'STORAGE') catColor = '#ca8a04';
             if (cat === 'SECURITY') catColor = '#9333ea';
             
-            return `<div style="padding:6px 10px; background:rgba(30,41,59,0.5); border-left:3px solid ${color}; border-radius:4px; display:flex; align-items:flex-start; gap:10px;">
-                <div style="color:#64748b; font-size:0.75rem; white-space:nowrap; padding-top:2px;">${new Date(log.timestamp).toLocaleString('id-ID')}</div>
-                <div style="display:flex; flex-direction:column; gap:2px;">
-                    <div>
-                        <strong style="color:${color}; font-size:0.7rem; background:rgba(0,0,0,0.3); padding:2px 4px; border-radius:3px;">${log.level}</strong>
-                        <strong style="color:#fff; font-size:0.7rem; background:${catColor}; padding:2px 6px; border-radius:3px; margin-left:4px;">${cat}</strong>
-                    </div>
-                    <span style="font-size:0.85rem; color:#f8fafc;">${log.message}</span>
-                </div>
-            </div>`;
+            const timeStr = new Date(log.timestamp).toLocaleString('id-ID');
+            
+            return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05); color:#f8fafc;">
+                <td style="padding:8px 10px; color:#94a3b8; white-space:nowrap; width:160px;">${timeStr}</td>
+                <td style="padding:8px 10px; width:100px;"><span style="color:${color}; font-weight:600;">${log.level}</span></td>
+                <td style="padding:8px 10px; width:120px;"><span style="background:${catColor}; color:#fff; padding:2px 6px; border-radius:4px; font-size:0.7rem;">${cat}</span></td>
+                <td style="padding:8px 10px;">${log.message}</td>
+            </tr>`;
         }).join('');
-        logsContainer.scrollTop = logsContainer.scrollHeight;
     }
     
     // Attach event listeners for filters
@@ -1876,6 +1913,8 @@ let allLogsCache = [];
     const timeEl = document.getElementById('logTimeFilter');
     if (catEl) catEl.addEventListener('change', renderFilteredLogs);
     if (timeEl) timeEl.addEventListener('change', renderFilteredLogs);
+    const searchEl = document.getElementById('logSearchInput');
+    if (searchEl) searchEl.addEventListener('input', renderFilteredLogs);
 
     
     window.fetchLogs = fetchLogs;
