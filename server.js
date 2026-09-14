@@ -446,7 +446,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.1.1",
+        appVersion: "9.1.2",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,

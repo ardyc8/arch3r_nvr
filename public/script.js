@@ -1924,9 +1924,7 @@ let allLogsCache = [];
     }
 
     // Mulai Eksekusi Autentikasi
-    checkAuth();
-});
-
+    
     async function fetchAboutInfo() {
         try {
             const res = await authFetch('/api/about');
@@ -1968,3 +1966,6 @@ let allLogsCache = [];
             console.error('Gagal memuat info About', e);
         }
     }
+
+    checkAuth();
+});

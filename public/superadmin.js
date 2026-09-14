@@ -423,7 +423,7 @@
     const btnSaBackup = document.getElementById('btnSaBackup');
     if (btnSaBackup) {
         btnSaBackup.addEventListener('click', async () => {
-            const token = localStorage.getItem('sa_token');
+            const token = localStorage.getItem('nvr_auth_token');
             if (!token) return;
             
             try {
