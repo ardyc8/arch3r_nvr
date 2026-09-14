@@ -516,8 +516,8 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
-        appName: 'Archer NVR',
-        version: '9.0.0',
+        appName: 'Arch3r NVR',
+        version: '9.1.2',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),

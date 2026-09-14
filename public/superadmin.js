@@ -106,6 +106,7 @@
                 saDashboard.style.display = 'block';
                 loadSuperSettings();
                 loadAdmins();
+                loadSystemInfo();
             } else {
                 saAuthOverlay.style.display = 'flex';
                 saDashboard.style.display = 'none';
@@ -141,7 +142,8 @@
                     saAuthOverlay.style.display = 'none';
                     saDashboard.style.display = 'block';
                     loadSuperSettings();
-                    loadAdmins();
+                loadAdmins();
+                loadSystemInfo();
                     loadSystemInfo();
                 } else {
                     saLoginError.textContent = 'Akun ini bukan role Superadmin. Gunakan admin@archer.nvr!';
