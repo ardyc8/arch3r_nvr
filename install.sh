@@ -1,9 +1,9 @@
 #!/bin/bash
-# Arch3r NVR - Automated Installation Script (Ver. 9.0.6)
+# Arch3r NVR - Automated Installation Script (Ver. 9.0.7)
 # Dirancang khusus untuk lingkungan Armbian STB
 
 echo "====================================================="
-echo "   Memulai Instalasi Otomatis Arch3r NVR Ver. 9.0.6  "
+echo "   Memulai Instalasi Otomatis Arch3r NVR Ver. 9.0.7  "
 echo "====================================================="
 
 # 1. Pastikan script dijalankan sebagai root (karena butuh akses sistem)
