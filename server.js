@@ -1094,10 +1094,9 @@ function spawnRecordingFFmpeg(cam) {
             '-f', 'lavfi', '-i', 'sine=frequency=1000:sample_rate=44100'
         ];
     } else {
+        const isRtsp = sourceUrl.startsWith('rtsp://');
         inputArgs = [
-            '-rtsp_transport', 'tcp', '-stimeout', '10000000',
-            '-err_detect', 'ignore_err',
-            '-fflags', '+genpts+discardcorrupt',
+            ...(isRtsp ? ['-rtsp_transport', 'tcp', '-stimeout', '10000000'] : []),
             '-i', sourceUrl
         ];
     }
@@ -1107,11 +1106,9 @@ function spawnRecordingFFmpeg(cam) {
         '-y',
         '-loglevel', 'warning',
         ...inputArgs,
-        '-map', '0:v:0',
-        ...(isDemo ? ['-c:v', 'libx264', '-preset', 'ultrafast'] : ['-c:v', 'copy']),
-        ...(isDemo ? ['-map', '1:a:0', '-c:a', 'aac'] : ['-an']),
-        '-max_muxing_queue_size', '1024',
-        '-avoid_negative_ts', 'make_zero',
+        '-c:v', isDemo ? 'libx264' : 'copy',
+        ...(isDemo ? ['-preset', 'ultrafast'] : []),
+        '-an',
         '-f', 'segment',
         '-segment_time', segSec.toString(),
         '-segment_format', 'mp4',
@@ -1136,7 +1133,7 @@ function spawnRecordingFFmpeg(cam) {
         }
 
         if (!child.killedByUser) {
-            sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Reconnect otomatis dalam 10 detik...`, 'CAMERA');
+            sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Err: ${child.lastErr} Reconnect otomatis...`, 'CAMERA');
             const timerKey = `rec_${cam.id}`;
             if (reconnectTimers[timerKey]) clearTimeout(reconnectTimers[timerKey]);
             
