@@ -844,8 +844,7 @@ async function updateHardwareStats() {
     }
 
     /* second globalStorageForm removed */
-    if (globalStorageForm) {
-        if (globalStorageForm) globalStorageForm.addEventListener('submit', async (e) => {
+    if (globalStorageForm) globalStorageForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const storageDevice = document.getElementById('sysStorageDevice') ? document.getElementById('sysStorageDevice').value : '';
             const customPath = document.getElementById('sysCustomStoragePath') ? document.getElementById('sysCustomStoragePath').value : '';
@@ -862,8 +861,23 @@ async function updateHardwareStats() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+                if (!res.ok) throw new Error('Gagal menyimpan pengaturan storage');
+                
+                if (finalPath && finalPath !== 'custom') {
+                    await authFetch('/api/system/storage-devices/select', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ storagePath: finalPath })
+                    });
+                }
+                
+                alert('Pengaturan storage berhasil disimpan');
+            } catch (err) {
+                alert(err.message);
+            }
+        });
 
-        if (systemForm) systemForm.addEventListener('submit', async (e) => {
+    if (systemForm) systemForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const payload = {
                 netInterface: document.getElementById('sysNetInterface') ? document.getElementById('sysNetInterface').value : 'auto',
@@ -884,24 +898,6 @@ async function updateHardwareStats() {
                 alert(err.message);
             }
         });
-
-                if (!res.ok) throw new Error('Gagal menyimpan pengaturan storage');
-                
-                // Juga panggil storage-devices/select jika finalPath valid agar di-bind sbg default NVR 
-                if (finalPath && finalPath !== 'custom') {
-                    await authFetch('/api/system/storage-devices/select', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ storagePath: finalPath })
-                    });
-                }
-                
-                alert('Pengaturan storage berhasil disimpan');
-            } catch (err) {
-                alert(err.message);
-            }
-        });
-    }
 
     // Refresh Storage button
     /* second btnRefreshStorage removed */
