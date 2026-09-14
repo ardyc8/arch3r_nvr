@@ -129,7 +129,7 @@ function getDefaultDb() {
             showTopMonitor: false, 
             netInterface: 'auto' 
         },
-        administrators: [],
+
         users: [],
         cameras: [],
         recordings: [],
@@ -141,33 +141,52 @@ function getDefaultDb() {
 let cachedDb = null;
 function getNvrDb() {
     if (cachedDb) return cachedDb;
-    try {
-        if (fs.existsSync(nvrDbFile)) {
-            const raw = fs.readFileSync(nvrDbFile, 'utf8');
-            if (raw.trim() === '') throw new Error('Empty db file');
-            const data = JSON.parse(raw);
-            const def = getDefaultDb();
-            if (!data.super_settings) data.super_settings = def.super_settings;
-            if (!data.administrators || data.administrators.length === 0) data.administrators = def.administrators;
-            if (!data.users) data.users = def.users;
-            if (!data.cameras) data.cameras = [];
-            if (!data.recordings) data.recordings = [];
-            if (!data.system_logs) data.system_logs = [];
-            if (data.recording_path === undefined) data.recording_path = '';
-            cachedDb = data;
-            return data;
+    
+    const safeBackupFile = path.join(dataDir, 'nvr_db_safe_backup.json');
+    const legacyBackupFile = path.join(dataDir, 'nvr.db.json');
+
+    function tryParseFile(fPath) {
+        if (!fs.existsSync(fPath)) return null;
+        try {
+            const raw = fs.readFileSync(fPath, 'utf8');
+            if (!raw || raw.trim() === '') return null;
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch(e) {
+            console.error(`[DB] Gagal membaca berkas ${fPath}:`, e.message);
         }
-        const initial = getDefaultDb();
-        saveNvrDb(initial);
-        cachedDb = initial;
-        return initial;
+        return null;
     }
-    catch (e) {
-        console.error('Error reading DB. Returning default but not overwriting:', e);
-        const initial = getDefaultDb();
-        cachedDb = initial;
-        return initial;
+
+    let data = tryParseFile(nvrDbFile);
+
+    // Jika file utama korup / kosong, ambil dari backup otomatis
+    if (!data) {
+        data = tryParseFile(safeBackupFile) || tryParseFile(legacyBackupFile);
+        if (data) {
+            console.log('[DB] Berhasil memulihkan database dari safe backup!');
+        }
     }
+
+    if (!data) {
+        data = getDefaultDb();
+    }
+
+    const def = getDefaultDb();
+    if (!data.super_settings) data.super_settings = def.super_settings;
+    if (!Array.isArray(data.administrators)) data.administrators = [];
+    data.administrators.forEach(a => {
+        if (!a.max_cameras) a.max_cameras = 8;
+        if (!a.max_storage_gb) a.max_storage_gb = 100;
+    });
+    if (!data.users) data.users = def.users;
+    if (!data.cameras) data.cameras = [];
+    if (!data.recordings) data.recordings = [];
+    if (!data.system_logs) data.system_logs = [];
+    if (data.recording_path === undefined) data.recording_path = '';
+
+    cachedDb = data;
+    return data;
 }
 
 let isSavingDb = false;
@@ -179,7 +198,18 @@ function saveNvrDb(data) {
 
 function scheduleDbSave() {
     try {
+        if (!cachedDb) return;
         const jsonStr = JSON.stringify(cachedDb, null, 2);
+
+        // Jangan pernah timpa backup jika data saat ini kosong tapi file sebelumnya berisi kamera/admin
+        const safeBackupFile = path.join(dataDir, 'nvr_db_safe_backup.json');
+        const hasData = (cachedDb.cameras && cachedDb.cameras.length > 0) || (cachedDb.administrators && cachedDb.administrators.length > 0);
+        if (hasData) {
+            const tmpBak = safeBackupFile + '.tmp';
+            fs.writeFileSync(tmpBak, jsonStr);
+            fs.renameSync(tmpBak, safeBackupFile);
+        }
+
         // Atomic writes to prevent corruption on armbian
         const tmpFile = nvrDbFile + '.tmp';
         fs.writeFileSync(tmpFile, jsonStr);
@@ -291,20 +321,52 @@ function verifyToken(req, res, next) {
 
 function requireSuperadmin(req, res, next) {
     if (req.userRole !== 'superadmin') {
-        return res.status(403).json({ error: 'Forbidden: Requires Superadmin privileges' });
+        return res.status(403).json({ error: 'Forbidden: Memerlukan hak akses Superadmin' });
     }
     next();
 }
 
 function requireAdministrator(req, res, next) {
-    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
-        return res.status(403).json({ error: 'Forbidden: Requires Administrator privileges' });
+    if (req.userRole !== 'administrator') {
+        return res.status(403).json({ error: 'Akses Ditolak: Memerlukan hak akses Administrator (Pemilik Gedung)' });
     }
     next();
 }
 
 function requireAdmin(req, res, next) {
     requireAdministrator(req, res, next);
+}
+
+// Multi-Tenant Camera Access Controller
+function getAuthorizedCamerasForReq(req) {
+    const dbData = getNvrDb();
+    const allCams = dbData.cameras || [];
+    
+    // 1. Superadmin TIDAK boleh memiliki kamera langsung
+    if (req.userRole === 'superadmin') {
+        return [];
+    }
+    
+    // 2. Admin (Pemilik Gedung) strictly isolated by tenant_id / admin_id
+    if (req.userRole === 'administrator') {
+        const currentAdminId = req.adminId || req.userId;
+        return allCams.filter(c => (c.tenant_id === currentAdminId || c.admin_id === currentAdminId));
+    }
+    
+    // 3. User/Staff: hanya kamera yang diizinkan oleh Admin pemiliknya
+    if (req.userRole === 'user') {
+        const user = (dbData.users || []).find(u => u.id === req.userId);
+        if (!user) return [];
+        const userAdminId = user.admin_id;
+        const tenantCams = allCams.filter(c => (c.tenant_id === userAdminId || c.admin_id === userAdminId));
+        if (Array.isArray(user.allowed_cameras) && user.allowed_cameras.length > 0) {
+            const allowedSet = new Set(user.allowed_cameras);
+            return tenantCams.filter(c => allowedSet.has(c.id));
+        }
+        return tenantCams;
+    }
+    
+    return [];
 }
 
 app.get('/api/health', (req, res) => {
@@ -370,9 +432,10 @@ app.post('/api/auth/login', (req, res) => {
     }
 
     const dbData = getNvrDb();
+    const cleanUser = (username || '').trim().toLowerCase();
     
     // 2. Check Administrators
-    const adminUser = (dbData.administrators || []).find(u => u.username === username);
+    const adminUser = (dbData.administrators || []).find(u => (u.username || '').trim().toLowerCase() === cleanUser);
     const isAdminPasswordValid = adminUser && bcrypt.compareSync(password, adminUser.password);
     if (isAdminPasswordValid) {
         const token = jwt.sign({ id: adminUser.id, username: adminUser.username, role: 'administrator', adminId: adminUser.id }, JWT_SECRET, { expiresIn: '24h' });
@@ -381,7 +444,7 @@ app.post('/api/auth/login', (req, res) => {
     }
     
     // 3. Check Users
-    const standardUser = (dbData.users || []).find(u => u.username === username);
+    const standardUser = (dbData.users || []).find(u => (u.username || '').trim().toLowerCase() === cleanUser);
     const isUserPasswordValid = standardUser && bcrypt.compareSync(password, standardUser.password);
     if (isUserPasswordValid) {
         const token = jwt.sign({ id: standardUser.id, username: standardUser.username, role: 'user', adminId: standardUser.admin_id }, JWT_SECRET, { expiresIn: '24h' });
@@ -541,19 +604,28 @@ app.post('/api/superadmin/factory-reset', verifyToken, requireSuperadmin, (req, 
 
 app.get('/api/superadmin/admins', verifyToken, requireSuperadmin, (req, res) => {
     const dbData = getNvrDb();
-    const list = (dbData.administrators || []).map(a => ({
-        id: a.id,
-        username: a.username,
-        name: a.name || a.username,
-        createdAt: a.createdAt,
-        cameraCount: (dbData.cameras || []).filter(c => c.admin_id === a.id).length,
-        userCount: (dbData.users || []).filter(u => u.admin_id === a.id).length
-    }));
+    const list = (dbData.administrators || []).map(a => {
+        const adminCams = (dbData.cameras || []).filter(c => c.tenant_id === a.id || c.admin_id === a.id);
+        const adminCamIds = new Set(adminCams.map(c => c.id));
+        const usedBytes = (dbData.recordings || []).filter(r => adminCamIds.has(r.camera_id)).reduce((acc, r) => acc + (r.file_size || 0), 0);
+        const usedStorageGB = parseFloat((usedBytes / (1024 * 1024 * 1024)).toFixed(2));
+        return {
+            id: a.id,
+            username: a.username,
+            name: a.name || a.username,
+            max_cameras: a.max_cameras || 8,
+            max_storage_gb: a.max_storage_gb || 100,
+            createdAt: a.createdAt,
+            cameraCount: adminCams.length,
+            usedStorageGB: usedStorageGB,
+            userCount: (dbData.users || []).filter(u => u.admin_id === a.id).length
+        };
+    });
     res.json({ administrators: list });
 });
 
 app.post('/api/superadmin/admins', verifyToken, requireSuperadmin, (req, res) => {
-    const { username, password, name } = req.body;
+    const { username, password, name, max_cameras, max_storage_gb } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username dan password wajib diisi' });
     const dbData = getNvrDb();
     if (!dbData.administrators) dbData.administrators = [];
@@ -565,12 +637,47 @@ app.post('/api/superadmin/admins', verifyToken, requireSuperadmin, (req, res) =>
         username: username.trim(),
         password: bcrypt.hashSync(password, 8),
         name: (name || username).trim(),
+        max_cameras: Math.max(1, parseInt(max_cameras) || 8),
+        max_storage_gb: Math.max(1, parseFloat(max_storage_gb) || 100),
         createdAt: new Date().toISOString()
     };
     dbData.administrators.push(newAdmin);
     saveNvrDb(dbData);
-    sysLog('INFO', `[Superadmin] Akun Administrator baru dibuat: ${newAdmin.username}`, 'SECURITY');
-    res.json({ success: true, administrator: { id: newAdmin.id, username: newAdmin.username, name: newAdmin.name } });
+    sysLog('INFO', `[Superadmin] Akun Administrator Gedung baru: ${newAdmin.username} (${newAdmin.name}) - Kuota: ${newAdmin.max_cameras} Kamera, ${newAdmin.max_storage_gb} GB`, 'SECURITY');
+    res.json({ success: true, administrator: newAdmin });
+});
+
+app.put('/api/superadmin/admins/:id', verifyToken, requireSuperadmin, (req, res) => {
+    const { id } = req.params;
+    const { name, max_cameras, max_storage_gb, password } = req.body;
+    const dbData = getNvrDb();
+    const admin = (dbData.administrators || []).find(a => a.id === id);
+    if (!admin) return res.status(404).json({ error: 'Administrator tidak ditemukan' });
+
+    if (name) admin.name = name.trim();
+    if (max_cameras !== undefined) admin.max_cameras = Math.max(1, parseInt(max_cameras) || 1);
+    if (max_storage_gb !== undefined) admin.max_storage_gb = Math.max(1, parseFloat(max_storage_gb) || 1);
+    if (password && password.trim().length >= 4) {
+        admin.password = bcrypt.hashSync(password.trim(), 8);
+    }
+    saveNvrDb(dbData);
+    sysLog('INFO', `[Superadmin] Kuota/Akun Administrator ${admin.username} diperbarui: ${admin.max_cameras} Kamera, ${admin.max_storage_gb} GB`, 'SECURITY');
+    res.json({ success: true, administrator: admin });
+});
+
+app.put('/api/superadmin/admins/:id/quota', verifyToken, requireSuperadmin, (req, res) => {
+    const { id } = req.params;
+    const { max_cameras, max_storage_gb } = req.body;
+    const dbData = getNvrDb();
+    const admin = (dbData.administrators || []).find(a => a.id === id);
+    if (!admin) return res.status(404).json({ error: 'Administrator tidak ditemukan' });
+
+    if (max_cameras !== undefined) admin.max_cameras = Math.max(1, parseInt(max_cameras, 10) || 8);
+    if (max_storage_gb !== undefined) admin.max_storage_gb = Math.max(1, parseFloat(max_storage_gb) || 100);
+
+    saveNvrDb(dbData);
+    sysLog('INFO', `[Superadmin] Kuota Administrator ${admin.username} diperbarui: ${admin.max_cameras} Kamera, ${admin.max_storage_gb} GB`, 'SECURITY');
+    res.json({ success: true, administrator: admin });
 });
 
 app.delete('/api/superadmin/admins/:id', verifyToken, requireSuperadmin, (req, res) => {
@@ -579,31 +686,44 @@ app.delete('/api/superadmin/admins/:id', verifyToken, requireSuperadmin, (req, r
     const index = (dbData.administrators || []).findIndex(a => a.id === id);
     if (index === -1) return res.status(404).json({ error: 'Administrator tidak ditemukan' });
     const removed = dbData.administrators.splice(index, 1)[0];
+
+    // Cleanup kamera milik tenant ini
+    const camsToRemove = (dbData.cameras || []).filter(c => c.tenant_id === id || c.admin_id === id);
+    camsToRemove.forEach(c => {
+        stopCameraRecording(c.id);
+        const camStreamDir = path.join(streamBaseDir, c.id);
+        if (fs.existsSync(camStreamDir)) {
+            try { fs.rmSync(camStreamDir, { recursive: true, force: true }); } catch (e) {}
+        }
+    });
+    dbData.cameras = (dbData.cameras || []).filter(c => c.tenant_id !== id && c.admin_id !== id);
+    dbData.users = (dbData.users || []).filter(u => u.admin_id !== id);
     saveNvrDb(dbData);
-    sysLog('INFO', `[Superadmin] Akun Administrator dihapus: ${removed.username}`, 'SECURITY');
+    cameras = dbData.cameras;
+    syncMediaMtxConfig();
+
+    sysLog('INFO', `[Superadmin] Akun Administrator dihapus: ${removed.username} beserta kamera dan data terkait`, 'SECURITY');
     res.json({ success: true });
 });
 
-// --- Administrator User Management APIs (Buat Akun User / Klien Mobile) ---
+// --- Administrator User Management APIs (Buat Akun User / Klien Mobile dengan batasan kamera) ---
 app.get('/api/admin/users', verifyToken, requireAdministrator, (req, res) => {
     const dbData = getNvrDb();
     const currentAdminId = req.adminId || req.userId;
-    let list = dbData.users || [];
-    if (req.userRole !== 'superadmin') {
-        list = list.filter(u => !u.admin_id || u.admin_id === currentAdminId);
-    }
+    const list = (dbData.users || []).filter(u => u.admin_id === currentAdminId);
     const safeUsers = list.map(u => ({
         id: u.id,
         username: u.username,
         name: u.name || u.username,
         admin_id: u.admin_id,
+        allowed_cameras: u.allowed_cameras || [],
         createdAt: u.createdAt
     }));
     res.json({ users: safeUsers });
 });
 
 app.post('/api/admin/users', verifyToken, requireAdministrator, (req, res) => {
-    const { username, password, name } = req.body;
+    const { username, password, name, allowed_cameras } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username dan password wajib diisi' });
     const dbData = getNvrDb();
     if (!dbData.users) dbData.users = [];
@@ -611,18 +731,46 @@ app.post('/api/admin/users', verifyToken, requireAdministrator, (req, res) => {
         return res.status(400).json({ error: 'Username klien sudah digunakan' });
     }
     const currentAdminId = req.adminId || req.userId;
+
+    // Filter allowed_cameras agar hanya kamera milik admin ini yang bisa dipilih
+    const myCamIds = new Set((dbData.cameras || []).filter(c => c.tenant_id === currentAdminId || c.admin_id === currentAdminId).map(c => c.id));
+    const validAllowed = Array.isArray(allowed_cameras) ? allowed_cameras.filter(cid => myCamIds.has(cid)) : [];
+
     const newUser = {
         id: `user_${Date.now()}`,
         username: username.trim(),
         password: bcrypt.hashSync(password, 8),
         name: (name || username).trim(),
         admin_id: currentAdminId,
+        allowed_cameras: validAllowed,
         createdAt: new Date().toISOString()
     };
     dbData.users.push(newUser);
     saveNvrDb(dbData);
-    sysLog('INFO', `[Administrator] Akun User (Klien) baru dibuat: ${newUser.username}`, 'SECURITY');
-    res.json({ success: true, user: { id: newUser.id, username: newUser.username, name: newUser.name } });
+    sysLog('INFO', `[Administrator] Akun User (Klien) baru dibuat: ${newUser.username} (${validAllowed.length} kamera diizinkan)`, 'SECURITY');
+    res.json({ success: true, user: { id: newUser.id, username: newUser.username, name: newUser.name, allowed_cameras: newUser.allowed_cameras } });
+});
+
+app.put('/api/admin/users/:id', verifyToken, requireAdministrator, (req, res) => {
+    const { id } = req.params;
+    const { name, password, allowed_cameras } = req.body;
+    const dbData = getNvrDb();
+    const currentAdminId = req.adminId || req.userId;
+    const user = (dbData.users || []).find(u => u.id === id);
+    if (!user) return res.status(404).json({ error: 'User tidak ditemukan' });
+    if (user.admin_id !== currentAdminId) return res.status(403).json({ error: 'Akses Ditolak: Bukan user milik gedung Anda' });
+
+    if (name) user.name = name.trim();
+    if (password && password.trim().length >= 4) {
+        user.password = bcrypt.hashSync(password.trim(), 8);
+    }
+    if (Array.isArray(allowed_cameras)) {
+        const myCamIds = new Set((dbData.cameras || []).filter(c => c.tenant_id === currentAdminId || c.admin_id === currentAdminId).map(c => c.id));
+        user.allowed_cameras = allowed_cameras.filter(cid => myCamIds.has(cid));
+    }
+    saveNvrDb(dbData);
+    sysLog('INFO', `[Administrator] User ${user.username} diperbarui`, 'SECURITY');
+    res.json({ success: true, user: { id: user.id, username: user.username, name: user.name, allowed_cameras: user.allowed_cameras } });
 });
 
 app.delete('/api/admin/users/:id', verifyToken, requireAdministrator, (req, res) => {
@@ -631,8 +779,8 @@ app.delete('/api/admin/users/:id', verifyToken, requireAdministrator, (req, res)
     const currentAdminId = req.adminId || req.userId;
     const index = (dbData.users || []).findIndex(u => u.id === id);
     if (index === -1) return res.status(404).json({ error: 'User tidak ditemukan' });
-    if (req.userRole !== 'superadmin' && dbData.users[index].admin_id && dbData.users[index].admin_id !== currentAdminId) {
-        return res.status(403).json({ error: 'Tidak berhak menghapus user milik admin lain' });
+    if (dbData.users[index].admin_id !== currentAdminId) {
+        return res.status(403).json({ error: 'Tidak berhak menghapus user milik admin gedung lain' });
     }
     const removed = dbData.users.splice(index, 1)[0];
     saveNvrDb(dbData);
@@ -671,6 +819,46 @@ for (const f of files) {
         }
     }
     saveNvrDb(dbData);
+    enforceAdminStorageQuotas();
+}
+
+// Enforce max_storage_gb Quota per Administrator (Tenant)
+function enforceAdminStorageQuotas() {
+    try {
+        const dbData = getNvrDb();
+        const admins = dbData.administrators || [];
+        const recordings = dbData.recordings || [];
+        let changed = false;
+
+        for (const admin of admins) {
+            const maxGB = admin.max_storage_gb || 100;
+            const maxBytes = maxGB * 1024 * 1024 * 1024;
+
+            const adminCams = (dbData.cameras || []).filter(c => c.tenant_id === admin.id || c.admin_id === admin.id);
+            const adminCamIds = new Set(adminCams.map(c => c.id));
+
+            const adminRecs = recordings.filter(r => adminCamIds.has(r.camera_id)).sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+            let totalBytes = adminRecs.reduce((sum, r) => sum + (r.file_size || 0), 0);
+
+            while (totalBytes > maxBytes && adminRecs.length > 0) {
+                const oldest = adminRecs.shift();
+                try {
+                    if (fs.existsSync(oldest.file_path)) {
+                        fs.unlinkSync(oldest.file_path);
+                    }
+                } catch (err) {}
+                totalBytes -= (oldest.file_size || 0);
+                const idx = dbData.recordings.findIndex(r => r.id === oldest.id);
+                if (idx !== -1) {
+                    dbData.recordings.splice(idx, 1);
+                    changed = true;
+                }
+            }
+        }
+        if (changed) saveNvrDb(dbData);
+    } catch (e) {
+        console.error('Failed enforceAdminStorageQuotas:', e.message);
+    }
 }
 
 // Notification Helper
@@ -1170,7 +1358,21 @@ function checkGlobalDiskSpace() {
 
 app.get('/api/cameras', verifyToken, (req, res) => {
     const currentSettings = getSettings();
-    const cams = getCameras().map(c => {
+    const dbData = getNvrDb();
+
+    // 1. Superadmin: TIDAK boleh memiliki kamera langsung
+    if (req.userRole === 'superadmin') {
+        return res.json({
+            cameras: [],
+            quota: null,
+            isSuperadmin: true,
+            mediamtxPort: currentSettings.mediamtxPort || 8889,
+            mediamtxHost: currentSettings.mediamtxHost || ''
+        });
+    }
+
+    const authorizedCams = getAuthorizedCamerasForReq(req);
+    const cams = authorizedCams.map(c => {
         const safeId = (c.id || '').replace(/[^a-zA-Z0-9_\-]/g, '_');
         const hasDistinctSub = c.subStreamUrl && c.subStreamUrl.trim() && c.subStreamUrl.trim() !== c.mainStreamUrl.trim();
         const mainStat = (cameraStatuses[c.id] && cameraStatuses[c.id].main) || { status: c.enabled ? 'online' : 'offline', error: null };
@@ -1188,12 +1390,64 @@ app.get('/api/cameras', verifyToken, (req, res) => {
             subStatus: c.enabled ? 'online' : 'offline'
         };
     });
-    res.json({ cameras: cams, mediamtxPort: currentSettings.mediamtxPort || 8889, mediamtxHost: currentSettings.mediamtxHost || '' });
+
+    let quotaInfo = null;
+    if (req.userRole === 'administrator') {
+        const currentAdminId = req.adminId || req.userId;
+        const admin = (dbData.administrators || []).find(a => a.id === currentAdminId);
+        const maxCameras = admin ? (admin.max_cameras || 8) : 8;
+        const maxStorageGB = admin ? (admin.max_storage_gb || 100) : 100;
+        
+        const adminCamIds = new Set(authorizedCams.map(c => c.id));
+        let usedBytes = 0;
+        (dbData.recordings || []).forEach(r => {
+            if (adminCamIds.has(r.camera_id)) {
+                usedBytes += (r.file_size || 0);
+            }
+        });
+        const usedStorageGB = parseFloat((usedBytes / (1024 * 1024 * 1024)).toFixed(2));
+        
+        quotaInfo = {
+            maxCameras,
+            currentCameras: authorizedCams.length,
+            maxStorageGB,
+            usedStorageGB,
+            adminName: admin ? (admin.name || admin.username) : 'Gedung'
+        };
+    }
+
+    res.json({
+        cameras: cams,
+        quota: quotaInfo,
+        role: req.userRole,
+        isReadOnly: req.userRole === 'user',
+        mediamtxPort: currentSettings.mediamtxPort || 8889,
+        mediamtxHost: currentSettings.mediamtxHost || ''
+    });
 });
 
-app.post('/api/cameras', verifyToken, requireAdmin, (req, res) => {
+app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
+    if (req.userRole !== 'administrator') {
+        return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator Gedung yang dapat menambahkan kamera.' });
+    }
+
+    const currentAdminId = req.adminId || req.userId;
+    const dbData = getNvrDb();
+    const admin = (dbData.administrators || []).find(a => a.id === currentAdminId);
+    if (!admin) {
+        return res.status(403).json({ error: 'Akun Administrator tidak terdaftar dalam sistem' });
+    }
+
+    // Periksa Batas Kuota Kamera (max_cameras)
+    const existingCams = (dbData.cameras || []).filter(c => c.tenant_id === currentAdminId || c.admin_id === currentAdminId);
+    const maxCameras = admin.max_cameras || 8;
+    if (existingCams.length >= maxCameras) {
+        return res.status(400).json({
+            error: `Batas kuota kamera untuk gedung Anda telah penuh (${existingCams.length}/${maxCameras} Kamera). Silakan hubungi Superadmin untuk menambah kuota.`
+        });
+    }
+
     const { id, name, enabled, mainStreamUrl, subStreamUrl, rtspUrl, storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec, transcode, ptzEnabled, ptzUrl, ptzUser, ptzPass } = req.body;
-    const cams = getCameras();
     
     const rawMainUrl = mainStreamUrl || rtspUrl || "";
     const finalMainUrl = sanitizeRtspUrl(rawMainUrl);
@@ -1201,7 +1455,9 @@ app.post('/api/cameras', verifyToken, requireAdmin, (req, res) => {
 
     const newCamId = id || `cam_${Date.now()}`;
     const newCam = { 
-        id: newCamId, 
+        id: newCamId,
+        tenant_id: currentAdminId,
+        admin_id: currentAdminId,
         name: name || "New Camera", 
         enabled: enabled !== undefined ? !!enabled : true,
         mainStreamUrl: finalMainUrl, 
@@ -1219,71 +1475,92 @@ app.post('/api/cameras', verifyToken, requireAdmin, (req, res) => {
         maxFolderSizeGB: parseFloat(maxFolderSizeGB) || 10,
         segmentDurationSec: parseInt(segmentDurationSec) || 900
     };
-    cams.push(newCam);
-    saveCameras(cams);
+
+    if (!dbData.cameras) dbData.cameras = [];
+    dbData.cameras.push(newCam);
+    saveNvrDb(dbData);
+    cameras = dbData.cameras;
     
     // Sinkronisasi MediaMTX otomatis
     syncMediaMtxConfig();
 
     if (newCam.enabled && newCam.recordMode === 'continuous') {
-        if (typeof newCam !== "undefined") { spawnRecordingFFmpeg(newCam); }
+        spawnRecordingFFmpeg(newCam);
     }
     
-    sysLog('INFO', `Kamera Ditambahkan: ${newCam.name} (MediaMTX config updated)`, 'CAMERA');
+    sysLog('INFO', `[Gedung: ${admin.name}] Kamera Ditambahkan: ${newCam.name} (${existingCams.length + 1}/${maxCameras} kamera)`, 'CAMERA');
     res.json({ success: true, camera: newCam });
 });
 
-app.put('/api/cameras/:id', verifyToken, requireAdmin, (req, res) => {
-    const cams = getCameras();
-    const index = cams.findIndex(c => c.id === req.params.id);
-    if (index === -1) return res.status(404).json({error: 'Not found'});
+app.put('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
+    if (req.userRole !== 'administrator') {
+        return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator yang berhak mengubah kamera.' });
+    }
+
+    const currentAdminId = req.adminId || req.userId;
+    const dbData = getNvrDb();
+    const index = (dbData.cameras || []).findIndex(c => c.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Kamera tidak ditemukan' });
     
+    const targetCam = dbData.cameras[index];
+    // Isolasi Data Ketat: Hanya admin pemilik gedung yang dapat mengubah
+    if (targetCam.tenant_id !== currentAdminId && targetCam.admin_id !== currentAdminId) {
+        return res.status(403).json({ error: 'Akses Ditolak: Anda tidak memiliki izin mengedit kamera milik gedung lain.' });
+    }
+
     const { name, enabled, mainStreamUrl, subStreamUrl, rtspUrl, storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec, transcode, ptzEnabled, ptzUrl, ptzUser, ptzPass } = req.body;
     
     stopCameraRecording(req.params.id);
 
-    const rawMainUrl = mainStreamUrl !== undefined ? mainStreamUrl : (rtspUrl || cams[index].mainStreamUrl);
-    const rawSubUrl = subStreamUrl !== undefined ? subStreamUrl : cams[index].subStreamUrl;
+    const rawMainUrl = mainStreamUrl !== undefined ? mainStreamUrl : (rtspUrl || targetCam.mainStreamUrl);
+    const rawSubUrl = subStreamUrl !== undefined ? subStreamUrl : targetCam.subStreamUrl;
     const finalMainUrl = sanitizeRtspUrl(rawMainUrl);
     const finalSubUrl = rawSubUrl ? sanitizeRtspUrl(rawSubUrl) : finalMainUrl;
 
-    cams[index] = {
-        ...cams[index],
-        name: name || cams[index].name,
-        enabled: enabled !== undefined ? !!enabled : cams[index].enabled,
+    dbData.cameras[index] = {
+        ...targetCam,
+        name: name || targetCam.name,
+        enabled: enabled !== undefined ? !!enabled : targetCam.enabled,
         mainStreamUrl: finalMainUrl,
         subStreamUrl: finalSubUrl,
-        transcode: transcode !== undefined ? transcode : (cams[index].transcode || 'auto'),
-        ptzEnabled: ptzEnabled !== undefined ? !!ptzEnabled : !!cams[index].ptzEnabled,
-        ptzUrl: ptzUrl !== undefined ? ptzUrl : (cams[index].ptzUrl || ''),
-        ptzUser: ptzUser !== undefined ? ptzUser : (cams[index].ptzUser || ''),
-        ptzPass: ptzPass !== undefined ? ptzPass : (cams[index].ptzPass || ''),
-        resolution: resolution || cams[index].resolution,
-        fps: fps || cams[index].fps,
-        recordMode: recordMode || cams[index].recordMode,
-        storagePath: storagePath !== undefined ? storagePath : cams[index].storagePath,
-        maxStorageDays: parseInt(maxStorageDays) || cams[index].maxStorageDays,
-        maxFolderSizeGB: parseFloat(maxFolderSizeGB) || cams[index].maxFolderSizeGB,
-        segmentDurationSec: parseInt(segmentDurationSec) || cams[index].segmentDurationSec
+        transcode: transcode !== undefined ? transcode : (targetCam.transcode || 'auto'),
+        ptzEnabled: ptzEnabled !== undefined ? !!ptzEnabled : !!targetCam.ptzEnabled,
+        ptzUrl: ptzUrl !== undefined ? ptzUrl : (targetCam.ptzUrl || ''),
+        ptzUser: ptzUser !== undefined ? ptzUser : (targetCam.ptzUser || ''),
+        ptzPass: ptzPass !== undefined ? ptzPass : (targetCam.ptzPass || ''),
+        resolution: resolution || targetCam.resolution,
+        fps: fps || targetCam.fps,
+        recordMode: recordMode || targetCam.recordMode,
+        storagePath: storagePath !== undefined ? storagePath : targetCam.storagePath,
+        maxStorageDays: parseInt(maxStorageDays) || targetCam.maxStorageDays,
+        maxFolderSizeGB: parseFloat(maxFolderSizeGB) || targetCam.maxFolderSizeGB,
+        segmentDurationSec: parseInt(segmentDurationSec) || targetCam.segmentDurationSec,
+        tenant_id: targetCam.tenant_id || currentAdminId,
+        admin_id: targetCam.admin_id || currentAdminId
     };
     
-    saveCameras(cams);
+    saveNvrDb(dbData);
+    cameras = dbData.cameras;
 
     // Sinkronisasi MediaMTX otomatis
     syncMediaMtxConfig();
 
-    if (cams[index].enabled && cams[index].recordMode === 'continuous') {
-        spawnRecordingFFmpeg(cams[index]);
+    if (dbData.cameras[index].enabled && dbData.cameras[index].recordMode === 'continuous') {
+        spawnRecordingFFmpeg(dbData.cameras[index]);
     }
 
-    sysLog('INFO', `Kamera Diperbarui: ${cams[index].name} (MediaMTX config updated)`, 'CAMERA');
-    res.json({ success: true });
+    sysLog('INFO', `[Gedung] Kamera Diperbarui: ${dbData.cameras[index].name}`, 'CAMERA');
+    res.json({ success: true, camera: dbData.cameras[index] });
 });
 
-app.post('/api/cameras/:id/restart', verifyToken, requireAdmin, (req, res) => {
-    const cams = getCameras();
-    const cam = cams.find(c => c.id === req.params.id);
+app.post('/api/cameras/:id/restart', verifyToken, requireAdministrator, (req, res) => {
+    const currentAdminId = req.adminId || req.userId;
+    const dbData = getNvrDb();
+    const cam = (dbData.cameras || []).find(c => c.id === req.params.id);
     if (!cam) return res.status(404).json({ error: 'Kamera tidak ditemukan' });
+    if (cam.tenant_id !== currentAdminId && cam.admin_id !== currentAdminId) {
+        return res.status(403).json({ error: 'Akses Ditolak: Anda tidak memiliki izin pada kamera ini.' });
+    }
 
     stopCameraRecording(cam.id);
     syncMediaMtxConfig();
@@ -1416,9 +1693,9 @@ app.get('/api/system/scan-onvif', verifyToken, requireAdmin, async (req, res) =>
 
 app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
     const { direction } = req.body;
-    const cams = getCameras();
-    const cam = cams.find(c => c.id === req.params.id);
-    if (!cam) return res.status(404).json({ error: 'Camera not found' });
+    const authorizedCams = getAuthorizedCamerasForReq(req);
+    const cam = authorizedCams.find(c => c.id === req.params.id);
+    if (!cam) return res.status(403).json({ error: 'Akses Ditolak: Kamera tidak terdaftar pada akun Anda.' });
     
     try {
         const onvif = require('node-onvif');
@@ -1483,27 +1760,51 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
     }
 });
 
-app.delete('/api/cameras/:id', verifyToken, requireAdmin, (req, res) => {
+app.delete('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
+    if (req.userRole !== 'administrator') {
+        return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator yang berhak menghapus kamera.' });
+    }
+
+    const currentAdminId = req.adminId || req.userId;
+    const dbData = getNvrDb();
+    const index = (dbData.cameras || []).findIndex(c => c.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Kamera tidak ditemukan' });
+
+    const targetCam = dbData.cameras[index];
+    if (targetCam.tenant_id !== currentAdminId && targetCam.admin_id !== currentAdminId) {
+        return res.status(403).json({ error: 'Akses Ditolak: Anda tidak memiliki izin menghapus kamera milik gedung lain.' });
+    }
+
     stopCameraRecording(req.params.id);
     const camStreamDir = path.join(streamBaseDir, req.params.id);
     if (fs.existsSync(camStreamDir)) {
         try { fs.rmSync(camStreamDir, { recursive: true, force: true }); } catch (e) {}
     }
-    const cams = getCameras().filter(c => c.id !== req.params.id);
-    saveCameras(cams);
+
+    dbData.cameras.splice(index, 1);
+    // Hapus id kamera dari allowed_cameras milik user
+    (dbData.users || []).forEach(u => {
+        if (Array.isArray(u.allowed_cameras)) {
+            u.allowed_cameras = u.allowed_cameras.filter(cid => cid !== req.params.id);
+        }
+    });
+
+    saveNvrDb(dbData);
+    cameras = dbData.cameras;
     
     // Sinkronisasi MediaMTX otomatis setelah hapus kamera
     syncMediaMtxConfig();
 
-    sysLog('INFO', `Kamera Dihapus: ${req.params.id} (MediaMTX config updated)`, 'CAMERA');
+    sysLog('INFO', `[Gedung] Kamera Dihapus: ${targetCam.name}`, 'CAMERA');
     res.json({ success: true });
 });
 
 // Proxy route for videos outside of standard public dir
 app.get('/api/recordings/:camId/:date/:filename', verifyToken, (req, res) => {
     const { camId, date, filename } = req.params;
-    const cam = getCameras().find(c => c.id === camId);
-    if (!cam) return res.status(404).send('Camera not found');
+    const authorizedCams = getAuthorizedCamerasForReq(req);
+    const cam = authorizedCams.find(c => c.id === camId);
+    if (!cam) return res.status(403).send('Forbidden: Akses rekaman kamera ini tidak diizinkan');
     
     const base = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
     const filePath = path.join(base, filename);
@@ -1517,15 +1818,18 @@ app.get('/api/recordings/:camId/:date/:filename', verifyToken, (req, res) => {
 
 app.get('/api/recordings', verifyToken, (req, res) => {
     try {
+        const authorizedCams = getAuthorizedCamerasForReq(req);
+        const allowedCamIds = new Set(authorizedCams.map(c => c.id));
         const result = {};
         const dbData = getNvrDb();
-        const recordings = dbData.recordings.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+        const recordings = (dbData.recordings || []).sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
         recordings.forEach(row => {
             const camId = row.camera_id;
+            if (!allowedCamIds.has(camId)) return; // Isolasi data: Rekaman gedung/kamera lain disembunyikan
             const parts = row.file_path.split(path.sep);
             const filename = parts.pop();
-const dateMatch = filename.match(/^(\d{4}-\d{2}-\d{2})/);
-const date = dateMatch ? dateMatch[1] : "Unknown";
+            const dateMatch = filename.match(/^(\d{4}-\d{2}-\d{2})/);
+            const date = dateMatch ? dateMatch[1] : "Unknown";
             
             if (!result[camId]) result[camId] = {};
             if (!result[camId][date]) result[camId][date] = [];
@@ -1934,7 +2238,7 @@ app.get('/api/system/storage-devices', (req, res) => {
 });
 
 // Select Default Storage Device Endpoint (Saves RECORDING_PATH to data/nvr_db.json)
-app.post('/api/system/storage-devices/select', verifyToken, requireAdmin, (req, res) => {
+app.post('/api/system/storage-devices/select', verifyToken, requireSuperadmin, (req, res) => {
     try {
         const { storagePath } = req.body;
         if (!storagePath || typeof storagePath !== 'string') {
@@ -1960,12 +2264,9 @@ app.post('/api/system/storage-devices/select', verifyToken, requireAdmin, (req, 
         // 1. Simpan ke data/nvr_db.json
         const dbData = getNvrDb();
         dbData.recording_path = trimmedPath;
-        saveNvrDb(dbData);
-
-        // 2. Sinkronkan juga ke super_settings
+        if (!dbData.super_settings) dbData.super_settings = {};
         dbData.super_settings.globalStoragePath = trimmedPath;
         dbData.super_settings.globalStorageMode = 'custom';
-        dbData.super_settings = settings;
         saveNvrDb(dbData);
 
         sysLog('INFO', `Lokasi Penyimpanan Rekaman Diperbarui: ${trimmedPath} (Tersimpan di data/nvr_db.json)`, 'STORAGE');

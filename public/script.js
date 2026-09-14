@@ -232,6 +232,17 @@ async function checkAuth() {
         }
     }
 
+    window.fillAuth = function(u, p) {
+        if (authUsername) authUsername.value = u;
+        if (authPassword) authPassword.value = p;
+        if (authError) authError.textContent = '';
+        const submitBtn = document.getElementById('authSubmitBtn');
+        if (submitBtn) {
+            submitBtn.style.animation = 'pulse 0.4s ease';
+            setTimeout(() => { submitBtn.style.animation = ''; }, 400);
+        }
+    };
+
     if (authForm) authForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         authError.textContent = '';
@@ -997,10 +1008,35 @@ async function fetchCameras() {
             const data = await res.json();
             cameras = data.cameras || [];
 
+            // Update Kuota UI untuk Administrator Gedung
+            if (data.quota) {
+                const banner = document.getElementById('adminCameraQuotaBanner');
+                const qCams = document.getElementById('quotaCamsText');
+                const qStorage = document.getElementById('quotaStorageText');
+                const qGedung = document.getElementById('quotaAdminGedungText');
+                const sideCams = document.getElementById('sidebarQuotaCams');
+                const sideStorage = document.getElementById('sidebarQuotaStorage');
+                const sideBox = document.getElementById('quotaBadgeContainer');
+
+                if (banner && qCams && qStorage) {
+                    banner.style.display = 'flex';
+                    qCams.textContent = `${data.quota.currentCameras} / ${data.quota.maxCameras} Kamera`;
+                    qStorage.textContent = `${data.quota.usedStorageGB} / ${data.quota.maxStorageGB} GB`;
+                    if (qGedung) qGedung.textContent = `Gedung: ${data.quota.adminName}`;
+                }
+
+                if (sideBox && sideCams && sideStorage) {
+                    sideBox.style.display = 'block';
+                    sideCams.textContent = `${data.quota.currentCameras} / ${data.quota.maxCameras}`;
+                    sideStorage.textContent = `${data.quota.usedStorageGB} / ${data.quota.maxStorageGB} GB`;
+                }
+            }
+
             renderAdminGrid(currentGridCount);
             renderModalCameraList();
             populateCameraSelects();
             if(typeof renderRecordCameraList === 'function') renderRecordCameraList();
+            if(typeof renderUserCamCheckboxes === 'function') renderUserCamCheckboxes('newUserCamCheckboxes');
         } catch (err) {
         }
     }
@@ -1799,11 +1835,51 @@ async function fetchRecordings() {
     if (mBtnFetchRecordings) mBtnFetchRecordings.addEventListener('click', fetchRecordings);
 
     // =========================================================================
-    // ADMINISTRATOR - MANAJEMEN USER (KLIEN MOBILE)
+    // ADMINISTRATOR - MANAJEMEN USER (KLIEN MOBILE) DENGAN IZIN KAMERA
     // =========================================================================
+    function renderUserCamCheckboxes(containerId, selectedIds = []) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        if (!cameras || cameras.length === 0) {
+            container.innerHTML = '<span style="color:var(--text-muted); font-size:0.8rem;">Belum ada kamera di gedung Anda. Tambahkan kamera terlebih dahulu.</span>';
+            return;
+        }
+        const selectedSet = new Set(selectedIds || []);
+        container.innerHTML = cameras.map(cam => {
+            const isChecked = selectedSet.has(cam.id) ? 'checked' : '';
+            return `
+                <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; cursor:pointer; background:rgba(255,255,255,0.04); padding:4px 8px; border-radius:4px;">
+                    <input type="checkbox" value="${cam.id}" ${isChecked} class="${containerId}-cb">
+                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">📹 ${cam.name}</span>
+                </label>
+            `;
+        }).join('');
+    }
+
+    const btnSelectAllUserCams = document.getElementById('btnSelectAllUserCams');
+    if (btnSelectAllUserCams) {
+        btnSelectAllUserCams.addEventListener('click', () => {
+            const cbs = document.querySelectorAll('.newUserCamCheckboxes-cb');
+            const allChecked = Array.from(cbs).every(cb => cb.checked);
+            cbs.forEach(cb => cb.checked = !allChecked);
+            btnSelectAllUserCams.textContent = allChecked ? 'Pilih Semua' : 'Batal Semua';
+        });
+    }
+
+    const btnSelectAllEditUserCams = document.getElementById('btnSelectAllEditUserCams');
+    if (btnSelectAllEditUserCams) {
+        btnSelectAllEditUserCams.addEventListener('click', () => {
+            const cbs = document.querySelectorAll('.editUserCamCheckboxes-cb');
+            const allChecked = Array.from(cbs).every(cb => cb.checked);
+            cbs.forEach(cb => cb.checked = !allChecked);
+            btnSelectAllEditUserCams.textContent = allChecked ? 'Pilih Semua' : 'Batal Semua';
+        });
+    }
+
     if (btnToggleAddUser && boxAddUserForm) {
         btnToggleAddUser.addEventListener('click', () => {
             boxAddUserForm.style.display = 'block';
+            renderUserCamCheckboxes('newUserCamCheckboxes');
         });
     }
 
@@ -1817,28 +1893,92 @@ async function fetchRecordings() {
     if (addUserForm) {
         addUserForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const name = document.getElementById('newUserName').value;
-            const username = document.getElementById('newUserUsername').value;
+            const name = document.getElementById('newUserName').value.trim();
+            const username = document.getElementById('newUserUsername').value.trim();
             const password = document.getElementById('newUserPassword').value;
+
+            const allowedCbs = document.querySelectorAll('.newUserCamCheckboxes-cb:checked');
+            const allowed_cameras = Array.from(allowedCbs).map(cb => cb.value);
+
+            if (allowed_cameras.length === 0) {
+                if (!confirm('Perhatian: Anda belum memilih kamera untuk user ini. User tidak akan bisa melihat kamera apapun. Lanjutkan?')) {
+                    return;
+                }
+            }
 
             try {
                 const res = await authFetch('/api/admin/users', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, username, password })
+                    body: JSON.stringify({ name, username, password, allowed_cameras })
                 });
 
                 const data = await res.json();
                 if (!res.ok || data.error) {
                     alert('Gagal: ' + (data.error || 'Server error'));
                 } else {
-                    alert('Akun user berhasil dibuat!');
+                    alert(`Akun user '${username}' berhasil dibuat dengan akses ${allowed_cameras.length} kamera!`);
                     addUserForm.reset();
                     boxAddUserForm.style.display = 'none';
                     loadUsersList();
                 }
             } catch (err) {
                 alert('Gagal membuat akun user.');
+            }
+        });
+    }
+
+    // Modal Edit User
+    const modalEditUser = document.getElementById('modalEditUser');
+    const formEditUser = document.getElementById('formEditUser');
+    const btnCancelEditUser = document.getElementById('btnCancelEditUser');
+
+    window.openEditUser = function(userId) {
+        const user = (window._usersList || []).find(u => u.id === userId);
+        if (!user) return;
+        document.getElementById('editUserId').value = user.id;
+        document.getElementById('editUserName').value = user.name || '';
+        document.getElementById('editUserPassword').value = '';
+        renderUserCamCheckboxes('editUserCamCheckboxes', user.allowed_cameras || []);
+        if (modalEditUser) modalEditUser.style.display = 'flex';
+    };
+
+    if (btnCancelEditUser && modalEditUser) {
+        btnCancelEditUser.addEventListener('click', () => {
+            modalEditUser.style.display = 'none';
+        });
+    }
+
+    if (formEditUser) {
+        formEditUser.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editUserId').value;
+            const name = document.getElementById('editUserName').value.trim();
+            const password = document.getElementById('editUserPassword').value;
+            const allowedCbs = document.querySelectorAll('.editUserCamCheckboxes-cb:checked');
+            const allowed_cameras = Array.from(allowedCbs).map(cb => cb.value);
+
+            const payload = { name, allowed_cameras };
+            if (password && password.trim().length >= 4) {
+                payload.password = password.trim();
+            }
+
+            try {
+                const res = await authFetch(`/api/admin/users/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('Pengaturan user dan izin kamera berhasil disimpan!');
+                    if (modalEditUser) modalEditUser.style.display = 'none';
+                    loadUsersList();
+                } else {
+                    alert(data.error || 'Gagal mengedit user.');
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan jaringan.');
             }
         });
     }
@@ -1871,21 +2011,34 @@ async function fetchSystemSettings() {
             const res = await authFetch('/api/admin/users');
             const data = await res.json();
             if (data && data.users) {
+                window._usersList = data.users || [];
                 userTableBody.innerHTML = '';
                 if (data.users.length === 0) {
-                    userTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Belum ada data user.</td></tr>';
+                    userTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Belum ada data user.</td></tr>';
                     return;
                 }
                 data.users.forEach(user => {
                     const tr = document.createElement('tr');
                     const d = new Date(user.createdAt);
+                    
+                    const userAllowedCams = user.allowed_cameras || [];
+                    let camBadge = '';
+                    if (userAllowedCams.length === 0) {
+                        camBadge = '<span style="color:#ef4444; font-size:0.8rem;">Tidak ada kamera</span>';
+                    } else {
+                        const count = userAllowedCams.length;
+                        camBadge = `<span class="badge" style="background:#1e293b; color:#60a5fa; padding:3px 8px; border-radius:4px; font-weight:600; font-size:0.8rem;">📹 ${count} Kamera</span>`;
+                    }
+
                     tr.innerHTML = `
-                        <td style="padding:0.75rem;">${user.id}</td>
+                        <td style="padding:0.75rem; font-family:monospace; font-size:0.8rem; color:var(--text-muted);">${user.id}</td>
                         <td style="padding:0.75rem;"><strong>${user.name}</strong></td>
-                        <td style="padding:0.75rem;">${user.username}</td>
+                        <td style="padding:0.75rem; color:#60a5fa; font-family:monospace;">${user.username}</td>
+                        <td style="padding:0.75rem;">${camBadge}</td>
                         <td style="padding:0.75rem; color:var(--text-muted); font-size:0.8rem;">${d.toLocaleDateString('id-ID')}</td>
-                        <td style="padding:0.75rem; text-align:right;">
-                            <button class="btn-sm btn-secondary btn-del-user" data-id="${user.id}" style="color:var(--accent);">Hapus</button>
+                        <td style="padding:0.75rem; text-align:right; white-space:nowrap;">
+                            <button class="btn-sm btn-secondary" style="margin-right:4px; padding:4px 8px; font-size:0.8rem;" onclick="openEditUser('${user.id}')">✏️ Edit</button>
+                            <button class="btn-sm btn-secondary btn-del-user" data-id="${user.id}" style="color:var(--accent); padding:4px 8px; font-size:0.8rem;">🗑️ Hapus</button>
                         </td>
                     `;
                     userTableBody.appendChild(tr);
@@ -1907,7 +2060,7 @@ async function fetchSystemSettings() {
                 });
             }
         } catch (err) {
-            userTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--accent);">Gagal memuat data.</td></tr>';
+            userTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--accent);">Gagal memuat data.</td></tr>';
         }
     }
 

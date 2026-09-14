@@ -285,37 +285,115 @@
             const res = await authFetch('/api/superadmin/admins');
             if (!res.ok) throw new Error('Gagal mengambil daftar admin');
             const data = await res.json();
-            renderAdminTable(data.administrators || []);
+            window._adminsList = data.administrators || [];
+            renderAdminTable(window._adminsList);
         } catch (err) {
-            saAdminTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--accent);">Gagal memuat data administrator: ${err.message}</td></tr>`;
+            saAdminTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--accent);">Gagal memuat data administrator: ${err.message}</td></tr>`;
         }
     }
 
     function renderAdminTable(admins) {
         if (!saAdminTableBody) return;
         if (admins.length === 0) {
-            saAdminTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Belum ada administrator yang terdaftar. Klik "+ Tambah Administrator Baru".</td></tr>`;
+            saAdminTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">Belum ada administrator yang terdaftar. Klik "+ Tambah Administrator Baru".</td></tr>`;
             return;
         }
 
         saAdminTableBody.innerHTML = admins.map(admin => {
             const formattedDate = admin.createdAt ? new Date(admin.createdAt).toLocaleString('id-ID') : '-';
+            const maxCams = admin.max_cameras || 8;
+            const curCams = admin.cameraCount || 0;
+            const camUsagePercent = Math.min(100, Math.round((curCams / maxCams) * 100));
+            const camBadgeColor = curCams >= maxCams ? '#ef4444' : (curCams > 0 ? '#3b82f6' : '#64748b');
+
+            const maxStorage = admin.max_storage_gb || 100;
+            const curStorage = admin.storageUsedGB || 0;
+
             return `
                 <tr style="border-bottom:1px solid var(--border); transition:background 0.2s;">
                     <td style="padding:0.75rem 1rem; font-family:monospace; color:var(--text-muted); font-size:0.8rem;">${admin.id}</td>
                     <td style="padding:0.75rem 1rem; font-weight:600; color:#f8fafc;">${admin.name}</td>
                     <td style="padding:0.75rem 1rem; color:#60a5fa; font-family:monospace;">${admin.username}</td>
-                    <td style="padding:0.75rem 1rem;"><span class="badge" style="background:#1e293b; color:#93c5fd; padding:3px 8px; border-radius:4px;">📹 ${admin.cameraCount || 0} Kamera</span></td>
+                    <td style="padding:0.75rem 1rem;">
+                        <span class="badge" style="background:#1e293b; color:${camBadgeColor}; padding:3px 8px; border-radius:4px; font-weight:600;">
+                            📹 ${curCams} / ${maxCams} Kamera
+                        </span>
+                    </td>
+                    <td style="padding:0.75rem 1rem;">
+                        <span class="badge" style="background:#1e293b; color:#cbd5e1; padding:3px 8px; border-radius:4px;">
+                            💾 ${curStorage} / ${maxStorage} GB
+                        </span>
+                    </td>
                     <td style="padding:0.75rem 1rem;"><span class="badge" style="background:#1e293b; color:#86efac; padding:3px 8px; border-radius:4px;">👤 ${admin.userCount || 0} User</span></td>
                     <td style="padding:0.75rem 1rem; font-size:0.8rem; color:var(--text-muted);">${formattedDate}</td>
-                    <td style="padding:0.75rem 1rem; text-align:right;">
-                        <button class="btn-sm btn-delete" style="background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem;" onclick="deleteAdmin('${admin.id}', '${admin.username}')">
-                            Hapus
+                    <td style="padding:0.75rem 1rem; text-align:right; white-space:nowrap;">
+                        <button class="btn-sm" style="background:#6366f1; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem; margin-right:4px;" onclick="openEditQuota('${admin.id}')">
+                            ⚙️ Kuota
+                        </button>
+                        <button class="btn-sm btn-delete" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem;" onclick="deleteAdmin('${admin.id}', '${admin.username}')">
+                            🗑️ Hapus
                         </button>
                     </td>
                 </tr>
             `;
         }).join('');
+    }
+
+    // Modal Edit Quota
+    const modalEditQuota = document.getElementById('modalEditQuota');
+    const formEditQuota = document.getElementById('formEditQuota');
+    const btnCancelEditQuota = document.getElementById('btnCancelEditQuota');
+
+    window.openEditQuota = function(adminId) {
+        const admin = (window._adminsList || []).find(a => a.id === adminId);
+        if (!admin) return;
+        document.getElementById('editAdminId').value = admin.id;
+        document.getElementById('editAdminName').value = admin.name || '';
+        document.getElementById('editAdminMaxCameras').value = admin.max_cameras || 8;
+        document.getElementById('editAdminMaxStorageGB').value = admin.max_storage_gb || 100;
+        document.getElementById('editAdminPassword').value = '';
+        document.getElementById('editQuotaAdminInfo').textContent = `Username: ${admin.username} (Saat ini memakai ${admin.cameraCount || 0} kamera, ${admin.storageUsedGB || 0} GB storage)`;
+        modalEditQuota.style.display = 'flex';
+    };
+
+    if (btnCancelEditQuota) {
+        btnCancelEditQuota.addEventListener('click', () => {
+            modalEditQuota.style.display = 'none';
+        });
+    }
+
+    if (formEditQuota) {
+        formEditQuota.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editAdminId').value;
+            const name = document.getElementById('editAdminName').value.trim();
+            const max_cameras = parseInt(document.getElementById('editAdminMaxCameras').value) || 8;
+            const max_storage_gb = parseFloat(document.getElementById('editAdminMaxStorageGB').value) || 100;
+            const password = document.getElementById('editAdminPassword').value;
+
+            const payload = { name, max_cameras, max_storage_gb };
+            if (password && password.trim().length >= 4) {
+                payload.password = password.trim();
+            }
+
+            try {
+                const res = await authFetch(`/api/superadmin/admins/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('Pengaturan kuota administrator berhasil disimpan!');
+                    modalEditQuota.style.display = 'none';
+                    loadAdmins();
+                } else {
+                    alert(data.error || 'Gagal memperbarui kuota administrator.');
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan jaringan.');
+            }
+        });
     }
 
     // Add Admin Submit
@@ -324,6 +402,8 @@
         const name = document.getElementById('newAdminName').value.trim();
         const username = document.getElementById('newAdminUsername').value.trim();
         const password = document.getElementById('newAdminPassword').value;
+        const max_cameras = parseInt(document.getElementById('newAdminMaxCameras').value) || 8;
+        const max_storage_gb = parseFloat(document.getElementById('newAdminMaxStorageGB').value) || 100;
 
         if (password.length < 4) {
             alert('Password minimal 4 karakter!');
@@ -334,12 +414,12 @@
             const res = await authFetch('/api/superadmin/admins', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, username, password })
+                body: JSON.stringify({ name, username, password, max_cameras, max_storage_gb })
             });
             const data = await res.json();
 
             if (res.ok && data.success) {
-                alert(`Administrator '${username}' berhasil didaftarkan!`);
+                alert(`Administrator Gedung '${username}' berhasil didaftarkan dengan kuota ${max_cameras} kamera & ${max_storage_gb} GB storage!`);
                 saAddAdminForm.reset();
                 formAddAdminBox.style.display = 'none';
                 btnToggleAddAdmin.textContent = '+ Tambah Administrator Baru';

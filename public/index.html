@@ -36,9 +36,32 @@
                 <button type="submit" class="btn btn-primary w-full mt-3" id="authSubmitBtn">Masuk (Login)</button>
             </form>
 
-            <div id="authError" style="color:var(--accent); text-align:center; margin-top:1rem; font-size:0.85rem; font-weight:500;"></div>
+            <div id="authError" style="color:var(--accent); text-align:center; margin-top:0.75rem; font-size:0.85rem; font-weight:500;"></div>
 
-            
+            <!-- QUICK DEMO SELECTOR FOR MULTI-TENANT ROLES -->
+            <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);">
+                <div style="font-size:0.75rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.6rem; text-align:center;">
+                    ⚡ Uji Coba Cepat Multi-Tenant (Klik Akun):
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                    <button type="button" class="btn-demo-acc" onclick="fillAuth('superadmin', 'archer')" style="background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); color:#c4b5fd; padding:6px 10px; border-radius:6px; font-size:0.78rem; text-align:left; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        <span>👑 <strong>Superadmin</strong> (Kelola Server & Kuota)</span>
+                        <span style="font-size:0.7rem; opacity:0.8;">superadmin / archer</span>
+                    </button>
+                    <button type="button" class="btn-demo-acc" onclick="fillAuth('Arch3r', 'admin123')" style="background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.3); color:#93c5fd; padding:6px 10px; border-radius:6px; font-size:0.78rem; text-align:left; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        <span>🏢 <strong>Admin Gedung Utama</strong> (Kuota 4 Cam)</span>
+                        <span style="font-size:0.7rem; opacity:0.8;">Arch3r / admin123</span>
+                    </button>
+                    <button type="button" class="btn-demo-acc" onclick="fillAuth('admin_b', 'password123')" style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); color:#6ee7b7; padding:6px 10px; border-radius:6px; font-size:0.78rem; text-align:left; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        <span>🏢 <strong>Admin Gedung B</strong> (Kuota 2 Cam)</span>
+                        <span style="font-size:0.7rem; opacity:0.8;">admin_b / password123</span>
+                    </button>
+                    <button type="button" class="btn-demo-acc" onclick="fillAuth('staff_a', 'password123')" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fcd34d; padding:6px 10px; border-radius:6px; font-size:0.78rem; text-align:left; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                        <span>👤 <strong>Staff Satpam</strong> (Read-Only 1 Cam)</span>
+                        <span style="font-size:0.7rem; opacity:0.8;">staff_a / password123</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -60,6 +83,11 @@
                         <span id="lblAdminRole" style="color:#60a5fa;">Owner &bull; Full Access</span>
                     </div>
                     <button id="btnLogoutAdmin" title="Keluar">🚪</button>
+                </div>
+                <!-- Quota Widget for Tenant Admin -->
+                <div id="quotaBadgeContainer" style="display:none; padding: 0.5rem 0.75rem; margin: 0.5rem 0.75rem; background:rgba(30,41,59,0.7); border-radius:6px; font-size:0.75rem; border:1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; color:#94a3b8; margin-bottom:2px;"><span>Kuota Kamera:</span><strong id="sidebarQuotaCams" style="color:#60a5fa;">-</strong></div>
+                    <div style="display:flex; justify-content:space-between; color:#94a3b8;"><span>Kuota Storage:</span><strong id="sidebarQuotaStorage" style="color:#cbd5e1;">-</strong></div>
                 </div>
             </div>
 
@@ -270,6 +298,17 @@
                             </p>
                         </div>
                         <button type="button" id="btnScrollToForm" class="btn btn-primary" style="font-size:0.85rem;">+ Tambah Kamera</button>
+                    </div>
+
+                    <!-- Quota Banner for Tenant Admin -->
+                    <div id="adminCameraQuotaBanner" style="display:none; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.3); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.25rem; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <span style="font-size:0.85rem; color:#93c5fd;">Status Kuota Gedung: </span>
+                            <strong id="quotaCamsText" style="color:#ffffff;">-</strong> &bull; 
+                            <span style="font-size:0.85rem; color:#93c5fd;">Storage Terpakai: </span>
+                            <strong id="quotaStorageText" style="color:#ffffff;">-</strong>
+                        </div>
+                        <small id="quotaAdminGedungText" style="color:#60a5fa; font-weight:600; font-size:0.8rem;"></small>
                     </div>
 
                     <div class="camera-form-section" style="margin-bottom:2rem;">
@@ -507,11 +546,54 @@
                                     <input type="password" id="newUserPassword" placeholder="Minimal 4 karakter" required>
                                 </div>
                             </div>
-                            <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+                            <div class="form-group" style="margin-top:0.5rem;">
+                                <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                                    <span>Izin Akses Kamera (Read-Only Live & Playback)</span>
+                                    <button type="button" id="btnSelectAllUserCams" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:2px 8px;">Pilih Semua</button>
+                                </label>
+                                <div id="newUserCamCheckboxes" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:0.5rem; background:rgba(0,0,0,0.25); padding:0.75rem; border-radius:6px; border:1px solid var(--border); max-height:160px; overflow-y:auto;">
+                                    <span style="color:var(--text-muted); font-size:0.8rem;">Memuat daftar kamera...</span>
+                                </div>
+                                <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:0.25rem;">Staff/User ini hanya bisa mengakses kamera yang dicentang.</small>
+                            </div>
+                            <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.75rem;">
                                 <button type="button" id="btnCancelAddUser" class="btn btn-secondary">Batal</button>
                                 <button type="submit" class="btn btn-primary" style="background:#10b981;">Simpan Akun</button>
                             </div>
                         </form>
+                    </div>
+
+                    <!-- Modal Edit User & Kamera -->
+                    <div id="modalEditUser" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:9999; justify-content:center; align-items:center;">
+                        <div style="background:var(--surface); border:1px solid var(--border-highlight); border-radius:10px; padding:1.75rem; width:92%; max-width:520px; box-shadow:0 15px 35px rgba(0,0,0,0.6);">
+                            <h3 style="margin-top:0; color:#60a5fa; font-size:1.15rem; display:flex; align-items:center; gap:0.5rem;">
+                                <span>👥</span> Edit Akun & Izin Kamera User
+                            </h3>
+                            <form id="formEditUser">
+                                <input type="hidden" id="editUserId">
+                                <div class="form-group" style="margin-bottom:0.75rem;">
+                                    <label>Nama Pengguna / Klien</label>
+                                    <input type="text" id="editUserName" required>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0.75rem;">
+                                    <label>Reset Password (Opsional)</label>
+                                    <input type="password" id="editUserPassword" placeholder="Biarkan kosong jika tidak diubah">
+                                </div>
+                                <div class="form-group" style="margin-bottom:1.25rem;">
+                                    <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                                        <span>Izin Akses Kamera</span>
+                                        <button type="button" id="btnSelectAllEditUserCams" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:2px 8px;">Pilih Semua</button>
+                                    </label>
+                                    <div id="editUserCamCheckboxes" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:0.5rem; background:rgba(0,0,0,0.25); padding:0.75rem; border-radius:6px; border:1px solid var(--border); max-height:160px; overflow-y:auto;">
+                                    </div>
+                                    <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:0.25rem;">Staff/User ini hanya bisa mengakses kamera yang dicentang.</small>
+                                </div>
+                                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                                    <button type="button" id="btnCancelEditUser" class="btn btn-secondary">Batal</button>
+                                    <button type="submit" class="btn btn-primary" style="background:#10b981;">Simpan Perubahan</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
 
                     <!-- Tabel Daftar User -->
@@ -524,12 +606,13 @@
                                         <th style="padding:0.75rem;">ID</th>
                                         <th style="padding:0.75rem;">Nama</th>
                                         <th style="padding:0.75rem;">Username</th>
+                                        <th style="padding:0.75rem;">Izin Kamera</th>
                                         <th style="padding:0.75rem;">Dibuat</th>
                                         <th style="padding:0.75rem; text-align:right;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody id="userTableBody">
-                                    <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Memuat data user...</td></tr>
+                                    <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Memuat data user...</td></tr>
                                 </tbody>
                             </table>
                         </div>

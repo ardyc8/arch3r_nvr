@@ -142,22 +142,32 @@
                     </div>
 
                     <div id="formAddAdminBox" style="display:none; background:var(--surface-dark); border:1px solid var(--border-highlight); border-radius:8px; padding:1.5rem; margin-bottom:1.5rem;">
-                        <h3 style="font-size:1rem; margin-bottom:1rem; color:#60a5fa;">Buat Akun Administrator Baru</h3>
+                        <h3 style="font-size:1rem; margin-bottom:1rem; color:#60a5fa;">Buat Akun Administrator Gedung Baru</h3>
                         <form id="saAddAdminForm">
                             <div class="form-row">
                                 <div class="form-group flex-1">
-                                    <label>Nama Administrator / Instansi</label>
-                                    <input type="text" id="newAdminName" placeholder="Contoh: Toko Berkah / Rumah Utama" required>
+                                    <label>Nama Gedung / Instansi</label>
+                                    <input type="text" id="newAdminName" placeholder="Contoh: Gedung Tower A / Toko Sentosa" required>
                                 </div>
                                 <div class="form-group flex-1">
                                     <label>Username Login</label>
-                                    <input type="text" id="newAdminUsername" placeholder="Contoh: admin_toko" required>
+                                    <input type="text" id="newAdminUsername" placeholder="Contoh: admin_gedunga" required>
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group flex-1">
                                     <label>Password</label>
                                     <input type="password" id="newAdminPassword" placeholder="Minimal 4 karakter" required>
+                                </div>
+                                <div class="form-group flex-1">
+                                    <label>Batas Kuota Kamera (max_cameras)</label>
+                                    <input type="number" id="newAdminMaxCameras" value="8" min="1" max="64" required>
+                                    <small style="color:var(--text-muted); font-size:0.75rem;">Maksimal kamera yang boleh dipasang admin ini.</small>
+                                </div>
+                                <div class="form-group flex-1">
+                                    <label>Batas Kuota Storage (GB)</label>
+                                    <input type="number" id="newAdminMaxStorageGB" value="100" min="1" max="10000" required>
+                                    <small style="color:var(--text-muted); font-size:0.75rem;">Maksimal kuota rekaman (GB) untuk gedung ini.</small>
                                 </div>
                             </div>
                             <div style="display:flex; gap:0.75rem; justify-content:flex-end; margin-top:0.5rem;">
@@ -167,22 +177,58 @@
                         </form>
                     </div>
 
+                    <!-- Modal Edit Kuota Administrator -->
+                    <div id="modalEditQuota" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:9999; justify-content:center; align-items:center;">
+                        <div style="background:var(--surface); border:1px solid var(--border-highlight); border-radius:10px; padding:1.75rem; width:92%; max-width:500px; box-shadow:0 15px 35px rgba(0,0,0,0.6);">
+                            <h3 style="margin-top:0; color:#60a5fa; font-size:1.15rem; display:flex; align-items:center; gap:0.5rem;">
+                                <span>⚙️</span> Edit Kuota Administrator Gedung
+                            </h3>
+                            <p id="editQuotaAdminInfo" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.25rem;"></p>
+                            <form id="formEditQuota">
+                                <input type="hidden" id="editAdminId">
+                                <div class="form-group" style="margin-bottom:0.85rem;">
+                                    <label>Nama Gedung / Instansi</label>
+                                    <input type="text" id="editAdminName" required>
+                                </div>
+                                <div class="form-row" style="display:flex; gap:0.75rem; margin-bottom:0.85rem;">
+                                    <div class="form-group flex-1">
+                                        <label>Batas Kuota Kamera</label>
+                                        <input type="number" id="editAdminMaxCameras" min="1" max="64" required>
+                                    </div>
+                                    <div class="form-group flex-1">
+                                        <label>Batas Storage (GB)</label>
+                                        <input type="number" id="editAdminMaxStorageGB" min="1" max="10000" required>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="margin-bottom:1.25rem;">
+                                    <label>Reset Password (Opsional)</label>
+                                    <input type="password" id="editAdminPassword" placeholder="Biarkan kosong jika tidak diubah">
+                                </div>
+                                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                                    <button type="button" id="btnCancelEditQuota" class="btn btn-secondary">Batal</button>
+                                    <button type="submit" class="btn btn-primary" style="background:#8b5cf6;">Simpan Perubahan</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     <div style="overflow-x:auto;">
                         <table style="width:100%; border-collapse:collapse; font-size:0.9rem; text-align:left;">
                             <thead>
                                 <tr style="border-bottom:1px solid var(--border); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">
                                     <th style="padding:0.75rem 1rem;">ID</th>
-                                    <th style="padding:0.75rem 1rem;">Nama</th>
+                                    <th style="padding:0.75rem 1rem;">Nama Gedung</th>
                                     <th style="padding:0.75rem 1rem;">Username</th>
-                                    <th style="padding:0.75rem 1rem;">Kamera</th>
+                                    <th style="padding:0.75rem 1rem;">Kuota Kamera</th>
+                                    <th style="padding:0.75rem 1rem;">Kuota Storage</th>
                                     <th style="padding:0.75rem 1rem;">User Klien</th>
-                                    <th style="padding:0.75rem 1rem;">Tanggal Registrasi</th>
+                                    <th style="padding:0.75rem 1rem;">Terdaftar</th>
                                     <th style="padding:0.75rem 1rem; text-align:right;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="saAdminTableBody">
                                 <tr>
-                                    <td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">Memuat daftar administrator...</td>
+                                    <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">Memuat daftar administrator...</td>
                                 </tr>
                             </tbody>
                         </table>
