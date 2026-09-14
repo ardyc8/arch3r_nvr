@@ -198,6 +198,29 @@
                     <p>Informasi server, database, dan kembalikan ke pengaturan pabrik.</p>
                 </div>
                 <div class="view-content" style="max-width:800px; padding:1.5rem;">
+                    
+                    <div class="camera-form-section" style="margin-bottom:1.5rem; border-color:#3b82f6;">
+                        <h3 style="margin:0 0 0.5rem 0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem; color:#3b82f6;">
+                            <span>💾</span> Backup & Restore Konfigurasi
+                        </h3>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
+                            Cadangkan pengaturan kamera, akun, lisensi, dan penyimpanan NVR ke dalam 1 file JSON yang bisa di-restore kapan saja.
+                        </p>
+                        <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:200px; background:rgba(59,130,246,0.1); padding:1rem; border-radius:6px; border:1px solid #1e3a8a;">
+                                <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:#60a5fa;">Export / Backup</h4>
+                                <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Unduh konfigurasi saat ini.</p>
+                                <button id="btnSaBackup" class="btn btn-secondary" style="background:#3b82f6; color:#fff; border:none; width:100%; font-size:0.85rem;">📥 Unduh Backup (.json)</button>
+                            </div>
+                            <div style="flex:1; min-width:200px; background:rgba(245,158,11,0.1); padding:1rem; border-radius:6px; border:1px solid #78350f;">
+                                <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:#fbbf24;">Import / Restore</h4>
+                                <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Pulihkan dari file JSON.</p>
+                                <input type="file" id="fileSaRestore" accept=".json" style="display:none;">
+                                <button id="btnSaRestore" class="btn btn-secondary" style="background:#f59e0b; color:#fff; border:none; width:100%; font-size:0.85rem;" onclick="document.getElementById('fileSaRestore').click()">📤 Unggah & Restore</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="camera-form-section" style="border-color:#f43f5e;">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
                             <div style="flex:1;">

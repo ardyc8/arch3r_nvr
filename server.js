@@ -476,6 +476,30 @@ app.get('/api/superadmin/license-info', verifyToken, requireSuperadmin, (req, re
     });
 });
 
+
+app.get('/api/superadmin/backup', verifyToken, requireSuperadmin, (req, res) => {
+    const db = getNvrDb();
+    res.setHeader('Content-disposition', 'attachment; filename=arch3r_nvr_backup.json');
+    res.setHeader('Content-type', 'application/json');
+    res.send(JSON.stringify(db, null, 2));
+});
+
+app.post('/api/superadmin/restore', express.json({limit: '10mb'}), verifyToken, requireSuperadmin, (req, res) => {
+    try {
+        const data = req.body;
+        if (!data || !data.super_settings || !data.administrators) {
+             return res.status(400).json({ error: "Format file backup tidak valid!" });
+        }
+        
+        // Cek jika trial & install_date missing, jangan ditimpa sembarangan, tapi karna ini restore, allow it.
+        saveNvrDb(data);
+        res.json({ message: "Konfigurasi NVR berhasil dipulihkan dari Backup!" });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: "Gagal memproses data backup" });
+    }
+});
+
 app.get('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) => {
     const dbData = getNvrDb();
     res.json(dbData.super_settings || getDefaultDb().super_settings);

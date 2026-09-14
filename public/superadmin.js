@@ -418,3 +418,72 @@
 
     checkAuth();
 });
+
+
+    const btnSaBackup = document.getElementById('btnSaBackup');
+    if (btnSaBackup) {
+        btnSaBackup.addEventListener('click', async () => {
+            const token = localStorage.getItem('sa_token');
+            if (!token) return;
+            
+            try {
+                // Using modern fetch API to trigger download
+                const res = await fetch('/api/superadmin/backup', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'arch3r_nvr_backup.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert('Gagal mengunduh backup');
+                }
+            } catch (err) {
+                alert('Kesalahan jaringan: ' + err.message);
+            }
+        });
+    }
+
+    const fileSaRestore = document.getElementById('fileSaRestore');
+    if (fileSaRestore) {
+        fileSaRestore.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (!confirm('Peringatan: Me-restore pengaturan akan menimpa seluruh konfigurasi NVR saat ini (Kamera, Akun, Lisensi). Lanjutkan?')) {
+                fileSaRestore.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    const jsonPayload = JSON.parse(ev.target.result);
+                    const res = await authFetch('/api/superadmin/restore', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(jsonPayload)
+                    });
+                    
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(data.message || 'Restore Berhasil!');
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'Gagal restore data');
+                    }
+                } catch (err) {
+                    alert('Gagal membaca file JSON: ' + err.message);
+                }
+                fileSaRestore.value = '';
+            };
+            reader.readAsText(file);
+        });
+    }
