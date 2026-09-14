@@ -1102,7 +1102,7 @@ function spawnRecordingFFmpeg(cam) {
         ];
     }
 
-    // Perintah copy stream ringan (-c:v copy -c:a copy) khusus untuk perekaman lokal/USB
+    // Perintah copy stream ringan (-c:v copy -an) khusus untuk perekaman lokal/USB
     const args = [
         '-y',
         '-loglevel', 'warning',
@@ -1120,7 +1120,7 @@ function spawnRecordingFFmpeg(cam) {
         path.join(recBase, "%Y-%m-%d_%H-%M-%S.mp4")
     ];
 
-    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (-c:v copy -c:a copy) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`, 'CAMERA');
+    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (-c:v copy -an) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`, 'CAMERA');
 
     const child = spawn('ffmpeg', args);
     child.killedByUser = false;
