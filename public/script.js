@@ -93,7 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     
-    window.renderRecordCameraList = function() {
+
+
+        window.renderRecordCameraList = function() {
         const list = document.getElementById('recordCameraList');
         if(!list) return;
         
@@ -2042,3 +2044,5 @@ let allLogsCache = [];
 
     checkAuth();
 });
+
+
