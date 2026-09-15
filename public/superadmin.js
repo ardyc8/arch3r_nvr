@@ -501,8 +501,6 @@
         });
     }
 
-    checkAuth();
-});
 
 
     const btnSaBackup = document.getElementById('btnSaBackup');
@@ -675,3 +673,5 @@
         });
     }
 
+checkAuth();
+});
