@@ -582,8 +582,10 @@
     const inputOtaUrl = document.getElementById('otaGithubUrl');
 
     if (btnSaveOta) {
-        btnSaveOta.addEventListener('click', async () => {
+        btnSaveOta.addEventListener('click', async (e) => {
+            e.preventDefault(); // In case it's behaving like a submit button inside some invisible form
             const otaUrl = inputOtaUrl.value.trim();
+            console.log("[DEBUG] Menyimpan OTA URL:", otaUrl);
             
             btnSaveOta.textContent = "⏳ Menyimpan...";
             try {
@@ -596,12 +598,15 @@
                 });
                 if (res.ok) {
                     btnSaveOta.textContent = "✅ Tersimpan";
+                    alert("Berhasil! URL OTA Update telah disimpan.");
                     setTimeout(() => btnSaveOta.textContent = "💾 Simpan URL", 2000);
                 } else {
                     btnSaveOta.textContent = "❌ Gagal";
+                    alert("Gagal menyimpan URL OTA. Server mengembalikan error.");
                 }
-            } catch (e) {
+            } catch (err) {
                 btnSaveOta.textContent = "❌ Error";
+                alert("Terjadi kesalahan saat menyimpan URL: " + err.message);
             }
         });
     }
