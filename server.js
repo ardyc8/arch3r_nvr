@@ -792,7 +792,7 @@ app.delete('/api/admin/users/:id', verifyToken, requireAdministrator, (req, res)
 async function syncRecordingsToDB() {
     const cams = getCameras();
     const dbData = getNvrDb();
-    dbData.recordings = [];
+    const newRecordings = [];
     
     for (const cam of cams) {
         if (cam.recordMode !== 'continuous') continue;
@@ -810,7 +810,7 @@ async function syncRecordingsToDB() {
                     } else if (item.isFile() && (item.name.endsWith(".mp4") || item.name.endsWith(".ts"))) {
                         try {
                             const stats = await fs.promises.stat(fullPath);
-                            dbData.recordings.push({
+                            newRecordings.push({
                                 id: `${cam.id}_${item.name}`,
                                 camera_id: cam.id,
                                 file_path: fullPath,
@@ -826,6 +826,7 @@ async function syncRecordingsToDB() {
             sysLog('ERROR', `Sync failed for ${cam.id}: ${e.message}`, 'CAMERA');
         }
     }
+    dbData.recordings = newRecordings;
     saveNvrDb(dbData);
     await enforceAdminStorageQuotas();
 }
@@ -1765,8 +1766,9 @@ app.get('/api/recordings/:camId/:date/:filename', verifyToken, (req, res) => {
     }
 });
 
-app.get('/api/recordings', verifyToken, (req, res) => {
+app.get('/api/recordings', verifyToken, async (req, res) => {
     try {
+        await syncRecordingsToDB();
         const authorizedCams = getAuthorizedCamerasForReq(req);
         const allowedCamIds = new Set(authorizedCams.map(c => c.id));
         const result = {};

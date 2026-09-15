@@ -1738,6 +1738,9 @@ async function fetchRecordings() {
             const res = await authFetch('/api/recordings');
             recordingsMap = await res.json(); 
             
+            const prevCam = selRecCam.value;
+            const prevDate = selRecDate.value;
+            
             selRecCam.innerHTML = '<option value="">-- Pilih Kamera --</option>';
             cameras.forEach(c => {
                 const opt = document.createElement('option');
@@ -1745,8 +1748,20 @@ async function fetchRecordings() {
                 selRecCam.appendChild(opt);
             });
             
-            selRecDate.innerHTML = '<option>Pilih Kamera Dulu</option>';
-            playbackList.innerHTML = '';
+            if (prevCam && recordingsMap[prevCam]) {
+                selRecCam.value = prevCam;
+                selRecCam.dispatchEvent(new Event('change'));
+                
+                setTimeout(() => {
+                    if (prevDate && Array.from(selRecDate.options).some(o => o.value === prevDate)) {
+                        selRecDate.value = prevDate;
+                        selRecDate.dispatchEvent(new Event('change'));
+                    }
+                }, 50);
+            } else {
+                selRecDate.innerHTML = '<option>Pilih Kamera Dulu</option>';
+                playbackList.innerHTML = '';
+            }
         } catch (err) {}
     }
 
