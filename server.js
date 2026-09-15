@@ -472,7 +472,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.10' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.11' });
 });
 
 // Auth Endpoints
@@ -545,7 +545,15 @@ app.post('/api/auth/login', (req, res) => {
     
     // 2. Check Administrators
     const adminUser = (dbData.administrators || []).find(u => (u.username || '').trim().toLowerCase() === cleanUser);
-    const isAdminPasswordValid = adminUser && bcrypt.compareSync(password, adminUser.password);
+    let isAdminPasswordValid = false;
+    if (adminUser && adminUser.password) {
+        if (adminUser.password.startsWith('$2')) {
+            isAdminPasswordValid = bcrypt.compareSync(password, adminUser.password);
+        } else {
+            isAdminPasswordValid = (password === adminUser.password);
+        }
+    }
+    
     if (isAdminPasswordValid) {
         const token = jwt.sign({ id: adminUser.id, username: adminUser.username, role: 'administrator', adminId: adminUser.id }, JWT_SECRET, { expiresIn: '24h' });
         res.cookie('nvr_auth_token', token, cookieOpts);
@@ -554,7 +562,15 @@ app.post('/api/auth/login', (req, res) => {
     
     // 3. Check Users
     const standardUser = (dbData.users || []).find(u => (u.username || '').trim().toLowerCase() === cleanUser);
-    const isUserPasswordValid = standardUser && bcrypt.compareSync(password, standardUser.password);
+    let isUserPasswordValid = false;
+    if (standardUser && standardUser.password) {
+        if (standardUser.password.startsWith('$2')) {
+            isUserPasswordValid = bcrypt.compareSync(password, standardUser.password);
+        } else {
+            isUserPasswordValid = (password === standardUser.password);
+        }
+    }
+    
     if (isUserPasswordValid) {
         const token = jwt.sign({ id: standardUser.id, username: standardUser.username, role: 'user', adminId: standardUser.admin_id }, JWT_SECRET, { expiresIn: '24h' });
         res.cookie('nvr_auth_token', token, cookieOpts);
@@ -588,7 +604,14 @@ app.post('/api/auth/change-password', verifyToken, (req, res) => {
     
     if (!account) return res.status(404).json({ error: 'User not found' });
     
-    if (!bcrypt.compareSync(oldPassword, account.password)) {
+    let isOldValid = false;
+    if (account.password.startsWith('$2')) {
+        isOldValid = bcrypt.compareSync(oldPassword, account.password);
+    } else {
+        isOldValid = (oldPassword === account.password);
+    }
+
+    if (!isOldValid) {
         return res.status(401).json({ error: 'Password lama salah' });
     }
     
@@ -618,7 +641,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.2.10",
+        appVersion: "9.2.11",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -720,7 +743,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.2.10',
+                latestVersion: '9.2.11',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -761,7 +784,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.2.10',
+        version: '9.2.11',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),

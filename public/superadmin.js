@@ -263,8 +263,6 @@
 
 
     // Save P2P Relay
-    const saP2pForm = document.getElementById('saP2pForm');
-    const saP2pHost = document.getElementById('saP2pHost');
     if (saP2pForm) {
         saP2pForm.addEventListener('submit', async (e) => {
             e.preventDefault();
