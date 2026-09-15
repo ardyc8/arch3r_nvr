@@ -1,12 +1,13 @@
 {
   "name": "archer-nvr",
   "private": true,
-  "version": "9.0.1",
+  "version": "9.2.6",
   "type": "module",
   "scripts": {
     "dev": "node server.js",
-    "build": "echo 'No build step needed'",
     "start": "node server.js",
+    "build:linux-arm64": "bun build ./server.js --compile --target=bun-linux-arm64 --outfile=archer-nvr-arm64",
+    "build:linux-x64": "bun build ./server.js --compile --target=bun-linux-x64 --outfile=archer-nvr-x64",
     "clean": "rm -rf dist server.js",
     "lint": "echo 'Skipping lint'"
   },

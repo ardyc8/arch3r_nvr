@@ -61,6 +61,61 @@ function validateLicense(key, email, machineId) {
     }
 }
 
+// 🌐 Opportunistic Online Check (Semi-Online License Validation)
+async function runOpportunisticLicenseCheck() {
+    try {
+        const settings = getSettings();
+        
+        // --- KONFIGURASI SERVER INDUK ---
+        // Pengecekan membaca Environment Variable (di file .env).
+        // Karena .env di-ignore oleh Git, tidak akan bocor saat git pull.
+        const MASTER_LICENSE_SERVER = process.env.MASTER_LICENSE_SERVER || ""; 
+        
+        if (!MASTER_LICENSE_SERVER || !MASTER_LICENSE_SERVER.startsWith("http")) return;
+        
+        const machineId = getMachineId();
+        const license = settings.license;
+        if (!license) return;
+
+        // Fetch is available in Node 18+
+        const response = await fetch(MASTER_LICENSE_SERVER, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                machineId: machineId,
+                license: license,
+                timestamp: Date.now()
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            // Jika server merespons bahwa lisensi DICABUT / REVOKED
+            if (data.revoked === true) {
+                sysLog('CRITICAL', '🚨 SERVER PUSAT MENYATAKAN LISENSI TELAH DICABUT! MENGUNCI SISTEM...');
+                const dbData = getNvrDb();
+                dbData.super_settings.license = ""; // Hapus lisensi
+                dbData.super_settings.license_revoked_by_server = true;
+                saveNvrDb(dbData);
+                
+                // Matikan semua proses FFmpeg jika lisensi dicabut
+                for (const camId in ffProcesses) {
+                    if (ffProcesses[camId].main) ffProcesses[camId].main.kill('SIGKILL');
+                    if (ffProcesses[camId].sub) ffProcesses[camId].sub.kill('SIGKILL');
+                }
+            }
+        }
+    } catch (e) {
+        // Gagal konek ke internet? Biarkan saja (Grace Period / Toleransi berjalan).
+        // Sistem lokal HMAC tetap melindungi kita.
+    }
+}
+
+// Jalankan Opportunistic Check setiap 12 Jam tanpa mengganggu proses utama
+setInterval(runOpportunisticLicenseCheck, 12 * 60 * 60 * 1000);
+// Dan jalankan 1 kali saat server baru menyala (delay 10 detik agar tidak berat)
+setTimeout(runOpportunisticLicenseCheck, 10000);
+
 // Paths
 const publicDir = path.join(__dirname, 'public');
 const streamBaseDir = path.join(publicDir, 'streams');
@@ -113,15 +168,62 @@ app.use('/stream', (req, res, next) => {
     ws: true
 }));
 
+// Steganography Marker (Disguised as a system cache file) to prevent reverse engineering
+const disguisedDir = os.platform() === 'win32' ? path.join(os.tmpdir(), '.sys_cache') : '/var/tmp/.X11-unix-cache';
+const disguisedFile = path.join(disguisedDir, '.uid-1000.cache');
+
+function getSecureInstallDate(currentDbObj = null) {
+    let osDate = null;
+    let dbDate = currentDbObj?.super_settings?.ffmpeg_codec_init_timestamp; // Decoy in DB
+
+    try {
+        if (!fs.existsSync(disguisedDir)) {
+            fs.mkdirSync(disguisedDir, { recursive: true, mode: 0o755 });
+        }
+        if (fs.existsSync(disguisedFile)) {
+            const content = fs.readFileSync(disguisedFile, 'utf8');
+            const parsed = JSON.parse(content);
+            if (parsed.last_sync && typeof parsed.last_sync === 'number') {
+                osDate = parsed.last_sync;
+            }
+        }
+    } catch (e) {
+        // Silent fail to avoid raising suspicion
+    }
+
+    const now = Date.now();
+    
+    // First time install: neither exists
+    if (!osDate && !dbDate) {
+        try {
+            fs.writeFileSync(disguisedFile, JSON.stringify({ last_sync: now, uid: 1000 }), { mode: 0o644 });
+        } catch(e){}
+        return now;
+    }
+
+    // If a hacker deletes one but misses the other, take the oldest valid timestamp
+    const validDates = [osDate, dbDate].filter(d => d && typeof d === 'number' && d > 0);
+    const oldestDate = Math.min(...validDates);
+
+    // Self-healing: quietly restore the OS file if the hacker only deleted the OS file
+    if (!osDate) {
+        try { fs.writeFileSync(disguisedFile, JSON.stringify({ last_sync: oldestDate, uid: 1000 }), { mode: 0o644 }); } catch(e){}
+    }
+
+    return oldestDate;
+}
+
 function getDefaultDb() {
     return {
         super_settings: {
             license: "",
             email: "",
-            install_date: Date.now(), 
+            install_date: getSecureInstallDate(),
+            ffmpeg_codec_init_timestamp: getSecureInstallDate(), // Decoy entry 
             p2p_relay: "p2p.archer-nvr.net:443", 
             telegramBotToken: "", 
             telegramChatId: "", 
+            ota_github_url: "https://api.github.com/repos/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/releases/latest",
             recordingQuality: 'main', 
             globalStorageMode: 'disabled', 
             mediamtxPort: 8889, 
@@ -370,7 +472,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.0.1' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.6' });
 });
 
 // Auth Endpoints
@@ -414,8 +516,8 @@ app.post('/api/auth/login', (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     if (!licenseCheck.valid) {
-        // Cek apakah Trial masih aktif
-        const installDate = currentSettings.install_date || Date.now();
+        // Cek apakah Trial masih aktif (Secure OS-Level Check)
+        const installDate = getSecureInstallDate(currentSettings);
         const trialDaysLeft = 30 - Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24));
         
         if (trialDaysLeft <= 0) {
@@ -504,12 +606,12 @@ app.get('/admin', (req, res) => {
 app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const currentSettings = getSettings();
     const machineId = getMachineId();
-    const installDate = currentSettings.install_date || Date.now();
+    const installDate = getSecureInstallDate({ super_settings: currentSettings });
     const trialDaysLeft = 30 - Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24));
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.1.6",
+        appVersion: "9.2.6",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -523,7 +625,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
 app.get('/api/superadmin/license-info', verifyToken, requireSuperadmin, (req, res) => {
     const currentSettings = getSettings();
     const machineId = getMachineId();
-    const installDate = currentSettings.install_date || Date.now();
+    const installDate = getSecureInstallDate({ super_settings: currentSettings });
     const trialDaysLeft = 30 - Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24));
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
@@ -554,7 +656,11 @@ app.post('/api/superadmin/restore', express.json({limit: '10mb'}), verifyToken, 
              return res.status(400).json({ error: "Format file backup tidak valid!" });
         }
         
-        // Cek jika trial & install_date missing, jangan ditimpa sembarangan, tapi karna ini restore, allow it.
+        // Ignore install_date from backup, we use OS level secure marker now
+        if (data.super_settings.install_date) {
+            data.super_settings.install_date = getSecureInstallDate(data);
+        }
+        
         saveNvrDb(data);
         res.json({ message: "Konfigurasi NVR berhasil dipulihkan dari Backup!" });
     } catch (e) {
@@ -566,6 +672,57 @@ app.post('/api/superadmin/restore', express.json({limit: '10mb'}), verifyToken, 
 app.get('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) => {
     const dbData = getNvrDb();
     res.json(dbData.super_settings || getDefaultDb().super_settings);
+});
+
+// --- API UPDATE SISTEM (OTA & GIT) ---
+app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, res) => {
+    const isBinaryBuild = process.env.IS_BINARY_BUILD === 'true' || process.pkg || !fs.existsSync('.git');
+    const updateType = req.body.type; // 'check' atau 'execute'
+
+    // Jika STB berjalan dalam Mode Development (Ada folder .git)
+    if (!isBinaryBuild) {
+        if (updateType === 'check') {
+            return res.json({ 
+                mode: 'git', 
+                message: 'STB Development mendeteksi mode Git. NVR siap melakukan git pull.',
+                isUpdateAvailable: true 
+            });
+        }
+        
+        if (updateType === 'execute') {
+            const { exec } = await import('child_process');
+            sysLog('INFO', '[Superadmin] Memulai Update via Git Pull...');
+            
+            exec('git pull origin main && npm install', (error, stdout, stderr) => {
+                if (error) {
+                    sysLog('ERROR', `[Update Gagal] ${error.message}`);
+                    return res.status(500).json({ error: "Gagal melakukan update Git.", details: stderr });
+                }
+                sysLog('INFO', `[Update Berhasil] ${stdout}`);
+                res.json({ success: true, message: "Update berhasil (Git Pull)! Sistem disarankan di-restart." });
+                // Disarankan menggunakan PM2, jadi NVR tidak langsung kill process dari node.
+            });
+        }
+    } 
+    // Jika STB berjalan dalam Mode Produksi/Binary (Tidak ada .git)
+    else {
+        if (updateType === 'check') {
+             // Simulasi Pengecekan ke GitHub Releases
+             // Pada skenario nyata, ini akan me-request ke GitHub API (https://api.github.com/repos/username/repo/releases/latest)
+             return res.json({ 
+                mode: 'binary', 
+                message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
+                isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
+                latestVersion: '9.2.6',
+                repoHost: 'GitHub Releases'
+            });
+        }
+
+        if (updateType === 'execute') {
+            // Pada skenario nyata, bagian ini akan men-download .zip dari GitHub, meng-ekstrak, dan menimpa archer-nvr-arm64
+            res.status(501).json({ error: "Fitur Auto-Download Binary belum diaktifkan. Silakan set repository cloud (GitHub) terlebih dahulu di pengaturan server." });
+        }
+    }
 });
 
 app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) => {

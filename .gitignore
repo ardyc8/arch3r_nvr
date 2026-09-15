@@ -13,3 +13,8 @@ public/streams/
 *.log
 nvr.db.json
 keygen.js
+
+# Build Binaries
+archer-nvr-arm64
+archer-nvr-x64
+TUTORIAL_PRODUKSI.md

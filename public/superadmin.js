@@ -194,6 +194,9 @@
             const elP2p = document.getElementById('saP2pHost');
             if(elP2p) elP2p.value = data.settings.p2p_relay || 'p2p.archer-nvr.net:443';
             
+            const elOtaUrl = document.getElementById('otaGithubUrl');
+            if(elOtaUrl) elOtaUrl.value = data.settings.ota_github_url || 'https://api.github.com/repos/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/releases/latest';
+
             const badge = document.getElementById('saLicenseBadge');
             const trialBox = document.getElementById('trialInfoBox');
             
@@ -569,3 +572,101 @@
             reader.readAsText(file);
         });
     }
+    
+    // --- UPDATE SYSTEM LOGIC ---
+    const btnCheckUpdate = document.getElementById('btnSaCheckUpdate');
+    const btnExecuteUpdate = document.getElementById('btnSaExecuteUpdate');
+    const btnSaveOta = document.getElementById('btnSaSaveOta');
+    const updateStatusText = document.getElementById('saUpdateStatusText');
+    const updateDescText = document.getElementById('saUpdateDescText');
+    const inputOtaUrl = document.getElementById('otaGithubUrl');
+
+    if (btnSaveOta) {
+        btnSaveOta.addEventListener('click', async () => {
+            const otaUrl = inputOtaUrl.value.trim();
+            
+            btnSaveOta.textContent = "⏳ Menyimpan...";
+            try {
+                const res = await authFetch('/api/superadmin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        ota_github_url: otaUrl
+                    })
+                });
+                if (res.ok) {
+                    btnSaveOta.textContent = "✅ Tersimpan";
+                    setTimeout(() => btnSaveOta.textContent = "💾 Simpan URL", 2000);
+                } else {
+                    btnSaveOta.textContent = "❌ Gagal";
+                }
+            } catch (e) {
+                btnSaveOta.textContent = "❌ Error";
+            }
+        });
+    }
+
+    if (btnCheckUpdate) {
+        btnCheckUpdate.addEventListener('click', async () => {
+            try {
+                btnCheckUpdate.textContent = "⏳ Memeriksa...";
+                const res = await authFetch('/api/superadmin/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'check' })
+                });
+                const data = await res.json();
+                
+                if (data.mode === 'git') {
+                    updateStatusText.innerHTML = `Mode STB: <span class="badge" style="background:#10b981;">Development (Git)</span>`;
+                    updateDescText.textContent = data.message;
+                    btnCheckUpdate.style.display = 'none';
+                    btnExecuteUpdate.style.display = 'block';
+                } else if (data.mode === 'binary') {
+                    updateStatusText.innerHTML = `Mode STB: <span class="badge" style="background:#8b5cf6;">Production (Binary)</span>`;
+                    updateDescText.textContent = data.message;
+                    if (data.isUpdateAvailable) {
+                        btnCheckUpdate.style.display = 'none';
+                        btnExecuteUpdate.style.display = 'block';
+                    } else {
+                         btnCheckUpdate.textContent = "✅ NVR Sudah Versi Terbaru";
+                    }
+                }
+            } catch (err) {
+                 btnCheckUpdate.textContent = "❌ Gagal Memeriksa";
+                 alert(err.message);
+            }
+        });
+    }
+
+    if (btnExecuteUpdate) {
+        btnExecuteUpdate.addEventListener('click', async () => {
+            if (!confirm("Apakah Anda yakin ingin memulai update sistem? Proses ini mungkin membuat NVR offline sesaat.")) return;
+            
+            try {
+                btnExecuteUpdate.textContent = "⏳ Mengunduh & Update...";
+                btnExecuteUpdate.disabled = true;
+                
+                const res = await authFetch('/api/superadmin/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'execute' })
+                });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    alert(data.message + "\n\nHarap restart NVR (PM2 / SystemD) secara manual.");
+                    btnExecuteUpdate.textContent = "✅ Update Berhasil";
+                } else {
+                    alert(data.error || 'Gagal update');
+                    btnExecuteUpdate.textContent = "❌ Gagal Update";
+                }
+            } catch (err) {
+                 alert(err.message);
+                 btnExecuteUpdate.textContent = "❌ Gagal Mengeksekusi";
+            } finally {
+                 btnExecuteUpdate.disabled = false;
+            }
+        });
+    }
+
