@@ -1,5 +1,10 @@
 node_modules/
 .env
+
+# ==================================================
+# SEMENTARA DI-COMMENT AGAR TERSIMPAN SELAMA PROSES DEBUG/FIXING
+# ==================================================
+
 cameras.json
 settings.json
 data/
@@ -8,4 +13,3 @@ public/streams/
 *.log
 nvr.db.json
 keygen.js
-AGENTS.md

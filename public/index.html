@@ -37,31 +37,6 @@
             </form>
 
             <div id="authError" style="color:var(--accent); text-align:center; margin-top:0.75rem; font-size:0.85rem; font-weight:500;"></div>
-
-            <!-- QUICK DEMO SELECTOR FOR MULTI-TENANT ROLES -->
-            <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1);">
-                <div style="font-size:0.75rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.6rem; text-align:center;">
-                    ⚡ Uji Coba Cepat Multi-Tenant (Klik Akun):
-                </div>
-                <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                    <button type="button" class="btn-demo-acc" onclick="fillAuth('superadmin', 'archer')" style="background:rgba(139,92,246,0.12); border:1px solid rgba(139,92,246,0.3); color:#c4b5fd; padding:6px 10px; border-radius:6px; font-size:0.78rem; text-align:left; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                        <span>👑 <strong>Superadmin</strong> (Kelola Server & Kuota)</span>
-                        <span style="font-size:0.7rem; opacity:0.8;">superadmin / archer</span>
-                    </button>
-                    <button type="button" class="btn-demo-acc" onclick="fillAuth('Arch3r', 'admin123')" style="background:rgba(37,99,235,0.12); border:1px solid rgba(37,99,235,0.3); color:#93c5fd; padding:6px 10px; border-radius:6px; font-size:0.78rem; text-align:left; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                        <span>🏢 <strong>Admin Gedung Utama</strong> (Kuota 4 Cam)</span>
-                        <span style="font-size:0.7rem; opacity:0.8;">Arch3r / admin123</span>
-                    </button>
-                    <button type="button" class="btn-demo-acc" onclick="fillAuth('admin_b', 'password123')" style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.3); color:#6ee7b7; padding:6px 10px; border-radius:6px; font-size:0.78rem; text-align:left; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                        <span>🏢 <strong>Admin Gedung B</strong> (Kuota 2 Cam)</span>
-                        <span style="font-size:0.7rem; opacity:0.8;">admin_b / password123</span>
-                    </button>
-                    <button type="button" class="btn-demo-acc" onclick="fillAuth('staff_a', 'password123')" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fcd34d; padding:6px 10px; border-radius:6px; font-size:0.78rem; text-align:left; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                        <span>👤 <strong>Staff Satpam</strong> (Read-Only 1 Cam)</span>
-                        <span style="font-size:0.7rem; opacity:0.8;">staff_a / password123</span>
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 

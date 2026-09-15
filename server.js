@@ -370,7 +370,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.0.0' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.0.1' });
 });
 
 // Auth Endpoints
