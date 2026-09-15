@@ -263,24 +263,59 @@
 
 
     // Save P2P Relay
-    saP2pForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const p2p_relay = saP2pHost.value.trim();
-        try {
-            const res = await authFetch('/api/superadmin/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ p2p_relay })
-            });
-            if (res.ok) {
-                alert('Server P2P Relay berhasil diperbarui!');
-            } else {
-                alert('Gagal memperbarui server P2P.');
+    const saP2pForm = document.getElementById('saP2pForm');
+    const saP2pHost = document.getElementById('saP2pHost');
+    if (saP2pForm) {
+        saP2pForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const p2p_relay = saP2pHost.value.trim();
+            try {
+                const res = await authFetch('/api/superadmin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ p2p_relay })
+                });
+                if (res.ok) {
+                    alert('Server P2P Relay berhasil diperbarui!');
+                } else {
+                    alert('Gagal memperbarui server P2P.');
+                }
+            } catch (err) {
+                alert('Kesalahan koneksi saat memperbarui P2P.');
             }
-        } catch (err) {
-            alert('Kesalahan koneksi saat memperbarui P2P.');
-        }
-    });
+        });
+    }
+
+    // Change Superadmin Credentials
+    const saCredForm = document.getElementById('saCredForm');
+    if (saCredForm) {
+        saCredForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newUsername = document.getElementById('saCredUser').value.trim();
+            const newPassword = document.getElementById('saCredPass').value.trim();
+            
+            if (!confirm('Peringatan: Mengubah kredensial ini akan menimpa login default superadmin. Pastikan Anda mencatatnya! Lanjutkan?')) return;
+            
+            try {
+                const res = await authFetch('/api/superadmin/change-credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newUsername, newPassword })
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                    localStorage.removeItem('nvr_auth_token');
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Gagal mengubah kredensial.');
+                }
+            } catch (err) {
+                alert('Kesalahan jaringan: ' + err.message);
+            }
+        });
+    }
 
     // Load Administrators
     async function loadAdmins() {

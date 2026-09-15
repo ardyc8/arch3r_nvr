@@ -472,7 +472,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.9' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.10' });
 });
 
 // Auth Endpoints
@@ -506,8 +506,15 @@ app.post('/api/auth/login', (req, res) => {
     };
     
     // 1. Check Superadmin
+    const dbDataAuth = getNvrDb();
+    const superSettings = dbDataAuth.super_settings || {};
     
-    const isSuperadmin = ((username === 'admin@archer.nvr' || username === 'superadmin') && (password === 'archer' || password === 'superadmin'));
+    let isSuperadmin = false;
+    if (superSettings.super_username && superSettings.super_password) {
+        isSuperadmin = (username === superSettings.super_username) && bcrypt.compareSync(password, superSettings.super_password);
+    } else {
+        isSuperadmin = ((username === 'admin@archer.nvr' || username === 'superadmin') && (password === 'archer' || password === 'superadmin'));
+    }
 
     if (!isSuperadmin) {
         
@@ -611,7 +618,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.2.9",
+        appVersion: "9.2.10",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -713,7 +720,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.2.9',
+                latestVersion: '9.2.10',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -723,6 +730,23 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
             res.status(501).json({ error: "Fitur Auto-Download Binary belum diaktifkan. Silakan set repository cloud (GitHub) terlebih dahulu di pengaturan server." });
         }
     }
+});
+
+app.post('/api/superadmin/change-credentials', verifyToken, requireSuperadmin, (req, res) => {
+    const { newUsername, newPassword } = req.body;
+    if (!newUsername || !newPassword) {
+        return res.status(400).json({ error: "Username dan Password baru wajib diisi." });
+    }
+
+    const dbData = getNvrDb();
+    if (!dbData.super_settings) dbData.super_settings = {};
+
+    dbData.super_settings.super_username = newUsername;
+    dbData.super_settings.super_password = bcrypt.hashSync(newPassword, 10);
+    
+    saveNvrDb(dbData);
+    sysLog('INFO', '[Superadmin] Kredensial Superadmin berhasil diubah.');
+    res.json({ success: true, message: 'Kredensial Superadmin berhasil diubah. Silakan login kembali.' });
 });
 
 app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) => {
@@ -737,7 +761,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.2.9',
+        version: '9.2.10',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
