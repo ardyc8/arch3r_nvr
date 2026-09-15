@@ -342,15 +342,15 @@ function getAuthorizedCamerasForReq(req) {
     const dbData = getNvrDb();
     const allCams = dbData.cameras || [];
     
-    // 1. Superadmin TIDAK boleh memiliki kamera langsung
+    // 1. Superadmin dapat mengakses semua kamera untuk monitoring dan verifikasi rekaman
     if (req.userRole === 'superadmin') {
-        return [];
+        return allCams;
     }
     
-    // 2. Admin (Pemilik Gedung) strictly isolated by tenant_id / admin_id
+    // 2. Admin (Pemilik Gedung) strictly isolated by tenant_id / admin_id, plus global/unassigned cams
     if (req.userRole === 'administrator') {
         const currentAdminId = req.adminId || req.userId;
-        return allCams.filter(c => (c.tenant_id === currentAdminId || c.admin_id === currentAdminId));
+        return allCams.filter(c => (!c.tenant_id && !c.admin_id) || c.tenant_id === currentAdminId || c.admin_id === currentAdminId);
     }
     
     // 3. User/Staff: hanya kamera yang diizinkan oleh Admin pemiliknya
@@ -358,7 +358,7 @@ function getAuthorizedCamerasForReq(req) {
         const user = (dbData.users || []).find(u => u.id === req.userId);
         if (!user) return [];
         const userAdminId = user.admin_id;
-        const tenantCams = allCams.filter(c => (c.tenant_id === userAdminId || c.admin_id === userAdminId));
+        const tenantCams = allCams.filter(c => (!c.tenant_id && !c.admin_id) || c.tenant_id === userAdminId || c.admin_id === userAdminId);
         if (Array.isArray(user.allowed_cameras) && user.allowed_cameras.length > 0) {
             const allowedSet = new Set(user.allowed_cameras);
             return tenantCams.filter(c => allowedSet.has(c.id));
@@ -366,7 +366,7 @@ function getAuthorizedCamerasForReq(req) {
         return tenantCams;
     }
     
-    return [];
+    return allCams;
 }
 
 app.get('/api/health', (req, res) => {
@@ -790,42 +790,116 @@ app.delete('/api/admin/users/:id', verifyToken, requireAdministrator, (req, res)
 
 // Background Sync Task
 async function syncRecordingsToDB() {
-    const cams = getCameras();
     const dbData = getNvrDb();
+    const cams = getCameras();
     const newRecordings = [];
+    const scannedPaths = new Set();
+    const knownCamIds = new Set(cams.map(c => c.id));
     
-    for (const cam of cams) {
-        if (cam.recordMode !== 'continuous') continue;
-        const storageDir = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
-        if (!fs.existsSync(storageDir)) continue;
+    // Collect all candidate base directories
+    const candidateBaseDirs = new Set();
+    
+    // 1. Configured base paths
+    try {
+        const curPath = getActualBaseStoragePath();
+        if (curPath) candidateBaseDirs.add(curPath);
+    } catch(e) {}
+    if (baseStoragePath) candidateBaseDirs.add(baseStoragePath);
+    candidateBaseDirs.add(path.join(__dirname, 'public', 'recordings'));
+    candidateBaseDirs.add(path.join(__dirname, 'recordings'));
 
+    // 2. Camera-specific storage paths
+    for (const cam of cams) {
+        if (cam.storagePath) {
+            const resolved = resolveStoragePath(cam.storagePath);
+            candidateBaseDirs.add(resolved);
+            candidateBaseDirs.add(path.dirname(resolved));
+        }
+    }
+
+    // 3. Auto-detected storage devices (/media, /mnt, etc.)
+    try {
+        const devices = detectStorageDevices(true);
+        for (const dev of devices) {
+            if (dev.mountPath && fs.existsSync(dev.mountPath)) {
+                candidateBaseDirs.add(dev.mountPath);
+                candidateBaseDirs.add(path.join(dev.mountPath, 'Arch3r_NVR'));
+            }
+        }
+    } catch(e) {}
+
+    // 4. Specifically check /media/devmon (automount location in Armbian)
+    try {
+        if (fs.existsSync('/media/devmon')) {
+            const devmonDirs = fs.readdirSync('/media/devmon');
+            for (const d of devmonDirs) {
+                const p = path.join('/media/devmon', d);
+                candidateBaseDirs.add(p);
+                candidateBaseDirs.add(path.join(p, 'Arch3r_NVR'));
+            }
+        }
+    } catch(e) {}
+
+    // Helper: scan directory for video files
+    const scanDirForVideos = async (dir, camId) => {
+        if (!dir || !fs.existsSync(dir)) return;
         try {
-            const scanDir = async (dir) => {
-                if (!fs.existsSync(dir)) return;
-                const items = await fs.promises.readdir(dir, { withFileTypes: true });
-                for (const item of items) {
-                    const fullPath = path.join(dir, item.name);
-                    if (item.isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(item.name)) {
-                        await scanDir(fullPath);
-                    } else if (item.isFile() && (item.name.endsWith(".mp4") || item.name.endsWith(".ts"))) {
-                        try {
-                            const stats = await fs.promises.stat(fullPath);
+            const items = await fs.promises.readdir(dir, { withFileTypes: true });
+            for (const item of items) {
+                const fullPath = path.join(dir, item.name);
+                if (item.isDirectory()) {
+                    await scanDirForVideos(fullPath, camId);
+                } else if (item.isFile() && (item.name.endsWith(".mp4") || item.name.endsWith(".ts") || item.name.endsWith(".mkv") || item.name.endsWith(".avi"))) {
+                    if (scannedPaths.has(fullPath)) continue;
+                    try {
+                        const stats = await fs.promises.stat(fullPath);
+                        if (stats.size > 0) {
+                            scannedPaths.add(fullPath);
                             newRecordings.push({
-                                id: `${cam.id}_${item.name}`,
-                                camera_id: cam.id,
+                                id: `${camId}_${item.name}`,
+                                camera_id: camId,
                                 file_path: fullPath,
                                 file_size: stats.size,
                                 start_time: new Date(stats.mtimeMs).toISOString()
                             });
-                        } catch(e) {}
+                        }
+                    } catch(e) {}
+                }
+            }
+        } catch(e) {}
+    };
+
+    // Scan all candidate directories
+    for (const baseDir of candidateBaseDirs) {
+        if (!baseDir || !fs.existsSync(baseDir)) continue;
+
+        try {
+            const baseDirName = path.basename(baseDir);
+            if (baseDirName.startsWith('cam_') || knownCamIds.has(baseDirName)) {
+                await scanDirForVideos(baseDir, baseDirName);
+                continue;
+            }
+
+            const archerDir = baseDirName === 'Arch3r_NVR' ? baseDir : path.join(baseDir, 'Arch3r_NVR');
+            if (fs.existsSync(archerDir)) {
+                const camDirs = await fs.promises.readdir(archerDir, { withFileTypes: true });
+                for (const cEntry of camDirs) {
+                    if (cEntry.isDirectory()) {
+                        const cPath = path.join(archerDir, cEntry.name);
+                        await scanDirForVideos(cPath, cEntry.name);
                     }
                 }
-            };
-            await scanDir(storageDir);
-        } catch (e) {
-            sysLog('ERROR', `Sync failed for ${cam.id}: ${e.message}`, 'CAMERA');
-        }
+            }
+
+            const directDirs = await fs.promises.readdir(baseDir, { withFileTypes: true });
+            for (const dEntry of directDirs) {
+                if (dEntry.isDirectory() && (dEntry.name.startsWith('cam_') || knownCamIds.has(dEntry.name))) {
+                    await scanDirForVideos(path.join(baseDir, dEntry.name), dEntry.name);
+                }
+            }
+        } catch(e) {}
     }
+
     dbData.recordings = newRecordings;
     saveNvrDb(dbData);
     await enforceAdminStorageQuotas();
@@ -1746,23 +1820,58 @@ app.delete('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => 
     res.json({ success: true });
 });
 
-// Proxy route for videos outside of standard public dir
+// Proxy route for videos with full seeking & download support
 app.get('/api/recordings/:camId/:date/:filename', verifyToken, (req, res) => {
     const { camId, date, filename } = req.params;
     const authorizedCams = getAuthorizedCamerasForReq(req);
     const cam = authorizedCams.find(c => c.id === camId);
-    if (!cam) return res.status(403).send('Forbidden: Akses rekaman kamera ini tidak diizinkan');
-    
-    const base = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
-    let filePath = path.join(base, filename);
-    if (!fs.existsSync(filePath)) {
-        filePath = path.join(base, date, filename);
+    const isPrivileged = req.userRole === 'superadmin' || req.userRole === 'administrator';
+
+    if (!isPrivileged && !cam) {
+        return res.status(403).send('Forbidden: Akses rekaman kamera ini tidak diizinkan');
     }
     
-    if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
+    const dbData = getNvrDb();
+    // 1. Check exact file path recorded in database
+    const rec = (dbData.recordings || []).find(r => r.camera_id === camId && (
+        r.file_path.endsWith('/' + filename) || 
+        r.file_path.endsWith('\\' + filename) || 
+        path.basename(r.file_path) === filename
+    ));
+
+    let filePath = rec ? rec.file_path : null;
+
+    // 2. Comprehensive Fallbacks on disk
+    if (!filePath || !fs.existsSync(filePath)) {
+        const candidatePaths = [
+            cam && cam.storagePath ? path.join(resolveStoragePath(cam.storagePath), filename) : null,
+            cam && cam.storagePath ? path.join(resolveStoragePath(cam.storagePath), date, filename) : null,
+            path.join(getActualBaseStoragePath(), 'Arch3r_NVR', camId, filename),
+            path.join(getActualBaseStoragePath(), 'Arch3r_NVR', camId, date, filename),
+            path.join(baseStoragePath, 'Arch3r_NVR', camId, filename),
+            path.join(baseStoragePath, 'Arch3r_NVR', camId, date, filename),
+            path.join(__dirname, 'public', 'recordings', 'Arch3r_NVR', camId, filename),
+            path.join(__dirname, 'public', 'recordings', 'Arch3r_NVR', camId, date, filename),
+            path.join(__dirname, 'recordings', 'Arch3r_NVR', camId, filename),
+            path.join(__dirname, 'recordings', 'Arch3r_NVR', camId, date, filename)
+        ].filter(Boolean);
+
+        for (const p of candidatePaths) {
+            if (fs.existsSync(p)) {
+                filePath = p;
+                break;
+            }
+        }
+    }
+    
+    if (filePath && fs.existsSync(filePath)) {
+        if (req.query.download === '1') {
+            res.download(filePath, filename);
+        } else {
+            res.sendFile(filePath, { acceptRanges: true });
+        }
     } else {
-        res.status(404).send('File not found');
+        res.status(404).send('File rekaman tidak ditemukan di disk penyimpanan.');
     }
 });
 
@@ -1771,26 +1880,36 @@ app.get('/api/recordings', verifyToken, async (req, res) => {
         await syncRecordingsToDB();
         const authorizedCams = getAuthorizedCamerasForReq(req);
         const allowedCamIds = new Set(authorizedCams.map(c => c.id));
+        const isPrivileged = req.userRole === 'superadmin' || req.userRole === 'administrator';
         const result = {};
         const dbData = getNvrDb();
         const recordings = (dbData.recordings || []).sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+        
         recordings.forEach(row => {
             const camId = row.camera_id;
-            if (!allowedCamIds.has(camId)) return; // Isolasi data: Rekaman gedung/kamera lain disembunyikan
-            const parts = row.file_path.split(path.sep);
-            const filename = parts.pop();
-            const parent = parts.pop();
+            // Admin & Superadmin can view all recordings on their system; regular users are filtered
+            if (!isPrivileged && allowedCamIds.size > 0 && !allowedCamIds.has(camId)) {
+                return;
+            }
+            const normPath = (row.file_path || '').replace(/\\/g, '/');
+            const parts = normPath.split('/');
+            const filename = parts.pop() || '';
+            const parent = parts.pop() || '';
             let date = "Unknown";
             const dateMatch = filename.match(/^(\d{4}-\d{2}-\d{2})/);
             if (dateMatch) {
                 date = dateMatch[1];
             } else if (/^\d{4}-\d{2}-\d{2}$/.test(parent)) {
                 date = parent;
+            } else if (row.start_time) {
+                date = row.start_time.split('T')[0];
             }
             
             if (!result[camId]) result[camId] = {};
             if (!result[camId][date]) result[camId][date] = [];
-            result[camId][date].push(filename);
+            if (!result[camId][date].includes(filename)) {
+                result[camId][date].push(filename);
+            }
         });
         res.json(result);
     } catch(e) {

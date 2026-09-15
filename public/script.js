@@ -486,13 +486,13 @@ async function handleLogout() {
                 if (targetId === 'mViewCameras') {
                     renderMobileCameraCards();
                 }
+                if (targetId === 'mViewPlayback') {
+                    if (typeof fetchMobileRecordings === 'function') fetchMobileRecordings();
+                }
             });
         });
 
-        // Setup mobile playback date to today
-        const today = new Date().toISOString().split('T')[0];
-        const mSelRecDate = document.getElementById('mSelRecDate');
-        if (mSelRecDate) mSelRecDate.value = today;
+        initMobilePlayback();
     }
 
     function startLiveClock() {
@@ -534,6 +534,7 @@ async function handleLogout() {
                 if (targetId === 'view-logs') fetchLogs();
                 if (targetId === 'view-setting-users') loadUsersList();
                 if (targetId === 'view-setting-record') loadStorageDevices();
+                if (targetId === 'view-playback') fetchRecordings();
             });
         });
 
@@ -1286,12 +1287,10 @@ async function fetchCameras() {
     window.toggleClipList = function() {
         const sidebar = document.getElementById('pbClipSidebar');
         if(!sidebar) return;
-        if(sidebar.style.width === '0px') {
-            sidebar.style.width = '300px';
-            sidebar.style.opacity = '1';
+        if(sidebar.style.display === 'none') {
+            sidebar.style.display = 'flex';
         } else {
-            sidebar.style.width = '0px';
-            sidebar.style.opacity = '0';
+            sidebar.style.display = 'none';
         }
     };
 
@@ -1553,15 +1552,34 @@ let recordingsMap = {};
     });
 
     function parseTimeToSeconds(filename) {
-        const parts = filename.replace('.mp4','').replace('.ts','').split('-');
-        if (parts.length === 3) {
-            return parseInt(parts[0])*3600 + parseInt(parts[1])*60 + parseInt(parts[2]);
+        const clean = filename.replace(/\.(mp4|ts|mkv|avi)$/i, "");
+        const matchTime = clean.match(/(\d{2})[-:.](\d{2})[-:.](\d{2})$/);
+        if (matchTime) {
+            return parseInt(matchTime[1], 10) * 3600 + parseInt(matchTime[2], 10) * 60 + parseInt(matchTime[3], 10);
+        }
+        const matchCompact = clean.match(/(\d{2})(\d{2})(\d{2})$/);
+        if (matchCompact) {
+            return parseInt(matchCompact[1], 10) * 3600 + parseInt(matchCompact[2], 10) * 60 + parseInt(matchCompact[3], 10);
         }
         return 0;
     }
 
-    
+    function formatTimeLabel(filename) {
+        const clean = filename.replace(/\.(mp4|ts|mkv|avi)$/i, "");
+        const matchTime = clean.match(/(\d{2})[-:.](\d{2})[-:.](\d{2})$/);
+        if (matchTime) {
+            return `${matchTime[1]}:${matchTime[2]}:${matchTime[3]}`;
+        }
+        return clean;
+    }
 
+    function formatSecToHMS(totalSec) {
+        const s = Math.max(0, Math.floor(totalSec));
+        const h = String(Math.floor(s / 3600)).padStart(2, '0');
+        const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+        const sec = String(s % 60).padStart(2, '0');
+        return `${h}:${m}:${sec}`;
+    }
 
     function renderTimeline() {
         const scrollArea = document.getElementById('timelineScrollArea');
@@ -1588,10 +1606,11 @@ let recordingsMap = {};
             const block = document.createElement('div');
             block.className = 'track-block';
             const leftPercent = (chunk.startSec / 86400) * 100;
-            const widthPct = (chunk.duration / 86400) * 100;
+            const widthPct = Math.max((chunk.duration / 86400) * 100, 0.4);
             block.style.left = `${leftPercent}%`;
             block.style.width = `${widthPct}%`;
-            block.style.minWidth = '2px';
+            block.style.minWidth = '4px';
+            block.title = `${formatTimeLabel(chunk.filename)} (Klik untuk putar)`;
             
             block.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -1629,20 +1648,23 @@ let recordingsMap = {};
         });
     }
 
-
     function updateScrubberFromEvent(e) {
+        if (!scrollArea) return;
         const rect = scrollArea.getBoundingClientRect();
         let x = e.clientX - rect.left;
         if (x < 0) x = 0;
         if (x > rect.width) x = rect.width;
         const pct = (x / rect.width) * 100;
         scrubber.style.left = `${pct}%`;
+        const curSec = (pct / 100) * 86400;
+        const pbCurrentTime = document.getElementById('pbCurrentTime');
+        if (pbCurrentTime) pbCurrentTime.textContent = formatSecToHMS(curSec);
     }
 
     function seekToScrubberTime() {
         if (!currentPlaybackCam || !currentPlaybackDate || currentPlaybackChunks.length === 0) return;
         
-        const pct = parseFloat(scrubber.style.left);
+        const pct = parseFloat(scrubber.style.left) || 0;
         const targetSec = (pct / 100) * 86400;
         
         const chunkDuration = 900;
@@ -1664,18 +1686,38 @@ let recordingsMap = {};
         const camName = camObj ? camObj.name : currentPlaybackCam;
         
         currentFileStartSec = chunk.startSec;
-        const timePart = chunk.filename.replace('.mp4', '').replace('.ts', '').replace(/-/g, ':');
-        pbTitle.textContent = `Memutar: ${camName} (${currentPlaybackDate} ${timePart})`;
+        const timePart = formatTimeLabel(chunk.filename);
+        if (pbTitle) {
+            pbTitle.textContent = `Memutar: ${camName} (${currentPlaybackDate} ${timePart})`;
+        }
         
-        playbackPlayer.src = `/api/recordings/${currentPlaybackCam}/${currentPlaybackDate}/${chunk.filename}`;
+        // Highlight active clip in list
+        document.querySelectorAll('#playbackList li').forEach(el => {
+            el.classList.remove('active-clip');
+            el.style.background = '';
+        });
+        const activeLi = document.getElementById(`clip-item-${chunk.filename.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        if (activeLi) {
+            activeLi.classList.add('active-clip');
+            activeLi.style.background = 'rgba(37, 99, 235, 0.25)';
+            activeLi.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        const token = getAuthToken();
+        const videoSrc = `/api/recordings/${encodeURIComponent(currentPlaybackCam)}/${encodeURIComponent(currentPlaybackDate)}/${encodeURIComponent(chunk.filename)}${token ? '?token=' + encodeURIComponent(token) : ''}`;
+        
+        playbackPlayer.src = videoSrc;
         playbackPlayer.load();
         
         playbackPlayer.onloadedmetadata = () => {
             if (offsetSec > playbackPlayer.duration) offsetSec = 0;
             playbackPlayer.currentTime = offsetSec;
-            playbackPlayer.play();
+            playbackPlayer.play().catch(e => console.log('Autoplay handled:', e));
         };
         
+        const btnPbPlay = document.getElementById('btnPbPlay');
+        if (btnPbPlay) btnPbPlay.textContent = '⏸️';
+
         if (window.innerWidth <= 768) {
             closeMobileMenu();
         }
@@ -1712,86 +1754,170 @@ let recordingsMap = {};
         }
     });
 
-    if (playbackPlayer) playbackPlayer.addEventListener('timeupdate', () => {
-        if (isDraggingScrubber) return; 
-        if (!currentFileStartSec) return;
-        const currentSec = currentFileStartSec + playbackPlayer.currentTime;
-        const pct = (currentSec / 86400) * 100;
-        scrubber.style.left = `${pct}%`;
-    });
-    
-    if (playbackPlayer) playbackPlayer.addEventListener('ended', () => {
-        const currentIndex = currentPlaybackChunks.findIndex(c => c.startSec === currentFileStartSec);
-        if (currentIndex !== -1 && currentIndex + 1 < currentPlaybackChunks.length) {
-            const nextChunk = currentPlaybackChunks[currentIndex + 1];
-            playChunk(nextChunk, 0);
-        }
-    });
+    if (playbackPlayer) {
+        playbackPlayer.addEventListener('timeupdate', () => {
+            if (isDraggingScrubber) return; 
+            const curSec = (currentFileStartSec || 0) + playbackPlayer.currentTime;
+            const pct = (curSec / 86400) * 100;
+            scrubber.style.left = `${pct}%`;
+            const pbCurrentTime = document.getElementById('pbCurrentTime');
+            if (pbCurrentTime) pbCurrentTime.textContent = formatSecToHMS(curSec);
+        });
+        
+        playbackPlayer.addEventListener('ended', () => {
+            const currentIndex = currentPlaybackChunks.findIndex(c => c.startSec === currentFileStartSec);
+            if (currentIndex !== -1 && currentIndex + 1 < currentPlaybackChunks.length) {
+                const nextChunk = currentPlaybackChunks[currentIndex + 1];
+                playChunk(nextChunk, 0);
+            } else {
+                const btnPbPlay = document.getElementById('btnPbPlay');
+                if (btnPbPlay) btnPbPlay.textContent = '▶️';
+            }
+        });
 
-async function fetchRecordings() {
+        playbackPlayer.addEventListener('play', () => {
+            const btnPbPlay = document.getElementById('btnPbPlay');
+            if (btnPbPlay) btnPbPlay.textContent = '⏸️';
+        });
+
+        playbackPlayer.addEventListener('pause', () => {
+            const btnPbPlay = document.getElementById('btnPbPlay');
+            if (btnPbPlay) btnPbPlay.textContent = '▶️';
+        });
+    }
+
+    // Controls Buttons
+    const btnPbPlay = document.getElementById('btnPbPlay');
+    if (btnPbPlay && playbackPlayer) {
+        btnPbPlay.addEventListener('click', () => {
+            if (playbackPlayer.paused) {
+                playbackPlayer.play();
+                btnPbPlay.textContent = '⏸️';
+            } else {
+                playbackPlayer.pause();
+                btnPbPlay.textContent = '▶️';
+            }
+        });
+    }
+
+    const btnPbMute = document.getElementById('btnPbMute');
+    if (btnPbMute && playbackPlayer) {
+        btnPbMute.addEventListener('click', () => {
+            playbackPlayer.muted = !playbackPlayer.muted;
+            btnPbMute.textContent = playbackPlayer.muted ? '🔇' : '🔊';
+        });
+    }
+
+    const btnPbFullscreen = document.getElementById('btnPbFullscreen');
+    if (btnPbFullscreen && playbackPlayer) {
+        btnPbFullscreen.addEventListener('click', () => {
+            if (playbackPlayer.requestFullscreen) {
+                playbackPlayer.requestFullscreen();
+            } else if (playbackPlayer.webkitRequestFullscreen) {
+                playbackPlayer.webkitRequestFullscreen();
+            }
+        });
+    }
+
+    async function fetchRecordings() {
         try {
-            if (window.globalStorageMode === 'disabled') {
-                selRecDate.innerHTML = '<option>Pilih Kamera Dulu</option>';
-                playbackList.innerHTML = '<div style="color:var(--accent); text-align:center; padding: 2rem;">⚠️ Perekaman dimatikan. Hubungi Superadmin untuk memilih Storage Drive.</div>';
-                return;
+            if ((!cameras || cameras.length === 0) && typeof fetchCameras === 'function') {
+                try { await fetchCameras(); } catch(e) {}
             }
             const res = await authFetch('/api/recordings');
+            if (!res.ok) throw new Error('Gagal mengambil data rekaman dari server');
             recordingsMap = await res.json(); 
             
             const prevCam = selRecCam.value;
             const prevDate = selRecDate.value;
             
             selRecCam.innerHTML = '<option value="">-- Pilih Kamera --</option>';
-            cameras.forEach(c => {
+            
+            // Camera mapping
+            const camMap = new Map();
+            cameras.forEach(c => camMap.set(c.id, c.name));
+            Object.keys(recordingsMap).forEach(cid => {
+                if (!camMap.has(cid)) camMap.set(cid, `Kamera (${cid})`);
+            });
+
+            if (camMap.size === 0) {
+                selRecCam.innerHTML = '<option value="">(Tidak ada kamera)</option>';
+                selRecDate.innerHTML = '<option value="">(Pilih Kamera Dulu)</option>';
+                playbackList.innerHTML = '<li style="padding:1.5rem; text-align:center; color:var(--text-muted);">Belum ada kamera atau rekaman tersedia.</li>';
+                if (clipCount) clipCount.textContent = '0 Klip';
+                return;
+            }
+
+            camMap.forEach((name, id) => {
                 const opt = document.createElement('option');
-                opt.value = c.id; opt.textContent = c.name;
+                opt.value = id;
+                opt.textContent = name;
                 selRecCam.appendChild(opt);
             });
             
-            if (prevCam && recordingsMap[prevCam]) {
-                selRecCam.value = prevCam;
-                selRecCam.dispatchEvent(new Event('change'));
-                
-                setTimeout(() => {
-                    if (prevDate && Array.from(selRecDate.options).some(o => o.value === prevDate)) {
-                        selRecDate.value = prevDate;
-                        selRecDate.dispatchEvent(new Event('change'));
-                    }
-                }, 50);
+            let targetCam = '';
+            if (prevCam && camMap.has(prevCam)) {
+                targetCam = prevCam;
             } else {
-                selRecDate.innerHTML = '<option>Pilih Kamera Dulu</option>';
-                playbackList.innerHTML = '';
+                // Pick first camera that actually has recordings, or first camera in list
+                const camWithRec = Array.from(camMap.keys()).find(cid => recordingsMap[cid] && Object.keys(recordingsMap[cid]).length > 0);
+                targetCam = camWithRec || Array.from(camMap.keys())[0];
             }
-        } catch (err) {}
+            
+            selRecCam.value = targetCam;
+            populateDateDropdown(targetCam, prevDate);
+        } catch (err) {
+            console.error('Error in fetchRecordings:', err);
+        }
     }
 
-    if (selRecCam) selRecCam.addEventListener('change', () => {
-        const camId = selRecCam.value;
+    function populateDateDropdown(camId, preferredDate) {
         selRecDate.innerHTML = '';
-        
         if (!camId || !recordingsMap[camId]) {
-            selRecDate.innerHTML = '<option>Tidak ada rekaman</option>';
-            playbackList.innerHTML = '';
+            selRecDate.innerHTML = '<option value="">Tidak ada rekaman untuk kamera ini</option>';
+            playbackList.innerHTML = '<li style="padding:1.5rem; text-align:center; color:var(--text-muted);">Belum ada rekaman tersimpan untuk kamera ini.</li>';
+            if (clipCount) clipCount.textContent = '0 Klip';
+            currentPlaybackChunks = [];
+            renderTimeline();
             return;
         }
 
         const dates = Object.keys(recordingsMap[camId]).sort().reverse();
         if (dates.length === 0) {
-            selRecDate.innerHTML = '<option>Tidak ada rekaman</option>';
-            playbackList.innerHTML = '';
+            selRecDate.innerHTML = '<option value="">Tidak ada rekaman untuk kamera ini</option>';
+            playbackList.innerHTML = '<li style="padding:1.5rem; text-align:center; color:var(--text-muted);">Belum ada rekaman tersimpan untuk kamera ini.</li>';
+            if (clipCount) clipCount.textContent = '0 Klip';
+            currentPlaybackChunks = [];
+            renderTimeline();
             return;
         }
-        
+
         dates.forEach(d => {
+            const count = (recordingsMap[camId][d] || []).length;
             const opt = document.createElement('option');
-            opt.value = d; opt.textContent = d;
+            opt.value = d;
+            opt.textContent = `📅 ${d} (${count} klip)`;
             selRecDate.appendChild(opt);
         });
-        
-        renderPlaybackList();
-    });
 
-    if (selRecDate) selRecDate.addEventListener('change', renderPlaybackList);
+        if (preferredDate && dates.includes(preferredDate)) {
+            selRecDate.value = preferredDate;
+        } else {
+            selRecDate.value = dates[0];
+        }
+
+        renderPlaybackList();
+    }
+
+    if (selRecCam) {
+        selRecCam.addEventListener('change', () => {
+            populateDateDropdown(selRecCam.value);
+        });
+    }
+
+    if (selRecDate) {
+        selRecDate.addEventListener('change', renderPlaybackList);
+    }
 
     function renderPlaybackList() {
         playbackList.innerHTML = '';
@@ -1801,6 +1927,7 @@ async function fetchRecordings() {
         const date = selRecDate.value;
         
         if (!camId || !date || !recordingsMap[camId] || !recordingsMap[camId][date]) {
+            if (clipCount) clipCount.textContent = '0 Klip';
             renderTimeline();
             return;
         }
@@ -1808,17 +1935,17 @@ async function fetchRecordings() {
         currentPlaybackCam = camId;
         currentPlaybackDate = date;
 
-        let files = recordingsMap[camId][date];
+        let files = [...recordingsMap[camId][date]];
         files.sort(); 
 
-        if(files.length === 0) {
-            playbackList.innerHTML = '<li>Tidak ada klip</li>';
+        if (files.length === 0) {
+            playbackList.innerHTML = '<li style="padding:1.5rem; text-align:center; color:var(--text-muted);">Tidak ada rekaman pada tanggal ini.</li>';
+            if (clipCount) clipCount.textContent = '0 Klip';
             renderTimeline();
             return;
         }
 
-        const camObj = cameras.find(c => c.id === camId);
-        const camName = camObj ? camObj.name : camId;
+        if (clipCount) clipCount.textContent = `${files.length} Klip`;
 
         // Process files for timeline
         files.forEach(f => {
@@ -1829,14 +1956,31 @@ async function fetchRecordings() {
             });
         });
         
-        // Sort for list (descending)
+        // Sort descending (newest on top)
         const sortedDesc = [...files].reverse();
 
         sortedDesc.forEach(f => {
             const li = document.createElement('li');
-            const timePart = f.replace('.mp4', '').replace('.ts', '').replace(/-/g, ':');
+            li.id = `clip-item-${f.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            li.style.cssText = 'padding:0.6rem 0.8rem; border-bottom:1px solid rgba(255,255,255,0.06); cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:background 0.2s;';
             
-            li.innerHTML = `🎥 <span>${timePart}</span>`;
+            const timePart = formatTimeLabel(f);
+            const token = getAuthToken();
+            const downloadUrl = `/api/recordings/${encodeURIComponent(camId)}/${encodeURIComponent(date)}/${encodeURIComponent(f)}?download=1${token ? '&token=' + encodeURIComponent(token) : ''}`;
+            
+            li.innerHTML = `
+                <div style="display:flex; align-items:center; gap:0.5rem; overflow:hidden;">
+                    <span style="font-size:1.1rem;">🎥</span>
+                    <div style="overflow:hidden;">
+                        <strong style="display:block; font-size:0.85rem; color:#f1f5f9;">${timePart}</strong>
+                        <span style="font-size:0.72rem; color:var(--text-muted); font-family:monospace;">${f}</span>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.3rem;">
+                    <a href="${downloadUrl}" download title="Unduh Klip" class="btn-sm btn-secondary" style="padding:3px 6px; font-size:11px; text-decoration:none; display:inline-flex; align-items:center;" onclick="event.stopPropagation();">⬇️</a>
+                    <button title="Putar" class="btn-sm btn-primary" style="padding:3px 8px; font-size:11px;">▶</button>
+                </div>
+            `;
             
             li.addEventListener('click', () => {
                 const chunk = currentPlaybackChunks.find(c => c.filename === f);
@@ -1844,16 +1988,175 @@ async function fetchRecordings() {
                     playChunk(chunk, 0);
                 }
             });
+
+            li.addEventListener('mouseenter', () => {
+                if (!li.classList.contains('active-clip')) li.style.background = 'rgba(255,255,255,0.06)';
+            });
+            li.addEventListener('mouseleave', () => {
+                if (!li.classList.contains('active-clip')) li.style.background = '';
+            });
             
             playbackList.appendChild(li);
         });
 
         // Update timeline
         renderTimeline();
+
+        // Auto play the latest clip if nothing is playing
+        if (currentPlaybackChunks.length > 0 && (!playbackPlayer.src || playbackPlayer.paused)) {
+            const latestChunk = currentPlaybackChunks[currentPlaybackChunks.length - 1];
+            playChunk(latestChunk, 0);
+        }
     }
 
     if (btnFetchRecordings) btnFetchRecordings.addEventListener('click', fetchRecordings);
-    if (mBtnFetchRecordings) mBtnFetchRecordings.addEventListener('click', fetchRecordings);
+
+    // =========================================================================
+    // MOBILE PLAYBACK CONTROLLER
+    // =========================================================================
+    let mobileRecordingsMap = {};
+
+    window.fetchMobileRecordings = async function() {
+        const mSelRecCam = document.getElementById('mSelRecCam');
+        const mSelRecDate = document.getElementById('mSelRecDate');
+        const mPlaybackList = document.getElementById('mPlaybackList');
+        if (!mSelRecCam || !mSelRecDate || !mPlaybackList) return;
+
+        try {
+            if ((!cameras || cameras.length === 0) && typeof fetchCameras === 'function') {
+                try { await fetchCameras(); } catch(e) {}
+            }
+            const res = await authFetch('/api/recordings');
+            if (!res.ok) return;
+            mobileRecordingsMap = await res.json();
+
+            const prevCam = mSelRecCam.value;
+            const prevDate = mSelRecDate.value;
+
+            mSelRecCam.innerHTML = '<option value="">-- Pilih Kamera --</option>';
+            const camMap = new Map();
+            cameras.forEach(c => camMap.set(c.id, c.name));
+            Object.keys(mobileRecordingsMap).forEach(cid => {
+                if (!camMap.has(cid)) camMap.set(cid, `Kamera (${cid})`);
+            });
+
+            if (camMap.size === 0) {
+                mSelRecCam.innerHTML = '<option value="">(Tidak ada kamera)</option>';
+                mSelRecDate.innerHTML = '<option value="">(Pilih Kamera Dulu)</option>';
+                mPlaybackList.innerHTML = '<li style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.8rem;">Belum ada rekaman.</li>';
+                return;
+            }
+
+            camMap.forEach((name, id) => {
+                const opt = document.createElement('option');
+                opt.value = id; opt.textContent = name;
+                mSelRecCam.appendChild(opt);
+            });
+
+            let targetCam = prevCam && camMap.has(prevCam) ? prevCam : (Array.from(camMap.keys()).find(cid => mobileRecordingsMap[cid] && Object.keys(mobileRecordingsMap[cid]).length > 0) || camMap.keys().next().value);
+            mSelRecCam.value = targetCam;
+            updateMobileDates(targetCam, prevDate);
+        } catch(e) {
+            console.error('Error fetchMobileRecordings:', e);
+        }
+    };
+
+    function updateMobileDates(camId, preferredDate) {
+        const mSelRecDate = document.getElementById('mSelRecDate');
+        const mPlaybackList = document.getElementById('mPlaybackList');
+        if (!mSelRecDate || !mPlaybackList) return;
+
+        mSelRecDate.innerHTML = '';
+        if (!camId || !mobileRecordingsMap[camId]) {
+            mSelRecDate.innerHTML = '<option value="">Tidak ada rekaman</option>';
+            mPlaybackList.innerHTML = '<li style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.8rem;">Belum ada rekaman untuk kamera ini.</li>';
+            return;
+        }
+        const dates = Object.keys(mobileRecordingsMap[camId]).sort().reverse();
+        if (dates.length === 0) {
+            mSelRecDate.innerHTML = '<option value="">Tidak ada rekaman</option>';
+            mPlaybackList.innerHTML = '<li style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.8rem;">Belum ada rekaman untuk kamera ini.</li>';
+            return;
+        }
+        dates.forEach(d => {
+            const count = (mobileRecordingsMap[camId][d] || []).length;
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.textContent = `📅 ${d} (${count} klip)`;
+            mSelRecDate.appendChild(opt);
+        });
+
+        if (preferredDate && dates.includes(preferredDate)) {
+            mSelRecDate.value = preferredDate;
+        } else {
+            mSelRecDate.value = dates[0];
+        }
+
+        renderMobileClips(camId, mSelRecDate.value);
+    }
+
+    function renderMobileClips(camId, date) {
+        const mPlaybackList = document.getElementById('mPlaybackList');
+        const mPlaybackPlayer = document.getElementById('mPlaybackPlayer');
+        if (!mPlaybackList || !mPlaybackPlayer) return;
+
+        mPlaybackList.innerHTML = '';
+        if (!camId || !date || !mobileRecordingsMap[camId] || !mobileRecordingsMap[camId][date]) {
+            mPlaybackList.innerHTML = '<li style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.8rem;">Tidak ada klip pada tanggal ini.</li>';
+            return;
+        }
+
+        const files = [...mobileRecordingsMap[camId][date]].reverse();
+        if (files.length === 0) {
+            mPlaybackList.innerHTML = '<li style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.8rem;">Tidak ada klip pada tanggal ini.</li>';
+            return;
+        }
+
+        files.forEach(f => {
+            const li = document.createElement('li');
+            li.style.cssText = 'padding:0.6rem 0.8rem; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:0.82rem;';
+            const timeStr = formatTimeLabel(f);
+            const token = getAuthToken();
+            const downloadUrl = `/api/recordings/${encodeURIComponent(camId)}/${encodeURIComponent(date)}/${encodeURIComponent(f)}?download=1${token ? '&token=' + encodeURIComponent(token) : ''}`;
+            
+            li.innerHTML = `
+                <div style="overflow:hidden; padding-right:0.5rem;">
+                    <strong style="display:block; color:#f1f5f9;">🎥 ${timeStr}</strong>
+                    <span style="font-size:0.68rem; color:var(--text-muted); font-family:monospace;">${f}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.4rem; flex-shrink:0;">
+                    <a href="${downloadUrl}" download class="btn-sm btn-secondary" style="padding:3px 6px; font-size:11px; text-decoration:none;" onclick="event.stopPropagation();">⬇️</a>
+                    <button class="btn-sm btn-primary" style="padding:4px 8px; font-size:11px;">▶</button>
+                </div>
+            `;
+            li.addEventListener('click', () => {
+                mPlaybackPlayer.src = `/api/recordings/${encodeURIComponent(camId)}/${encodeURIComponent(date)}/${encodeURIComponent(f)}${token ? '?token=' + encodeURIComponent(token) : ''}`;
+                mPlaybackPlayer.load();
+                mPlaybackPlayer.play().catch(e => console.log('Mobile play handled:', e));
+            });
+            mPlaybackList.appendChild(li);
+        });
+    }
+
+    function initMobilePlayback() {
+        const mSelRecCam = document.getElementById('mSelRecCam');
+        const mSelRecDate = document.getElementById('mSelRecDate');
+        const mBtnFetchRecordings = document.getElementById('mBtnFetchRecordings');
+
+        if (mSelRecCam) {
+            mSelRecCam.addEventListener('change', () => {
+                updateMobileDates(mSelRecCam.value);
+            });
+        }
+        if (mSelRecDate) {
+            mSelRecDate.addEventListener('change', () => {
+                renderMobileClips(mSelRecCam.value, mSelRecDate.value);
+            });
+        }
+        if (mBtnFetchRecordings) {
+            mBtnFetchRecordings.addEventListener('click', window.fetchMobileRecordings);
+        }
+    }
 
     // =========================================================================
     // ADMINISTRATOR - MANAJEMEN USER (KLIEN MOBILE) DENGAN IZIN KAMERA
