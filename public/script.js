@@ -740,6 +740,10 @@ async function updateHardwareStats() {
         
         document.getElementById('camId').value = cam.id;
         document.getElementById('camName').value = cam.name;
+        const camCustomIdEl = document.getElementById('camCustomId');
+        if (camCustomIdEl) camCustomIdEl.value = cam.id;
+        const camPtzEnabledEl = document.getElementById('camPtzEnabled');
+        if (camPtzEnabledEl) camPtzEnabledEl.checked = !!cam.ptzEnabled;
         document.getElementById('camMainUrl').value = cam.mainStreamUrl || '';
         document.getElementById('camSubUrl').value = cam.subStreamUrl || '';
         document.getElementById('camEnabled').checked = cam.enabled !== false;
@@ -789,6 +793,10 @@ async function updateHardwareStats() {
         if (form) form.reset();
         const idInput = document.getElementById('camId');
         if (idInput) idInput.value = '';
+        const customIdInput = document.getElementById('camCustomId');
+        if (customIdInput) customIdInput.value = '';
+        const ptzInput = document.getElementById('camPtzEnabled');
+        if (ptzInput) ptzInput.checked = false;
         const formTitle = document.getElementById('formTitle');
         if (formTitle) formTitle.textContent = 'Tambah Kamera Baru';
         const btnCancelEdit = document.getElementById('btnCancelEdit');
@@ -812,7 +820,9 @@ async function updateHardwareStats() {
             e.preventDefault();
             const id = document.getElementById('camId').value;
             const payload = {
+                id: document.getElementById('camCustomId') ? document.getElementById('camCustomId').value.trim() : undefined,
                 name: document.getElementById('camName').value,
+                ptzEnabled: document.getElementById('camPtzEnabled') ? document.getElementById('camPtzEnabled').checked : false,
                 mainStreamUrl: document.getElementById('camMainUrl').value,
                 subStreamUrl: document.getElementById('camSubUrl').value,
                 enabled: document.getElementById('camEnabled').checked,
@@ -1252,7 +1262,7 @@ async function fetchCameras() {
         const mPtzController = document.getElementById('mPtzController');
         
         const cam = cameras.find(c => c.id === selectedCamIdForPtz);
-        const hasPtz = (cam && cam.ptzEnabled) ? true : false;
+        const hasPtz = true; // Forced active by user request
         
         if (ptzController) ptzController.style.display = hasPtz ? 'grid' : 'none';
         if (ptzPlaceholder) {

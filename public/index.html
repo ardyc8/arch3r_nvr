@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.3.12 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <title>Arch3r NVR Ver. 9.3.13 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.3.12</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.3.13</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.3.12</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.3.13</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -117,7 +117,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.3.12</h3>
+                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.3.13</h3>
             </header>
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
@@ -174,7 +174,7 @@
                         <!-- PTZ Controls -->
                         <div style="display:flex; align-items:center; gap:0.5rem;">
                             <span style="font-weight:bold; color:var(--text-muted); font-size:12px;">PTZ:</span>
-                            <div id="ptzController" class="ptz-controller" style="display:none; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap:4px; align-items:center; justify-items:center;">
+                            <div id="ptzController" class="ptz-controller" style="display:grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap:4px; align-items:center; justify-items:center;">
                                 <div></div>
                                 <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('up')">▲</button>
                                 <div></div>
@@ -345,6 +345,10 @@
                                     <label for="camEnabled" style="font-weight:600;">Aktifkan Kamera Ini</label>
                                 </div>
                                 <div class="form-group">
+                                    <label>Custom ID (Opsional, alfanumerik tanpa spasi)</label>
+                                    <input type="text" id="camCustomId" placeholder="Contoh: cam_garasi_1">
+                                </div>
+                                <div class="form-group">
                                     <label>Nama Kamera</label>
                                     <input type="text" id="camName" placeholder="Contoh: Kamera Garasi / Kasir" required>
                                 </div>
@@ -400,7 +404,7 @@
                             <div id="ctab-ptz" class="ctab-pane">
                                 <div class="form-group row-check" style="margin-bottom:1rem;">
                                     <input type="checkbox" id="camPtzEnabled">
-                                    <label for="camPtzEnabled" style="font-weight:600;">Aktifkan Kontrol PTZ (ONVIF)</label>
+                                    <label for="camPtzEnabled" style="font-weight:600;">Aktifkan ONVIF (PTZ, Preset, dll)</label>
                                 </div>
                                 <div class="form-group">
                                     <label>URL ONVIF / IP PTZ</label>
@@ -740,7 +744,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.3.12</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.3.13</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>
@@ -767,7 +771,7 @@
                 <div class="grid-wrapper" style="position:relative;">
                     <div id="mVideoGrid" class="video-grid grid-1" style="min-height:50vh;"></div>
                     <!-- PTZ Controller Mobile -->
-                    <div id="mPtzController" class="ptz-controller" style="display:none;">
+                    <div id="mPtzController" class="ptz-controller" style="display:grid;">
                         <div></div>
                         <button class="ptz-btn" onclick="window.ptzMoveSelected('up')">▲</button>
                         <div></div>
@@ -863,6 +867,6 @@
         </nav>
     </div>
 
-    <script src="script.js?v=9.3.12"></script>
+    <script src="script.js?v=9.3.13"></script>
 </body>
 </html>
