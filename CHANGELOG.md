@@ -2,6 +2,10 @@
 
 Semua perubahan yang signifikan pada proyek ini akan didokumentasikan di file ini.
 
+## [Ver 9.3.8] - 2026-09-16
+### Changed
+- **UI/UX Cleanup (Superadmin):** Memperbaiki masalah tata letak antarmuka (UI) Superadmin yang berantakan (*squished*/terpotong) saat dibuka dalam mode *landscape* (mendatar) di ponsel/tablet. Menghapus dekorasi yang "berlebih-lebihan" (warna *background* pelangi, *border* tebal, dan *padding* yang terlalu memakan ruang) sehingga tampilan menjadi bersih, profesional, dan seragam dengan halaman utama.
+
 ## [Ver 9.3.7] - 2026-09-16
 ### Fixed
 - **Timezone Artifact Cleanup:** Memperbaiki dan menambal sisa data akun yang tercatat menggunakan `Z` (UTC) akibat regresi pada versi 9.3.4. Saat server dinyalakan ulang, sistem akan secara otomatis memindai seluruh file JSON dan mengonversi waktu lama (Z) tersebut ke dalam format waktu lokal secara mandiri.

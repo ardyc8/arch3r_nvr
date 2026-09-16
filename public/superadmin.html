@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.3.7 - Superadmin Console</title>
+    <title>Arch3r NVR Ver. 9.3.8 - Superadmin Console</title>
     <link rel="stylesheet" href="style.css?v=1789336876961">
     <meta name="theme-color" content="#0f172a">
 </head>
@@ -13,7 +13,7 @@
         <div class="auth-card" style="max-width:440px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.1rem;">Arch3r NVR <span class="badge" style="background:#8b5cf6; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.3.7 Superadmin</span></h2>
+                <h2 style="margin:0; font-size:1.1rem;">Arch3r NVR <span class="badge" style="font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.3.8 Superadmin</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">Console Pengembang &bull; Arsitektur Eksklusif Arch3r NVR Multi-Tenant</p>
             <form id="saLoginForm">
@@ -28,7 +28,7 @@
                         <button type="button" class="btn-peek-pwd" data-target="saPassword" title="Lihat Password"><span class="peek-icon">👁️</span></button>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-full mt-3" style="background:#8b5cf6;">Masuk Console Superadmin</button>
+                <button type="submit" class="btn btn-primary w-full mt-3" style="">Masuk Console Superadmin</button>
             </form>
             <div id="saLoginError" style="color:var(--accent); text-align:center; margin-top:1rem; font-size:0.85rem;"></div>
             <div style="text-align:center; margin-top:1.2rem; border-top:1px solid var(--border); padding-top:1rem;">
@@ -43,7 +43,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge" style="background:#8b5cf6;">Ver. 9.3.7</span></h2>
+                    <h2>Arch3r NVR <span class="badge" style="">Ver. 9.3.8</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👑</div>
@@ -91,8 +91,8 @@
                         </div>
                         <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem; display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
                             Machine ID Unik: 
-                            <strong id="saMachineId" style="color:#38bdf8; background:#0f172a; padding:4px 10px; border-radius:6px; font-family:monospace; border:1px solid #334155; font-size:0.95rem; letter-spacing:1px; user-select:all; cursor:pointer;" title="Klik atau tekan tombol salin">---</strong>
-                            <button type="button" id="btnCopyMachineId" style="background:#1e293b; color:#cbd5e1; border:1px solid #475569; border-radius:6px; padding:4px 10px; font-size:0.75rem; cursor:pointer; font-weight:600; transition:all 0.2s;">📋 Salin ID</button>
+                            <strong id="saMachineId" style="color:#38bdf8; background:#0f172a; padding:4px 10px; border-radius:6px; font-family:monospace; border:1px solid var(--border); font-size:0.95rem; letter-spacing:1px; user-select:all; cursor:pointer;" title="Klik atau tekan tombol salin">---</strong>
+                            <button type="button" id="btnCopyMachineId" style="background:#1e293b; border:1px solid var(--border); border-radius:6px; padding:4px 10px; font-size:0.75rem; cursor:pointer; font-weight:600; transition:all 0.2s;">📋 Salin ID</button>
                         </p>
                         <div id="trialInfoBox" style="margin-bottom:1rem; padding:0.75rem; border-radius:6px; font-size:0.8rem; text-align:center; display:none;"></div>
                         <form id="saLicenseForm">
@@ -102,9 +102,9 @@
                             </div>
                             <div class="form-group">
                                 <label>License Key (Token Kriptografi)</label>
-                                <textarea id="saLicenseKey" rows="3" placeholder="eyJlbWFpb... (Tempel Token Disini)" required style="width:100%; padding:0.5rem; background:#0f172a; color:#fff; border:1px solid #334155; border-radius:6px; font-family:monospace; font-size:0.8rem; line-height:1.4; resize:vertical;"></textarea>
+                                <textarea id="saLicenseKey" rows="3" placeholder="eyJlbWFpb... (Tempel Token Disini)" required style="width:100%; padding:0.5rem; background:#0f172a; border:1px solid var(--border); border-radius:6px; font-family:monospace; font-size:0.8rem; line-height:1.4; resize:vertical;"></textarea>
                             </div>
-                            <button type="submit" class="btn btn-primary" style="background:#8b5cf6; width:100%;">Aktivasi / Simpan Lisensi</button>
+                            <button type="submit" class="btn btn-primary" style="width:100%;">Aktivasi / Simpan Lisensi</button>
                         </form>
                     </div>
                     
@@ -121,13 +121,13 @@
                                 <label>P2P Relay Host / Domain</label>
                                 <input type="text" id="saP2pHost" placeholder="p2p.archer-nvr.net:443" required>
                             </div>
-                            <button type="submit" class="btn btn-primary" style="background:#8b5cf6; width:100%;">Perbarui P2P Relay</button>
+                            <button type="submit" class="btn btn-primary" style="width:100%;">Perbarui P2P Relay</button>
                         </form>
                     </div>
 
-                    <div class="camera-form-section" style="margin-top:1.5rem; border-color:#ef4444;">
+                    <div class="camera-form-section" style="margin-top:1.5rem;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                            <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem; color:#ef4444;">
+                            <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
                                 <span>🔒</span> Keamanan Superadmin
                             </h3>
                         </div>
@@ -166,7 +166,7 @@
                     </div>
 
                     <div id="formAddAdminBox" style="display:none; background:var(--surface-dark); border:1px solid var(--border-highlight); border-radius:8px; padding:1.5rem; margin-bottom:1.5rem;">
-                        <h3 style="font-size:1rem; margin-bottom:1rem; color:#60a5fa;">Buat Akun Administrator Gedung Baru</h3>
+                        <h3 style="font-size:1rem; margin-bottom:1rem;">Buat Akun Administrator Gedung Baru</h3>
                         <form id="saAddAdminForm">
                             <div class="form-row">
                                 <div class="form-group flex-1">
@@ -202,9 +202,9 @@
                     </div>
 
                     <!-- Modal Edit Kuota Administrator -->
-                    <div id="modalEditQuota" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.75); z-index:9999; justify-content:center; align-items:center;">
+                    <div id="modalEditQuota" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
                         <div style="background:var(--surface); border:1px solid var(--border-highlight); border-radius:10px; padding:1.75rem; width:92%; max-width:500px; box-shadow:0 15px 35px rgba(0,0,0,0.6);">
-                            <h3 style="margin-top:0; color:#60a5fa; font-size:1.15rem; display:flex; align-items:center; gap:0.5rem;">
+                            <h3 style="margin-top:0; font-size:1.15rem; display:flex; align-items:center; gap:0.5rem;">
                                 <span>⚙️</span> Edit Kuota Administrator Gedung
                             </h3>
                             <p id="editQuotaAdminInfo" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.25rem;"></p>
@@ -230,7 +230,7 @@
                                 </div>
                                 <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
                                     <button type="button" id="btnCancelEditQuota" class="btn btn-secondary">Batal</button>
-                                    <button type="submit" class="btn btn-primary" style="background:#8b5cf6;">Simpan Perubahan</button>
+                                    <button type="submit" class="btn btn-primary" style="">Simpan Perubahan</button>
                                 </div>
                             </form>
                         </div>
@@ -263,22 +263,20 @@
 
             <!-- VIEW: SYSTEM -->
             
-            <style>
-                @media (max-width: 768px) {
-                    .zone-bahaya-mobile {
-                        padding-left: 0 !important;
-                        border-left: none !important;
-                        border-top: 1px solid var(--border);
-                        padding-top: 1.5rem;
-                        margin-top: 1rem;
-                        width: 100% !important;
-                    }
-                    .view-content {
-                        overflow-y: auto !important;
-                        height: calc(100vh - 120px);
-                    }
-                }
-            </style>
+            
+<style>
+@media (max-width: 768px) {
+    .zone-bahaya-mobile {
+        padding-left: 0 !important;
+        border-left: none !important;
+        border-top: 1px solid var(--border);
+        padding-top: 1.5rem;
+        margin-top: 1rem;
+        width: 100% !important;
+    }
+}
+</style>
+
             <div id="view-system" class="view-pane">
                 <div class="view-header">
                     <h2>Sistem & Reset</h2>
@@ -286,20 +284,20 @@
                 </div>
                 <div class="view-content" style="max-width:800px; padding:1.5rem;">
                     
-                    <div class="camera-form-section" style="margin-bottom:1.5rem; border-color:#8b5cf6;">
-                        <h3 style="margin:0 0 0.5rem 0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem; color:#8b5cf6;">
+                    <div class="camera-form-section" style="margin-bottom:1.5rem;">
+                        <h3 style="margin:0 0 0.5rem 0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
                             <span>🚀</span> Update Sistem (OTA)
                         </h3>
                         <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
                             Periksa dan unduh pembaruan Arch3r NVR terbaru secara otomatis (Over-The-Air).
                         </p>
-                        <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; background:rgba(139,92,246,0.1); padding:1rem; border-radius:6px; border:1px solid #4c1d95;">
+                        <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; background:var(--surface); padding:1rem; border-radius:6px; border:1px solid var(--border);">
                              <div style="flex:1;">
-                                 <h4 id="saUpdateStatusText" style="margin:0 0 0.25rem 0; font-size:0.9rem; color:#a78bfa;">Versi Terpasang: <span class="badge">9.3.7</span></h4>
-                                 <p id="saUpdateDescText" style="font-size:0.75rem; color:#94a3b8; margin:0;">Klik periksa pembaruan untuk mengetahui update tersedia.</p>
+                                 <h4 id="saUpdateStatusText" style="margin:0 0 0.25rem 0; font-size:0.9rem;">Versi Terpasang: <span class="badge">9.3.8</span></h4>
+                                 <p id="saUpdateDescText" style="font-size:0.75rem; margin:0;">Klik periksa pembaruan untuk mengetahui update tersedia.</p>
                              </div>
                              <div style="display:flex; gap:0.5rem; width: 100%; margin-top: 0.5rem;">
-                                 <input type="text" id="otaGithubUrl" class="input" placeholder="OTA URL (https://api.github.com/...)" style="flex:1; font-size:0.8rem; background:rgba(0,0,0,0.2);">
+                                 <input type="text" id="otaGithubUrl" class="input" placeholder="OTA URL (https://api.github.com/...)" style="flex:1; font-size:0.8rem; background:var(--bg-lighter);">
                              </div>
                              <div style="display:flex; gap:0.5rem; margin-top: 0.5rem;">
                                  <button id="btnSaSaveOta" class="btn btn-secondary" style="font-size:0.85rem;">💾 Simpan URL</button>
@@ -309,24 +307,24 @@
                         </div>
                     </div>
 
-                    <div class="camera-form-section" style="margin-bottom:1.5rem; border-color:#3b82f6;">
-                        <h3 style="margin:0 0 0.5rem 0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem; color:#3b82f6;">
+                    <div class="camera-form-section" style="margin-bottom:1.5rem;">
+                        <h3 style="margin:0 0 0.5rem 0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
                             <span>💾</span> Backup & Restore Konfigurasi
                         </h3>
                         <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
                             Cadangkan pengaturan kamera, akun, lisensi, dan penyimpanan NVR ke dalam 1 file JSON yang bisa di-restore kapan saja.
                         </p>
                         <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
-                            <div style="flex:1; min-width:200px; background:rgba(59,130,246,0.1); padding:1rem; border-radius:6px; border:1px solid #1e3a8a;">
-                                <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:#60a5fa;">Export / Backup</h4>
-                                <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Unduh konfigurasi saat ini.</p>
-                                <button id="btnSaBackup" class="btn btn-secondary" style="background:#3b82f6; color:#fff; border:none; width:100%; font-size:0.85rem;">📥 Unduh Backup (.json)</button>
+                            <div style="flex:1; min-width:200px; background:var(--surface); padding:1rem; border-radius:6px; border:1px solid var(--border);">
+                                <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem;">Export / Backup</h4>
+                                <p style="font-size:0.75rem; margin-bottom:0.75rem;">Unduh konfigurasi saat ini.</p>
+                                <button id="btnSaBackup" class="btn btn-secondary" style="background:#3b82f6; border:none; width:100%; font-size:0.85rem;">📥 Unduh Backup (.json)</button>
                             </div>
-                            <div style="flex:1; min-width:200px; background:rgba(245,158,11,0.1); padding:1rem; border-radius:6px; border:1px solid #78350f;">
-                                <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:#fbbf24;">Import / Restore</h4>
-                                <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:0.75rem;">Pulihkan dari file JSON.</p>
+                            <div style="flex:1; min-width:200px; background:var(--surface); padding:1rem; border-radius:6px; border:1px solid var(--border);">
+                                <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem;">Import / Restore</h4>
+                                <p style="font-size:0.75rem; margin-bottom:0.75rem;">Pulihkan dari file JSON.</p>
                                 <input type="file" id="fileSaRestore" accept=".json" style="display:none;">
-                                <button id="btnSaRestore" class="btn btn-secondary" style="background:#f59e0b; color:#fff; border:none; width:100%; font-size:0.85rem;" onclick="document.getElementById('fileSaRestore').click()">📤 Unggah & Restore</button>
+                                <button id="btnSaRestore" class="btn btn-secondary" style="background:#f59e0b; border:none; width:100%; font-size:0.85rem;" onclick="document.getElementById('fileSaRestore').click()">📤 Unggah & Restore</button>
                             </div>
                         </div>
                     </div>
@@ -334,27 +332,27 @@
                     <div class="camera-form-section" style="border-color:#f43f5e;">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
                             <div style="flex:1;">
-                                <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem; color:#f43f5e;">
+                                <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
                                     <span>ℹ️</span> Informasi Sistem & Basis Data
                                 </h3>
                                 <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">
                                     Detail lokasi direktori penting NVR pada Armbian STB.
                                 </p>
-                                <div id="saSystemInfoBox" style="margin-top:1rem; font-size:0.85rem; line-height:1.6; background:rgba(0,0,0,0.2); padding:1rem; border-radius:6px; font-family:monospace; color:#cbd5e1;">
+                                <div id="saSystemInfoBox" style="margin-top:1rem; font-size:0.85rem; line-height:1.6; background:var(--bg-lighter); padding:1rem; border-radius:6px; font-family:monospace;">
                                     Memuat data...
                                 </div>
                             </div>
                             <div style="flex: 1; min-width: 250px; padding-left:1.5rem; border-left:1px solid var(--border);" class="zone-bahaya-mobile">
-                                <h3 style="font-size:1rem; margin-top:0; margin-bottom:0.75rem; color:#ef4444;">🚨 Zona Bahaya</h3>
+                                <h3 style="font-size:1rem; margin-top:0; margin-bottom:0.75rem;">🚨 Zona Bahaya</h3>
                                 <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">
                                     Tindakan ini akan menghapus dan membuat ulang file database inti NVR. Berikut rincian data yang akan <strong>dihapus permanen</strong>:<br>
-                                    <ul style="margin-top:0.5rem; margin-bottom:0.5rem; padding-left:1.2rem; color:#ef4444;">
+                                    <ul style="margin-top:0.5rem; margin-bottom:0.5rem; padding-left:1.2rem;">
                                         <li><strong>File:</strong> <code>/data/nvr_db.json</code> (Berisi User, Kamera, Log, Storage)</li>
                                         <li>Lisensi NVR akan dinonaktifkan.</li>
                                     </ul>
                                     <em>*File rekaman video (MP4) di Hardisk/Flashdisk TIDAK akan terhapus.</em>
                                 </p>
-                                <button id="saBtnFactoryReset" class="btn btn-primary" style="background:#ef4444; width:100%; font-size:0.85rem; border-color:#ef4444;">
+                                <button id="saBtnFactoryReset" class="btn btn-primary" style="background:#ef4444; width:100%; font-size:0.85rem;">
                                     ⚠️ Reset Pengaturan Pabrik
                                 </button>
                             </div>
@@ -366,6 +364,6 @@
         </main>
     </div>
 
-    <script src="superadmin.js?v=9.3.7"></script>
+    <script src="superadmin.js?v=9.3.8"></script>
 </body>
 </html>
