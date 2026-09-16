@@ -2,6 +2,10 @@
 
 Semua perubahan yang signifikan pada proyek ini akan didokumentasikan di file ini.
 
+## [Ver 9.3.4] - 2026-09-16
+### Fixed
+- **Git Pull Migration Loop Bug:** Memperbaiki bug kritis di mana mengeksekusi `git pull` menyebabkan sistem membaca *dummy file* `nvr_db.json` bawaan Github, yang memicu *false migration* (migrasi ulang) dan menimpa `db_accounts.json` (database asli) dengan tabel kosong. Kini sistem mengabaikan `nvr_db.json` sepenuhnya jika file Split-DB sudah tercipta.
+
 ## [Ver 9.3.3] - 2026-09-16
 ### Fixed
 - **UI State Sync:** Memperbaiki bug di mana `sysGlobalStorageMode` dan konfigurasi penyimpanan lainnya pada antarmuka *frontend* selalu mereset tampilan menjadi "Mati/Nonaktif" saat halaman direfresh (meskipun data di `db_settings.json` sudah tersimpan aktif).

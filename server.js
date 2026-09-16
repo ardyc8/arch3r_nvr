@@ -329,8 +329,15 @@ function getNvrDb() {
         } catch(e) { return null; }
     }
     
-    // Migration Logic: If monolithic DB exists, migrate it
-    if (fs.existsSync(nvrDbFile)) {
+    const isAlreadyMigrated = fs.existsSync(fAccounts) || fs.existsSync(fCameras);
+    
+    // Hapus file bawaan Git jika Split-DB sudah aktif
+    if (fs.existsSync(nvrDbFile) && isAlreadyMigrated) {
+        try { fs.unlinkSync(nvrDbFile); } catch(e){}
+    }
+
+    // Migration Logic: Only if monolithic DB exists AND we haven't migrated yet
+    if (fs.existsSync(nvrDbFile) && !isAlreadyMigrated) {
         let oldData = tryParse(nvrDbFile) || tryParse(path.join(dataDir, 'nvr_db_safe_backup.json')) || getDefaultDb();
         cachedDb = oldData;
         scheduleDbSave(); // Saves into split format
@@ -549,7 +556,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.3' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.4' });
 });
 
 // Auth Endpoints
@@ -727,7 +734,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.3.3",
+        appVersion: "9.3.4",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -829,7 +836,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.3.3',
+                latestVersion: '9.3.4',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -897,7 +904,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.3.3',
+        version: '9.3.4',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
