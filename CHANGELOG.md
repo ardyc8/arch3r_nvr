@@ -2,6 +2,10 @@
 
 Semua perubahan yang signifikan pada proyek ini akan didokumentasikan di file ini.
 
+## [Ver 9.3.10] - 2026-09-16
+### Fixed
+- **Superadmin Layout Crash (Desktop):** Memperbaiki bug kritis di mana tata letak *dashboard* Superadmin hancur berantakan (halaman konten merosot ke bawah *sidebar*) saat dibuka di layar komputer/desktop. Ini disebabkan oleh interupsi paksa dari JavaScript (`display: block`) yang menabrak aturan struktur *Flexbox* CSS yang baru. Sistem kini menggunakan gaya tampilan `flex` secara konsisten, sehingga tampilan Desktop dan Mobile kembali sejajar, rapi, dan kokoh.
+
 ## [Ver 9.3.9] - 2026-09-16
 ### Changed
 - **Unified Responsive System:** Merombak seluruh pondasi CSS (CSS *Flexbox* & *Media Queries*) untuk *dashboard* utama maupun *Superadmin*. Sistem kini secara dinamis merespons rotasi layar (*portrait* ke *landscape*) tanpa masalah *overflow* (melebihi batas layar) atau elemen yang tergencet. Kamera, form pengaturan, dan bar navigasi seluler kini menggunakan *viewport-height* fleksibel (`flex: 1`) secara penuh.

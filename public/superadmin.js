@@ -103,7 +103,7 @@
             const data = await res.json();
             if (data.authenticated && data.role === 'superadmin') {
                 saAuthOverlay.style.display = 'none';
-                saDashboard.style.display = 'block';
+                saDashboard.style.display = 'flex';
                 loadSuperSettings();
                 loadAdmins();
                 loadSystemInfo();
@@ -140,7 +140,7 @@
                 }
                 if (data.role === 'superadmin') {
                     saAuthOverlay.style.display = 'none';
-                    saDashboard.style.display = 'block';
+                    saDashboard.style.display = 'flex';
                     loadSuperSettings();
                 loadAdmins();
                 loadSystemInfo();
