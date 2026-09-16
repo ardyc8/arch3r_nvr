@@ -2,6 +2,14 @@
 
 Semua perubahan yang signifikan pada proyek ini akan didokumentasikan di file ini.
 
+## [Ver 9.3.6] - 2026-09-16
+### Fixed
+- **Maximum Call Stack Size Exceeded (Crash Loop):** Memperbaiki bug kritis *infinite recursion* pada fungsi `getLocalTimeString()` yang menyebabkan server `node server.js` mogok saat *startup*. Server sekarang berjalan stabil.
+
+## [Ver 9.3.5] - 2026-09-16
+### Fixed
+- **Timezone Regression:** Memperbaiki masalah regresi di mana waktu pembuatan akun (`createdAt`), log sistem, dan *timestamp* rekaman kembali menggunakan format zona waktu dasar (UTC/Z) alih-alih waktu lokal (misal: WIB) di dalam STB. Sistem kini secara otomatis menghitung *offset* lokal dari OS Armbian (menghasilkan format seperti `+07:00`) untuk seluruh pencatatan waktu.
+
 ## [Ver 9.3.4] - 2026-09-16
 ### Fixed
 - **Git Pull Migration Loop Bug:** Memperbaiki bug kritis di mana mengeksekusi `git pull` menyebabkan sistem membaca *dummy file* `nvr_db.json` bawaan Github, yang memicu *false migration* (migrasi ulang) dan menimpa `db_accounts.json` (database asli) dengan tabel kosong. Kini sistem mengabaikan `nvr_db.json` sepenuhnya jika file Split-DB sudah tercipta.

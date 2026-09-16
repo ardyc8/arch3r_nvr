@@ -14,6 +14,17 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 
 dotenv.config();
 
+// --- LOCAL TIME UTILITY ---
+function getLocalTimeString(dateObj = new Date()) {
+    const tzOffset = dateObj.getTimezoneOffset() * 60000; 
+    const localISOTime = (new Date(dateObj.getTime() - tzOffset)).toISOString().slice(0, -1);
+    const offsetHours = Math.floor(Math.abs(dateObj.getTimezoneOffset()) / 60);
+    const offsetMinutes = Math.abs(dateObj.getTimezoneOffset()) % 60;
+    const sign = dateObj.getTimezoneOffset() > 0 ? '-' : '+';
+    const offsetStr = sign + String(offsetHours).padStart(2, '0') + ':' + String(offsetMinutes).padStart(2, '0');
+    return localISOTime + offsetStr;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -411,7 +422,7 @@ function scheduleDbSave() {
 
 // Logger
 function sysLog(level, message, category = 'SYSTEM') {
-    const timestamp = new Date().toISOString();
+    const timestamp = getLocalTimeString();
     console.log(`[${timestamp}] [${level}] [${category}] ${message}`);
     try {
         const dbData = getNvrDb();
@@ -556,7 +567,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.4' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.6' });
 });
 
 // Auth Endpoints
@@ -734,7 +745,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.3.4",
+        appVersion: "9.3.6",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -836,7 +847,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.3.4',
+                latestVersion: '9.3.6',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -904,7 +915,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.3.4',
+        version: '9.3.6',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
@@ -963,7 +974,7 @@ app.post('/api/superadmin/admins', verifyToken, requireSuperadmin, (req, res) =>
         name: (name || username).trim(),
         max_cameras: Math.max(1, parseInt(max_cameras) || 8),
         max_storage_gb: Math.max(1, parseFloat(max_storage_gb) || 100),
-        createdAt: new Date().toISOString()
+        createdAt: getLocalTimeString()
     };
     dbData.administrators.push(newAdmin);
     saveNvrDb(dbData);
@@ -1067,7 +1078,7 @@ app.post('/api/admin/users', verifyToken, requireAdministrator, (req, res) => {
         name: (name || username).trim(),
         admin_id: currentAdminId,
         allowed_cameras: validAllowed,
-        createdAt: new Date().toISOString()
+        createdAt: getLocalTimeString()
     };
     dbData.users.push(newUser);
     saveNvrDb(dbData);
@@ -1184,7 +1195,7 @@ async function syncRecordingsToDB() {
                                 camera_id: camId,
                                 file_path: fullPath,
                                 file_size: stats.size,
-                                start_time: new Date(stats.mtimeMs).toISOString()
+                                start_time: getLocalTimeString(new Date(stats.mtimeMs))
                             });
                         }
                     } catch(e) {}
