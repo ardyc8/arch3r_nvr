@@ -2,6 +2,10 @@
 
 Semua perubahan yang signifikan pada proyek ini akan didokumentasikan di file ini.
 
+## [Ver 9.3.7] - 2026-09-16
+### Fixed
+- **Timezone Artifact Cleanup:** Memperbaiki dan menambal sisa data akun yang tercatat menggunakan `Z` (UTC) akibat regresi pada versi 9.3.4. Saat server dinyalakan ulang, sistem akan secara otomatis memindai seluruh file JSON dan mengonversi waktu lama (Z) tersebut ke dalam format waktu lokal secara mandiri.
+
 ## [Ver 9.3.6] - 2026-09-16
 ### Fixed
 - **Maximum Call Stack Size Exceeded (Crash Loop):** Memperbaiki bug kritis *infinite recursion* pada fungsi `getLocalTimeString()` yang menyebabkan server `node server.js` mogok saat *startup*. Server sekarang berjalan stabil.

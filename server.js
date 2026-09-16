@@ -340,6 +340,27 @@ function getNvrDb() {
         } catch(e) { return null; }
     }
     
+
+    // --- AUTO FIX OLD 'Z' TIMESTAMPS (Bugfix cleanup) ---
+    const fixZTime = (isoStr) => {
+        if (typeof isoStr === 'string' && isoStr.endsWith('Z')) {
+            return getLocalTimeString(new Date(isoStr));
+        }
+        return isoStr;
+    };
+    [fAccounts, fLogs, nvrDbFile].forEach(f => {
+        if (fs.existsSync(f)) {
+            try {
+                let d = JSON.parse(fs.readFileSync(f, 'utf8'));
+                let mod = false;
+                if (d.administrators) d.administrators.forEach(a => { if(a.createdAt?.endsWith('Z')) { a.createdAt = fixZTime(a.createdAt); mod = true; }});
+                if (d.users) d.users.forEach(u => { if(u.createdAt?.endsWith('Z')) { u.createdAt = fixZTime(u.createdAt); mod = true; }});
+                if (d.system_logs) d.system_logs.forEach(l => { if(l.timestamp?.endsWith('Z')) { l.timestamp = fixZTime(l.timestamp); mod = true; }});
+                if (mod) fs.writeFileSync(f, JSON.stringify(d, null, 2));
+            } catch(e){}
+        }
+    });
+
     const isAlreadyMigrated = fs.existsSync(fAccounts) || fs.existsSync(fCameras);
     
     // Hapus file bawaan Git jika Split-DB sudah aktif
@@ -567,7 +588,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.6' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.7' });
 });
 
 // Auth Endpoints
@@ -745,7 +766,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.3.6",
+        appVersion: "9.3.7",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -847,7 +868,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.3.6',
+                latestVersion: '9.3.7',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -915,7 +936,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.3.6',
+        version: '9.3.7',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
