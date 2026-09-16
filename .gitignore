@@ -18,3 +18,7 @@ keygen.js
 archer-nvr-arm64
 archer-nvr-x64
 TUTORIAL_PRODUKSI.md
+
+# SPLIT DB FILES
+data/db_*.json
+*.bak

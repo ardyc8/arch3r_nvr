@@ -313,57 +313,58 @@ let cachedDb = null;
 function getNvrDb() {
     if (cachedDb) return cachedDb;
     
-    const safeBackupFile = path.join(dataDir, 'nvr_db_safe_backup.json');
-    const legacyBackupFile = path.join(dataDir, 'nvr.db.json');
-
-    function tryParseFile(fPath) {
+    // ==========================================
+    // SPLIT DB ARCHITECTURE (ANTI-CORRUPTION)
+    // ==========================================
+    const fSettings = path.join(dataDir, 'db_settings.json');
+    const fAccounts = path.join(dataDir, 'db_accounts.json');
+    const fCameras = path.join(dataDir, 'db_cameras.json');
+    const fRecordings = path.join(dataDir, 'db_recordings.json');
+    const fLogs = path.join(dataDir, 'db_logs.json');
+    
+    function tryParse(fPath) {
         if (!fs.existsSync(fPath)) return null;
         try {
-            const raw = fs.readFileSync(fPath, 'utf8');
-            if (!raw || raw.trim() === '') return null;
-            const parsed = JSON.parse(raw);
-            if (parsed && typeof parsed === 'object') return parsed;
-        } catch(e) {
-            console.error(`[DB] Gagal membaca berkas ${fPath}:`, e.message);
-        }
-        return null;
+            return JSON.parse(fs.readFileSync(fPath, 'utf8'));
+        } catch(e) { return null; }
+    }
+    
+    // Migration Logic: If monolithic DB exists, migrate it
+    if (fs.existsSync(nvrDbFile)) {
+        let oldData = tryParse(nvrDbFile) || tryParse(path.join(dataDir, 'nvr_db_safe_backup.json')) || getDefaultDb();
+        cachedDb = oldData;
+        scheduleDbSave(); // Saves into split format
+        try {
+            fs.renameSync(nvrDbFile, nvrDbFile + '.migrated.bak');
+            if (fs.existsSync(path.join(dataDir, 'nvr.db.json'))) fs.renameSync(path.join(dataDir, 'nvr.db.json'), path.join(dataDir, 'nvr.db.json.migrated.bak'));
+            if (fs.existsSync(path.join(dataDir, 'nvr_db_safe_backup.json'))) fs.renameSync(path.join(dataDir, 'nvr_db_safe_backup.json'), path.join(dataDir, 'nvr_db_safe_backup.json.migrated.bak'));
+        } catch(e){}
+        return cachedDb;
     }
 
-    let data = tryParseFile(nvrDbFile);
-
-    // Cek apakah data kosong akibat file tertimpa (misalnya saat git pull)
-    const isMainEmpty = data && (!data.administrators || data.administrators.length === 0) && (!data.cameras || data.cameras.length === 0);
-
-    // Jika file utama korup / kosong, ambil dari backup otomatis
-    if (!data || isMainEmpty) {
-        let backupData = tryParseFile(safeBackupFile) || tryParseFile(legacyBackupFile);
-        const isBackupHasData = backupData && ((backupData.administrators && backupData.administrators.length > 0) || (backupData.cameras && backupData.cameras.length > 0));
-        
-        if (isBackupHasData) {
-            data = backupData;
-            console.log('[DB] Berhasil memulihkan database dari safe backup! (Menimpa file kosong)');
-            
-            // Simpan ulang ke nvrDbFile agar sinkron
-            fs.writeFileSync(nvrDbFile, JSON.stringify(data, null, 2));
-        }
+    let data = getDefaultDb();
+    
+    // Load individual modules
+    const s_set = tryParse(fSettings);
+    if (s_set) {
+        data.super_settings = s_set.super_settings || data.super_settings;
+        data.recording_path = s_set.recording_path || '';
     }
-
-    if (!data) {
-        data = getDefaultDb();
+    
+    const s_acc = tryParse(fAccounts);
+    if (s_acc) {
+        data.administrators = s_acc.administrators || [];
+        data.users = s_acc.users || [];
     }
-
-    const def = getDefaultDb();
-    if (!data.super_settings) data.super_settings = def.super_settings;
-    if (!Array.isArray(data.administrators)) data.administrators = [];
-    data.administrators.forEach(a => {
-        if (!a.max_cameras) a.max_cameras = 8;
-        if (!a.max_storage_gb) a.max_storage_gb = 100;
-    });
-    if (!data.users) data.users = def.users;
-    if (!data.cameras) data.cameras = [];
-    if (!data.recordings) data.recordings = [];
-    if (!data.system_logs) data.system_logs = [];
-    if (data.recording_path === undefined) data.recording_path = '';
+    
+    const s_cam = tryParse(fCameras);
+    if (s_cam) data.cameras = s_cam.cameras || [];
+    
+    const s_rec = tryParse(fRecordings);
+    if (s_rec) data.recordings = s_rec.recordings || [];
+    
+    const s_log = tryParse(fLogs);
+    if (s_log) data.system_logs = s_log.system_logs || [];
 
     cachedDb = data;
     return data;
@@ -379,27 +380,25 @@ function saveNvrDb(data) {
 function scheduleDbSave() {
     try {
         if (!cachedDb) return;
-        const jsonStr = JSON.stringify(cachedDb, null, 2);
-
-        // Jangan pernah timpa backup jika data saat ini kosong tapi file sebelumnya berisi kamera/admin
-        const safeBackupFile = path.join(dataDir, 'nvr_db_safe_backup.json');
-        const hasData = (cachedDb.cameras && cachedDb.cameras.length > 0) || (cachedDb.administrators && cachedDb.administrators.length > 0);
-        if (hasData) {
-            const tmpBak = safeBackupFile + '.tmp';
-            fs.writeFileSync(tmpBak, jsonStr);
-            fs.renameSync(tmpBak, safeBackupFile);
+        
+        function atomicWrite(fPath, dataObj) {
+            const tmp = fPath + '.tmp';
+            fs.writeFileSync(tmp, JSON.stringify(dataObj, null, 2));
+            fs.renameSync(tmp, fPath);
         }
 
-        // Atomic writes to prevent corruption on armbian
-        const tmpFile = nvrDbFile + '.tmp';
-        fs.writeFileSync(tmpFile, jsonStr);
-        fs.renameSync(tmpFile, nvrDbFile);
-        
-        const backupFile = path.join(dataDir, 'nvr.db.json');
-        fs.writeFileSync(backupFile + '.tmp', jsonStr);
-        fs.renameSync(backupFile + '.tmp', backupFile);
+        // ==========================================
+        // SPLIT DB ARCHITECTURE (ANTI-CORRUPTION)
+        // Write each module into its own file
+        // ==========================================
+        atomicWrite(path.join(dataDir, 'db_settings.json'), { super_settings: cachedDb.super_settings, recording_path: cachedDb.recording_path });
+        atomicWrite(path.join(dataDir, 'db_accounts.json'), { administrators: cachedDb.administrators, users: cachedDb.users });
+        atomicWrite(path.join(dataDir, 'db_cameras.json'), { cameras: cachedDb.cameras });
+        atomicWrite(path.join(dataDir, 'db_recordings.json'), { recordings: cachedDb.recordings });
+        atomicWrite(path.join(dataDir, 'db_logs.json'), { system_logs: cachedDb.system_logs });
+
     } catch(e) {
-        console.error('Error saving DB:', e);
+        console.error('Error saving Split DB:', e);
     }
 }
 
@@ -550,7 +549,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.17' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.2' });
 });
 
 // Auth Endpoints
@@ -609,6 +608,7 @@ app.post('/api/auth/login', (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     if (!licenseCheck.valid) {
+        
         // Cek apakah Trial masih aktif (Secure OS-Level Check)
         const installDate = getSecureInstallDate(currentSettings);
         const trialDaysLeft = 30 - Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24));
@@ -727,7 +727,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.2.17",
+        appVersion: "9.3.2",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -829,7 +829,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.2.17',
+                latestVersion: '9.3.2',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -897,7 +897,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.2.17',
+        version: '9.3.2',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),

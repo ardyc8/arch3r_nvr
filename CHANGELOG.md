@@ -2,6 +2,24 @@
 
 Semua perubahan yang signifikan pada proyek ini akan didokumentasikan di file ini.
 
+## [Ver 9.3.2] - 2026-09-16
+### Fixed
+- **Revert Over-Engineered License Logic:** Menghapus logika *Hardware-OS Binding* (`/etc/.arch3r_hw_bind.dat`) yang ditambahkan secara prematur. Mengembalikan sistem sepenuhnya ke skema validasi lisensi offline/online `keygen.js` yang sudah disepakati dan terbukti aman, sesuai arsitektur awal klien.
+
+## [Ver 9.3.1] - 2026-09-16
+### Added
+- **Hardware-Level Binding (Anti-Piracy V2):** Menambahkan proteksi kloning OS. Lisensi sekarang diikat (hashed) secara fisik dengan MAC Address STB dan disimpan secara rahasia di luar folder Node.js (`/etc/.arch3r_hw_bind.dat`). Jika SD Card STB dikloning ke STB lain, aplikasi akan langsung mendeteksi `Hardware UUID Mismatch` dan mengunci (lockdown) sistem secara otomatis.
+
+## [Ver 9.3.0] - 2026-09-16
+### Added
+- **Database Architecture Redesign (Split-DB):** Merombak total struktur penyimpanan database untuk mencegah korupsi massal. File `nvr_db.json` lama kini dipecah menjadi modul-modul independen yang terisolasi secara fisik:
+  - `db_accounts.json` (Kredensial, Administrator, User)
+  - `db_cameras.json` (Data Kamera & RTSP)
+  - `db_recordings.json` (Daftar File Rekaman)
+  - `db_logs.json` (Sistem Log - penyebab utama bloating)
+  - `db_settings.json` (Konfigurasi Global NVR)
+- **Auto-Migration:** Menambahkan mekanisme perpindahan (migrasi) otomatis dari format Monolitik (lama) ke format Split-DB tanpa campur tangan pengguna.
+
 ## [Ver 9.2.17] - 2026-09-16
 ### Fixed
 - **Memory State Sync:** Menambahkan *diagnostic trigger* `[RELOAD_DB_CACHE]` pada endpoint login untuk mereset `cachedDb` dari memori. Ini memperbaiki masalah di mana STB menggunakan *in-memory array* yang kosong meskipun file `nvr_db.json` fisik sudah direstore secara manual atau memiliki isi.
