@@ -2,6 +2,10 @@
 
 Semua perubahan yang signifikan pada proyek ini akan didokumentasikan di file ini.
 
+## [Ver 9.3.9] - 2026-09-16
+### Changed
+- **Unified Responsive System:** Merombak seluruh pondasi CSS (CSS *Flexbox* & *Media Queries*) untuk *dashboard* utama maupun *Superadmin*. Sistem kini secara dinamis merespons rotasi layar (*portrait* ke *landscape*) tanpa masalah *overflow* (melebihi batas layar) atau elemen yang tergencet. Kamera, form pengaturan, dan bar navigasi seluler kini menggunakan *viewport-height* fleksibel (`flex: 1`) secara penuh.
+
 ## [Ver 9.3.8] - 2026-09-16
 ### Changed
 - **UI/UX Cleanup (Superadmin):** Memperbaiki masalah tata letak antarmuka (UI) Superadmin yang berantakan (*squished*/terpotong) saat dibuka dalam mode *landscape* (mendatar) di ponsel/tablet. Menghapus dekorasi yang "berlebih-lebihan" (warna *background* pelangi, *border* tebal, dan *padding* yang terlalu memakan ruang) sehingga tampilan menjadi bersih, profesional, dan seragam dengan halaman utama.
