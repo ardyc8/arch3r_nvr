@@ -386,7 +386,7 @@ function getNvrDb() {
     // Load individual modules
     const s_set = tryParse(fSettings);
     if (s_set) {
-        data.super_settings = s_set.super_settings || data.super_settings;
+        data.super_settings = { ...data.super_settings, ...(s_set.super_settings || {}) };
         data.recording_path = s_set.recording_path || '';
     }
     
@@ -588,7 +588,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.10' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.12' });
 });
 
 // Auth Endpoints
@@ -766,7 +766,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.3.10",
+        appVersion: "9.3.12",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -868,7 +868,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.3.10',
+                latestVersion: '9.3.12',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -936,7 +936,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.3.10',
+        version: '9.3.12',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
@@ -1330,7 +1330,7 @@ function ensureRecordFolders() {
             const base = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
             [yesterday, today, tomorrow].forEach(date => {
                 const d = path.join(base, date);
-                if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+                try { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); } catch (err) { sysLog('ERROR', 'Gagal membuat folder: ' + d, 'STORAGE'); }
             });
         }
     });
@@ -1510,9 +1510,7 @@ function spawnRecordingFFmpeg(cam) {
     stopCameraRecording(cam.id);
 
     const recBase = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
-    if (!fs.existsSync(recBase)) {
-        fs.mkdirSync(recBase, { recursive: true });
-    }
+    try { if (!fs.existsSync(recBase)) fs.mkdirSync(recBase, { recursive: true }); } catch (err) { sysLog('ERROR', 'Gagal membuat folder base: ' + recBase, 'STORAGE'); }
 
     const segSec = cam.segmentDurationSec || 900;
     const isDemo = sourceUrl === 'demo';
@@ -1525,7 +1523,7 @@ function spawnRecordingFFmpeg(cam) {
             '-f', 'lavfi', '-i', 'sine=frequency=1000:sample_rate=44100'
         ];
     } else {
-        const isRtsp = sourceUrl.startsWith('rtsp://');
+        const isRtsp = typeof sourceUrl === 'string' && sourceUrl.startsWith('rtsp://');
         inputArgs = [
             ...(isRtsp ? ['-rtsp_transport', 'tcp'] : []),
             '-i', sourceUrl
@@ -1553,6 +1551,9 @@ function spawnRecordingFFmpeg(cam) {
     const child = spawn('ffmpeg', args);
     child.killedByUser = false;
     child.lastErr = '';
+    child.on('error', err => {
+        sysLog('ERROR', 'FFmpeg spawn error (' + cam.id + '): ' + err.message, 'CAMERA');
+    });
     child.stderr.on('data', d => {
         let str = d.toString();
         child.lastErr = str;
