@@ -550,7 +550,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.13' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.14' });
 });
 
 // Auth Endpoints
@@ -719,7 +719,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.2.13",
+        appVersion: "9.2.14",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -821,7 +821,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.2.13',
+                latestVersion: '9.2.14',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -889,7 +889,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.2.13',
+        version: '9.2.14',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
