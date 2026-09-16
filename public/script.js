@@ -2324,6 +2324,23 @@ async function fetchSystemSettings() {
             if (sysPlayerMode && data.playerMode) sysPlayerMode.value = data.playerMode;
             if (sysTgBot && data.telegramBotToken) sysTgBot.value = data.telegramBotToken;
             if (sysTgChat && data.telegramChatId) sysTgChat.value = data.telegramChatId;
+            
+            // Storage Settings (Bugfix: Retain settings)
+            const sysGlobalStorageMode = document.getElementById('sysGlobalStorageMode');
+            const sysRecordingQuality = document.getElementById('sysRecordingQuality');
+            const sysCustomStoragePath = document.getElementById('sysCustomStoragePath');
+            const sysStorageDevice = document.getElementById('sysStorageDevice');
+
+            if (sysGlobalStorageMode && data.globalStorageMode) sysGlobalStorageMode.value = data.globalStorageMode;
+            if (sysRecordingQuality && data.recordingQuality) sysRecordingQuality.value = data.recordingQuality;
+            
+            if (sysCustomStoragePath) {
+                // Parse whether path is from device selection or custom absolute path
+                if (data.globalStoragePath && data.globalStoragePath.startsWith('/')) {
+                     sysCustomStoragePath.value = data.globalStoragePath;
+                     if (sysStorageDevice) sysStorageDevice.value = 'custom';
+                }
+            }
         } catch(e) {
             console.error('Failed fetch settings', e);
         }

@@ -2,6 +2,10 @@
 
 Semua perubahan yang signifikan pada proyek ini akan didokumentasikan di file ini.
 
+## [Ver 9.3.3] - 2026-09-16
+### Fixed
+- **UI State Sync:** Memperbaiki bug di mana `sysGlobalStorageMode` dan konfigurasi penyimpanan lainnya pada antarmuka *frontend* selalu mereset tampilan menjadi "Mati/Nonaktif" saat halaman direfresh (meskipun data di `db_settings.json` sudah tersimpan aktif).
+
 ## [Ver 9.3.2] - 2026-09-16
 ### Fixed
 - **Revert Over-Engineered License Logic:** Menghapus logika *Hardware-OS Binding* (`/etc/.arch3r_hw_bind.dat`) yang ditambahkan secara prematur. Mengembalikan sistem sepenuhnya ke skema validasi lisensi offline/online `keygen.js` yang sudah disepakati dan terbukti aman, sesuai arsitektur awal klien.
