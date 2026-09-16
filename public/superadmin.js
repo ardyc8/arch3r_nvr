@@ -289,6 +289,8 @@
                         alert('⚠️ LISENSI TERSIMPAN TAPI BELUM AKTIF!\n\nPenyebab:\n' + (data.licenseReason || 'Token tidak cocok dengan Machine ID atau Email') + '\n\nSilakan periksa detailnya di kotak status merah di bawah ini.');
                     }
                     window.location.reload();
+                } else {
+                    alert('❌ GAGAL AKTIVASI:\n\n' + (data.error || 'Terjadi kesalahan dari server.'));
                 }
             } catch (err) {
                 alert('Gagal menyimpan lisensi: ' + err.message);

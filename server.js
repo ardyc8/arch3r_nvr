@@ -331,11 +331,20 @@ function getNvrDb() {
 
     let data = tryParseFile(nvrDbFile);
 
+    // Cek apakah data kosong akibat file tertimpa (misalnya saat git pull)
+    const isMainEmpty = data && (!data.administrators || data.administrators.length === 0) && (!data.cameras || data.cameras.length === 0);
+
     // Jika file utama korup / kosong, ambil dari backup otomatis
-    if (!data) {
-        data = tryParseFile(safeBackupFile) || tryParseFile(legacyBackupFile);
-        if (data) {
-            console.log('[DB] Berhasil memulihkan database dari safe backup!');
+    if (!data || isMainEmpty) {
+        let backupData = tryParseFile(safeBackupFile) || tryParseFile(legacyBackupFile);
+        const isBackupHasData = backupData && ((backupData.administrators && backupData.administrators.length > 0) || (backupData.cameras && backupData.cameras.length > 0));
+        
+        if (isBackupHasData) {
+            data = backupData;
+            console.log('[DB] Berhasil memulihkan database dari safe backup! (Menimpa file kosong)');
+            
+            // Simpan ulang ke nvrDbFile agar sinkron
+            fs.writeFileSync(nvrDbFile, JSON.stringify(data, null, 2));
         }
     }
 
@@ -541,7 +550,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.12' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.13' });
 });
 
 // Auth Endpoints
@@ -710,7 +719,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.2.12",
+        appVersion: "9.2.13",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -812,7 +821,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.2.12',
+                latestVersion: '9.2.13',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -843,11 +852,26 @@ app.post('/api/superadmin/change-credentials', verifyToken, requireSuperadmin, (
 
 app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) => {
     const dbData = getNvrDb();
+    const machineId = getMachineId();
+    
+    // STRICT VALIDATION FOR LICENSE INPUT
+    if (req.body.license !== undefined && req.body.license.trim() !== '') {
+        const inputEmail = req.body.email || '';
+        const check = validateLicense(req.body.license, inputEmail, machineId);
+        
+        // JIKA LISENSI TIDAK VALID, TOLAK TOTAL PENYIMPANAN
+        if (!check.valid) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Lisensi Ditolak: " + check.reason 
+            });
+        }
+    }
+
     dbData.super_settings = { ...dbData.super_settings, ...req.body };
     saveNvrDb(dbData);
-    sysLog('INFO', '[Superadmin] Pengaturan Lisensi & P2P Relay diperbarui.');
+    sysLog('INFO', '[Superadmin] Pengaturan Lisensi / P2P Relay diperbarui.');
 
-    const machineId = getMachineId();
     const currentLicense = dbData.super_settings.license || '';
     const currentEmail = dbData.super_settings.email || '';
     const licenseCheck = validateLicense(currentLicense, currentEmail, machineId);
@@ -865,7 +889,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.2.12',
+        version: '9.2.13',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
