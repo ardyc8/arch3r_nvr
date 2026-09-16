@@ -36,28 +36,97 @@ function getMachineId() {
     return 'UNKNOWN-MACHINE';
 }
 
+function getAllStbMachineIdentifiers() {
+    const ids = new Set();
+    const currentPrimary = getMachineId();
+    if (currentPrimary && currentPrimary !== 'UNKNOWN-MACHINE') {
+        ids.add(currentPrimary.toUpperCase());
+        ids.add(currentPrimary.toLowerCase());
+    }
+
+    try {
+        const interfaces = os.networkInterfaces();
+        for (let name of Object.keys(interfaces)) {
+            for (let iface of interfaces[name]) {
+                if (!iface.internal && iface.mac && iface.mac !== '00:00:00:00:00:00') {
+                    const rawMac = iface.mac.toLowerCase();
+                    const cleanMac = rawMac.replace(/[:-]/g, '');
+                    const hash12 = crypto.createHash('md5').update(iface.mac).digest('hex').substring(0, 12).toUpperCase();
+                    const hashClean = crypto.createHash('md5').update(cleanMac).digest('hex').substring(0, 12).toUpperCase();
+                    
+                    ids.add(rawMac);
+                    ids.add(cleanMac);
+                    ids.add(rawMac.toUpperCase());
+                    ids.add(cleanMac.toUpperCase());
+                    ids.add(hash12);
+                    ids.add(hash12.toLowerCase());
+                    ids.add(hashClean);
+                    ids.add(hashClean.toLowerCase());
+                }
+            }
+        }
+    } catch (e) {
+        // Fallback to primary machineId
+    }
+
+    return Array.from(ids);
+}
+
 const SECRET_KEY = "ARCH3R_NVR_SUP3R_S3CR3T_2026"; 
 
 function validateLicense(key, email, machineId) {
-    if (!key) return { valid: false, reason: "Lisensi kosong" };
+    if (!key || typeof key !== 'string' || key.trim() === '') return { valid: false, reason: "Lisensi kosong" };
     try {
-        const parts = key.split('.');
-        if (parts.length !== 2) return { valid: false, reason: "Format lisensi salah" };
+        const parts = key.trim().split('.');
+        if (parts.length !== 2) return { valid: false, reason: "Format token lisensi salah (Harus berupa format Payload.Signature)" };
         
         const payloadStr = Buffer.from(parts[0], 'base64').toString('utf8');
-        const signature = parts[1];
+        const signature = parts[1].trim();
         
-        const expectedSignature = crypto.createHmac('sha256', SECRET_KEY).update(parts[0]).digest('base64');
-        if (signature !== expectedSignature) return { valid: false, reason: "Lisensi palsu atau telah dimodifikasi (Segel Rusak)" };
+        const expectedSignature = crypto.createHmac('sha256', SECRET_KEY).update(parts[0].trim()).digest('base64');
+        if (signature !== expectedSignature) return { valid: false, reason: "Lisensi palsu atau telah dimodifikasi (Segel HMAC Rusak)" };
         
         const payload = JSON.parse(payloadStr);
-        if (payload.email !== email) return { valid: false, reason: "Email tidak cocok dengan lisensi ini" };
-        if (payload.machineId !== machineId) return { valid: false, reason: "Lisensi ini diperuntukkan bagi mesin STB lain (Machine ID tidak cocok)" };
-        if (Date.now() > payload.exp) return { valid: false, reason: "Masa aktif lisensi telah habis/kedaluwarsa", expiresAt: payload.exp };
+        const cleanPayloadEmail = (payload.email || '').trim().toLowerCase();
+        const cleanInputEmail = (email || '').trim().toLowerCase();
+        
+        if (cleanPayloadEmail !== cleanInputEmail) {
+            return { 
+                valid: false, 
+                reason: `Email tidak cocok! Token dibuat untuk '${payload.email}', tetapi yang dimasukkan di form adalah '${email}'` 
+            };
+        }
+        
+        // Verifikasi fleksibel Machine ID (Mendukung MD5 12-char dari Web, MAC fisik STB berkolon atau tanpa kolon)
+        const validIds = getAllStbMachineIdentifiers();
+        const inputMachineId = (payload.machineId || '').trim();
+        const cleanPayloadMid = inputMachineId.replace(/[:-]/g, '').toUpperCase();
+        
+        let isMachineMatch = false;
+        if (validIds.some(id => id.toUpperCase() === inputMachineId.toUpperCase() || id.replace(/[:-]/g, '').toUpperCase() === cleanPayloadMid)) {
+            isMachineMatch = true;
+        } else {
+            const hashedPayloadMid = crypto.createHash('md5').update(inputMachineId).digest('hex').substring(0, 12).toUpperCase();
+            if (validIds.some(id => id.toUpperCase() === hashedPayloadMid)) {
+                isMachineMatch = true;
+            }
+        }
+        
+        if (!isMachineMatch) {
+            return { 
+                valid: false, 
+                reason: `Machine ID tidak cocok! Token dibuat untuk Machine ID '${inputMachineId}', sedangkan Machine ID STB ini adalah '${machineId}'` 
+            };
+        }
+        
+        if (Date.now() > payload.exp) {
+            const expDate = new Date(payload.exp).toLocaleDateString('id-ID');
+            return { valid: false, reason: `Masa aktif lisensi telah habis/kedaluwarsa pada ${expDate}`, expiresAt: payload.exp };
+        }
         
         return { valid: true, reason: "Lisensi Valid & Aktif", expiresAt: payload.exp };
     } catch (e) {
-        return { valid: false, reason: "Kunci Lisensi Invalid" };
+        return { valid: false, reason: "Kunci Lisensi Invalid atau korup: " + e.message };
     }
 }
 
@@ -472,7 +541,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.11' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.2.12' });
 });
 
 // Auth Endpoints
@@ -641,7 +710,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.2.11",
+        appVersion: "9.2.12",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -743,7 +812,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.2.11',
+                latestVersion: '9.2.12',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -777,14 +846,26 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
     dbData.super_settings = { ...dbData.super_settings, ...req.body };
     saveNvrDb(dbData);
     sysLog('INFO', '[Superadmin] Pengaturan Lisensi & P2P Relay diperbarui.');
-    res.json({ success: true, settings: dbData.super_settings });
+
+    const machineId = getMachineId();
+    const currentLicense = dbData.super_settings.license || '';
+    const currentEmail = dbData.super_settings.email || '';
+    const licenseCheck = validateLicense(currentLicense, currentEmail, machineId);
+
+    res.json({ 
+        success: true, 
+        settings: dbData.super_settings,
+        licenseValid: licenseCheck.valid,
+        licenseReason: licenseCheck.reason,
+        licenseExpiresAt: licenseCheck.expiresAt || null
+    });
 });
 
 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.2.11',
+        version: '9.2.12',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),

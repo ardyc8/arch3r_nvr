@@ -219,16 +219,23 @@
                 badge.style.background = '#ef4444';
                 
                 trialBox.style.display = 'block';
+                let reasonHtml = '';
+                if (data.settings && data.settings.license && data.licenseReason) {
+                    reasonHtml = `<div style="margin-bottom:0.75rem; padding:0.5rem 0.75rem; background:rgba(239, 68, 68, 0.25); border-radius:6px; border:1px solid #ef4444; color:#fca5a5; font-size:0.8rem; text-align:left; line-height:1.4;">
+                        ⚠️ <strong>Penyebab Lisensi Belum Aktif:</strong><br>${data.licenseReason}
+                    </div>`;
+                }
+
                 if (data.isTrialActive) {
-                    trialBox.style.background = 'rgba(234, 179, 8, 0.2)';
+                    trialBox.style.background = 'rgba(234, 179, 8, 0.15)';
                     trialBox.style.border = '1px solid #eab308';
                     trialBox.style.color = '#fef08a';
-                    trialBox.innerHTML = `<strong style="font-size:0.9rem;">Masa Trial / Evaluasi Aktif</strong><br>Sisa Waktu Trial NVR: <strong>${data.trialDaysLeft} Hari</strong>`;
+                    trialBox.innerHTML = `${reasonHtml}<strong style="font-size:0.9rem;">Masa Trial / Evaluasi Aktif</strong><br>Sisa Waktu Trial NVR: <strong>${data.trialDaysLeft} Hari</strong>`;
                 } else {
                     trialBox.style.background = 'rgba(239, 68, 68, 0.2)';
                     trialBox.style.border = '1px solid #ef4444';
                     trialBox.style.color = '#fecaca';
-                    trialBox.innerHTML = `<strong style="font-size:0.9rem;">Masa Trial Habis</strong><br>Sistem terkunci. Harap hubungi Developer dan masukkan Token Lisensi baru.`;
+                    trialBox.innerHTML = `${reasonHtml}<strong style="font-size:0.9rem;">Masa Trial Habis & Sistem Terkunci</strong><br>Harap masukkan Token Lisensi yang valid untuk mengaktifkan NVR.`;
                 }
             }
         } catch (err) {
@@ -236,9 +243,33 @@
         }
     }
 
+    // Copy Machine ID button
+    const btnCopyMachineId = document.getElementById('btnCopyMachineId');
+    if (btnCopyMachineId) {
+        btnCopyMachineId.addEventListener('click', () => {
+            const mid = (document.getElementById('saMachineId').textContent || '').trim();
+            if (mid && mid !== '---') {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(mid).then(() => {
+                        btnCopyMachineId.textContent = '✅ Tersalin!';
+                        btnCopyMachineId.style.background = '#10b981';
+                        btnCopyMachineId.style.color = '#ffffff';
+                        setTimeout(() => { 
+                            btnCopyMachineId.textContent = '📋 Salin ID'; 
+                            btnCopyMachineId.style.background = '#1e293b';
+                            btnCopyMachineId.style.color = '#cbd5e1';
+                        }, 2500);
+                    }).catch(() => {
+                        prompt('Salin Machine ID ini:', mid);
+                    });
+                } else {
+                    prompt('Salin Machine ID ini:', mid);
+                }
+            }
+        });
+    }
+
     // Save License
-    
-    
     if (saLicenseForm) {
         saLicenseForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -252,11 +283,15 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('Data Aktivasi berhasil disimpan! Halaman akan dimuat ulang untuk memvalidasi status.');
+                    if (data.licenseValid) {
+                        alert('✅ AKTIVASI SUKSES!\n\nLisensi berhasil diverifikasi. Status NVR sekarang: PREMIUM AKTIF.');
+                    } else {
+                        alert('⚠️ LISENSI TERSIMPAN TAPI BELUM AKTIF!\n\nPenyebab:\n' + (data.licenseReason || 'Token tidak cocok dengan Machine ID atau Email') + '\n\nSilakan periksa detailnya di kotak status merah di bawah ini.');
+                    }
                     window.location.reload();
                 }
             } catch (err) {
-                alert('Gagal menyimpan lisensi');
+                alert('Gagal menyimpan lisensi: ' + err.message);
             }
         });
     }
