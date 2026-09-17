@@ -12,7 +12,7 @@ if ! dpkg -s python3-pip python3-venv >/dev/null 2>&1; then
     echo "[!] python3-pip atau python3-venv belum terinstal."
     echo "[!] Menginstal dependensi sistem (Membutuhkan akses sudo/root)..."
     sudo apt update
-    sudo apt install -y python3-pip python3-venv libgl1-mesa-glx libglib2.0-0
+    sudo apt install -y python3-pip python3-venv libgl1 libglib2.0-0
 fi
 
 echo "[2/4] Pengecekan Virtual Environment (venv)..."
