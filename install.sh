@@ -80,3 +80,41 @@ echo "Perintah berguna:"
 echo " - Lihat Log Sistem  : pm2 logs arch3r_nvr"
 echo " - Restart NVR       : pm2 restart arch3r_nvr"
 echo "====================================================="
+
+# ==========================================
+# (OPSIONAL) Arch3r NVR - AI YOLO Service
+# ==========================================
+echo "=========================================="
+echo "Instalasi AI YOLOv8 Service (Opsional)"
+echo "=========================================="
+read -p "Apakah Anda ingin menginstal dan mengaktifkan AI Object Detection (YOLOv8)? [y/N] " install_ai
+if [[ "$install_ai" =~ ^[Yy]$ ]]; then
+    echo "[!] Menyiapkan dependensi AI..."
+    sudo apt install -y python3-pip python3-venv python3-full libgl1 libglib2.0-0
+    
+    echo "[!] Membuat Python Virtual Environment (venv)..."
+    python3 -m venv venv
+    
+    echo "[!] Menginstal OpenCV, FastAPI, dan Ultralytics..."
+    source venv/bin/activate
+    pip install fastapi uvicorn opencv-python ultralytics httpx --break-system-packages
+    
+    echo "[!] Mendaftarkan AI Service ke PM2..."
+    # Menjalankan AI Service via bash script karena pm2 kesulitan memanggil venv langsung
+    cat << 'RUNAI' > run_ai.sh
+#!/bin/bash
+cd "$(dirname "$0")"
+source venv/bin/activate
+python3 addons/ai_yolo_service.py
+RUNAI
+    chmod +x run_ai.sh
+    pm2 start ./run_ai.sh --name "arch3r-ai-yolo"
+    pm2 save
+    
+    echo "=========================================="
+    echo "AI YOLO Service BERHASIL diinstal dan dijalankan!"
+    echo "Status bisa dicek dengan: pm2 logs arch3r-ai-yolo"
+    echo "=========================================="
+else
+    echo "Instalasi AI Service dilewati."
+fi
