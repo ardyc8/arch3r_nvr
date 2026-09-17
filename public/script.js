@@ -2590,3 +2590,137 @@ let allLogsCache = [];
 });
 
 
+
+// ==========================================
+// ARCH3R AI ADDON - GRID SELECTION LOGIC
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const aiCanvas = document.getElementById('aiGridCanvas');
+    const aiVideo = document.getElementById('aiVideoPlayer');
+    const aiCamSelect = document.getElementById('aiCameraSelect');
+    if(!aiCanvas) return; // Hanya jalankan jika elemen ada
+
+    const ctx = aiCanvas.getContext('2d');
+    const ROWS = 10;
+    const COLS = 10;
+    let activeCells = new Set();
+    let isDrawing = false;
+    let drawMode = true; // true = mengaktifkan, false = menghapus
+
+    function resizeCanvas() {
+        const rect = aiCanvas.parentElement.getBoundingClientRect();
+        aiCanvas.width = rect.width;
+        aiCanvas.height = rect.height;
+        drawGrid();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawGrid() {
+        ctx.clearRect(0, 0, aiCanvas.width, aiCanvas.height);
+        const cellW = aiCanvas.width / COLS;
+        const cellH = aiCanvas.height / ROWS;
+
+        // Gambar petak aktif
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.4)'; // Merah transparan
+        activeCells.forEach(cell => {
+            const [r, c] = cell.split(',').map(Number);
+            ctx.fillRect(c * cellW, r * cellH, cellW, cellH);
+        });
+
+        // Gambar garis grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let i = 1; i < COLS; i++) {
+            ctx.moveTo(i * cellW, 0);
+            ctx.lineTo(i * cellW, aiCanvas.height);
+        }
+        for(let i = 1; i < ROWS; i++) {
+            ctx.moveTo(0, i * cellH);
+            ctx.lineTo(aiCanvas.width, i * cellH);
+        }
+        ctx.stroke();
+    }
+
+    function getCellFromMouseEvent(e) {
+        const rect = aiCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const cellW = aiCanvas.width / COLS;
+        const cellH = aiCanvas.height / ROWS;
+        const c = Math.floor(x / cellW);
+        const r = Math.floor(y / cellH);
+        return {r, c, id: `${r},${c}`};
+    }
+
+    aiCanvas.addEventListener('mousedown', (e) => {
+        isDrawing = true;
+        const cell = getCellFromMouseEvent(e);
+        drawMode = !activeCells.has(cell.id); // Jika sudah aktif, mode hapus
+        if(drawMode) activeCells.add(cell.id);
+        else activeCells.delete(cell.id);
+        drawGrid();
+    });
+
+    aiCanvas.addEventListener('mousemove', (e) => {
+        if(!isDrawing) return;
+        const cell = getCellFromMouseEvent(e);
+        if(drawMode) activeCells.add(cell.id);
+        else activeCells.delete(cell.id);
+        drawGrid();
+    });
+
+    window.addEventListener('mouseup', () => { isDrawing = false; });
+
+    document.getElementById('btnAiGridClear').addEventListener('click', () => {
+        activeCells.clear();
+        drawGrid();
+    });
+
+    document.getElementById('btnAiGridSave').addEventListener('click', async () => {
+        const camId = aiCamSelect.value;
+        if(!camId) return alert('Pilih kamera terlebih dahulu!');
+        
+        const payload = {
+            camera_id: camId,
+            grid_rows: ROWS,
+            grid_cols: COLS,
+            active_cells: Array.from(activeCells)
+        };
+        
+        try {
+            // Asumsi Node.js meneruskan (proxy) ke Python di port 8000
+            document.getElementById('aiStatusMsg').textContent = "Menyimpan konfigurasi AI...";
+            const res = await fetch('/api/ai/save_grid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('arch3r_token') },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if(res.ok) {
+                document.getElementById('aiStatusMsg').textContent = "Konfigurasi AI berhasil disimpan dan dikirim ke YOLO Engine!";
+            } else {
+                throw new Error(data.error || 'Gagal menyimpan');
+            }
+        } catch(e) {
+            document.getElementById('aiStatusMsg').textContent = "Error: " + e.message;
+        }
+    });
+
+    // Populasi Kamera (Dipanggil saat menu Addons dibuka)
+    const mNavs = document.querySelectorAll('.sidebar-nav .nav-item');
+    mNavs.forEach(nav => {
+        nav.addEventListener('click', () => {
+            if (nav.dataset.target === 'view-addons') {
+                setTimeout(resizeCanvas, 100);
+                // Render option list
+                aiCamSelect.innerHTML = '<option value="">-- Pilih Kamera --</option>';
+                if(window.cameras) {
+                    window.cameras.forEach(c => {
+                        aiCamSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                    });
+                }
+            }
+        });
+    });
+});

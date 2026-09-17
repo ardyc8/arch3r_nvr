@@ -217,7 +217,52 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// MAINTENANCE & OTA API (v9.3.15)
+// AI ADDON PROXY API (v9.4.1)
+// ==========================================
+app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
+    try {
+        // Forward ke Python YOLO service
+        const payload = req.body;
+        // Kita perlu menyertakan rtsp URL agar Python bisa connect
+        const db = getNvrDb();
+        const cam = db.cameras.find(c => c.id === payload.camera_id);
+        if(!cam) return res.status(404).json({ error: 'Kamera tidak ditemukan' });
+        
+        payload.rtsp_url = cam.mainStreamUrl || cam.subStreamUrl;
+        
+        const response = await fetch('http://127.0.0.1:8000/api/ai/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if(!response.ok) throw new Error('YOLO Service Python menolak request atau tidak aktif.');
+        const result = await response.json();
+        
+        // Simpan konfig AI ke nvr_db.json (agar persisten saat reboot)
+        if(!cam.ai_config) cam.ai_config = {};
+        cam.ai_config.grid = payload;
+        saveNvrDb(db);
+        
+        sysLog('INFO', `[AI Addon] Area deteksi diperbarui untuk kamera ${cam.name}`, 'SYSTEM');
+        res.json(result);
+    } catch(e) {
+        res.status(500).json({ error: "Gagal terhubung ke Service Python (Apakah addons/ai_yolo_service.py sudah jalan?): " + e.message });
+    }
+});
+
+// Endpoint yang dipanggil oleh Python saat mendeteksi manusia
+app.post('/api/ai/webhook', (req, res) => {
+    // Di sini kita bisa meneruskan event deteksi ke frontend (misal via Server-Sent Events / Socket)
+    // atau sekadar mencatatnya di Log NVR.
+    const { camera_id, event, grid_cell } = req.body;
+    sysLog('WARN', `[AI ALARM] Deteksi Manusia pada ${camera_id} (Petak: ${grid_cell})`, 'SECURITY');
+    res.json({received: true});
+});
+
+
+// ==========================================
+// MAINTENANCE & OTA API (v9.4.1)
 // ==========================================
 app.get('/api/maintenance/backup', verifyToken, (req, res) => {
     sysLog('INFO', `[Maintenance] Backup database requested`, 'SYSTEM');
@@ -261,7 +306,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
         if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
             return res.json({
                 current_version: require('./package.json').version,
-                latest_version: '9.4.0',
+                latest_version: '9.4.1',
                 changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
                 update_available: true
             });
@@ -678,7 +723,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.3.15' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.4.1' });
 });
 
 // Auth Endpoints
@@ -856,7 +901,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.3.15",
+        appVersion: "9.4.1",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -958,7 +1003,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.3.15',
+                latestVersion: '9.4.1',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -1026,7 +1071,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.3.15',
+        version: '9.4.1',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
