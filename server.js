@@ -204,15 +204,23 @@ const oldDataDir = path.join(__dirname, 'data');
 const dataDir = path.join(__dirname, 'data', 'live_db');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-// --- AUTO MIGRATION: Restore missing data from old directory ---
+// --- AUTO MIGRATION: Restore missing data and protect from git pull ---
 try {
-    ['db_accounts.json', 'db_cameras.json', 'db_recordings.json', 'db_settings.json', 'db_logs.json'].forEach(file => {
-        const oldFile = path.join(oldDataDir, file);
-        const newFile = path.join(dataDir, file);
-        // Jika di live_db kosong, tapi di folder lama ada datanya, kembalikan!
-        if (fs.existsSync(oldFile) && !fs.existsSync(newFile)) {
-            fs.copyFileSync(oldFile, newFile);
-            console.log('[MIGRATION] Restored ' + file + ' to live_db');
+    ['db_accounts.json', 'db_cameras.json', 'db_recordings.json', 'db_settings.json', 'db_logs.json', 'db_addons.json'].forEach(file => {
+        const localFile = 'local_' + file;
+        const oldFile1 = path.join(oldDataDir, file);
+        const oldFile2 = path.join(dataDir, file);
+        const newFile = path.join(dataDir, localFile);
+        
+        // Convert to local_ prefix to prevent git pull overwrites
+        if (!fs.existsSync(newFile)) {
+            if (fs.existsSync(oldFile2)) {
+                fs.copyFileSync(oldFile2, newFile);
+                console.log('[MIGRATION] Protected ' + file + ' to ' + localFile);
+            } else if (fs.existsSync(oldFile1)) {
+                fs.copyFileSync(oldFile1, newFile);
+                console.log('[MIGRATION] Restored ' + file + ' to ' + localFile);
+            }
         }
     });
 } catch(e) {
@@ -236,7 +244,7 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.5.5)
+// AI ADDON PROXY API (v9.5.6)
 // ==========================================
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
@@ -281,7 +289,7 @@ app.post('/api/ai/webhook', (req, res) => {
 
 
 // ==========================================
-// ADDON MARKETPLACE API (v9.5.5)
+// ADDON MARKETPLACE API (v9.5.6)
 // ==========================================
 
 app.get('/api/addons', verifyToken, (req, res) => {
@@ -379,7 +387,7 @@ app.delete('/api/addons/:id', verifyToken, (req, res) => {
 });
 
 // ==========================================
-// MAINTENANCE & OTA API (v9.5.5)
+// MAINTENANCE & OTA API (v9.5.6)
 // ==========================================
 app.get('/api/maintenance/backup', verifyToken, (req, res) => {
     sysLog('INFO', `[Maintenance] Backup database requested`, 'SYSTEM');
@@ -423,7 +431,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
         if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
             return res.json({
                 current_version: require('./package.json').version,
-                latest_version: '9.5.5',
+                latest_version: '9.5.6',
                 changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
                 update_available: true
             });
@@ -579,11 +587,12 @@ function getNvrDb() {
     // ==========================================
     // SPLIT DB ARCHITECTURE (ANTI-CORRUPTION)
     // ==========================================
-    const fSettings = path.join(dataDir, 'db_settings.json');
-    const fAccounts = path.join(dataDir, 'db_accounts.json');
-    const fCameras = path.join(dataDir, 'db_cameras.json');
-    const fRecordings = path.join(dataDir, 'db_recordings.json');
-    const fLogs = path.join(dataDir, 'db_logs.json');
+    const fSettings = path.join(dataDir, 'local_db_settings.json');
+    const fAccounts = path.join(dataDir, 'local_db_accounts.json');
+    const fCameras = path.join(dataDir, 'local_db_cameras.json');
+    const fRecordings = path.join(dataDir, 'local_db_recordings.json');
+    const fLogs = path.join(dataDir, 'local_db_logs.json');
+    const fAddons = path.join(dataDir, 'local_db_addons.json');
     
     function tryParse(fPath) {
         if (!fs.existsSync(fPath)) return null;
@@ -656,6 +665,9 @@ function getNvrDb() {
     
     const s_log = tryParse(fLogs);
     if (s_log) data.system_logs = s_log.system_logs || [];
+    
+    const s_add = tryParse(fAddons);
+    if (s_add) data.addons = s_add.addons || null;
 
     cachedDb = data;
     return data;
@@ -682,11 +694,12 @@ function scheduleDbSave() {
         // SPLIT DB ARCHITECTURE (ANTI-CORRUPTION)
         // Write each module into its own file
         // ==========================================
-        atomicWrite(path.join(dataDir, 'db_settings.json'), { super_settings: cachedDb.super_settings, recording_path: cachedDb.recording_path });
-        atomicWrite(path.join(dataDir, 'db_accounts.json'), { administrators: cachedDb.administrators, users: cachedDb.users });
-        atomicWrite(path.join(dataDir, 'db_cameras.json'), { cameras: cachedDb.cameras });
-        atomicWrite(path.join(dataDir, 'db_recordings.json'), { recordings: cachedDb.recordings });
-        atomicWrite(path.join(dataDir, 'db_logs.json'), { system_logs: cachedDb.system_logs });
+        atomicWrite(path.join(dataDir, 'local_db_settings.json'), { super_settings: cachedDb.super_settings, recording_path: cachedDb.recording_path });
+        atomicWrite(path.join(dataDir, 'local_db_accounts.json'), { administrators: cachedDb.administrators, users: cachedDb.users });
+        atomicWrite(path.join(dataDir, 'local_db_cameras.json'), { cameras: cachedDb.cameras });
+        atomicWrite(path.join(dataDir, 'local_db_recordings.json'), { recordings: cachedDb.recordings });
+        atomicWrite(path.join(dataDir, 'local_db_logs.json'), { system_logs: cachedDb.system_logs });
+        if (cachedDb.addons) atomicWrite(path.join(dataDir, 'local_db_addons.json'), { addons: cachedDb.addons });
 
     } catch(e) {
         console.error('Error saving Split DB:', e);
@@ -840,7 +853,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.5' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.6' });
 });
 
 // Auth Endpoints
@@ -1018,7 +1031,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.5.5",
+        appVersion: "9.5.6",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -1120,7 +1133,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.5.5',
+                latestVersion: '9.5.6',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -1188,7 +1201,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.5.5',
+        version: '9.5.6',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),

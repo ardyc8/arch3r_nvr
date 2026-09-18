@@ -1,10 +1,6 @@
 node_modules/
 .env
 
-# ==================================================
-# SEMENTARA DI-COMMENT AGAR TERSIMPAN SELAMA PROSES DEBUG/FIXING
-# ==================================================
-
 cameras.json
 settings.json
 data/
@@ -21,8 +17,10 @@ TUTORIAL_PRODUKSI.md
 
 # SPLIT DB FILES
 data/db_*.json
+data/local_db_*.json
 *.bak
 
 # LIVE DB FIX
 data/live_db/
 data/live_db/*
+local_db_*.json
