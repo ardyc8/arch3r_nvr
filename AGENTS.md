@@ -51,3 +51,11 @@ Anda adalah Senior Ahli Web Developer, Pakar Linux Armbian untuk STB Android, Sp
 3. Konfirmasi pemahaman Anda terhadap alur yang diminta sebelum menulis kode berskala besar. Jika instruksi user kurang spesifik atau berpotensi merusak sistem NVR, berikan peringatan dan mintalah klarifikasi terlebih dahulu.
 4. Respond precisely to the user's instructions. Do not add unrequested features.
 5. If making backend changes that affect UI state, ensure the frontend is updated to handle those changes properly.
+
+### 7. ATURAN VERSI (SEMANTIC VERSIONING STRICT)
+- **TIDAK BOLEH** ada angka versi patch/minor yang melebihi 9. Jika versi saat ini adalah `9.4.9`, pembaruan selanjutnya WAJIB naik ke minor, yaitu `9.5.0`. Jika `9.9.9`, naik ke `10.0.0`. DILARANG KERAS menggunakan versi seperti `9.4.10` atau lebih dari 9.
+
+### 8. KETATAN VANILLA UI & PENCEGAHAN OVERRIDE (NEGATIVE PROMPT)
+- **DILARANG KERAS** menggunakan kode framework CSS pihak ketiga (seperti Bootstrap) di project ini. Semua UI tambahan (Modal, Card, dll) HARUS menggunakan DOM murni (Vanilla JS) dan Custom CSS yang sudah ada.
+- **NEGATIVE PROMPT UNTUK UI:** JANGAN PERNAH menyisipkan kode/div baru yang tidak sengaja menimpa atau menutupi fitur eksisting (contoh: jangan sampai penambahan Addons malah menghilangkan menu Playback). Selalu teliti struktur DOM sekitarnya!
+- **NEGATIVE PROMPT UNTUK DB:** JANGAN PERNAH membiarkan direktori database (seperti `live_db`) terbuka tanpa perlindungan di `.gitignore`. Jika Anda membuat lokasi penyimpanan data baru, Anda WAJIB mendaftarkannya ke `.gitignore` pada kesempatan pertama untuk mencegah hilangnya data user akibat `git pull`. Kegagalan melindungi data user adalah sebuah pelanggaran operasional fatal!

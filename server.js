@@ -199,8 +199,26 @@ setTimeout(runOpportunisticLicenseCheck, 10000);
 // Paths
 const publicDir = path.join(__dirname, 'public');
 const streamBaseDir = path.join(publicDir, 'streams');
+
+const oldDataDir = path.join(__dirname, 'data');
 const dataDir = path.join(__dirname, 'data', 'live_db');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
+// --- AUTO MIGRATION: Restore missing data from old directory ---
+try {
+    ['db_accounts.json', 'db_cameras.json', 'db_recordings.json', 'db_settings.json', 'db_logs.json'].forEach(file => {
+        const oldFile = path.join(oldDataDir, file);
+        const newFile = path.join(dataDir, file);
+        // Jika di live_db kosong, tapi di folder lama ada datanya, kembalikan!
+        if (fs.existsSync(oldFile) && !fs.existsSync(newFile)) {
+            fs.copyFileSync(oldFile, newFile);
+            console.log('[MIGRATION] Restored ' + file + ' to live_db');
+        }
+    });
+} catch(e) {
+    console.error('Migration error:', e);
+}
+
 const nvrDbFile = path.join(dataDir, 'nvr_db.json');
 const baseStoragePath = process.env.STORAGE_PATH || path.join(__dirname, 'public', 'recordings');
 
@@ -218,7 +236,7 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.4.13)
+// AI ADDON PROXY API (v9.5.0)
 // ==========================================
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
@@ -263,7 +281,7 @@ app.post('/api/ai/webhook', (req, res) => {
 
 
 // ==========================================
-// MAINTENANCE & OTA API (v9.4.13)
+// MAINTENANCE & OTA API (v9.5.0)
 // ==========================================
 app.get('/api/maintenance/backup', verifyToken, (req, res) => {
     sysLog('INFO', `[Maintenance] Backup database requested`, 'SYSTEM');
@@ -307,7 +325,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
         if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
             return res.json({
                 current_version: require('./package.json').version,
-                latest_version: '9.4.13',
+                latest_version: '9.5.0',
                 changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
                 update_available: true
             });
@@ -724,7 +742,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.4.13' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.0' });
 });
 
 // Auth Endpoints
@@ -902,7 +920,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.4.13",
+        appVersion: "9.5.0",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -1004,7 +1022,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.4.13',
+                latestVersion: '9.5.0',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -1072,7 +1090,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.4.13',
+        version: '9.5.0',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
