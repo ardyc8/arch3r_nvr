@@ -1,5 +1,10 @@
 # Changelog
 
+## [Ver 9.5.8] - 2026-09-18
+### Fixed
+- **Data Loss Root Cause Analysis:** Memperbaiki celah logika migrasi database. Pada versi sebelumnya, sistem mengganti nama file ke `local_db_accounts.json` namun gagal menyalin data dari `db_accounts.json` lama jika file tersebut ada, menyebabkan server secara otomatis membuat data kosong dan menimpa isi sebelumnya. Menambahkan logika *Fallback Auto-Migration* yang secara cerdas akan menyalin data lama jika file *local_db* masih kosong atau baru terbentuk.
+
+
 ## [Ver 9.5.7] - 2026-09-17
 ### Added
 - **Dynamic Addon Configuration:** Menambahkan Modal Konfigurasi interaktif pada Marketplace UI. Modul kini dapat dikonfigurasi parameternya secara langsung lewat antarmuka tanpa perlu mengedit file config.json secara manual.

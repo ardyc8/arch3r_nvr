@@ -244,7 +244,7 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.5.7)
+// AI ADDON PROXY API (v9.5.8)
 // ==========================================
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
@@ -289,7 +289,7 @@ app.post('/api/ai/webhook', (req, res) => {
 
 
 // ==========================================
-// ADDON MARKETPLACE API (v9.5.7)
+// ADDON MARKETPLACE API (v9.5.8)
 // ==========================================
 
 app.get('/api/addons', verifyToken, (req, res) => {
@@ -442,7 +442,7 @@ app.post('/api/addons/:id/config', verifyToken, (req, res) => {
 });
 
 // ==========================================
-// MAINTENANCE & OTA API (v9.5.7)
+// MAINTENANCE & OTA API (v9.5.8)
 // ==========================================
 app.get('/api/maintenance/backup', verifyToken, (req, res) => {
     sysLog('INFO', `[Maintenance] Backup database requested`, 'SYSTEM');
@@ -486,7 +486,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
         if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
             return res.json({
                 current_version: require('./package.json').version,
-                latest_version: '9.5.7',
+                latest_version: '9.5.8',
                 changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
                 update_available: true
             });
@@ -677,7 +677,21 @@ function getNvrDb() {
         }
     });
 
+    
     const isAlreadyMigrated = fs.existsSync(fAccounts) || fs.existsSync(fCameras);
+    
+    // Fallback Auto-Migration from db_*.json to local_db_*.json
+    ['settings', 'accounts', 'cameras', 'recordings', 'logs', 'addons'].forEach(mod => {
+        const newFile = path.join(dataDir, 'local_db_' + mod + '.json');
+        const oldFile = path.join(dataDir, 'db_' + mod + '.json');
+        if (!fs.existsSync(newFile) && fs.existsSync(oldFile) && fs.statSync(oldFile).size > 50) {
+            try {
+                fs.copyFileSync(oldFile, newFile);
+                console.log('[SYSTEM] Auto-migrated ' + oldFile + ' to ' + newFile);
+            } catch(e){}
+        }
+    });
+
     
     // Hapus file bawaan Git jika Split-DB sudah aktif
     if (fs.existsSync(nvrDbFile) && isAlreadyMigrated) {
@@ -908,7 +922,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.7' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.8' });
 });
 
 // Auth Endpoints
@@ -1086,7 +1100,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.5.7",
+        appVersion: "9.5.8",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -1188,7 +1202,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.5.7',
+                latestVersion: '9.5.8',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -1256,7 +1270,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.5.7',
+        version: '9.5.8',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
