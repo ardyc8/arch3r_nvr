@@ -724,6 +724,7 @@ async function updateHardwareStats() {
                     ${cam.recordMode === 'continuous' ? '<span style="color:#f59e0b;">Continuous</span>' : 'Disabled'}
                 </td>
                 <td style="padding:0.5rem; text-align:right;">
+                    <button class="btn-sm btn-primary" onclick="openAIGridModal('${cam.id}')" style="margin-right:0.25rem; background:#3b82f6; border-color:#3b82f6;" title="Konfigurasi AI YOLOv8">🤖 AI</button>
                     <button class="btn-sm btn-secondary" onclick="window.editCamera('${cam.id}')" style="margin-right:0.25rem;">Edit</button>
                     <button class="btn-sm btn-primary" onclick="window.deleteCamera('${cam.id}')" style="background:#ef4444; border-color:#ef4444;">Hapus</button>
                 </td>
@@ -2734,8 +2735,8 @@ let aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
 let aiBaseWidth = 1280; // Asumsi default resolusi AI
 let aiBaseHeight = 720;
 
-function openAIGridModal() {
-    const modal = new bootstrap.Modal(document.getElementById('aiGridModal'));
+function openAIGridModal(defaultCamId = null) {
+    document.getElementById('aiGridModalOverlay').style.display = 'flex';
     
     // Populate select
     const select = document.getElementById('ai-cam-select');
@@ -2745,7 +2746,11 @@ function openAIGridModal() {
     });
     
     document.getElementById('ai-canvas-container').style.display = 'none';
-    modal.show();
+    
+    if (defaultCamId) {
+        select.value = defaultCamId;
+        loadCamStreamForAI();
+    }
 }
 
 function loadCamStreamForAI() {
@@ -2868,7 +2873,7 @@ function saveAIGrid() {
     }).then(res => res.json())
       .then(data => {
           alert("Konfigurasi AI berhasil disimpan dan dikirim ke YOLO Engine!");
-          bootstrap.Modal.getInstance(document.getElementById('aiGridModal')).hide();
+          closeAIGridModal();
       }).catch(e => {
           alert("Gagal menghubungi NVR Backend.");
       });
