@@ -202,19 +202,21 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 #monitorWrapper.is-fullscreen #btnToggleControlsContainer {
     display: block !important;
     position: fixed !important;
-    top: 12px !important;
-    right: 12px !important;
+    bottom: 14px !important;
+    right: 14px !important;
+    top: auto !important;
     z-index: 9999 !important;
 }
 
-/* Top control container in Normal mode: standard static bar without floating */
+/* Top control container in Normal mode: standard static bar at bottom of video */
 #topControlContainer {
     display: flex !important;
     position: relative;
     width: 100%;
     background: var(--surface);
     z-index: 10;
-    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: none;
     overflow: visible;
 }
 
@@ -225,16 +227,18 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     width: 100%;
 }
 
-/* In Fullscreen mode: Top controls float over video when gear is clicked */
+/* In Fullscreen mode: Navigation controls float at the BOTTOM of video when gear is clicked */
 :fullscreen #topControlContainer,
 #monitorWrapper:fullscreen #topControlContainer,
 #monitorWrapper.is-fullscreen #topControlContainer {
     position: fixed !important;
-    top: 0;
+    bottom: 0 !important;
+    top: auto !important;
     left: 0;
     right: 0;
     z-index: 9000 !important;
     background: transparent !important;
+    border-top: none !important;
     border-bottom: none !important;
     pointer-events: none;
 }
@@ -252,16 +256,20 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     background: rgba(15, 23, 42, 0.96) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
-    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.9);
+    border-top: 1px solid rgba(255, 255, 255, 0.18) !important;
+    border-bottom: none !important;
+    border-radius: 12px 12px 0 0 !important;
+    box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.9);
     pointer-events: auto;
     position: fixed !important;
-    top: 0;
+    bottom: 0 !important;
+    top: auto !important;
     left: 0;
     right: 0;
-    max-height: 85vh;
+    max-height: 52vh;
     overflow-y: auto;
-    padding-right: 55px; /* Leave space so it doesn't overlap the gear button */
+    padding-right: 55px; /* Leave space so it doesn't overlap the gear button at bottom right */
+    padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
 }
 
 :fullscreen #topControlPanel.fullscreen-open,
@@ -583,6 +591,31 @@ body {
         gap: 0.4rem !important;
         background: var(--surface) !important;
         border-bottom: 1px solid var(--border) !important;
+    }
+}
+
+/* Landscape Mode Optimization for Phones & Tablets */
+@media (max-height: 540px) and (orientation: landscape) {
+    #videoGridContainer {
+        flex: 0 0 auto !important;
+        max-height: 65vh !important;
+    }
+    .video-grid.grid-1 .cam-cell {
+        max-height: 62vh !important;
+        width: auto !important;
+        aspect-ratio: 16/9 !important;
+    }
+    .video-grid.grid-4 .cam-cell,
+    .video-grid.grid-9 .cam-cell,
+    .video-grid.grid-16 .cam-cell {
+        max-height: 48vh !important;
+    }
+    .control-main-row {
+        padding: 0.25rem 0.5rem !important;
+        gap: 0.35rem !important;
+    }
+    #channelBarRow {
+        padding: 0.2rem 0.5rem !important;
     }
 }
 

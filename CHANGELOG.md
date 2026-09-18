@@ -1,5 +1,13 @@
 # Changelog
 
+## [Ver 9.7.1] - 2026-09-18
+### Fixed & Improved
+- **Penyelarasan Panel Navigasi Bawah di Mode Fullscreen & Landscape:** Pada mode Fullscreen, panel navigasi dan tombol gerigi (⚙️) kini ditempatkan di bagian bawah layar (`bottom: 0` / `bottom: 14px`), bukan di atas video. Pada mode landscape layar ponsel/tablet, layout video grid otomatis disesuaikan (`max-height: 65vh; aspect-ratio: 16/9;`) sehingga video tidak terpotong dan navigasi tetap nyaman diakses.
+- **Label Kamera Aktif PTZ Vertikal di Atas D-Pad:** Memindahkan label nama kamera aktif PTZ ke bagian atas tombol D-Pad (`flex-direction: column`). Penamaan kamera tidak lagi menggeser posisi atau mendistorsi tata letak tombol D-Pad 3x3.
+- **Paginasi Halaman Kamera Menyatu dengan Baris Channel:** Menempatkan tombol navigasi halaman video (`◀ Prev`, indikator `Hal X/Y`, `Next ▶`) sejajar langsung di baris bawah kamera bersama tombol pilihan channel (`ALL`, `CH1`, `CH2`, dst.), memudahkan navigasi banyak kamera sekaligus.
+- **Panel Media Player Kiri Seimbang dengan Tombol PTZ Kanan:** Mengelompokkan tombol Fullscreen (`⛶ Fullscreen`) dan Refresh (`🔄 Refresh`) di sisi kiri setara dengan kontrol pemutar media (tombol `▶️ Play / ⏸️ Pause`, `🔊 Bisu / Suara`, pengatur slider volume, dan `📸 Foto` snapshot). Ukuran kotak kontrol kiri kini sejajar dan proporsional dengan kotak D-Pad PTZ di sisi kanan.
+- **Penyelarasan Versi Sistem:** Menaikkan nomor versi aplikasi ke `9.7.1` pada `package.json`, `server.js`, `index.html`, `superadmin.html`, dan `CHANGELOG.md` dengan cache-busting `?v=9.7.1`.
+
 ## [Ver 9.7.0] - 2026-09-18
 ### Fixed & Improved
 - **Pemulihan Rasio Widescreen Normal 16:9 Kamera (Anti-Stretching):** Memperbaiki proporsi sel grid kamera (`.cam-cell`) dan pemutar video (`object-fit: contain;`) dengan aturan `aspect-ratio: 16/9 !important; height: auto !important;` serta `grid-template-rows: auto !important;`. Tayangan CCTV kini kembali normal berbentuk kotak horizontal standar 16:9 tanpa mengalami distorsi vertikal/memanjang ke bawah.

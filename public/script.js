@@ -1273,22 +1273,25 @@ async function fetchCameras() {
 
     function updateBottomPlayerUI() {
         const pCtrl = document.getElementById('playerControls');
-        if(!pCtrl) return;
+        const btnPlay = document.getElementById('btnPlayerPlayPause') || document.getElementById('btnPlayerPlay');
+        const btnMute = document.getElementById('btnPlayerAudioMute') || document.getElementById('btnPlayerMute');
+        const sliderVol = document.getElementById('selectedCamVolume') || document.getElementById('playerVolume');
 
-        if(!selectedVideoElement) {
-            pCtrl.style.opacity = '0.5';
-            pCtrl.style.pointerEvents = 'none';
+        if (!selectedVideoElement) {
+            if (pCtrl) {
+                pCtrl.style.opacity = '0.5';
+                pCtrl.style.pointerEvents = 'none';
+            }
         } else {
-            pCtrl.style.opacity = '1';
-            pCtrl.style.pointerEvents = 'auto';
-            
-            const btnPlay = document.getElementById('btnPlayerPlay');
-            const btnMute = document.getElementById('btnPlayerMute');
-            const sliderVol = document.getElementById('playerVolume');
-            
-            if(btnPlay) btnPlay.textContent = selectedVideoElement.paused ? '▶️' : '⏸️';
-            if(btnMute) btnMute.textContent = selectedVideoElement.muted ? '🔇' : '🔊';
-            if(sliderVol) sliderVol.value = selectedVideoElement.volume;
+            if (pCtrl) {
+                pCtrl.style.opacity = '1';
+                pCtrl.style.pointerEvents = 'auto';
+            }
+            if (btnPlay) btnPlay.textContent = selectedVideoElement.paused ? '▶️ Play' : '⏸️ Pause';
+            if (btnMute) btnMute.textContent = selectedVideoElement.muted ? '🔇 Bisu' : '🔊 Suara';
+            if (sliderVol) {
+                sliderVol.value = selectedVideoElement.muted ? 0 : Math.round((selectedVideoElement.volume || 1) * 100);
+            }
         }
     }
 
@@ -1328,7 +1331,6 @@ async function fetchCameras() {
 
         const mActiveCamLabel = document.getElementById('mActiveCamLabel');
         const topActiveCamLabel = document.getElementById('topActiveCamLabel');
-        const camLabelText = cam ? `CH: ${cam.name}` : (activeChannel !== 'all' ? (cameras.find(c => c.id === activeChannel)?.name || `CH ${activeChannel}`) : 'Multi-View (Klik grid)');
 
         if (topActiveCamLabel) {
             topActiveCamLabel.textContent = cam ? cam.name : (activeChannel !== 'all' ? (cameras.find(c => c.id === activeChannel)?.name || `CH ${activeChannel}`) : 'Pilih di grid');
@@ -1351,13 +1353,57 @@ async function fetchCameras() {
         updateGridDisplay();
     };
 
+    window.toggleSelectedPlayPause = function() {
+        const targetId = selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : (cameras[0]?.id));
+        if (!targetId) return;
+        const cell = document.getElementById('cell_' + targetId);
+        const video = cell ? cell.querySelector('video') : null;
+        const btn = document.getElementById('btnPlayerPlayPause');
+        if (video) {
+            if (video.paused) {
+                video.play().catch(e => console.log('Play error:', e));
+                if (btn) btn.textContent = '⏸️ Pause';
+            } else {
+                video.pause();
+                if (btn) btn.textContent = '▶️ Play';
+            }
+        }
+    };
+
     window.toggleSelectedMute = function() {
         const targetId = selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : (cameras[0]?.id));
         if (!targetId) return;
         const cell = document.getElementById('cell_' + targetId);
         const video = cell ? cell.querySelector('video') : null;
+        const btn = document.getElementById('btnPlayerAudioMute');
+        const sliderVol = document.getElementById('selectedCamVolume');
         if (video) {
             video.muted = !video.muted;
+            if (btn) btn.textContent = video.muted ? '🔇 Bisu' : '🔊 Suara';
+            if (sliderVol && video.muted) {
+                sliderVol.value = 0;
+            } else if (sliderVol && !video.muted) {
+                sliderVol.value = Math.round((video.volume || 1) * 100);
+            }
+        }
+    };
+
+    window.setSelectedVolume = function(val) {
+        const targetId = selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : (cameras[0]?.id));
+        if (!targetId) return;
+        const cell = document.getElementById('cell_' + targetId);
+        const video = cell ? cell.querySelector('video') : null;
+        const btn = document.getElementById('btnPlayerAudioMute');
+        if (video) {
+            const numVal = parseInt(val, 10);
+            video.volume = Math.max(0, Math.min(1, numVal / 100));
+            if (numVal > 0) {
+                video.muted = false;
+                if (btn) btn.textContent = '🔊 Suara';
+            } else {
+                video.muted = true;
+                if (btn) btn.textContent = '🔇 Bisu';
+            }
         }
     };
 
