@@ -207,7 +207,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     border-color: transparent;
 }
 
-/* Floating PTZ Controller */
+/* Floating PTZ Controller (Mobile / Free Floating in grid-wrapper) */
 .ptz-controller {
     position: absolute;
     bottom: 20px;
@@ -223,6 +223,36 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     backdrop-filter: blur(4px);
     border: 1px solid #334155;
     box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+/* Desktop PTZ Toolbar Grid (Fixed in toolbar, no floating) */
+#bottomControlPanel .desktop-ptz-grid,
+.desktop-ptz-grid {
+    position: static !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 26px) !important;
+    grid-template-rows: repeat(3, 26px) !important;
+    gap: 3px !important;
+    align-items: center;
+    justify-items: center;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    z-index: auto !important;
+}
+
+.desktop-ptz-grid .ptz-btn {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 11px !important;
+    border-radius: 4px !important;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .ptz-btn {
     width: 40px;
@@ -416,23 +446,27 @@ body {
 
 /* OTA UPDATE MODAL & WORKFLOW */
 .ota-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(4px);
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    backdrop-filter: blur(4px) !important;
     display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    padding: 1rem;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
 }
 .ota-modal-overlay.active {
     display: flex !important;
 }
-.ota-modal-dialog {
+.ota-modal-dialog,
+.ota-modal-box {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -441,8 +475,10 @@ body {
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
     overflow: hidden;
+    position: relative;
+    z-index: 100000;
 }
 .ota-modal-header {
     padding: 1rem 1.25rem;
@@ -467,6 +503,15 @@ body {
     justify-content: flex-end;
     gap: 0.75rem;
 }
+.ota-pipeline-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.ota-check-item,
 .ota-checklist-item {
     display: flex;
     align-items: flex-start;
@@ -478,16 +523,58 @@ body {
     cursor: pointer;
     transition: background 0.2s, border-color 0.2s;
 }
+.ota-check-item:hover,
 .ota-checklist-item:hover {
     background: rgba(59, 130, 246, 0.08);
     border-color: rgba(59, 130, 246, 0.4);
 }
+.ota-check-item input[type="checkbox"],
 .ota-checklist-item input[type="checkbox"] {
     margin-top: 3px;
     width: 18px;
     height: 18px;
     accent-color: #2563eb;
     cursor: pointer;
+}
+.ota-check-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ota-step-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ota-step-cmd {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #60a5fa;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-top: 2px;
+    width: fit-content;
+}
+.ota-step-desc {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.ota-btn-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+.ota-btn-close:hover {
+    color: #ef4444;
 }
 .ota-term-console {
     background: #090d16;

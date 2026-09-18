@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 9.6.5] - 2026-09-18
+### Fixed
+- **Perbaikan Regresi Tampilan Desktop & Isolasi Modal OTA:** Memperbaiki bug tata letak monitor desktop di mana modal update sistem Linux sempat muncul di dalam alur dokumen dan mendesak video grid. Menambahkan proteksi `style="display:none !important; position:fixed !important;"` langsung secara inline dan memperkuat CSS `.ota-modal-overlay` dengan `width: 100vw !important; height: 100vh !important; z-index: 99999 !important;`.
+- **Integrasi Toolbar PTZ Desktop Tanpa Floating:** Mengganti class controller PTZ desktop dari `.ptz-controller` (yang memiliki style default floating `position: absolute; bottom: 20px; right: 20px`) menjadi `.desktop-ptz-grid`, sehingga tombol PTZ 3x3 tertanam rapi di dalam bilah kontrol bawah (`#bottomControlPanel`) tanpa melayang di atas layar video.
+- **Cache-Busting Otomatis Aset Statis:** Menambahkan parameter versi otomatis (`style.css?v=9.6.5`, `script.js?v=9.6.5`, `superadmin.js?v=9.6.5`) pada `index.html` dan `superadmin.html` untuk memastikan peramban (browser) klien langsung memuat CSS dan JS versi terbaru tanpa terhambat cache lama.
+- **Penyelarasan Versi Sistem:** Menyelaraskan seluruh nomor versi aplikasi pada `package.json`, `server.js`, `index.html`, `superadmin.html`, dan `CHANGELOG.md` ke versi `9.6.5`.
+
 ## [Ver 9.6.4] - 2026-09-18
 ### Added
 - **Sistem Update OTA & Pipeline Terminal Linux Granular:** Menyediakan antarmuka pemeriksaan update resmi (tombol Cek Pembaruan, badge status versi, dan penampil catatan rilis/changelog interaktif) baik pada Console Superadmin maupun menu Informasi Sistem Administrator.

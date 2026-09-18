@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.6.1 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Arch3r NVR Ver. 9.6.5 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=9.6.5">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.1</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.5</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.1</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.5</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -121,7 +121,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.6.2</h3>
+                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.6.5</h3>
             </header>
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
@@ -226,15 +226,15 @@
                         <!-- PTZ Controls (Desktop) -->
                         <div class="desktop-only-controls" style="display:flex; align-items:center; gap:0.5rem;">
                             <span style="font-weight:bold; color:var(--text-muted); font-size:12px;">PTZ:</span>
-                            <div id="ptzController" class="ptz-controller" style="display:grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap:4px; align-items:center; justify-items:center;">
+                            <div id="ptzController" class="desktop-ptz-grid" style="display:grid; grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 26px); gap:3px; align-items:center; justify-items:center;">
                                 <div></div>
-                                <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('up')">▲</button>
+                                <button class="ptz-btn" style="width:100%; height:100%; font-size:11px; padding:0;" onclick="window.ptzMoveSelected('up')">▲</button>
                                 <div></div>
-                                <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('left')">◀</button>
+                                <button class="ptz-btn" style="width:100%; height:100%; font-size:11px; padding:0;" onclick="window.ptzMoveSelected('left')">◀</button>
                                 <div style="display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:bold; color:#64748b;">PTZ</div>
-                                <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('right')">▶</button>
+                                <button class="ptz-btn" style="width:100%; height:100%; font-size:11px; padding:0;" onclick="window.ptzMoveSelected('right')">▶</button>
                                 <div></div>
-                                <button class="ptz-btn" style="width:100%; height:100%; font-size:12px; padding:0;" onclick="window.ptzMoveSelected('down')">▼</button>
+                                <button class="ptz-btn" style="width:100%; height:100%; font-size:11px; padding:0;" onclick="window.ptzMoveSelected('down')">▼</button>
                                 <div></div>
                             </div>
                             <div id="ptzPlaceholder" style="font-size:12px; color:var(--text-muted); font-style:italic;">Pilih kamera di layar</div>
@@ -902,7 +902,7 @@
                                 <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
                                     <span>🚀</span> Update Sistem (OTA & Linux Pipeline)
                                 </h3>
-                                <span id="adminOtaStatusBadge" class="badge" style="background:#2563eb; color:white;">v9.6.4</span>
+                                <span id="adminOtaStatusBadge" class="badge" style="background:#2563eb; color:white;">v9.6.5</span>
                             </div>
                             <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
                                 Periksa pembaruan resmi repositori, lihat ringkasan changelog rilis, dan jalankan alur update sistem dengan perintah terminal Linux (Git Pull, NPM Install, PM2 Reload, Reboot).
@@ -960,7 +960,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.6.4</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.6.5</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>
@@ -1084,7 +1084,7 @@
     </div>
 
     <!-- MODAL ALUR UPDATE SISTEM (LINUX COMMAND CHECKLIST & TERMINAL LOG) -->
-    <div id="modalOtaWorkflow" class="ota-modal-overlay">
+    <div id="modalOtaWorkflow" class="ota-modal-overlay" style="display:none !important; position:fixed !important; top:0; left:0; width:100vw; height:100vh; z-index:99999;">
         <div class="ota-modal-box">
             <div class="ota-modal-header">
                 <div>
@@ -1219,6 +1219,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=9.6.4"></script>
+    <script src="script.js?v=9.6.5"></script>
 </body>
 </html>

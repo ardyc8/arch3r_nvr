@@ -37,9 +37,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.6.3';
+        return pkg.version || '9.6.5';
     } catch {
-        return '9.6.3';
+        return '9.6.5';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -525,6 +525,17 @@ async function checkSystemUpdate(otaCustomUrl) {
     }
 
     const changelogList = [
+        {
+            version: '9.6.5',
+            date: '2026-09-18',
+            title: 'Perbaikan Tampilan Desktop, Modal OTA Workflow & Floating PTZ',
+            items: [
+                'Memperbaiki tampilan monitor desktop agar tidak terdesak oleh modal update sistem.',
+                'Menambahkan proteksi inline style display:none dan position:fixed pada modal OTA checklist.',
+                'Memperbaiki tata letak PTZ controller desktop di bottom toolbar tanpa efek floating.',
+                'Menambahkan cache-busting otomatis pada stylesheet style.css?v=9.6.5 untuk mencegah glitch cache browser.'
+            ]
+        },
         {
             version: '9.6.4',
             date: '2026-09-18',

@@ -667,6 +667,7 @@
     window.openOtaWorkflowModal = function() {
         const modal = document.getElementById('modalOtaWorkflow');
         if (modal) {
+            modal.style.setProperty('display', 'flex', 'important');
             modal.classList.add('active');
         }
     };
@@ -674,6 +675,7 @@
     window.closeOtaWorkflowModal = function() {
         const modal = document.getElementById('modalOtaWorkflow');
         if (modal) {
+            modal.style.setProperty('display', 'none', 'important');
             modal.classList.remove('active');
         }
     };
