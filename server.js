@@ -236,7 +236,7 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.5.3)
+// AI ADDON PROXY API (v9.5.5)
 // ==========================================
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
@@ -281,7 +281,105 @@ app.post('/api/ai/webhook', (req, res) => {
 
 
 // ==========================================
-// MAINTENANCE & OTA API (v9.5.3)
+// ADDON MARKETPLACE API (v9.5.5)
+// ==========================================
+
+app.get('/api/addons', verifyToken, (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
+        return res.status(403).json({ error: 'Akses Ditolak' });
+    }
+    
+    // For now we mock the database of installed addons. In a real scenario, this reads from an addons DB or scans the /addons folder.
+    const dbData = getNvrDb();
+    if (!dbData.addons) {
+        dbData.addons = [
+            {
+                id: 'ai_yolo',
+                name: 'AI Human Detection (YOLOv8)',
+                version: '1.0.0',
+                icon: '🧠',
+                description: 'Deteksi pergerakan manusia secara real-time dan atur area intrusi (Grid).',
+                active: true,
+                system_protected: true
+            }
+        ];
+        saveNvrDb(dbData);
+    }
+    
+    res.json({ success: true, addons: dbData.addons });
+});
+
+app.post('/api/addons/install', verifyToken, (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
+        return res.status(403).json({ error: 'Akses Ditolak' });
+    }
+    
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL tidak valid' });
+    
+    sysLog('INFO', `[Addons] Permintaan instalasi dari: ${url}`, 'SYSTEM');
+    
+    // Simulate installation delay and return mock response for now
+    // Future update v9.6.0 will implement actual git clone and PM2 injection here.
+    setTimeout(() => {
+        res.json({ success: true, message: 'Addon berhasil didownload namun instalasi sebenarnya ditunda ke update v9.6.0.' });
+    }, 2000);
+});
+
+app.post('/api/addons/:id/toggle', verifyToken, (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
+        return res.status(403).json({ error: 'Akses Ditolak' });
+    }
+    
+    const dbData = getNvrDb();
+    if (!dbData.addons) return res.status(404).json({ error: 'Data addon tidak ditemukan' });
+    
+    const addon = dbData.addons.find(a => a.id === req.params.id);
+    if (!addon) return res.status(404).json({ error: 'Addon tidak ditemukan' });
+    
+    addon.active = req.body.active;
+    saveNvrDb(dbData);
+    
+    // If it's the AI addon, we should conceptually stop/start its PM2 process
+    if (addon.id === 'ai_yolo') {
+        if (addon.active) {
+            child_process.exec('pm2 start arch3r-ai-yolo', (e) => {
+                sysLog('INFO', `[Addons] AI YOLO Service dinyalakan`, 'SYSTEM');
+            });
+        } else {
+            child_process.exec('pm2 stop arch3r-ai-yolo', (e) => {
+                sysLog('INFO', `[Addons] AI YOLO Service dimatikan`, 'SYSTEM');
+            });
+        }
+    }
+    
+    res.json({ success: true, addon });
+});
+
+app.delete('/api/addons/:id', verifyToken, (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
+        return res.status(403).json({ error: 'Akses Ditolak' });
+    }
+    
+    const dbData = getNvrDb();
+    if (!dbData.addons) return res.status(404).json({ error: 'Data addon tidak ditemukan' });
+    
+    const index = dbData.addons.findIndex(a => a.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Addon tidak ditemukan' });
+    
+    if (dbData.addons[index].system_protected) {
+        return res.status(400).json({ error: 'Addon sistem bawaan tidak dapat dihapus, hanya bisa dimatikan.' });
+    }
+    
+    const deletedAddon = dbData.addons.splice(index, 1);
+    saveNvrDb(dbData);
+    
+    sysLog('INFO', `[Addons] Addon dihapus: ${deletedAddon[0].name}`, 'SYSTEM');
+    res.json({ success: true, message: 'Addon dihapus' });
+});
+
+// ==========================================
+// MAINTENANCE & OTA API (v9.5.5)
 // ==========================================
 app.get('/api/maintenance/backup', verifyToken, (req, res) => {
     sysLog('INFO', `[Maintenance] Backup database requested`, 'SYSTEM');
@@ -325,7 +423,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
         if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
             return res.json({
                 current_version: require('./package.json').version,
-                latest_version: '9.5.3',
+                latest_version: '9.5.5',
                 changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
                 update_available: true
             });
@@ -742,7 +840,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.3' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.5' });
 });
 
 // Auth Endpoints
@@ -920,7 +1018,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.5.3",
+        appVersion: "9.5.5",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -1022,7 +1120,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.5.3',
+                latestVersion: '9.5.5',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -1090,7 +1188,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.5.3',
+        version: '9.5.5',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),

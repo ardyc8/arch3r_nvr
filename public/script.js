@@ -2721,6 +2721,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         aiCamSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
                     });
                 }
+                
+                // Fetch addon list
+                if (typeof fetchInstalledAddons === 'function') {
+                    fetchInstalledAddons();
+                }
             }
         });
     });
@@ -2904,3 +2909,144 @@ function closeAIGridModal() {
         delete activeHlsPlayers['ai-stream-preview'];
     }
 }
+
+// ADDON MARKETPLACE LOGIC
+async function fetchInstalledAddons() {
+    const tbody = document.getElementById('installed-addons-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading addons...</td></tr>';
+    
+    try {
+        const response = await authFetch('/api/addons');
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (data.addons && data.addons.length > 0) {
+                tbody.innerHTML = '';
+                data.addons.forEach(addon => {
+                    const statusColor = addon.active ? '#22c55e' : 'var(--text-muted)';
+                    const statusText = addon.active ? 'Aktif' : 'Nonaktif';
+                    const icon = addon.icon || '🧩';
+                    
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--border)';
+                    tr.innerHTML = `
+                        <td style="padding: 1rem 1.5rem; font-size: 1.5rem;">${icon}</td>
+                        <td style="padding: 1rem 1.5rem;">
+                            <strong style="display:block; color:var(--text);">${addon.name}</strong>
+                            <span style="font-size:0.85rem; color:var(--text-muted);">${addon.description || 'Tidak ada deskripsi'}</span>
+                        </td>
+                        <td style="padding: 1rem 1.5rem; color:var(--text-muted);">${addon.version || '1.0.0'}</td>
+                        <td style="padding: 1rem 1.5rem;">
+                            <span style="display:inline-block; padding: 0.25rem 0.5rem; border-radius: 4px; background: ${addon.active ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)'}; color: ${statusColor}; font-size: 0.85rem; border: 1px solid ${addon.active ? 'rgba(34,197,94,0.3)' : 'var(--border)'};">
+                                ${statusText}
+                            </span>
+                        </td>
+                        <td style="padding: 1rem 1.5rem; text-align:right;">
+                            <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                                ${addon.id === 'ai_yolo' ? `<button class="btn-sm btn-primary" onclick="openAIGridModal()" title="Konfigurasi">⚙️</button>` : ''}
+                                <button class="btn-sm btn-secondary" onclick="toggleAddonState('${addon.id}', ${!addon.active})" title="${addon.active ? 'Matikan' : 'Nyalakan'}">
+                                    ${addon.active ? '⏹️' : '▶️'}
+                                </button>
+                                <button class="btn-sm btn-danger" onclick="deleteAddon('${addon.id}')" title="Hapus Addon">🗑️</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">Belum ada addon yang terinstal. Silakan instal melalui GitHub/URL.</td></tr>';
+            }
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">Gagal memuat daftar addon.</td></tr>';
+        }
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">Error koneksi ke server.</td></tr>';
+    }
+}
+
+async function toggleAddonState(addonId, newState) {
+    if (!confirm(`Apakah Anda yakin ingin ${newState ? 'menyalakan' : 'mematikan'} addon ini?`)) return;
+    
+    try {
+        const response = await authFetch('/api/addons/' + addonId + '/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active: newState })
+        });
+        
+        if (response.ok) {
+            fetchInstalledAddons();
+        } else {
+            const data = await response.json();
+            alert('Gagal: ' + (data.error || 'Terjadi kesalahan'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server.');
+    }
+}
+
+async function deleteAddon(addonId) {
+    if (!confirm('Apakah Anda yakin ingin MENGHAPUS addon ini? Data dan script addon akan dihapus permanen.')) return;
+    
+    try {
+        const response = await authFetch('/api/addons/' + addonId, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            fetchInstalledAddons();
+        } else {
+            const data = await response.json();
+            alert('Gagal menghapus addon: ' + (data.error || 'Terjadi kesalahan'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server.');
+    }
+}
+
+function openInstallAddonModal() {
+    document.getElementById('addon-url-input').value = '';
+    document.getElementById('installAddonModalOverlay').style.display = 'flex';
+}
+
+function closeInstallAddonModal() {
+    document.getElementById('installAddonModalOverlay').style.display = 'none';
+}
+
+async function submitInstallAddon() {
+    const url = document.getElementById('addon-url-input').value.trim();
+    if (!url) {
+        alert('Harap masukkan URL atau repository GitHub.');
+        return;
+    }
+    
+    const btn = document.querySelector('#installAddonModalOverlay .btn-primary');
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '⏳ Sedang Menginstal...';
+    btn.disabled = true;
+    
+    try {
+        const response = await authFetch('/api/addons/install', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url })
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            alert('Addon berhasil diinstal!\nLog: ' + (data.message || 'Selesai'));
+            closeInstallAddonModal();
+            fetchInstalledAddons();
+        } else {
+            alert('Gagal menginstal addon: ' + (data.error || 'Terjadi kesalahan server'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server untuk proses instalasi addon.');
+    } finally {
+        btn.innerHTML = oldHtml;
+        btn.disabled = false;
+    }
+}
+
