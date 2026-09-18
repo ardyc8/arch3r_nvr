@@ -2598,7 +2598,6 @@ let allLogsCache = [];
 document.addEventListener('DOMContentLoaded', () => {
     const aiCanvas = document.getElementById('aiGridCanvas');
     const aiVideo = document.getElementById('aiVideoPlayer');
-    const aiCamSelect = document.getElementById('aiCameraSelect');
     if(!aiCanvas) return; // Hanya jalankan jika elemen ada
 
     const ctx = aiCanvas.getContext('2d');
@@ -2714,13 +2713,6 @@ document.addEventListener('DOMContentLoaded', () => {
         nav.addEventListener('click', () => {
             if (nav.dataset.target === 'view-addons') {
                 setTimeout(resizeCanvas, 100);
-                // Render option list
-                aiCamSelect.innerHTML = '<option value="">-- Pilih Kamera --</option>';
-                if(window.cameras) {
-                    window.cameras.forEach(c => {
-                        aiCamSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-                    });
-                }
                 
                 // Fetch addon list
                 if (typeof fetchInstalledAddons === 'function') {
@@ -2754,10 +2746,18 @@ function openAIGridModal(defaultCamId = null) {
     
     if (defaultCamId) {
         select.value = defaultCamId;
-        select.parentElement.style.display = 'none'; // Sembunyikan dropdown jika dipanggil dari tombol kamera spesifik
+        if(select.parentElement && select.parentElement.classList.contains('form-group')) {
+            select.parentElement.style.display = 'none';
+        } else {
+            select.style.display = 'none';
+        }
         loadCamStreamForAI();
     } else {
-        select.parentElement.style.display = 'block';
+        if(select.parentElement && select.parentElement.classList.contains('form-group')) {
+            select.parentElement.style.display = 'block';
+        } else {
+            select.style.display = 'block';
+        }
     }
 }
 

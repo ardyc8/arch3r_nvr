@@ -1,6 +1,13 @@
 # Changelog
 
-## [Ver 9.5.9] - 2026-09-18
+## [Ver 9.6.0] - 2026-09-18
+### Fixed
+- **Fix Marketplace Crash:** Memperbaiki bug _ReferenceError_ pada _script_ antarmuka saat membuka tab Marketplace (Addons) yang menyebabkan antarmuka _stuck_ di "Memuat Addons...".
+- **Fix YOLO AI Addon Disappear:** Mengunci module bawaan "YOLO AI" ke dalam database lokal agar tidak hilang atau terhapus secara tidak sengaja oleh migrasi sebelumnya.
+- **Fix YOLO AI Dropdown Logic:** Menyempurnakan logika penyembunyian _dropdown_ kamera pada konfigurasi area (Grid) agar tidak lagi meminta pemilihan kamera jika dibuka langsung melalui pengaturan kamera spesifik.
+
+
+## [Ver 9.6.0] - 2026-09-18
 ### Fixed
 - **Fix 502 Bad Gateway (Camera Save):** Menghapus fungsi *synchronous deep-scan* (pemindaian memori secara sinkronus) pada `/media` dan `/mnt` saat menyimpan kamera. Pada STB Linux Armbian, pemindaian *disk* eksternal yang sedang *sleep* (spun-down) atau *network drive* dapat menyebabkan *Node.js event loop* terblokir. Pemblokiran ini menyebabkan Nginx/Cloudflare kehabisan waktu tunggu (*timeout*) dan menghasilkan *Error 502 Bad Gateway*. Sistem kini akan kembali menggunakan fallback folder lokal secara instan jika *path* tidak diatur.
 

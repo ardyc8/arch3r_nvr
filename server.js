@@ -244,7 +244,7 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.5.9)
+// AI ADDON PROXY API (v9.6.0)
 // ==========================================
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
@@ -289,7 +289,7 @@ app.post('/api/ai/webhook', (req, res) => {
 
 
 // ==========================================
-// ADDON MARKETPLACE API (v9.5.9)
+// ADDON MARKETPLACE API (v9.6.0)
 // ==========================================
 
 app.get('/api/addons', verifyToken, (req, res) => {
@@ -300,17 +300,21 @@ app.get('/api/addons', verifyToken, (req, res) => {
     // For now we mock the database of installed addons. In a real scenario, this reads from an addons DB or scans the /addons folder.
     const dbData = getNvrDb();
     if (!dbData.addons) {
-        dbData.addons = [
-            {
-                id: 'ai_yolo',
-                name: 'AI Human Detection (YOLOv8)',
-                version: '1.0.0',
-                icon: '🧠',
-                description: 'Deteksi pergerakan manusia secara real-time dan atur area intrusi (Grid).',
-                active: true,
-                system_protected: true
-            }
-        ];
+        dbData.addons = [];
+    }
+    
+    // Ensure built-in YOLO AI addon is always present
+    const hasYolo = dbData.addons.find(a => a.id === 'ai_yolo');
+    if (!hasYolo) {
+        dbData.addons.push({
+            id: 'ai_yolo',
+            name: 'AI Human Detection (YOLOv8)',
+            version: '1.0.0',
+            icon: '🧠',
+            description: 'Deteksi pergerakan manusia secara real-time dan atur area intrusi (Grid).',
+            active: true,
+            system_protected: true
+        });
         saveNvrDb(dbData);
     }
     
@@ -442,7 +446,7 @@ app.post('/api/addons/:id/config', verifyToken, (req, res) => {
 });
 
 // ==========================================
-// MAINTENANCE & OTA API (v9.5.9)
+// MAINTENANCE & OTA API (v9.6.0)
 // ==========================================
 app.get('/api/maintenance/backup', verifyToken, (req, res) => {
     sysLog('INFO', `[Maintenance] Backup database requested`, 'SYSTEM');
@@ -486,7 +490,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
         if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
             return res.json({
                 current_version: require('./package.json').version,
-                latest_version: '9.5.9',
+                latest_version: '9.6.0',
                 changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
                 update_available: true
             });
@@ -925,7 +929,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.9' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.6.0' });
 });
 
 // Auth Endpoints
@@ -1103,7 +1107,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.5.9",
+        appVersion: "9.6.0",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -1205,7 +1209,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.5.9',
+                latestVersion: '9.6.0',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -1273,7 +1277,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.5.9',
+        version: '9.6.0',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
