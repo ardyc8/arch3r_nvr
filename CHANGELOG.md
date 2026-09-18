@@ -1,22 +1,16 @@
 # Changelog
 
-Semua perubahan yang signifikan pada proyek ini akan didokumentasikan di file ini.
-
-## [Ver 9.3.11] - 2026-09-16
+## [Ver 9.5.6] - 2026-09-17
 ### Fixed
-- **Critical Crash on Camera Save:** Memperbaiki celah *Fatal Error* di _backend_ (Node.js) yang menyebabkan server NVR mati (*crash*) secara seketika dengan pesan error `Failed to fetch` saat menyimpan kamera. Ini terjadi karena:
-  1. Adanya proses gagal panggil (`ENOENT`) pada FFmpeg jika paket `ffmpeg` belum terinstal/rusak pada sistem STB Armbian, yang sebelumnya tidak di-_handle_ dan langsung mematikan aplikasi.
-  2. Kamera dengan format URL kosong yang memicu proses validasi RTSP gagal.
-  3. Pembuatan folder rekaman lokal (`fs.mkdirSync`) pada _storage_ atau Flashdisk yang bermasalah (Read-Only) yang sebelumnya dapat membunuh _service_ utama.
-Semuanya telah dibungkus dengan *Try-Catch & Error Handler* yang ketat (Anti-Crash).
+- **Addons Database Persistence:** Memperbaiki masalah hilangnya daftar *Addons* (termasuk *Addon* bawaan AI YOLO) saat halaman dimuat ulang. Modul `addons` kini memiliki file isolasi tersendiri (`local_db_addons.json`) di dalam *Split DB* dan di-*load* dengan benar oleh API NVR.
+- **Git-Pull Wipe Bug (Auto-Migration DB):** Mengubah *file naming convention* arsitektur database. Seluruh modul *Split DB* (settings, accounts, cameras, recordings, logs, addons) kini menggunakan prefiks `local_` (misalnya `local_db_accounts.json`). Prefiks ini secara ketat dimasukkan ke dalam daftar blokir `.gitignore`. Hal ini secara permanen melindungi data Administrator dan pengaturan klien dari risiko tertimpa (terhapus) file kosong bawaan repositori saat mengeksekusi `git pull`.
 
-## [Ver 9.3.10] - 2026-09-16
-### Fixed
-- **Superadmin Layout Crash (Desktop):** Memperbaiki bug kritis di mana tata letak *dashboard* Superadmin hancur berantakan (halaman konten merosot ke bawah *sidebar*) saat dibuka di layar komputer/desktop. Ini disebabkan oleh interupsi paksa dari JavaScript (`display: block`) yang menabrak aturan struktur *Flexbox* CSS yang baru. Sistem kini menggunakan gaya tampilan `flex` secara konsisten, sehingga tampilan Desktop dan Mobile kembali sejajar, rapi, dan kokoh.
+## [Ver 9.5.5] - 2026-09-17
+### Added
+- **Marketplace Addons UI Dashboard:** Mengganti tampilan statis 'Coming Soon' pada menu *Addons Marketplace* dengan *dashboard* tabel fungsional berbasis *CRUD (Create, Read, Update, Delete)*, menampilkan nama Addons, versi, status aktif/nonaktif, deskripsi fungsional, dan tombol konfigurasi.
 
-## [Ver 9.3.9] - 2026-09-16
-### Changed
-- **Unified Responsive System:** Merombak seluruh pondasi CSS (CSS *Flexbox* & *Media Queries*) untuk *dashboard* utama maupun *Superadmin*. Sistem kini secara dinamis merespons rotasi layar (*portrait* ke *landscape*) tanpa masalah *overflow* (melebihi batas layar) atau elemen yang tergencet. Kamera, form pengaturan, dan bar navigasi seluler kini menggunakan *viewport-height* fleksibel (`flex: 1`) secara penuh.
+<truncated 23 bytes>
+: 1`) secara penuh.
 
 ## [Ver 9.3.8] - 2026-09-16
 ### Changed
@@ -93,7 +87,6 @@ Semuanya telah dibungkus dengan *Try-Catch & Error Handler* yang ketat (Anti-Cra
 ## [Ver 9.2.6] - 2026-09-15
 ### Added
 - **Production Build System:** Penambahan kapabilitas kompilasi executable binary untuk target ARM64 (STB Armbian) dan x64 menggunakan `bun build` demi keamanan *source code* (anti-tampering).
-
 ### Fixed
 - **Security & Licensing:** Menutup celah kritis *Trial Bypass*. Marker masa percobaan 30 hari kini ditanam secara aman di level OS (Hidden Marker: `/var/tmp/.arch3r_nvr_sys_core/.sys_marker`) sehingga kebal terhadap trik penghapusan atau *reset* file database JSON lokal.
 - **UI/UX:** Pembersihan elemen mockup (Demo Akun) pada halaman login untuk standar tampilan kelas produksi komersial.
@@ -101,7 +94,6 @@ Semuanya telah dibungkus dengan *Try-Catch & Error Handler* yang ketat (Anti-Cra
 ## [Ver 9.0.2] - 2026-09-15
 ### Added
 - **Build System:** Menambahkan script kompilasi `bun build` di `package.json` untuk membungkus `server.js` menjadi file Binary Executable (`archer-nvr-arm64` dan `archer-nvr-x64`) demi mencegah klien membajak logika lisensi. 
-
 ### Fixed
 - **Security:** Menutup celah *Trial Bypass*. Tanggal `install_date` kini disimpan sebagai *Hidden OS Marker* (`/var/tmp/.arch3r_nvr_sys_core/.sys_marker` di Linux) bukan lagi di `nvr_db.json`. Ini mencegah user me-reset trial 30 hari dengan cara menghapus folder `data/`.
 
