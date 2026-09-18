@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 9.7.0] - 2026-09-18
+### Fixed & Improved
+- **Pemulihan Rasio Widescreen Normal 16:9 Kamera (Anti-Stretching):** Memperbaiki proporsi sel grid kamera (`.cam-cell`) dan pemutar video (`object-fit: contain;`) dengan aturan `aspect-ratio: 16/9 !important; height: auto !important;` serta `grid-template-rows: auto !important;`. Tayangan CCTV kini kembali normal berbentuk kotak horizontal standar 16:9 tanpa mengalami distorsi vertikal/memanjang ke bawah.
+- **Penyempurnaan Tata Letak Toolbar Navigasi Bawah:** Menata ulang bilah kontrol bawah (`#topControlContainer`) agar tampil rapi dan proporsional di semua resolusi layar (mobile potret/lanskap dan desktop). Menambahkan padding bawah aman (`env(safe-area-inset-bottom)`), memperjelas baris pilihan channel (*Channel Bar*), merapikan tombol navigasi layout/halaman, dan memastikan panel D-Pad PTZ tidak terpotong di bagian bawah layar.
+- **Penanganan Scroll Mandiri Kanvas Monitor (`#monitorWrapper`):** Mengaktifkan scroll vertikal yang halus (`overflow-y: auto; -webkit-overflow-scrolling: touch;`) pada kontainer monitor mobile sehingga jika perangkat pengguna memiliki tinggi layar terbatas, seluruh kontrol tetap dapat diakses dengan mudah tanpa memotong video atau tombol.
+- **Penyelarasan Versi Sistem:** Menaikkan nomor versi aplikasi ke `9.7.0` pada `package.json`, `server.js`, `index.html`, `superadmin.html`, dan `CHANGELOG.md` dengan penambahan parameter *cache-busting* `?v=9.7.0`.
+
 ## [Ver 9.6.9] - 2026-09-18
 ### Fixed & Improved
 - **Pemindahan Navigasi Menu ke Bawah Video Grid:** Memindahkan bilah navigasi kontrol terpadu (Channel Bar, Pengalih Grid 1x1 s/d 4x4, Paginasi Halaman Prev/Next, Tombol Cepat Audio, Snapshot Foto, D-Pad PTZ 3x3, Tombol Fullscreen, dan Refresh) ke bagian bawah layar, tepat di bawah video grid, memberikan tampilan pemantauan yang jauh lebih ergonomis dan bersih.
