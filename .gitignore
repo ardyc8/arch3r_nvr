@@ -1,9 +1,9 @@
 node_modules/
 .env
-
 cameras.json
 settings.json
 data/
+data/*
 public/recordings/
 public/streams/
 *.log
@@ -15,10 +15,12 @@ archer-nvr-arm64
 archer-nvr-x64
 TUTORIAL_PRODUKSI.md
 
-# SPLIT DB FILES
+# SPLIT DB & DATABASE FILES
 data/db_*.json
 data/local_db_*.json
 *.bak
+*.tmp
+.safe_golden_snapshot.json
 
 # LIVE DB FIX
 data/live_db/

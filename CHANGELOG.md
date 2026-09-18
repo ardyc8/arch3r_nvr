@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 9.6.1] - 2026-09-18
+### Fixed
+- **Root-Cause Fix for Database Wipe on Boot/Git Pull:** Mengidentifikasi dan memperbaiki akar masalah fatal di fungsi `initDB()` (`server.js`) di mana sistem lama memeriksa ketiadaan `nvrDbFile` (`data/live_db/nvr_db.json`) dan secara otomatis menimpa seluruh database akun administrator serta kamera menggunakan template kosong `getDefaultDb()`.
+- **Anti-Wipe Dual-Layer Shadow Database:** Menambahkan sistem penyimpanan persisten sekunder di luar pohon direktori Git (`/var/lib/arch3r_nvr/db` dan fallback `~/.arch3r_nvr/db`) yang 100% kebal terhadap `git pull`, `git reset`, atau `git checkout`.
+- **Self-Healing Anti-Wipe Engine:** Menambahkan mekanisme pemulihan otomatis pada `getNvrDb()` yang mendeteksi jika data administrator atau kamera kosong, dan langsung memulihkan dari safe shadow mirror atau golden snapshot `.safe_golden_snapshot.json`.
+- **Airtight .gitignore Protection:** Memperketat `.gitignore` untuk melindungi seluruh file database split (`data/*`, `local_db_*.json`, `*.bak`, `*.tmp`, `.safe_golden_snapshot.json`) agar repositori Git tidak pernah melacak atau menimpa database pengguna.
+
 ## [Ver 9.6.0] - 2026-09-18
 ### Fixed
 - **Fix Marketplace Crash:** Memperbaiki bug _ReferenceError_ pada _script_ antarmuka saat membuka tab Marketplace (Addons) yang menyebabkan antarmuka _stuck_ di "Memuat Addons...".

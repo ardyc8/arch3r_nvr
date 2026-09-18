@@ -204,6 +204,23 @@ const oldDataDir = path.join(__dirname, 'data');
 const dataDir = path.join(__dirname, 'data', 'live_db');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
+// External Persistent Shadow DB (100% immune to git pull, git reset, git checkout)
+const systemDbDir = (() => {
+    const candidates = [
+        '/var/lib/arch3r_nvr/db',
+        path.join(os.homedir() || '/root', '.arch3r_nvr', 'db'),
+        path.join(__dirname, '..', 'arch3r_nvr_external_db')
+    ];
+    for (const dir of candidates) {
+        try {
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.accessSync(dir, fs.constants.W_OK);
+            return dir;
+        } catch (e) {}
+    }
+    return dataDir;
+})();
+
 // --- AUTO MIGRATION: Restore missing data and protect from git pull ---
 try {
     ['db_accounts.json', 'db_cameras.json', 'db_recordings.json', 'db_settings.json', 'db_logs.json', 'db_addons.json'].forEach(file => {
@@ -244,7 +261,7 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.6.0)
+// AI ADDON PROXY API (v9.6.1)
 // ==========================================
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
@@ -289,7 +306,7 @@ app.post('/api/ai/webhook', (req, res) => {
 
 
 // ==========================================
-// ADDON MARKETPLACE API (v9.6.0)
+// ADDON MARKETPLACE API (v9.6.1)
 // ==========================================
 
 app.get('/api/addons', verifyToken, (req, res) => {
@@ -332,9 +349,9 @@ app.post('/api/addons/install', verifyToken, (req, res) => {
     sysLog('INFO', `[Addons] Permintaan instalasi dari: ${url}`, 'SYSTEM');
     
     // Simulate installation delay and return mock response for now
-    // Future update v9.6.0 will implement actual git clone and PM2 injection here.
+    // Future update v9.6.1 will implement actual git clone and PM2 injection here.
     setTimeout(() => {
-        res.json({ success: true, message: 'Addon berhasil didownload namun instalasi sebenarnya ditunda ke update v9.6.0.' });
+        res.json({ success: true, message: 'Addon berhasil didownload namun instalasi sebenarnya ditunda ke update v9.6.1.' });
     }, 2000);
 });
 
@@ -446,7 +463,7 @@ app.post('/api/addons/:id/config', verifyToken, (req, res) => {
 });
 
 // ==========================================
-// MAINTENANCE & OTA API (v9.6.0)
+// MAINTENANCE & OTA API (v9.6.1)
 // ==========================================
 app.get('/api/maintenance/backup', verifyToken, (req, res) => {
     sysLog('INFO', `[Maintenance] Backup database requested`, 'SYSTEM');
@@ -490,7 +507,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
         if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
             return res.json({
                 current_version: require('./package.json').version,
-                latest_version: '9.6.0',
+                latest_version: '9.6.1',
                 changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
                 update_available: true
             });
@@ -631,6 +648,7 @@ function getDefaultDb() {
             netInterface: 'auto' 
         },
 
+        administrators: [],
         users: [],
         cameras: [],
         recordings: [],
@@ -659,7 +677,6 @@ function getNvrDb() {
             return JSON.parse(fs.readFileSync(fPath, 'utf8'));
         } catch(e) { return null; }
     }
-    
 
     // --- AUTO FIX OLD 'Z' TIMESTAMPS (Bugfix cleanup) ---
     const fixZTime = (isoStr) => {
@@ -680,7 +697,6 @@ function getNvrDb() {
             } catch(e){}
         }
     });
-
     
     const isAlreadyMigrated = fs.existsSync(fAccounts) || fs.existsSync(fCameras);
     
@@ -695,7 +711,6 @@ function getNvrDb() {
             } catch(e){}
         }
     });
-
     
     // Hapus file bawaan Git jika Split-DB sudah aktif
     if (fs.existsSync(nvrDbFile) && isAlreadyMigrated) {
@@ -742,6 +757,63 @@ function getNvrDb() {
     const s_add = tryParse(fAddons);
     if (s_add) data.addons = s_add.addons || null;
 
+    // =========================================================================
+    // 🛡️ ANTI-WIPE HEALING ENGINE (Protects against Git Pull & System Overwrites)
+    // =========================================================================
+    const needsAdminRestore = (!data.administrators || data.administrators.length === 0);
+    const needsCamRestore = (!data.cameras || data.cameras.length === 0);
+
+    if (needsAdminRestore || needsCamRestore) {
+        const shadowAcc = (systemDbDir && systemDbDir !== dataDir) ? tryParse(path.join(systemDbDir, 'local_db_accounts.json')) : null;
+        const shadowCam = (systemDbDir && systemDbDir !== dataDir) ? tryParse(path.join(systemDbDir, 'local_db_cameras.json')) : null;
+        const localSnapshot = tryParse(path.join(dataDir, '.safe_golden_snapshot.json'));
+        const systemSnapshot = (systemDbDir && systemDbDir !== dataDir) ? tryParse(path.join(systemDbDir, '.safe_golden_snapshot.json')) : null;
+        const oldBackup = tryParse(path.join(dataDir, 'nvr_db_safe_backup.json')) || tryParse(path.join(oldDataDir, 'nvr_db_safe_backup.json'));
+
+        if (needsAdminRestore) {
+            const restoredAdmins = (shadowAcc?.administrators && shadowAcc.administrators.length > 0) ? shadowAcc.administrators :
+                                   (systemSnapshot?.administrators && systemSnapshot.administrators.length > 0) ? systemSnapshot.administrators :
+                                   (localSnapshot?.administrators && localSnapshot.administrators.length > 0) ? localSnapshot.administrators :
+                                   (oldBackup?.administrators && oldBackup.administrators.length > 0) ? oldBackup.administrators : null;
+            if (restoredAdmins && restoredAdmins.length > 0) {
+                data.administrators = restoredAdmins;
+                console.log(`[ANTI-WIPE] 🛡️ Berhasil memulihkan ${restoredAdmins.length} akun Administrator dari Safe Shadow Storage!`);
+            }
+            const restoredUsers = (shadowAcc?.users && shadowAcc.users.length > 0) ? shadowAcc.users :
+                                  (systemSnapshot?.users && systemSnapshot.users.length > 0) ? systemSnapshot.users :
+                                  (localSnapshot?.users && localSnapshot.users.length > 0) ? localSnapshot.users :
+                                  (oldBackup?.users && oldBackup.users.length > 0) ? oldBackup.users : null;
+            if (restoredUsers && restoredUsers.length > 0 && (!data.users || data.users.length === 0)) {
+                data.users = restoredUsers;
+            }
+        }
+
+        if (needsCamRestore) {
+            const restoredCams = (shadowCam?.cameras && shadowCam.cameras.length > 0) ? shadowCam.cameras :
+                                 (systemSnapshot?.cameras && systemSnapshot.cameras.length > 0) ? systemSnapshot.cameras :
+                                 (localSnapshot?.cameras && localSnapshot.cameras.length > 0) ? localSnapshot.cameras :
+                                 (oldBackup?.cameras && oldBackup.cameras.length > 0) ? oldBackup.cameras : null;
+            if (restoredCams && restoredCams.length > 0) {
+                data.cameras = restoredCams;
+                console.log(`[ANTI-WIPE] 🛡️ Berhasil memulihkan ${restoredCams.length} konfigurasi Kamera dari Safe Shadow Storage!`);
+            }
+        }
+    }
+
+    // Keep external shadow storage updated if working directory has more data
+    if (systemDbDir && systemDbDir !== dataDir) {
+        try {
+            const sAcc = tryParse(path.join(systemDbDir, 'local_db_accounts.json'));
+            if (!sAcc || (data.administrators && data.administrators.length > (sAcc.administrators?.length || 0))) {
+                fs.writeFileSync(path.join(systemDbDir, 'local_db_accounts.json'), JSON.stringify({ administrators: data.administrators || [], users: data.users || [] }, null, 2));
+            }
+            const sCam = tryParse(path.join(systemDbDir, 'local_db_cameras.json'));
+            if (!sCam || (data.cameras && data.cameras.length > (sCam.cameras?.length || 0))) {
+                fs.writeFileSync(path.join(systemDbDir, 'local_db_cameras.json'), JSON.stringify({ cameras: data.cameras || [] }, null, 2));
+            }
+        } catch(e){}
+    }
+
     cachedDb = data;
     return data;
 }
@@ -767,12 +839,49 @@ function scheduleDbSave() {
         // SPLIT DB ARCHITECTURE (ANTI-CORRUPTION)
         // Write each module into its own file
         // ==========================================
-        atomicWrite(path.join(dataDir, 'local_db_settings.json'), { super_settings: cachedDb.super_settings, recording_path: cachedDb.recording_path });
-        atomicWrite(path.join(dataDir, 'local_db_accounts.json'), { administrators: cachedDb.administrators, users: cachedDb.users });
-        atomicWrite(path.join(dataDir, 'local_db_cameras.json'), { cameras: cachedDb.cameras });
-        atomicWrite(path.join(dataDir, 'local_db_recordings.json'), { recordings: cachedDb.recordings });
-        atomicWrite(path.join(dataDir, 'local_db_logs.json'), { system_logs: cachedDb.system_logs });
-        if (cachedDb.addons) atomicWrite(path.join(dataDir, 'local_db_addons.json'), { addons: cachedDb.addons });
+        const payloadSettings = { super_settings: cachedDb.super_settings, recording_path: cachedDb.recording_path };
+        const payloadAccounts = { administrators: cachedDb.administrators || [], users: cachedDb.users || [] };
+        const payloadCameras = { cameras: cachedDb.cameras || [] };
+        const payloadRecordings = { recordings: cachedDb.recordings || [] };
+        const payloadLogs = { system_logs: cachedDb.system_logs || [] };
+        const payloadAddons = cachedDb.addons ? { addons: cachedDb.addons } : null;
+
+        // 1. Primary Live Storage (data/live_db/)
+        atomicWrite(path.join(dataDir, 'local_db_settings.json'), payloadSettings);
+        atomicWrite(path.join(dataDir, 'local_db_accounts.json'), payloadAccounts);
+        atomicWrite(path.join(dataDir, 'local_db_cameras.json'), payloadCameras);
+        atomicWrite(path.join(dataDir, 'local_db_recordings.json'), payloadRecordings);
+        atomicWrite(path.join(dataDir, 'local_db_logs.json'), payloadLogs);
+        if (payloadAddons) atomicWrite(path.join(dataDir, 'local_db_addons.json'), payloadAddons);
+
+        // 2. External Persistent Shadow Storage (Immune to Git Pull & Git Reset)
+        if (systemDbDir && systemDbDir !== dataDir) {
+            try {
+                atomicWrite(path.join(systemDbDir, 'local_db_settings.json'), payloadSettings);
+                atomicWrite(path.join(systemDbDir, 'local_db_accounts.json'), payloadAccounts);
+                atomicWrite(path.join(systemDbDir, 'local_db_cameras.json'), payloadCameras);
+                if (payloadAddons) atomicWrite(path.join(systemDbDir, 'local_db_addons.json'), payloadAddons);
+            } catch(e) {
+                console.error('[SHADOW-DB] External mirror write error:', e.message);
+            }
+        }
+
+        // 3. Golden Snapshot (Saved whenever valid accounts or cameras exist)
+        if ((cachedDb.administrators && cachedDb.administrators.length > 0) || (cachedDb.cameras && cachedDb.cameras.length > 0)) {
+            try {
+                const goldenData = {
+                    timestamp: new Date().toISOString(),
+                    administrators: cachedDb.administrators || [],
+                    users: cachedDb.users || [],
+                    cameras: cachedDb.cameras || [],
+                    super_settings: cachedDb.super_settings || {}
+                };
+                atomicWrite(path.join(dataDir, '.safe_golden_snapshot.json'), goldenData);
+                if (systemDbDir && systemDbDir !== dataDir) {
+                    atomicWrite(path.join(systemDbDir, '.safe_golden_snapshot.json'), goldenData);
+                }
+            } catch(e) {}
+        }
 
     } catch(e) {
         console.error('Error saving Split DB:', e);
@@ -855,13 +964,10 @@ function getActualBaseStoragePath(skipAutoDetect = false) {
 
 // Database Initialization
 function initDB() {
-    if (!fs.existsSync(nvrDbFile)) {
-        saveNvrDb(getDefaultDb());
-    } else {
-        const data = getNvrDb();
-        saveNvrDb(data);
-    }
-    sysLog('INFO', 'JSON Local Database Initialized (data/nvr_db.json)');
+    const data = getNvrDb();
+    // Synchronize loaded data to ensure primary and persistent shadow storages are active
+    saveNvrDb(data);
+    sysLog('INFO', `JSON Split-DB Initialized (Admins: ${data.administrators?.length || 0}, Cameras: ${data.cameras?.length || 0})`, 'DATABASE');
 }
 
 // Auth Middleware
@@ -929,7 +1035,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.6.0' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.6.1' });
 });
 
 // Auth Endpoints
@@ -1107,7 +1213,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.6.0",
+        appVersion: "9.6.1",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -1209,7 +1315,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.6.0',
+                latestVersion: '9.6.1',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -1277,7 +1383,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.6.0',
+        version: '9.6.1',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
