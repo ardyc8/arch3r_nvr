@@ -1444,30 +1444,52 @@ async function fetchCameras() {
         }
     };
 
-    // Reset floating panel state when exiting fullscreen
-    document.addEventListener('fullscreenchange', () => {
+    // Fullscreen state listener and class synchronizer
+    function handleFullscreenChange() {
+        const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        const wrapper = document.getElementById('monitorWrapper');
         const panel = document.getElementById('topControlPanel');
         const btn = document.getElementById('btnToggleControls');
-        if (!document.fullscreenElement) {
+        
+        if (wrapper) {
+            if (isFS) {
+                wrapper.classList.add('is-fullscreen');
+            } else {
+                wrapper.classList.remove('is-fullscreen');
+            }
+        }
+        
+        if (!isFS) {
             if (panel) panel.classList.remove('fullscreen-open');
             if (btn) {
-                btn.style.opacity = '0.7';
+                btn.style.opacity = '0.85';
                 btn.style.background = 'var(--surface)';
                 btn.style.color = '';
             }
         }
-    });
+    }
 
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
     window.toggleGridFullscreen = function(gridId) {
         const elem = document.getElementById(gridId);
         if (!elem) return;
-        if (!document.fullscreenElement) {
-            elem.requestFullscreen().catch(err => {
-                alert("Gagal fullscreen: " + err.message);
-            });
+        const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        if (!isFS) {
+            const req = elem.requestFullscreen || elem.webkitRequestFullscreen || elem.mozRequestFullScreen || elem.msRequestFullscreen;
+            if (req) {
+                req.call(elem).catch(err => {
+                    console.warn("Fullscreen request error:", err);
+                });
+            }
         } else {
-            document.exitFullscreen();
+            const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+            if (exit) {
+                exit.call(document);
+            }
         }
     };
 

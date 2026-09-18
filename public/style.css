@@ -198,8 +198,13 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 }
 
 :fullscreen #btnToggleControlsContainer,
-#monitorWrapper:fullscreen #btnToggleControlsContainer {
+#monitorWrapper:fullscreen #btnToggleControlsContainer,
+#monitorWrapper.is-fullscreen #btnToggleControlsContainer {
     display: block !important;
+    position: fixed !important;
+    top: 12px !important;
+    right: 12px !important;
+    z-index: 9999 !important;
 }
 
 /* Top control container in Normal mode: standard static bar without floating */
@@ -220,46 +225,54 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     width: 100%;
 }
 
-/* In Fullscreen mode: Bottom control panel is hidden, Top controls float over video */
-:fullscreen #bottomControlPanel,
-#monitorWrapper:fullscreen #bottomControlPanel {
-    display: none !important;
-}
-
+/* In Fullscreen mode: Top controls float over video when gear is clicked */
 :fullscreen #topControlContainer,
-#monitorWrapper:fullscreen #topControlContainer {
-    position: absolute !important;
+#monitorWrapper:fullscreen #topControlContainer,
+#monitorWrapper.is-fullscreen #topControlContainer {
+    position: fixed !important;
     top: 0;
     left: 0;
     right: 0;
-    z-index: 100;
+    z-index: 9000 !important;
     background: transparent !important;
     border-bottom: none !important;
     pointer-events: none;
 }
 
 :fullscreen #btnToggleControlsContainer,
-#monitorWrapper:fullscreen #btnToggleControlsContainer {
+#monitorWrapper:fullscreen #btnToggleControlsContainer,
+#monitorWrapper.is-fullscreen #btnToggleControlsContainer {
     pointer-events: auto;
 }
 
 :fullscreen #topControlPanel,
-#monitorWrapper:fullscreen #topControlPanel {
+#monitorWrapper:fullscreen #topControlPanel,
+#monitorWrapper.is-fullscreen #topControlPanel {
     display: none !important; /* By default hidden in fullscreen until gear is clicked */
-    background: rgba(15, 23, 42, 0.95) !important;
-    backdrop-filter: blur(10px);
+    background: rgba(15, 23, 42, 0.96) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.85);
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.9);
     pointer-events: auto;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding-right: 55px; /* Leave space so it doesn't overlap the gear button */
 }
 
 :fullscreen #topControlPanel.fullscreen-open,
-#monitorWrapper:fullscreen #topControlPanel.fullscreen-open {
+#monitorWrapper:fullscreen #topControlPanel.fullscreen-open,
+#monitorWrapper.is-fullscreen #topControlPanel.fullscreen-open {
     display: flex !important;
 }
 
 :fullscreen #videoGridContainer,
-#monitorWrapper:fullscreen #videoGridContainer {
+#monitorWrapper:fullscreen #videoGridContainer,
+#monitorWrapper.is-fullscreen #videoGridContainer {
     height: 100vh !important;
     width: 100vw !important;
     padding: 0 !important;
@@ -481,39 +494,21 @@ body {
         max-height: none !important;
     }
 
-    /* Bottom Control Panel turns into a rich, dedicated Mobile CCTV Desk */
-    #bottomControlPanel {
+    /* Unified Mobile Toolbar Layout */
+    .control-main-row {
+        gap: 0.4rem !important;
+        padding: 0.35rem 0.5rem !important;
+    }
+
+    #channelBar {
+        padding: 0.15rem 0.5rem 0.35rem 0.5rem !important;
+        gap: 0.35rem !important;
+    }
+
+    #videoGridContainer {
         flex: 1 1 auto !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: flex-start !important;
-        align-items: stretch !important;
-        padding: 0.85rem 1rem 2rem 1rem !important;
-        gap: 0.85rem !important;
-        background: var(--surface) !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        border-top: 1px solid var(--border) !important;
-        box-shadow: 0 -3px 12px rgba(0,0,0,0.3);
-    }
-
-    .mobile-desk-visible {
-        display: flex !important;
-    }
-
-    .desktop-only-controls {
-        display: none !important;
-    }
-
-    #playerControls {
-        gap: 0.5rem !important;
         width: 100% !important;
-        justify-content: space-between !important;
-    }
-
-    #playerVolume {
-        flex: 1 !important;
-        max-width: 120px !important;
+        min-height: 0 !important;
     }
 }
 

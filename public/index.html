@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.6.7 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=9.6.7">
+    <title>Arch3r NVR Ver. 9.6.8 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=9.6.8">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.7</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.8</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.7</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.8</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -129,147 +129,77 @@
             <div id="view-monitor" class="view-pane active">
                 <div id="monitorWrapper" class="grid-wrapper" style="position:relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: #000; padding: 0;">
                     
-                    <!-- Top Bar: Layout, Paging, Channels & Fullscreen Menu -->
+                    <!-- Top Bar: Layout, Paging, Channels & Controls -->
                     <div id="topControlContainer">
                         
-                        <!-- Toggle Button (ONLY shown in Fullscreen mode via CSS) -->
-                        <div id="btnToggleControlsContainer" style="position:absolute; top: 10px; right: 10px; z-index: 120;">
-                            <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 38px; height: 38px; padding:0; display:flex; justify-content:center; align-items:center; opacity: 0.85; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 4px 10px rgba(0,0,0,0.6); cursor:pointer; font-size:16px;" title="Buka Panel Navigasi & PTZ">⚙️</button>
+                        <!-- Toggle Button (ONLY shown in Fullscreen mode) -->
+                        <div id="btnToggleControlsContainer">
+                            <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 38px; height: 38px; padding:0; display:flex; justify-content:center; align-items:center; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 4px 12px rgba(0,0,0,0.7); cursor:pointer; font-size:16px;" title="Buka Panel Navigasi & PTZ">⚙️</button>
                         </div>
 
                         <div id="topControlPanel">
-                            <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem 1rem; flex-wrap: wrap; gap: 0.75rem;">
-                                <!-- Layout Switcher & Page Navigation -->
-                                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-                                    <div style="display:flex; align-items:center; gap:0.35rem;">
-                                        <span style="font-size:0.85rem; color:var(--text-muted); font-weight:bold;">Layout:</span>
-                                        <button class="btn-sm btn-secondary grid-btn active" data-grid="1" style="background:#2563eb; color:white;">1x1</button>
-                                        <button class="btn-sm btn-secondary grid-btn" data-grid="4">2x2</button>
-                                        <button class="btn-sm btn-secondary grid-btn" data-grid="9">3x3</button>
-                                        <button class="btn-sm btn-secondary grid-btn" data-grid="16">4x4</button>
+                            <!-- Main Control Row -->
+                            <div class="control-main-row" style="display:flex; justify-content:space-between; align-items:center; padding: 0.4rem 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                                <!-- Left: Layout Switcher & Page Navigation -->
+                                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                                    <div style="display:flex; align-items:center; gap:0.25rem;">
+                                        <span style="font-size:0.8rem; color:var(--text-muted); font-weight:bold;">Layout:</span>
+                                        <button class="btn-sm btn-secondary grid-btn active" data-grid="1" style="background:#2563eb; color:white; padding:3px 7px; font-size:0.75rem;">1x1</button>
+                                        <button class="btn-sm btn-secondary grid-btn" data-grid="4" style="padding:3px 7px; font-size:0.75rem;">2x2</button>
+                                        <button class="btn-sm btn-secondary grid-btn" data-grid="9" style="padding:3px 7px; font-size:0.75rem;">3x3</button>
+                                        <button class="btn-sm btn-secondary grid-btn" data-grid="16" style="padding:3px 7px; font-size:0.75rem;">4x4</button>
                                     </div>
-                                    <div id="gridPageNav" style="display:flex; align-items:center; gap:0.35rem; background:rgba(0,0,0,0.25); padding:2px 6px; border-radius:6px; border:1px solid var(--border);">
-                                        <button id="btnPrevGridPage" class="btn-sm btn-secondary" onclick="window.prevGridPage()" style="padding:2px 8px; font-size:11px;" title="Halaman Kamera Sebelumnya">◀ Prev</button>
-                                        <span id="gridPageIndicator" style="font-size:0.78rem; font-family:monospace; color:#93c5fd; min-width:65px; text-align:center; font-weight:600;">Hal 1/1</span>
-                                        <button id="btnNextGridPage" class="btn-sm btn-secondary" onclick="window.nextGridPage()" style="padding:2px 8px; font-size:11px;" title="Halaman Kamera Berikutnya">Next ▶</button>
+                                    <div id="gridPageNav" style="display:flex; align-items:center; gap:0.25rem; background:rgba(0,0,0,0.25); padding:2px 5px; border-radius:6px; border:1px solid var(--border);">
+                                        <button id="btnPrevGridPage" class="btn-sm btn-secondary" onclick="window.prevGridPage()" style="padding:2px 6px; font-size:11px;" title="Halaman Kamera Sebelumnya">◀ Prev</button>
+                                        <span id="gridPageIndicator" style="font-size:0.75rem; font-family:monospace; color:#93c5fd; min-width:55px; text-align:center; font-weight:600;">Hal 1/1</span>
+                                        <button id="btnNextGridPage" class="btn-sm btn-secondary" onclick="window.nextGridPage()" style="padding:2px 6px; font-size:11px;" title="Halaman Kamera Berikutnya">Next ▶</button>
                                     </div>
                                 </div>
 
-                                <!-- PTZ & Action Tools -->
-                                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                                <!-- Right: Quick Actions & PTZ D-Pad -->
+                                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                                    <!-- Audio & Snapshot Quick Buttons -->
+                                    <div style="display:flex; gap:0.25rem;">
+                                        <button class="btn-sm btn-secondary" onclick="window.toggleSelectedMute()" style="font-size:0.75rem; padding:3px 7px;" title="Mute/Unmute Audio Kamera Terpilih">🔊 Audio</button>
+                                        <button class="btn-sm btn-secondary" onclick="window.takeSnapshotSelected()" style="font-size:0.75rem; padding:3px 7px;" title="Ambil Foto Snapshot">📸 Foto</button>
+                                    </div>
+
                                     <!-- PTZ Controls (Synchronized with selected camera) -->
-                                    <div id="topPtzWrapper" style="display:flex; align-items:center; gap:0.5rem; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:6px; border:1px solid var(--border);">
+                                    <div id="topPtzWrapper" style="display:flex; align-items:center; gap:0.4rem; background:rgba(0,0,0,0.3); padding:2px 6px; border-radius:6px; border:1px solid var(--border);">
                                         <div style="display:flex; flex-direction:column; align-items:flex-start;">
-                                            <span style="font-weight:bold; color:var(--text-muted); font-size:11px;">KENDALI PTZ:</span>
-                                            <span id="topActiveCamLabel" style="font-size:10px; color:#60a5fa; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Pilih di grid</span>
+                                            <span style="font-weight:bold; color:var(--text-muted); font-size:10px;">PTZ:</span>
+                                            <span id="topActiveCamLabel" style="font-size:9.5px; color:#60a5fa; max-width:85px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Pilih di grid</span>
                                         </div>
-                                        <div id="topPtzController" class="desktop-ptz-grid" style="display:grid; grid-template-columns: repeat(3, 24px); grid-template-rows: repeat(3, 24px); gap:2px; align-items:center; justify-items:center;">
+                                        <div id="topPtzController" class="desktop-ptz-grid" style="display:grid; grid-template-columns: repeat(3, 20px); grid-template-rows: repeat(3, 20px); gap:2px; align-items:center; justify-items:center;">
                                             <div></div>
-                                            <button class="ptz-btn" style="width:24px; height:24px; font-size:10px; padding:0;" onclick="window.ptzMoveSelected('up')">▲</button>
+                                            <button class="ptz-btn" style="width:20px; height:20px; font-size:9px; padding:0;" onclick="window.ptzMoveSelected('up')">▲</button>
                                             <div></div>
-                                            <button class="ptz-btn" style="width:24px; height:24px; font-size:10px; padding:0;" onclick="window.ptzMoveSelected('left')">◀</button>
-                                            <div style="display:flex; align-items:center; justify-content:center; font-size:7px; font-weight:bold; color:#64748b;">PTZ</div>
-                                            <button class="ptz-btn" style="width:24px; height:24px; font-size:10px; padding:0;" onclick="window.ptzMoveSelected('right')">▶</button>
+                                            <button class="ptz-btn" style="width:20px; height:20px; font-size:9px; padding:0;" onclick="window.ptzMoveSelected('left')">◀</button>
+                                            <div style="display:flex; align-items:center; justify-content:center; font-size:6.5px; font-weight:bold; color:#64748b;">PTZ</div>
+                                            <button class="ptz-btn" style="width:20px; height:20px; font-size:9px; padding:0;" onclick="window.ptzMoveSelected('right')">▶</button>
                                             <div></div>
-                                            <button class="ptz-btn" style="width:24px; height:24px; font-size:10px; padding:0;" onclick="window.ptzMoveSelected('down')">▼</button>
+                                            <button class="ptz-btn" style="width:20px; height:20px; font-size:9px; padding:0;" onclick="window.ptzMoveSelected('down')">▼</button>
                                             <div></div>
                                         </div>
                                     </div>
 
-                                    <div style="display:flex; gap:0.4rem;">
-                                        <button class="btn-sm btn-primary" onclick="window.toggleGridFullscreen('monitorWrapper')">⛶ Fullscreen</button>
-                                        <button id="btnReloadStreams" class="btn-sm btn-secondary" title="Muat ulang stream">🔄 Refresh</button>
+                                    <div style="display:flex; gap:0.3rem;">
+                                        <button class="btn-sm btn-primary" onclick="window.toggleGridFullscreen('monitorWrapper')" style="font-size:0.75rem; padding:3px 7px;">⛶ Fullscreen</button>
+                                        <button id="btnReloadStreams" class="btn-sm btn-secondary" onclick="window.reloadActiveStreams()" style="font-size:0.75rem; padding:3px 7px;" title="Muat ulang stream">🔄 Refresh</button>
                                     </div>
                                 </div>
                             </div>
-                            <div id="channelBar" style="display:flex; gap:0.5rem; flex-wrap:wrap; padding: 0 1rem 0.5rem 1rem;">
+
+                            <!-- Channel Bar (Horizontal Scrollable Strip) -->
+                            <div id="channelBar" style="display:flex; gap:0.4rem; overflow-x:auto; padding: 0.2rem 0.75rem 0.4rem 0.75rem; white-space:nowrap; -webkit-overflow-scrolling:touch;">
                                 <!-- JS akan merender tombol All, CH1, CH2, dst. -->
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Video Grid Area -->
-                    <div id="videoGridContainer" style="position:relative; flex:1; min-height:0; display:flex; padding: 4px;">
+                    <!-- Video Grid Area (Takes 100% remaining space) -->
+                    <div id="videoGridContainer" style="position:relative; flex:1; min-height:0; display:flex; padding: 2px;">
                         <div id="videoGrid" class="video-grid grid-1" style="flex:1; width:100%;"></div>
-                    </div>
-
-                    <!-- Bottom Control Panel (Player & PTZ) -->
-                    <div id="bottomControlPanel" style="background: var(--surface); border-top: 1px solid var(--border); padding: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
-                        
-                        <!-- Mobile CCTV Desk (Prominently visible on Mobile, eliminates empty void) -->
-                        <div class="mobile-cctv-desk mobile-desk-visible" style="display:none; flex-direction:column; gap:0.65rem; width:100%;">
-                            <!-- Mobile Channel & Layout Bar -->
-                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem;">
-                                <div style="display:flex; align-items:center; gap:0.3rem;">
-                                    <span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">Grid:</span>
-                                    <button class="btn-sm btn-secondary grid-btn active" data-grid="1" style="background:#2563eb; color:white; padding:3px 7px; font-size:0.75rem;">1x1</button>
-                                    <button class="btn-sm btn-secondary grid-btn" data-grid="4" style="padding:3px 7px; font-size:0.75rem;">2x2</button>
-                                    <button class="btn-sm btn-secondary grid-btn" data-grid="9" style="padding:3px 7px; font-size:0.75rem;">3x3</button>
-                                </div>
-                                <div style="display:flex; gap:0.35rem;">
-                                    <button class="btn-sm btn-primary" onclick="window.toggleGridFullscreen('monitorWrapper')" style="padding:3px 7px; font-size:0.75rem;">⛶ Fullscreen</button>
-                                    <button id="btnReloadStreamsMob" class="btn-sm btn-secondary" onclick="window.reloadActiveStreams()" style="padding:3px 7px; font-size:0.75rem;">🔄 Muat Ulang</button>
-                                </div>
-                            </div>
-
-                            <!-- Mobile Quick Channel Pills (Horizontal scrollable) -->
-                            <div id="mobileQuickChannels" style="display:flex; gap:0.4rem; overflow-x:auto; padding-bottom:4px; white-space:nowrap; -webkit-overflow-scrolling:touch;">
-                                <!-- JS Injected Channel Pills -->
-                            </div>
-
-                            <!-- Mobile PTZ D-Pad & Camera Controls -->
-                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:0.65rem 0.85rem; border-radius:8px; border:1px solid var(--border); gap:0.75rem;">
-                                <!-- Joystick D-Pad -->
-                                <div style="display:grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap:3px; align-items:center; justify-items:center;">
-                                    <div></div>
-                                    <button class="ptz-btn" style="width:100%; height:100%; font-size:13px; border-radius:6px;" onclick="window.ptzMoveSelected('up')">▲</button>
-                                    <div></div>
-                                    <button class="ptz-btn" style="width:100%; height:100%; font-size:13px; border-radius:6px;" onclick="window.ptzMoveSelected('left')">◀</button>
-                                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:9px; font-weight:bold; color:#60a5fa;">PTZ</div>
-                                    <button class="ptz-btn" style="width:100%; height:100%; font-size:13px; border-radius:6px;" onclick="window.ptzMoveSelected('right')">▶</button>
-                                    <div></div>
-                                    <button class="ptz-btn" style="width:100%; height:100%; font-size:13px; border-radius:6px;" onclick="window.ptzMoveSelected('down')">▼</button>
-                                    <div></div>
-                                </div>
-
-                                <!-- Mobile Audio & Snapshot Controls -->
-                                <div style="flex:1; display:flex; flex-direction:column; gap:0.4rem;">
-                                    <div style="font-size:0.8rem; font-weight:bold; color:#93c5fd;" id="mActiveCamLabel">Kamera: CH 1</div>
-                                    <div style="display:flex; align-items:center; gap:0.4rem;">
-                                        <button class="btn-sm btn-secondary" onclick="window.toggleSelectedMute()" style="font-size:0.85rem; padding:4px 8px;">🔊 Audio</button>
-                                        <button class="btn-sm btn-secondary" onclick="window.takeSnapshotSelected()" style="font-size:0.8rem; padding:4px 8px;">📸 Snapshot</button>
-                                    </div>
-                                    <div style="font-size:0.72rem; color:var(--text-muted);">Pilih kamera di atas untuk kendali PTZ.</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Player Controls (Desktop) -->
-                        <div id="playerControls" class="desktop-only-controls" style="display:flex; align-items:center; gap: 0.5rem; opacity: 0.5; pointer-events: none;">
-                            <button id="btnPlayerPlay" class="btn-sm btn-secondary" style="border-radius:50%; width: 35px; height: 35px; padding:0; font-size:12px;">⏯️</button>
-                            <button id="btnPlayerMute" class="btn-sm btn-secondary" style="border-radius:50%; width: 35px; height: 35px; padding:0; font-size:12px;">🔊</button>
-                            <input type="range" id="playerVolume" min="0" max="1" step="0.05" value="1" style="width: 80px; accent-color: var(--primary);">
-                            <button id="btnPlayerFullscreen" class="btn-sm btn-secondary" style="border-radius:50%; width: 35px; height: 35px; padding:0; font-size:12px;">⛶</button>
-                        </div>
-
-                        <div class="desktop-only-controls" style="width:1px; height:30px; background:var(--border);"></div>
-
-                        <!-- PTZ Controls (Desktop) -->
-                        <div class="desktop-only-controls" style="display:flex; align-items:center; gap:0.5rem;">
-                            <span style="font-weight:bold; color:var(--text-muted); font-size:12px;">PTZ:</span>
-                            <div id="ptzController" class="desktop-ptz-grid" style="display:grid; grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 26px); gap:3px; align-items:center; justify-items:center;">
-                                <div></div>
-                                <button class="ptz-btn" style="width:100%; height:100%; font-size:11px; padding:0;" onclick="window.ptzMoveSelected('up')">▲</button>
-                                <div></div>
-                                <button class="ptz-btn" style="width:100%; height:100%; font-size:11px; padding:0;" onclick="window.ptzMoveSelected('left')">◀</button>
-                                <div style="display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:bold; color:#64748b;">PTZ</div>
-                                <button class="ptz-btn" style="width:100%; height:100%; font-size:11px; padding:0;" onclick="window.ptzMoveSelected('right')">▶</button>
-                                <div></div>
-                                <button class="ptz-btn" style="width:100%; height:100%; font-size:11px; padding:0;" onclick="window.ptzMoveSelected('down')">▼</button>
-                                <div></div>
-                            </div>
-                            <div id="ptzPlaceholder" style="font-size:12px; color:var(--text-muted); font-style:italic;">Pilih kamera di layar</div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1250,6 +1180,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=9.6.7"></script>
+    <script src="script.js?v=9.6.8"></script>
 </body>
 </html>

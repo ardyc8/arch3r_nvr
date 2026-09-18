@@ -1,5 +1,13 @@
 # Changelog
 
+## [Ver 9.6.8] - 2026-09-18
+### Fixed & Improved
+- **Pembersihan Total Redundansi Panel Kontrol (Single Unified Navigation Bar):** Menghapus panel ganda bawah (`#bottomControlPanel`) yang sebelumnya memicu duplikasi tombol grid, channel bar, dan kontrol PTZ di perangkat mobile maupun desktop. Seluruh fitur penting (Layout Grid 1x1 s/d 4x4, Navigasi Halaman Prev/Next, Tombol Cepat Audio `🔊 Audio`, Tombol Snapshot `📸 Foto`, D-Pad PTZ 3x3 responsif, Tombol Layar Penuh `⛶ Fullscreen`, dan `🔄 Refresh`) kini disatukan secara bersih dan ramping di dalam bilah atas (`#topControlPanel`).
+- **Mode Biasa vs Layar Penuh yang Selaras & Identik:** Pada mode biasa, bilah navigasi atas tampil rapi langsung di atas video grid dan tombol gerigi (⚙️) disembunyikan sepenuhnya (`display: none !important`). Pada mode Fullscreen, video grid memanfaatkan 100% layar, tombol gerigi (⚙️) muncul di pojok kanan atas, dan saat diklik membuka panel navigasi atas yang memiliki tombol-tombol dan fungsi navigasi yang persis sama dengan mode biasa.
+- **Dukungan Fullscreen Lintas Peramban (Cross-Browser Class Synchronization):** Menambahkan sinkronisasi kelas `.is-fullscreen` pada kontainer monitor melalui event listener `fullscreenchange`, `webkitfullscreenchange`, dan `MSFullscreenChange`, menjamin tombol gerigi dan transisi overlay berjalan mulus di Linux Armbian STB, Android WebView, Chrome, dan Safari.
+- **Optimalisasi Ruang Kanvas Video Mobile:** Dengan dihilangkannya panel bawah yang menumpuk, kanvas grid video CCTV kini mendapatkan ruang vertikal maksimal (`flex: 1 1 auto; min-height: 0;`), menghilangkan kekacauan tata letak serta tampilan ruang kosong yang terdistorsi.
+- **Penyelarasan Versi Sistem:** Menaikkan nomor versi aplikasi ke `9.6.8` pada `package.json`, `server.js`, `index.html`, `superadmin.html`, dan `CHANGELOG.md` dengan penambahan parameter cache-busting `?v=9.6.8`.
+
 ## [Ver 9.6.7] - 2026-09-18
 ### Fixed & Improved
 - **Penyelesaian Redundansi Navigasi (Single-Bar Navigation & Fullscreen Gear Only):** Menghilangkan navigasi ganda pada mode biasa. Toolbar kontrol utama di bagian atas kini menjadi satu-satunya bar navigasi lengkap yang tampil konsisten di atas video grid, mencakup: pilihan layout grid (1x1, 2x2, 3x3, 4x4), navigasi halaman kamera (Prev/Next page), tombol channel langsung, kontrol D-Pad PTZ 3x3 yang tersinkronisasi dengan kamera terpilih, tombol Fullscreen, dan tombol Refresh.
