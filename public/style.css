@@ -1,4 +1,4 @@
-/* style.css - Archer NVR V8.8 Theme & Responsive Multi-Tenant System */
+/* style.css - Archer NVR Ver. 9.6.2 Theme & Responsive Multi-Tenant System */
 @import "tailwindcss";
 
 :root {
@@ -169,7 +169,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 90; }
     .sidebar-overlay.active { display: block; }
     
-    .video-grid { padding: 4px; gap: 4px; align-content: start; height: auto; }
+    .video-grid { padding: 4px; gap: 4px; }
     .form-row { flex-direction: column; gap: 0; }
 }
 
@@ -286,17 +286,33 @@ body {
         width: 100%;
     }
     
+    /* Mobile Monitor Optimization (Zero Regression, Eliminated Black Void) */
     .video-grid {
-        align-content: start !important;
-        align-items: start !important;
-        height: max-content !important;
-        grid-auto-rows: max-content !important;
+        align-content: center !important;
+        align-items: center !important;
+        height: 100% !important;
+        width: 100% !important;
     }
     
     .cam-cell {
         aspect-ratio: 16/9 !important;
-        height: auto !important;
+        width: 100% !important;
         max-height: 100% !important;
+    }
+
+    #bottomControlPanel {
+        padding: 0.75rem 0.5rem !important;
+        gap: 0.75rem !important;
+        background: var(--surface) !important;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+    }
+
+    #playerControls {
+        gap: 0.4rem !important;
+    }
+
+    #playerVolume {
+        width: 65px !important;
     }
 }
 
