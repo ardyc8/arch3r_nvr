@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.7.2 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=9.7.2">
+    <title>Arch3r NVR Ver. 9.7.3 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=9.7.3">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.7.2</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.7.3</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -121,7 +121,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 9.7.2</h3>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 9.7.3</h3>
                 <div style="display:flex; align-items:center; margin-left:auto;">
                     <img src="Archer.ico?v=2" alt="Arch3r" style="height:26px; width:26px; object-fit:contain; border-radius:4px;">
                 </div>
@@ -129,15 +129,15 @@
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
             <div id="view-monitor" class="view-pane active">
-                <div id="monitorWrapper" class="grid-wrapper" style="position:relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: #07101f; padding: 0;">
+                <div id="monitorWrapper" class="grid-wrapper" style="position:relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-main); padding: 0;">
                     
                     <!-- Toggle Button (ONLY shown in Fullscreen mode) -->
                     <div id="btnToggleControlsContainer">
-                        <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 40px; height: 40px; padding:0; display:flex; justify-content:center; align-items:center; border: 1px solid #1e3a5f; background: rgba(10, 25, 47, 0.95); box-shadow: 0 4px 14px rgba(0,0,0,0.8); cursor:pointer; font-size:18px; color:#38bdf8;" title="Buka Panel Navigasi & PTZ">⚙️</button>
+                        <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 40px; height: 40px; padding:0; display:flex; justify-content:center; align-items:center; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 4px 14px rgba(0,0,0,0.8); cursor:pointer; font-size:18px; color:var(--text-main);" title="Buka Panel Navigasi & PTZ">⚙️</button>
                     </div>
 
                     <!-- Video Grid Area (Takes available space above controls) -->
-                    <div id="videoGridContainer" style="position:relative; flex:1 1 auto; min-height:0; display:flex; padding: 4px; background: #050b14;">
+                    <div id="videoGridContainer" style="position:relative; flex:1 1 auto; min-height:0; display:flex; padding: 4px; background: #000;">
                         <div id="videoGrid" class="video-grid grid-9" style="flex:1; width:100%;"></div>
                     </div>
 
@@ -182,6 +182,9 @@
                                     <button class="nvr-grid-btn grid-btn active" data-grid="9" onclick="window.setGridLayout(9)" title="Layout 3x3">▦</button>
                                     <button class="nvr-grid-btn grid-btn" data-grid="16" onclick="window.setGridLayout(16)" title="Layout 4x4">㗊</button>
                                 </div>
+                                <button id="btnPlayerRefresh" class="nvr-tool-btn" onclick="window.refreshAllStreams()" title="Muat Ulang Semua Aliran (Refresh)">
+                                    <span class="nvr-icon">🔄</span>
+                                </button>
                                 <button class="nvr-tool-btn nvr-btn-fs" onclick="window.toggleGridFullscreen('monitorWrapper')" title="Layar Penuh">
                                     <span class="nvr-icon">⛶</span>
                                 </button>
@@ -190,7 +193,7 @@
                             <!-- Row 3: PTZ Control Panel Card -->
                             <div id="ptzControlPanelCard" class="nvr-ptz-card">
                                 <div class="nvr-ptz-header">
-                                    <span>Kontrol PTZ: <strong id="topActiveCamLabel" style="color:#38bdf8;">Pilih di grid</strong></span>
+                                    <span>Kontrol PTZ: <strong id="topActiveCamLabel" style="color:var(--accent-blue);">Pilih di grid</strong></span>
                                 </div>
                                 <div class="nvr-ptz-divider"></div>
                                 <div class="nvr-ptz-body">

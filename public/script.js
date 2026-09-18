@@ -1105,17 +1105,22 @@ async function fetchCameras() {
         const sel = document.getElementById('camChannelSelect');
         if (!sel) return;
         
-        const currentVal = activeChannel;
+        const currentVal = activeChannel || 'all';
         sel.innerHTML = '<option value="all">Tampilkan: Semua Kamera</option>';
         
-        cameras.forEach((cam, idx) => {
-            const opt = document.createElement('option');
-            opt.value = cam.id;
-            opt.textContent = `Tampilkan: CH ${idx + 1} - ${cam.name}`;
-            sel.appendChild(opt);
-        });
+        if (Array.isArray(cameras) && cameras.length > 0) {
+            cameras.forEach((cam, idx) => {
+                const opt = document.createElement('option');
+                opt.value = cam.id;
+                opt.textContent = `Tampilkan: CH ${idx + 1} - ${cam.name || ('Kamera ' + (idx + 1))}`;
+                sel.appendChild(opt);
+            });
+        }
         
         sel.value = currentVal;
+        if (sel.value !== currentVal) {
+            sel.value = 'all';
+        }
     }
 
     function renderChannelButtons() {
@@ -1641,6 +1646,11 @@ async function fetchCameras() {
         }
     }
 
+    window.refreshAllStreams = function() {
+        destroyHlsPlayers();
+        updateGridDisplay();
+    };
+
     function renderGridCells(count) {
         if (videoGrid) {
             videoGrid.className = "video-grid grid-" + count;
@@ -1664,78 +1674,81 @@ async function fetchCameras() {
         }
 
         const inits = [];
+        const isUserApp = document.getElementById("userApp") && document.getElementById("userApp").style.display !== "none";
+        const renderForDesktop = Boolean(videoGrid && (!isUserApp || currentUserRole !== 'user'));
+        const renderForMobile = Boolean(mVideoGrid && (isUserApp || currentUserRole === 'user'));
 
         for (let i = 0; i < count; i++) {
             const cam = camsToShow[i];
             
-            // Generate for Admin
-            if (videoGrid && currentUserRole === 'administrator') {
+            // Generate for Admin / Desktop Main Grid
+            if (renderForDesktop) {
                 const cell = document.createElement("div");
                 if (cam) {
                     cell.className = "cam-cell" + (cam.id === selectedCamIdForPtz ? " selected" : "");
                     cell.id = "cell_" + cam.id;
                     cell.onclick = () => window.selectCellForPtz(cam.id);
                     
-                    const hlsUrl = cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + cam.mediaMtxPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                    const hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
                     const videoId = "cam_video_admin_" + i;
                     
                     cell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
-                                <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill; pointer-events:none;"></video>
-                                
-                                <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; gap:5px;">
-                                    ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                </div>
-                                <div class="cam-title-bar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(15, 23, 42, 0.7); text-align:center; padding: 2px 4px; font-size: 10px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
-                                    ${cam.name}
-                                </div>
+                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill; pointer-events:none;"></video>
+                            
+                            <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; gap:5px;">
+                                ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
                             </div>
+                            <div class="cam-title-bar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(15, 23, 42, 0.75); text-align:center; padding: 2px 4px; font-size: 10px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
+                                ${cam.name || ('Kamera ' + (i + 1))}
+                            </div>
+                        </div>
                     `;
-                    inits.push(() => { if (cam.enabled) initHlsPlayer(videoId, hlsUrl); });
+                    inits.push(() => { if (cam.enabled !== false) initHlsPlayer(videoId, hlsUrl); });
                 } else {
                     cell.className = "cam-cell empty-cell";
                     cell.id = "cell_empty_" + i;
                     cell.innerHTML = `
-                        <div style="display:flex; height:100%; width:100%; align-items:center; justify-content:center; flex-direction:column; background:#1e293b;">
-                            <span style="font-size:2rem; opacity:0.5;">📹</span>
-                            <span style="font-size:0.8rem; color:#94a3b8; margin-top:5px;">Kosong</span>
+                        <div style="display:flex; height:100%; width:100%; align-items:center; justify-content:center; flex-direction:column; background:var(--surface);">
+                            <span style="font-size:2rem; opacity:0.4;">📹</span>
+                            <span style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">Kosong</span>
                         </div>
                     `;
                 }
                 videoGrid.appendChild(cell);
             }
 
-            // Generate for Mobile
-            if (mVideoGrid && currentUserRole !== 'administrator') {
+            // Generate for Mobile / Client Grid
+            if (renderForMobile) {
                 const mCell = document.createElement("div");
                 if (cam) {
                     mCell.className = "cam-cell" + (cam.id === selectedCamIdForPtz ? " selected" : "");
                     mCell.id = "m_cell_" + cam.id;
                     mCell.onclick = () => window.selectCellForPtz(cam.id);
                     
-                    const hlsUrl = cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + cam.mediaMtxPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                    const hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
                     const videoId = "cam_video_mobile_" + i;
                     
                     mCell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
-                                <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill; pointer-events:none;"></video>
-                                
-                                <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; gap:5px;">
-                                    ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                </div>
-                                <div class="cam-title-bar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(15, 23, 42, 0.7); text-align:center; padding: 2px 4px; font-size: 10px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
-                                    ${cam.name}
-                                </div>
+                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill; pointer-events:none;"></video>
+                            
+                            <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; gap:5px;">
+                                ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
                             </div>
+                            <div class="cam-title-bar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(15, 23, 42, 0.75); text-align:center; padding: 2px 4px; font-size: 10px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
+                                ${cam.name || ('Kamera ' + (i + 1))}
+                            </div>
+                        </div>
                     `;
-                    inits.push(() => { if (cam.enabled) initHlsPlayer(videoId, hlsUrl); });
+                    inits.push(() => { if (cam.enabled !== false) initHlsPlayer(videoId, hlsUrl); });
                 } else {
                     mCell.className = "cam-cell empty-cell";
                     mCell.id = "m_cell_empty_" + i;
                     mCell.innerHTML = `
-                        <div style="display:flex; height:100%; width:100%; align-items:center; justify-content:center; flex-direction:column; background:#1e293b;">
-                            <span style="font-size:2rem; opacity:0.5;">📹</span>
-                            <span style="font-size:0.8rem; color:#94a3b8; margin-top:5px;">Kosong</span>
+                        <div style="display:flex; height:100%; width:100%; align-items:center; justify-content:center; flex-direction:column; background:var(--surface);">
+                            <span style="font-size:2rem; opacity:0.4;">📹</span>
+                            <span style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">Kosong</span>
                         </div>
                     `;
                 }
