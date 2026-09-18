@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.4.9 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <title>Arch3r NVR Ver. 9.4.10 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.4.9</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.4.10</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.4.9</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.4.10</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -121,7 +121,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.4.9</h3>
+                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.4.10</h3>
             </header>
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
@@ -708,7 +708,86 @@
                 </div>
             </div>
         
-            <!-- 9. VIEW ABOUT -->
+            
+            <!-- 8.5 VIEW ADDONS -->
+            <div id="view-addons" class="view-pane">
+                <div class="content-wrapper" style="padding: 2rem; max-width:900px; margin:0 auto;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
+                        <h2 style="margin:0;"><span class="icon">🧩</span> Marketplace Addons & Smart AI</h2>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                        
+                        <!-- AI YOLOv8 Addon Card -->
+                        <div style="background:var(--surface); padding:1.5rem; border-radius:8px; border:1px solid #3b82f6; text-align:center; display:flex; flex-direction:column; align-items:center;">
+                            <div style="font-size:3rem; margin-bottom:1rem; color:#3b82f6;">🧠</div>
+                            <h3 style="margin:0 0 0.5rem 0;">AI Human Detection (YOLOv8)</h3>
+                            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">Deteksi pergerakan manusia secara real-time dan atur area intrusi (Grid) untuk membunyikan alarm log.</p>
+                            <span style="background:rgba(34,197,94,0.2); color:#22c55e; padding:4px 8px; border-radius:4px; font-size:0.8rem; margin-bottom:1rem; font-weight:bold;">✔ Terinstal & Aktif</span>
+                            <div style="margin-top:auto; width:100%;">
+                                <button class="btn btn-primary w-full" onclick="openAIGridModal()">Konfigurasi Area / Grid</button>
+                            </div>
+                        </div>
+
+                        <!-- Placeholder ALPR -->
+                        <div style="background:rgba(0,0,0,0.2); padding:1.5rem; border-radius:8px; border:1px solid var(--border); text-align:center; display:flex; flex-direction:column; align-items:center; opacity:0.6;">
+                            <div style="font-size:3rem; margin-bottom:1rem; color:var(--text-muted);">🚗</div>
+                            <h3 style="margin:0 0 0.5rem 0;">ALPR (Plat Nomor)</h3>
+                            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">Deteksi dan catat plat nomor kendaraan yang lewat secara otomatis.</p>
+                            <div style="margin-top:auto; width:100%;">
+                                <button class="btn btn-secondary w-full" onclick="alert('Fitur ALPR sedang dalam tahap beta tertutup dan akan tersedia pada update v9.5.x berikutnya. Silakan hubungi Arch3r Support untuk early access.')">Install (Coming Soon)</button>
+                            </div>
+                        </div>
+
+                        <!-- Placeholder Cloud Backup -->
+                        <div style="background:rgba(0,0,0,0.2); padding:1.5rem; border-radius:8px; border:1px solid var(--border); text-align:center; display:flex; flex-direction:column; align-items:center; opacity:0.6;">
+                            <div style="font-size:3rem; margin-bottom:1rem; color:var(--text-muted);">☁️</div>
+                            <h3 style="margin:0 0 0.5rem 0;">Cloud Backup (Google Drive)</h3>
+                            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1rem;">Sinkronisasi rekaman otomatis ke penyimpanan cloud.</p>
+                            <div style="margin-top:auto; width:100%;">
+                                <button class="btn btn-secondary w-full" onclick="alert('Fitur Cloud Backup Google Drive sedang dalam tahap sinkronisasi API Oauth2. Akan tersedia pada pembaruan mendatang.')">Install (Coming Soon)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Konfigurasi AI Grid (Custom Vanilla JS, not Bootstrap) -->
+            <div id="aiGridModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
+                <div style="background:var(--surface); width:90%; max-width:800px; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; max-height:90vh;">
+                    <div style="padding:1rem 1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin:0; color:#3b82f6;">✏️ Konfigurasi AI Intrusion Area</h3>
+                        <button onclick="closeAIGridModal()" style="background:none; border:none; color:var(--text); font-size:1.5rem; cursor:pointer;">&times;</button>
+                    </div>
+                    
+                    <div style="padding:1.5rem; overflow-y:auto;">
+                        <div class="form-group" style="margin-bottom:1rem;">
+                            <label style="display:block; margin-bottom:0.5rem;">Pilih Kamera:</label>
+                            <select id="ai-cam-select" onchange="loadCamStreamForAI()" class="form-control" style="width:100%; padding:0.5rem; background:rgba(0,0,0,0.2); color:white; border:1px solid var(--border); border-radius:4px;">
+                                <option value="">-- Pilih Kamera --</option>
+                            </select>
+                        </div>
+                        
+                        <div style="background:rgba(59,130,246,0.1); border-left:3px solid #3b82f6; padding:0.75rem; margin-bottom:1rem; font-size:0.85rem; color:var(--text-muted);">
+                            Klik dan tarik pada gambar di bawah untuk menggambar kotak merah (Area Deteksi).
+                        </div>
+                        
+                        <div id="ai-canvas-container" style="position:relative; background:#000; border-radius:4px; overflow:hidden; min-height:300px; display:none;">
+                            <img id="ai-stream-preview" src="" style="width:100%; height:auto; display:block;">
+                            <canvas id="ai-draw-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:crosshair;"></canvas>
+                        </div>
+                        
+                        <div id="ai-coord-status" style="margin-top:0.5rem; color:#eab308; font-size:0.85rem;">Belum ada area yang digambar.</div>
+                    </div>
+                    
+                    <div style="padding:1rem 1.5rem; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:1rem;">
+                        <button class="btn btn-secondary" onclick="clearAIGrid()">🗑️ Hapus Area</button>
+                        <button class="btn btn-primary" onclick="saveAIGrid()">💾 Simpan ke AI Engine</button>
+                    </div>
+                </div>
+            </div>
+
+<!-- 9. VIEW ABOUT -->
             <div id="view-about" class="view-pane">
                 <div class="content-wrapper" style="padding: 2rem; max-width:800px; margin:0 auto;">
                     <h2>Informasi Sistem NVR</h2>
@@ -752,7 +831,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.4.9</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.4.10</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>
@@ -875,6 +954,6 @@
         </nav>
     </div>
 
-    <script src="script.js?v=9.4.9"></script>
+    <script src="script.js?v=9.4.10"></script>
 </body>
 </html>

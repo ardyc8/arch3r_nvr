@@ -2873,3 +2873,7 @@ function saveAIGrid() {
           alert("Gagal menghubungi NVR Backend.");
       });
 }
+
+function closeAIGridModal() {
+    document.getElementById('aiGridModalOverlay').style.display = 'none';
+}
