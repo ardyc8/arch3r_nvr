@@ -2759,33 +2759,45 @@ function openAIGridModal(defaultCamId = null) {
 function loadCamStreamForAI() {
     const camId = document.getElementById('ai-cam-select').value;
     const container = document.getElementById('ai-canvas-container');
-    const img = document.getElementById('ai-stream-preview');
+    const video = document.getElementById('ai-stream-preview');
     
     if(!camId) {
         container.style.display = 'none';
+        if (activeHlsPlayers['ai-stream-preview']) {
+            activeHlsPlayers['ai-stream-preview'].destroy();
+            delete activeHlsPlayers['ai-stream-preview'];
+        }
         return;
     }
     
-    // Tampilkan Snapshot dari RTSP untuk dijadikan kanvas menggambar
-    // Jika tidak ada snapshot live, kita gunakan gambar kosong sementara
-    // Pada produksi STB nyata, ini harusnya mengambil frame terakhir dari WebRTC/HLS
-    img.src = '/api/snapshot/' + camId + '?t=' + Date.now(); 
-    img.onload = function() {
-        container.style.display = 'block';
+    const cam = cameras.find(c => c.id === camId);
+    if (!cam) return;
+    
+    container.style.display = 'block';
+    
+    // Gunakan live HLS feed untuk preview AI
+    const hlsUrl = cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + cam.mediaMtxPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+    initHlsPlayer('ai-stream-preview', hlsUrl);
+    
+    video.onloadeddata = function() {
         initAIDrawCanvas();
     };
-    img.onerror = function() {
-        img.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22640%22%20height%3D%22360%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20640%20360%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22320%22%20y%3D%22180%22%20fill%3D%22%23777%22%20font-family%3D%22sans-serif%22%20font-size%3D%2220%22%20text-anchor%3D%22middle%22%3EStream%20Kamera%20Tidak%20Tersedia%3C%2Ftext%3E%3C%2Fsvg%3E';
-    };
+    
+    // Fallback if video takes too long to load
+    setTimeout(() => {
+        if (!aiDrawCanvas || aiDrawCanvas.width === 0) {
+            initAIDrawCanvas();
+        }
+    }, 1500);
 }
 
 function initAIDrawCanvas() {
-    const img = document.getElementById('ai-stream-preview');
+    const video = document.getElementById('ai-stream-preview');
     const canvas = document.getElementById('ai-draw-canvas');
     
     // Sesuaikan resolusi canvas dengan ukuran gambar aslinya (ditampilkan di layar)
-    canvas.width = img.clientWidth;
-    canvas.height = img.clientHeight;
+    canvas.width = video.clientWidth || 640;
+    canvas.height = video.clientHeight || 360;
     
     aiDrawCanvas = canvas;
     aiDrawCtx = canvas.getContext('2d');
@@ -2882,4 +2894,13 @@ function saveAIGrid() {
 
 function closeAIGridModal() {
     document.getElementById('aiGridModalOverlay').style.display = 'none';
+    const video = document.getElementById('ai-stream-preview');
+    if (video) {
+        video.pause();
+        video.src = '';
+    }
+    if (activeHlsPlayers['ai-stream-preview']) {
+        activeHlsPlayers['ai-stream-preview'].destroy();
+        delete activeHlsPlayers['ai-stream-preview'];
+    }
 }

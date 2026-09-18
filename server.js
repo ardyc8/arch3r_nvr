@@ -236,7 +236,7 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.5.2)
+// AI ADDON PROXY API (v9.5.3)
 // ==========================================
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
@@ -281,7 +281,7 @@ app.post('/api/ai/webhook', (req, res) => {
 
 
 // ==========================================
-// MAINTENANCE & OTA API (v9.5.2)
+// MAINTENANCE & OTA API (v9.5.3)
 // ==========================================
 app.get('/api/maintenance/backup', verifyToken, (req, res) => {
     sysLog('INFO', `[Maintenance] Backup database requested`, 'SYSTEM');
@@ -325,7 +325,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
         if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
             return res.json({
                 current_version: require('./package.json').version,
-                latest_version: '9.5.2',
+                latest_version: '9.5.3',
                 changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
                 update_available: true
             });
@@ -742,7 +742,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.2' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.3' });
 });
 
 // Auth Endpoints
@@ -920,7 +920,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.5.2",
+        appVersion: "9.5.3",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -1022,7 +1022,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.5.2',
+                latestVersion: '9.5.3',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -1090,7 +1090,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.5.2',
+        version: '9.5.3',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
