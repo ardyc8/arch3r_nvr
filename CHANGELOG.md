@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 9.6.9] - 2026-09-18
+### Fixed & Improved
+- **Pemindahan Navigasi Menu ke Bawah Video Grid:** Memindahkan bilah navigasi kontrol terpadu (Channel Bar, Pengalih Grid 1x1 s/d 4x4, Paginasi Halaman Prev/Next, Tombol Cepat Audio, Snapshot Foto, D-Pad PTZ 3x3, Tombol Fullscreen, dan Refresh) ke bagian bawah layar, tepat di bawah video grid, memberikan tampilan pemantauan yang jauh lebih ergonomis dan bersih.
+- **Mode Layar Penuh Tanpa Menutup Video (Non-Obstructing Fullscreen Video):** Pada mode Fullscreen, panel navigasi bawah secara default tertutup sehingga kanvas video kamera memenuhi 100% layar. Ketika tombol gerigi (⚙️) diklik, bilah kontrol terbuka di bagian bawah secara teratur dan kontainer video grid menyusut secara fleksibel di atasnya (`flex: 1 1 auto; min-height: 0;`), memastikan seluruh panel/kanvas kamera tetap terlihat jelas dan tidak pernah tertutup ataupun terpotong oleh overlay kontrol.
+- **Perbaikan Tombol Show/Hide Sidebar pada Mode Landscape:** Memperbaiki visibilitas header mobile (`.mobile-header`) dan tombol menu burger (`#btnMobileMenu`) pada mode landscape (khususnya tablet, smartphone landscape, dan layar ringkas) dengan drawer sidebar (`.sidebar.mobile-open`) dan overlay latar (`.sidebar-overlay.active`) yang dapat dibuka/tutup secara mulus tanpa mengganggu rasio video.
+- **Penyelarasan Versi Sistem:** Menaikkan nomor versi aplikasi ke `9.6.9` pada `package.json`, `server.js`, `index.html`, `superadmin.html`, dan `CHANGELOG.md` dengan penambahan cache-busting `?v=9.6.9`.
+
 ## [Ver 9.6.8] - 2026-09-18
 ### Fixed & Improved
 - **Pembersihan Total Redundansi Panel Kontrol (Single Unified Navigation Bar):** Menghapus panel ganda bawah (`#bottomControlPanel`) yang sebelumnya memicu duplikasi tombol grid, channel bar, dan kontrol PTZ di perangkat mobile maupun desktop. Seluruh fitur penting (Layout Grid 1x1 s/d 4x4, Navigasi Halaman Prev/Next, Tombol Cepat Audio `🔊 Audio`, Tombol Snapshot `📸 Foto`, D-Pad PTZ 3x3 responsif, Tombol Layar Penuh `⛶ Fullscreen`, dan `🔄 Refresh`) kini disatukan secara bersih dan ramping di dalam bilah atas (`#topControlPanel`).

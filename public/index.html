@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.6.8 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=9.6.8">
+    <title>Arch3r NVR Ver. 9.6.9 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=9.6.9">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.8</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.9</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.8</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.9</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -121,7 +121,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.6.7</h3>
+                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.6.9</h3>
             </header>
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
@@ -129,15 +129,24 @@
             <div id="view-monitor" class="view-pane active">
                 <div id="monitorWrapper" class="grid-wrapper" style="position:relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: #000; padding: 0;">
                     
-                    <!-- Top Bar: Layout, Paging, Channels & Controls -->
-                    <div id="topControlContainer">
-                        
-                        <!-- Toggle Button (ONLY shown in Fullscreen mode) -->
-                        <div id="btnToggleControlsContainer">
-                            <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 38px; height: 38px; padding:0; display:flex; justify-content:center; align-items:center; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 4px 12px rgba(0,0,0,0.7); cursor:pointer; font-size:16px;" title="Buka Panel Navigasi & PTZ">⚙️</button>
-                        </div>
+                    <!-- Toggle Button (ONLY shown in Fullscreen mode) -->
+                    <div id="btnToggleControlsContainer">
+                        <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 38px; height: 38px; padding:0; display:flex; justify-content:center; align-items:center; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 4px 12px rgba(0,0,0,0.7); cursor:pointer; font-size:16px;" title="Buka Panel Navigasi & PTZ">⚙️</button>
+                    </div>
 
+                    <!-- Video Grid Area (Takes all available space above the bottom navigation) -->
+                    <div id="videoGridContainer" style="position:relative; flex:1 1 auto; min-height:0; display:flex; padding: 2px;">
+                        <div id="videoGrid" class="video-grid grid-1" style="flex:1; width:100%;"></div>
+                    </div>
+
+                    <!-- Bottom Bar: Unified Navigation Menu (Channels, Layout, Paging & Controls) -->
+                    <div id="topControlContainer">
                         <div id="topControlPanel">
+                            <!-- Channel Bar (Horizontal Scrollable Strip directly beneath video) -->
+                            <div id="channelBar" style="display:flex; gap:0.4rem; overflow-x:auto; padding: 0.25rem 0.75rem; white-space:nowrap; -webkit-overflow-scrolling:touch; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                                <!-- JS akan merender tombol All, CH1, CH2, dst. -->
+                            </div>
+
                             <!-- Main Control Row -->
                             <div class="control-main-row" style="display:flex; justify-content:space-between; align-items:center; padding: 0.4rem 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
                                 <!-- Left: Layout Switcher & Page Navigation -->
@@ -189,17 +198,7 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Channel Bar (Horizontal Scrollable Strip) -->
-                            <div id="channelBar" style="display:flex; gap:0.4rem; overflow-x:auto; padding: 0.2rem 0.75rem 0.4rem 0.75rem; white-space:nowrap; -webkit-overflow-scrolling:touch;">
-                                <!-- JS akan merender tombol All, CH1, CH2, dst. -->
-                            </div>
                         </div>
-                    </div>
-                    
-                    <!-- Video Grid Area (Takes 100% remaining space) -->
-                    <div id="videoGridContainer" style="position:relative; flex:1; min-height:0; display:flex; padding: 2px;">
-                        <div id="videoGrid" class="video-grid grid-1" style="flex:1; width:100%;"></div>
                     </div>
                 </div>
             </div>
@@ -1180,6 +1179,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=9.6.8"></script>
+    <script src="script.js?v=9.6.9"></script>
 </body>
 </html>
