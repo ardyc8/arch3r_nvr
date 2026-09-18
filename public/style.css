@@ -286,19 +286,372 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     padding: 0 !important;
 }
 
-/* Unified Camera Cell Selection */
+/* Unified Camera Cell Selection & Styling */
 .cam-cell {
-    border: 2px solid transparent;
-    transition: border-color 0.2s;
+    border: 2px solid #162a45;
+    border-radius: 4px;
+    overflow: hidden;
+    transition: all 0.2s ease;
     cursor: pointer;
+    background: #030712;
+}
+.cam-cell:hover {
+    border-color: #2563eb;
 }
 .cam-cell.selected {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    border-color: #00d2ff !important;
+    box-shadow: 0 0 14px rgba(0, 210, 255, 0.65) !important;
 }
 .cam-cell.empty-cell {
     cursor: default;
-    border-color: transparent;
+    border-color: #111e33;
+    background: #091424;
+}
+
+.badge-rec {
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.cam-title-bar {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(7, 16, 31, 0.88);
+    backdrop-filter: blur(4px);
+    color: #f1f5f9;
+    padding: 2px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    z-index: 5;
+}
+
+/* ============================================================== */
+/* NVR MONITOR CONTROLS (Row 1: Filter/Page, Row 2: Media Toolbar, Row 3: PTZ Card) */
+/* ============================================================== */
+
+/* Row 1: Filter Dropdown & Pagination */
+.nvr-filter-pagination-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #081628;
+    border-bottom: 1px solid #142740;
+}
+
+.nvr-select-channel {
+    background: #0d223f;
+    color: #f1f5f9;
+    border: 1px solid #1e3a5f;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    min-width: 170px;
+    max-width: 250px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.nvr-select-channel:focus {
+    border-color: #38bdf8;
+}
+
+.nvr-page-nav-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.nvr-btn-nav {
+    background: #0d223f;
+    border: 1px solid #1e3a5f;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.nvr-btn-nav:hover:not(:disabled) {
+    background: #1e3a5f;
+    color: #38bdf8;
+}
+.nvr-btn-nav:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.nvr-page-indicator {
+    font-size: 12px;
+    font-weight: 700;
+    font-family: monospace;
+    color: #38bdf8;
+    min-width: 55px;
+    text-align: center;
+}
+
+/* Row 2: Unified Media Toolbar Strip */
+.nvr-toolbar-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: #081628;
+    border-bottom: 1px solid #142740;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+.nvr-tool-btn {
+    background: #0d223f;
+    border: 1px solid #1e3a5f;
+    color: #f8fafc;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.nvr-tool-btn:hover {
+    background: #1e3a5f;
+    color: #38bdf8;
+    border-color: #38bdf8;
+}
+.nvr-tool-btn:active {
+    transform: scale(0.94);
+}
+
+.nvr-btn-snapshot {
+    background: #0284c7;
+    border: 1px solid #38bdf8;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+}
+.nvr-btn-snapshot:hover {
+    background: #0369a1;
+}
+
+.nvr-vol-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #0d223f;
+    border: 1px solid #1e3a5f;
+    border-radius: 6px;
+    padding: 0 8px;
+    height: 34px;
+    flex-shrink: 0;
+}
+.nvr-vol-icon {
+    font-size: 11px;
+}
+.nvr-vol-slider {
+    width: 55px;
+    height: 4px;
+    accent-color: #38bdf8;
+    cursor: pointer;
+}
+
+.nvr-grid-selector-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: #06111f;
+    border: 1px solid #142740;
+    border-radius: 6px;
+    padding: 2px 3px;
+    flex-shrink: 0;
+}
+
+.nvr-grid-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.nvr-grid-btn:hover {
+    color: #f8fafc;
+    background: #0f243e;
+}
+.nvr-grid-btn.active {
+    background: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 0 6px rgba(2, 132, 199, 0.6);
+}
+
+.nvr-btn-fs {
+    color: #38bdf8;
+}
+
+/* Row 3: PTZ Control Panel Card */
+.nvr-ptz-card {
+    background: #081628;
+    border: 1px solid #142740;
+    border-radius: 8px;
+    margin: 6px 12px 10px 12px;
+    padding: 8px 14px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+}
+
+.nvr-ptz-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-bottom: 6px;
+}
+
+.nvr-ptz-divider {
+    height: 1px;
+    background: #142740;
+    margin-bottom: 8px;
+}
+
+.nvr-ptz-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 16px;
+    flex-wrap: nowrap;
+}
+
+/* Left Circular Joystick Dial */
+.nvr-ptz-dial-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nvr-ptz-dial {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #0e2544 0%, #06111f 100%);
+    border: 2px solid #1e3a5f;
+    position: relative;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.7), 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.nvr-ptz-arrow-btn {
+    position: absolute;
+    background: #0f2b4f;
+    border: 1px solid #254a77;
+    color: #38bdf8;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    padding: 0;
+}
+.nvr-ptz-arrow-btn:hover {
+    background: #0284c7;
+    color: #fff;
+    border-color: #38bdf8;
+}
+.nvr-ptz-arrow-btn:active {
+    transform: scale(0.9);
+}
+
+.nvr-ptz-up {
+    top: 4px;
+    left: 34px;
+}
+.nvr-ptz-down {
+    bottom: 4px;
+    left: 34px;
+}
+.nvr-ptz-left {
+    left: 4px;
+    top: 34px;
+}
+.nvr-ptz-right {
+    right: 4px;
+    top: 34px;
+}
+
+.nvr-ptz-center-circle {
+    position: absolute;
+    top: 34px;
+    left: 34px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #071526;
+    border: 1px solid #1e3a5f;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.nvr-ptz-center-circle:hover {
+    background: #1e3a5f;
+}
+
+/* Right 2x2 Function Actions Grid */
+.nvr-ptz-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 150px;
+}
+
+.nvr-ptz-action-btn {
+    background: #0d223f;
+    border: 1px solid #1e3a5f;
+    color: #e2e8f0;
+    border-radius: 6px;
+    padding: 7px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    outline: none;
+}
+.nvr-ptz-action-btn:hover {
+    background: #1e3a5f;
+    color: #38bdf8;
+    border-color: #38bdf8;
+}
+.nvr-ptz-action-btn:active {
+    background: #0284c7;
+    color: #fff;
 }
 
 /* Floating PTZ Controller (Mobile / Free Floating in grid-wrapper) */

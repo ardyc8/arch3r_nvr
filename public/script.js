@@ -1065,9 +1065,28 @@ async function fetchCameras() {
     let selectedCamIdForPtz = null;
     let gridPageIndex = 0; // Pagination page index for camera grid view
 
+    window.setGridLayout = function(count) {
+        currentGridCount = count;
+        gridPageIndex = 0;
+        document.querySelectorAll('.nvr-grid-btn, .grid-btn').forEach(btn => {
+            if (parseInt(btn.getAttribute('data-grid')) === count) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        updateGridDisplay();
+    };
+
+    window.onChannelDropdownChange = function(val) {
+        activeChannel = val;
+        gridPageIndex = 0;
+        updateGridDisplay();
+    };
+
     window.nextGridPage = function() {
-        const activeGridBtn = document.querySelector('.grid-btn.active');
-        const count = activeGridBtn ? parseInt(activeGridBtn.getAttribute('data-grid')) : 1;
+        const activeGridBtn = document.querySelector('.nvr-grid-btn.active, .grid-btn.active');
+        const count = activeGridBtn ? parseInt(activeGridBtn.getAttribute('data-grid')) : currentGridCount || 9;
         const totalPages = Math.max(1, Math.ceil(cameras.length / count));
         if (gridPageIndex < totalPages - 1) {
             gridPageIndex++;
@@ -1082,8 +1101,26 @@ async function fetchCameras() {
         }
     };
 
-    
+    function populateChannelDropdown() {
+        const sel = document.getElementById('camChannelSelect');
+        if (!sel) return;
+        
+        const currentVal = activeChannel;
+        sel.innerHTML = '<option value="all">Tampilkan: Semua Kamera</option>';
+        
+        cameras.forEach((cam, idx) => {
+            const opt = document.createElement('option');
+            opt.value = cam.id;
+            opt.textContent = `Tampilkan: CH ${idx + 1} - ${cam.name}`;
+            sel.appendChild(opt);
+        });
+        
+        sel.value = currentVal;
+    }
+
     function renderChannelButtons() {
+        populateChannelDropdown();
+
         const channelBar = document.getElementById('channelBar');
         const mChannelBar = document.getElementById('mChannelBar');
         const mobileQuickChannels = document.getElementById('mobileQuickChannels');
@@ -1117,16 +1154,16 @@ async function fetchCameras() {
 
     function updateGridDisplay() {
         renderChannelButtons();
-        const activeGridBtn = document.querySelector('.grid-btn.active');
-        let count = activeGridBtn ? parseInt(activeGridBtn.getAttribute('data-grid')) : 1;
+        const activeGridBtn = document.querySelector('.nvr-grid-btn.active, .grid-btn.active');
+        let count = activeGridBtn ? parseInt(activeGridBtn.getAttribute('data-grid')) : currentGridCount || 9;
         
         if (activeChannel !== 'all') {
             count = 1; 
             selectedCamIdForPtz = activeChannel;
         } else {
-            // Keep selection if exists, else clear
+            // Keep selection if exists, else default to first
             if (!cameras.find(c => c.id === selectedCamIdForPtz)) {
-                selectedCamIdForPtz = null;
+                selectedCamIdForPtz = cameras[0] ? cameras[0].id : null;
             }
         }
 
@@ -1149,11 +1186,9 @@ async function fetchCameras() {
             }
             if (btnPrev) {
                 btnPrev.disabled = (gridPageIndex === 0);
-                btnPrev.style.opacity = (gridPageIndex === 0) ? '0.5' : '1';
             }
             if (btnNext) {
                 btnNext.disabled = (gridPageIndex >= totalPages - 1);
-                btnNext.style.opacity = (gridPageIndex >= totalPages - 1) ? '0.5' : '1';
             }
         }
 
@@ -1333,8 +1368,8 @@ async function fetchCameras() {
         const topActiveCamLabel = document.getElementById('topActiveCamLabel');
 
         if (topActiveCamLabel) {
-            topActiveCamLabel.textContent = cam ? cam.name : (activeChannel !== 'all' ? (cameras.find(c => c.id === activeChannel)?.name || `CH ${activeChannel}`) : 'Pilih di grid');
-            topActiveCamLabel.style.color = cam ? '#60a5fa' : '#94a3b8';
+            topActiveCamLabel.textContent = cam ? cam.name : (activeChannel !== 'all' ? (cameras.find(c => c.id === activeChannel)?.name || `CH ${activeChannel}`) : (cameras[0]?.name || 'Pilih di grid'));
+            topActiveCamLabel.style.color = cam ? '#38bdf8' : '#94a3b8';
         }
 
         if (mActiveCamLabel) {
@@ -1358,14 +1393,17 @@ async function fetchCameras() {
         if (!targetId) return;
         const cell = document.getElementById('cell_' + targetId);
         const video = cell ? cell.querySelector('video') : null;
+        const icon = document.getElementById('playerPlayIcon');
         const btn = document.getElementById('btnPlayerPlayPause');
         if (video) {
             if (video.paused) {
                 video.play().catch(e => console.log('Play error:', e));
-                if (btn) btn.textContent = '⏸️ Pause';
+                if (icon) icon.textContent = '⏸';
+                if (btn && !icon) btn.textContent = '⏸️ Pause';
             } else {
                 video.pause();
-                if (btn) btn.textContent = '▶️ Play';
+                if (icon) icon.textContent = '▶';
+                if (btn && !icon) btn.textContent = '▶️ Play';
             }
         }
     };
@@ -1375,11 +1413,13 @@ async function fetchCameras() {
         if (!targetId) return;
         const cell = document.getElementById('cell_' + targetId);
         const video = cell ? cell.querySelector('video') : null;
+        const icon = document.getElementById('playerMuteIcon');
         const btn = document.getElementById('btnPlayerAudioMute');
         const sliderVol = document.getElementById('selectedCamVolume');
         if (video) {
             video.muted = !video.muted;
-            if (btn) btn.textContent = video.muted ? '🔇 Bisu' : '🔊 Suara';
+            if (icon) icon.textContent = video.muted ? '🔇' : '🔊';
+            if (btn && !icon) btn.textContent = video.muted ? '🔇 Bisu' : '🔊 Suara';
             if (sliderVol && video.muted) {
                 sliderVol.value = 0;
             } else if (sliderVol && !video.muted) {
