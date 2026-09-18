@@ -2945,7 +2945,8 @@ async function fetchInstalledAddons() {
                         </td>
                         <td style="padding: 1rem 1.5rem; text-align:right;">
                             <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-                                ${addon.id === 'ai_yolo' ? `<button class="btn-sm btn-primary" onclick="openAIGridModal()" title="Konfigurasi">⚙️</button>` : ''}
+                                <button class="btn-sm btn-primary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan">⚙️</button>
+                                ${addon.id === 'ai_yolo' ? `<button class="btn-sm btn-primary" onclick="openAIGridModal()" title="Konfigurasi Area">🎯</button>` : ''}
                                 <button class="btn-sm btn-secondary" onclick="toggleAddonState('${addon.id}', ${!addon.active})" title="${addon.active ? 'Matikan' : 'Nyalakan'}">
                                     ${addon.active ? '⏹️' : '▶️'}
                                 </button>
@@ -3013,6 +3014,95 @@ function openInstallAddonModal() {
 
 function closeInstallAddonModal() {
     document.getElementById('installAddonModalOverlay').style.display = 'none';
+}
+
+let currentConfigAddonId = null;
+
+async function openAddonConfig(addonId, addonName) {
+    currentConfigAddonId = addonId;
+    document.getElementById('addonConfigTitle').textContent = addonName;
+    document.getElementById('addonConfigBody').innerHTML = '<p style="color:var(--text-muted);text-align:center;">Memuat konfigurasi...</p>';
+    document.getElementById('addonConfigModalOverlay').style.display = 'flex';
+
+    try {
+        const res = await authFetch('/api/addons/' + addonId + '/config');
+        const data = await res.json();
+        if (res.ok) {
+            renderAddonConfigForm(data.config);
+        } else {
+            document.getElementById('addonConfigBody').innerHTML = `<p style="color:#ef4444;text-align:center;">Gagal: ${data.error || 'Terjadi kesalahan'}</p>`;
+        }
+    } catch (e) {
+        document.getElementById('addonConfigBody').innerHTML = `<p style="color:#ef4444;text-align:center;">Gagal menghubungi server.</p>`;
+    }
+}
+
+function renderAddonConfigForm(configObj) {
+    const container = document.getElementById('addonConfigBody');
+    if (!configObj || Object.keys(configObj).length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);text-align:center;margin-top:2rem;">Addon ini tidak memiliki parameter yang bisa dikonfigurasi dari antarmuka.</p>';
+        return;
+    }
+    
+    let html = '<form id="addonConfigForm">';
+    for (let key in configObj) {
+        const val = configObj[key];
+        const type = typeof val;
+        const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        
+        html += `<div style="margin-bottom:1.2rem;">
+            <label style="display:block; margin-bottom:0.5rem; color:var(--text); font-size:0.9rem; font-weight:bold;">${displayKey}</label>`;
+        
+        if (type === 'boolean') {
+            html += `<select name="${key}" style="width:100%; padding:0.75rem; background:rgba(0,0,0,0.2); border:1px solid var(--border); color:white; border-radius:4px;">
+                <option value="true" ${val ? 'selected' : ''}>Aktif (True)</option>
+                <option value="false" ${!val ? 'selected' : ''}>Mati (False)</option>
+            </select>`;
+        } else if (type === 'number') {
+            html += `<input type="number" name="${key}" value="${val}" style="width:100%; padding:0.75rem; background:rgba(0,0,0,0.2); border:1px solid var(--border); color:white; border-radius:4px;">`;
+        } else {
+            html += `<input type="text" name="${key}" value="${val}" style="width:100%; padding:0.75rem; background:rgba(0,0,0,0.2); border:1px solid var(--border); color:white; border-radius:4px;">`;
+        }
+        html += `</div>`;
+    }
+    html += '</form>';
+    container.innerHTML = html;
+}
+
+async function saveAddonConfig() {
+    if (!currentConfigAddonId) return;
+    const form = document.getElementById('addonConfigForm');
+    if (!form) return closeAddonConfigModal(); 
+
+    const formData = new FormData(form);
+    const newConfig = {};
+    for (let [k, v] of formData.entries()) {
+        if (v === 'true') newConfig[k] = true;
+        else if (v === 'false') newConfig[k] = false;
+        else if (!isNaN(v) && v.trim() !== '') newConfig[k] = Number(v);
+        else newConfig[k] = v;
+    }
+
+    try {
+        const res = await authFetch('/api/addons/' + currentConfigAddonId + '/config', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ config: newConfig })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert('Konfigurasi berhasil disimpan dan diaplikasikan ke addon.');
+            closeAddonConfigModal();
+        } else {
+            alert('Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server untuk menyimpan konfigurasi.');
+    }
+}
+
+function closeAddonConfigModal() {
+    document.getElementById('addonConfigModalOverlay').style.display = 'none';
 }
 
 async function submitInstallAddon() {

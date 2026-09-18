@@ -1,5 +1,11 @@
 # Changelog
 
+## [Ver 9.5.7] - 2026-09-17
+### Added
+- **Dynamic Addon Configuration:** Menambahkan Modal Konfigurasi interaktif pada Marketplace UI. Modul kini dapat dikonfigurasi parameternya secara langsung lewat antarmuka tanpa perlu mengedit file config.json secara manual.
+- **Clean Deletion Logic:** Memperbarui proses penghapusan Addon. Menekan tombol Hapus kini akan secara otomatis menghentikan proses PM2 milik Addon terkait dan menghapus folder atau direktori instalasinya di server secara bersih.
+
+
 ## [Ver 9.5.6] - 2026-09-17
 ### Fixed
 - **Addons Database Persistence:** Memperbaiki masalah hilangnya daftar *Addons* (termasuk *Addon* bawaan AI YOLO) saat halaman dimuat ulang. Modul `addons` kini memiliki file isolasi tersendiri (`local_db_addons.json`) di dalam *Split DB* dan di-*load* dengan benar oleh API NVR.

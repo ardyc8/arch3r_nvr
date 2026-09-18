@@ -244,7 +244,7 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.5.6)
+// AI ADDON PROXY API (v9.5.7)
 // ==========================================
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
@@ -289,7 +289,7 @@ app.post('/api/ai/webhook', (req, res) => {
 
 
 // ==========================================
-// ADDON MARKETPLACE API (v9.5.6)
+// ADDON MARKETPLACE API (v9.5.7)
 // ==========================================
 
 app.get('/api/addons', verifyToken, (req, res) => {
@@ -375,19 +375,74 @@ app.delete('/api/addons/:id', verifyToken, (req, res) => {
     const index = dbData.addons.findIndex(a => a.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'Addon tidak ditemukan' });
     
-    if (dbData.addons[index].system_protected) {
+    const addon = dbData.addons[index];
+    if (addon.system_protected) {
         return res.status(400).json({ error: 'Addon sistem bawaan tidak dapat dihapus, hanya bisa dimatikan.' });
     }
     
-    const deletedAddon = dbData.addons.splice(index, 1);
+    // Clean Delete: Stop PM2 and Remove physical folder
+    try {
+        child_process.exec(`pm2 delete arch3r-${addon.id}`, (err) => {
+            const addonDir = path.join(__dirname, 'addons', addon.id);
+            if (fs.existsSync(addonDir)) {
+                fs.rmSync(addonDir, { recursive: true, force: true });
+            }
+        });
+    } catch(e) {
+        console.error('Addon cleanup error:', e);
+    }
+    
+    dbData.addons.splice(index, 1);
     saveNvrDb(dbData);
     
-    sysLog('INFO', `[Addons] Addon dihapus: ${deletedAddon[0].name}`, 'SYSTEM');
+    sysLog('INFO', `[Addons] Addon beserta filenya dihapus permanen: ${addon.name}`, 'SYSTEM');
     res.json({ success: true, message: 'Addon dihapus' });
 });
 
+app.get('/api/addons/:id/config', verifyToken, (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') return res.status(403).json({ error: 'Akses Ditolak' });
+    
+    const dbData = getNvrDb();
+    const addon = (dbData.addons || []).find(a => a.id === req.params.id);
+    if (!addon) return res.status(404).json({ error: 'Addon tidak ditemukan' });
+    
+    // Auto-generate default configuration layout if missing
+    if (!addon.config) {
+        if (addon.id === 'ai_yolo') {
+            addon.config = { confidence_threshold: 0.5, log_alerts: true, auto_start: true, detection_model: 'yolov8n.pt' };
+        } else {
+            addon.config = {};
+        }
+    }
+    res.json({ success: true, config: addon.config });
+});
+
+app.post('/api/addons/:id/config', verifyToken, (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') return res.status(403).json({ error: 'Akses Ditolak' });
+    
+    const dbData = getNvrDb();
+    const addon = (dbData.addons || []).find(a => a.id === req.params.id);
+    if (!addon) return res.status(404).json({ error: 'Addon tidak ditemukan' });
+    
+    addon.config = { ...addon.config, ...req.body.config };
+    saveNvrDb(dbData);
+    
+    // Write out to the actual config.json file in the addon's directory if it exists
+    try {
+        const addonConfigPath = path.join(__dirname, 'addons', addon.id, 'config.json');
+        if (fs.existsSync(path.dirname(addonConfigPath))) {
+            fs.writeFileSync(addonConfigPath, JSON.stringify(addon.config, null, 4));
+        }
+    } catch(e) {
+        console.error('Failed to write addon config to filesystem', e);
+    }
+    
+    sysLog('INFO', `[Addons] Konfigurasi diupdate untuk module: ${addon.name}`, 'SYSTEM');
+    res.json({ success: true, message: 'Konfigurasi disimpan' });
+});
+
 // ==========================================
-// MAINTENANCE & OTA API (v9.5.6)
+// MAINTENANCE & OTA API (v9.5.7)
 // ==========================================
 app.get('/api/maintenance/backup', verifyToken, (req, res) => {
     sysLog('INFO', `[Maintenance] Backup database requested`, 'SYSTEM');
@@ -431,7 +486,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
         if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
             return res.json({
                 current_version: require('./package.json').version,
-                latest_version: '9.5.6',
+                latest_version: '9.5.7',
                 changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
                 update_available: true
             });
@@ -853,7 +908,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.6' });
+    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.5.7' });
 });
 
 // Auth Endpoints
@@ -1031,7 +1086,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.5.6",
+        appVersion: "9.5.7",
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -1133,7 +1188,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
                 mode: 'binary', 
                 message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
                 isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.5.6',
+                latestVersion: '9.5.7',
                 repoHost: 'GitHub Releases'
             });
         }
@@ -1201,7 +1256,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.5.6',
+        version: '9.5.7',
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
