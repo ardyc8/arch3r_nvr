@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 9.6.6] - 2026-09-18
+### Added
+- **Dual-Mode Contextual Sync (Mode Layar Penuh & Biasa):** Mengoptimalkan pengalaman pemantauan video CCTV sesuai standar NVR profesional. Pada mode biasa (non-fullscreen), panel kontrol bawah (`#bottomControlPanel`) tetap tampil lengkap dengan navigasi PTZ statis dan pemutar. Pada mode Fullscreen (`:fullscreen`), bilah kontrol bawah disembunyikan secara otomatis (`display: none !important`) agar kanvas video grid memanfaatkan 100% layar tanpa terpotong. Seluruh kendali monitor (pilihan grid, channel kamera, navigasi halaman, dan PTZ terpadu) dapat diakses mengambang secara intuitif dengan menekan tombol gerigi ⚙️ di pojok kanan atas.
+- **Navigasi Halaman Kamera (Next / Prev Page Pagination):** Menambahkan tombol navigasi halaman kamera (`◀ Prev` dan `Next ▶`) beserta indikator halaman real-time (misal: `Hal 1/2`) pada menu pengaturan atas. Pengguna dengan banyak kamera aktif kini dapat berpindah halaman dengan lancar pada tata letak grid 1x1, 2x2 (4 kamera), 3x3 (9 kamera), maupun 4x4 (16 kamera) tanpa harus merubah layout atau kehilangan konteks channel.
+- **Kontrol PTZ Mengambang Terpadu di Menu Gerigi:** Mengintegrasikan D-Pad PTZ 3x3 kompak pada floating menu atas (`topControlPanel`) yang tersinkronisasi penuh dengan kamera yang dipilih pada grid (disertai indikator nama channel aktif `topActiveCamLabel`), sehingga pengguna tetap dapat mengarahkan kamera PTZ secara fleksibel saat berada dalam mode layar penuh.
+- **Penyelarasan Versi Sistem:** Menaikkan nomor versi aplikasi ke `9.6.6` pada `package.json`, `server.js`, `index.html`, `superadmin.html`, dan `CHANGELOG.md` dengan penambahan cache-busting `?v=9.6.6`.
+
 ## [Ver 9.6.5] - 2026-09-18
 ### Fixed
 - **Perbaikan Regresi Tampilan Desktop & Isolasi Modal OTA:** Memperbaiki bug tata letak monitor desktop di mana modal update sistem Linux sempat muncul di dalam alur dokumen dan mendesak video grid. Menambahkan proteksi `style="display:none !important; position:fixed !important;"` langsung secara inline dan memperkuat CSS `.ota-modal-overlay` dengan `width: 100vw !important; height: 100vh !important; z-index: 99999 !important;`.

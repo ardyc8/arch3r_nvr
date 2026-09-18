@@ -173,7 +173,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     .form-row { flex-direction: column; gap: 0; }
 }
 
-/* Fullscreen fixes */
+/* Fullscreen fixes & Dual-Mode Contextual Sync */
 :fullscreen, ::backdrop {
     background-color: #0f172a;
 }
@@ -190,6 +190,32 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 }
 :fullscreen video {
     object-fit: contain;
+}
+
+/* In Fullscreen mode: Bottom control panel is hidden, Top controls float over video */
+:fullscreen #bottomControlPanel,
+#monitorWrapper:fullscreen #bottomControlPanel {
+    display: none !important;
+}
+
+:fullscreen #topControlContainer,
+#monitorWrapper:fullscreen #topControlContainer {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(15, 23, 42, 0.92) !important;
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+}
+
+:fullscreen #videoGridContainer,
+#monitorWrapper:fullscreen #videoGridContainer {
+    height: 100vh !important;
+    width: 100vw !important;
+    padding: 0 !important;
 }
 
 /* Unified Camera Cell Selection */

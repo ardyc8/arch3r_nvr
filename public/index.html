@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.6.5 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=9.6.5">
+    <title>Arch3r NVR Ver. 9.6.6 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=9.6.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.5</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.6</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.5</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.6</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -138,17 +138,48 @@
                         </div>
 
                         <div id="topControlPanel" style="display:none; flex-direction:column; padding-top: 5px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem 1rem; flex-wrap: wrap; gap: 0.5rem;">
-                                <div style="display:flex; align-items:center; gap:0.5rem;">
-                                    <span style="font-size:0.85rem; color:var(--text-muted); font-weight:bold;">Layout:</span>
-                                    <button class="btn-sm btn-secondary grid-btn active" data-grid="1" style="background:#2563eb; color:white;">1x1</button>
-                                    <button class="btn-sm btn-secondary grid-btn" data-grid="4">2x2</button>
-                                    <button class="btn-sm btn-secondary grid-btn" data-grid="9">3x3</button>
-                                    <button class="btn-sm btn-secondary grid-btn" data-grid="16">4x4</button>
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem 1rem; flex-wrap: wrap; gap: 0.75rem;">
+                                <!-- Layout Switcher & Page Navigation -->
+                                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                                    <div style="display:flex; align-items:center; gap:0.35rem;">
+                                        <span style="font-size:0.85rem; color:var(--text-muted); font-weight:bold;">Layout:</span>
+                                        <button class="btn-sm btn-secondary grid-btn active" data-grid="1" style="background:#2563eb; color:white;">1x1</button>
+                                        <button class="btn-sm btn-secondary grid-btn" data-grid="4">2x2</button>
+                                        <button class="btn-sm btn-secondary grid-btn" data-grid="9">3x3</button>
+                                        <button class="btn-sm btn-secondary grid-btn" data-grid="16">4x4</button>
+                                    </div>
+                                    <div id="gridPageNav" style="display:flex; align-items:center; gap:0.35rem; background:rgba(0,0,0,0.25); padding:2px 6px; border-radius:6px; border:1px solid var(--border);">
+                                        <button id="btnPrevGridPage" class="btn-sm btn-secondary" onclick="window.prevGridPage()" style="padding:2px 8px; font-size:11px;" title="Halaman Kamera Sebelumnya">◀ Prev</button>
+                                        <span id="gridPageIndicator" style="font-size:0.78rem; font-family:monospace; color:#93c5fd; min-width:65px; text-align:center; font-weight:600;">Hal 1/1</span>
+                                        <button id="btnNextGridPage" class="btn-sm btn-secondary" onclick="window.nextGridPage()" style="padding:2px 8px; font-size:11px;" title="Halaman Kamera Berikutnya">Next ▶</button>
+                                    </div>
                                 </div>
-                                <div style="display:flex; gap:0.5rem; margin-right: 40px;">
-                                    <button class="btn-sm btn-primary" onclick="window.toggleGridFullscreen('monitorWrapper')">⛶ Fullscreen</button>
-                                    <button id="btnReloadStreams" class="btn-sm btn-secondary" title="Muat ulang stream">🔄 Refresh</button>
+
+                                <!-- Floating Menu PTZ & Action Tools -->
+                                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-right: 40px;">
+                                    <!-- Top PTZ Controls (Synchronized with selected camera) -->
+                                    <div id="topPtzWrapper" style="display:flex; align-items:center; gap:0.5rem; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:6px; border:1px solid var(--border);">
+                                        <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                                            <span style="font-weight:bold; color:var(--text-muted); font-size:11px;">KENDALI PTZ:</span>
+                                            <span id="topActiveCamLabel" style="font-size:10px; color:#60a5fa; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Pilih di grid</span>
+                                        </div>
+                                        <div id="topPtzController" class="desktop-ptz-grid" style="display:grid; grid-template-columns: repeat(3, 24px); grid-template-rows: repeat(3, 24px); gap:2px; align-items:center; justify-items:center;">
+                                            <div></div>
+                                            <button class="ptz-btn" style="width:24px; height:24px; font-size:10px; padding:0;" onclick="window.ptzMoveSelected('up')">▲</button>
+                                            <div></div>
+                                            <button class="ptz-btn" style="width:24px; height:24px; font-size:10px; padding:0;" onclick="window.ptzMoveSelected('left')">◀</button>
+                                            <div style="display:flex; align-items:center; justify-content:center; font-size:7px; font-weight:bold; color:#64748b;">PTZ</div>
+                                            <button class="ptz-btn" style="width:24px; height:24px; font-size:10px; padding:0;" onclick="window.ptzMoveSelected('right')">▶</button>
+                                            <div></div>
+                                            <button class="ptz-btn" style="width:24px; height:24px; font-size:10px; padding:0;" onclick="window.ptzMoveSelected('down')">▼</button>
+                                            <div></div>
+                                        </div>
+                                    </div>
+
+                                    <div style="display:flex; gap:0.4rem;">
+                                        <button class="btn-sm btn-primary" onclick="window.toggleGridFullscreen('monitorWrapper')">⛶ Fullscreen</button>
+                                        <button id="btnReloadStreams" class="btn-sm btn-secondary" title="Muat ulang stream">🔄 Refresh</button>
+                                    </div>
                                 </div>
                             </div>
                             <div id="channelBar" style="display:flex; gap:0.5rem; flex-wrap:wrap; padding: 0 1rem 0.5rem 1rem;">
@@ -902,7 +933,7 @@
                                 <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
                                     <span>🚀</span> Update Sistem (OTA & Linux Pipeline)
                                 </h3>
-                                <span id="adminOtaStatusBadge" class="badge" style="background:#2563eb; color:white;">v9.6.5</span>
+                                <span id="adminOtaStatusBadge" class="badge" style="background:#2563eb; color:white;">v9.6.6</span>
                             </div>
                             <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
                                 Periksa pembaruan resmi repositori, lihat ringkasan changelog rilis, dan jalankan alur update sistem dengan perintah terminal Linux (Git Pull, NPM Install, PM2 Reload, Reboot).
@@ -1219,6 +1250,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=9.6.5"></script>
+    <script src="script.js?v=9.6.6"></script>
 </body>
 </html>

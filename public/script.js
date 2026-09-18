@@ -564,6 +564,7 @@ async function handleLogout() {
                 btn.style.background = '#2563eb';
                 btn.style.color = 'white';
                 currentGridCount = parseInt(btn.getAttribute('data-grid'), 10) || 4;
+                gridPageIndex = 0; // Reset pagination to first page when changing layout
                 document.querySelectorAll('.m-grid-btn').forEach(b => {
                     b.classList.remove('active');
                     b.style.background = '';
@@ -1062,6 +1063,24 @@ async function fetchCameras() {
     
     let activeChannel = 'all';
     let selectedCamIdForPtz = null;
+    let gridPageIndex = 0; // Pagination page index for camera grid view
+
+    window.nextGridPage = function() {
+        const activeGridBtn = document.querySelector('.grid-btn.active');
+        const count = activeGridBtn ? parseInt(activeGridBtn.getAttribute('data-grid')) : 1;
+        const totalPages = Math.max(1, Math.ceil(cameras.length / count));
+        if (gridPageIndex < totalPages - 1) {
+            gridPageIndex++;
+            updateGridDisplay();
+        }
+    };
+
+    window.prevGridPage = function() {
+        if (gridPageIndex > 0) {
+            gridPageIndex--;
+            updateGridDisplay();
+        }
+    };
 
     
     function renderChannelButtons() {
@@ -1108,6 +1127,33 @@ async function fetchCameras() {
             // Keep selection if exists, else clear
             if (!cameras.find(c => c.id === selectedCamIdForPtz)) {
                 selectedCamIdForPtz = null;
+            }
+        }
+
+        // Update Paging Indicator & Controls
+        const pageIndicator = document.getElementById('gridPageIndicator');
+        const btnPrev = document.getElementById('btnPrevGridPage');
+        const btnNext = document.getElementById('btnNextGridPage');
+        const gridPageNav = document.getElementById('gridPageNav');
+
+        if (activeChannel !== 'all') {
+            if (gridPageNav) gridPageNav.style.display = 'none';
+        } else {
+            if (gridPageNav) gridPageNav.style.display = 'flex';
+            const totalPages = Math.max(1, Math.ceil(cameras.length / count));
+            if (gridPageIndex >= totalPages) {
+                gridPageIndex = Math.max(0, totalPages - 1);
+            }
+            if (pageIndicator) {
+                pageIndicator.textContent = `Hal ${gridPageIndex + 1}/${totalPages}`;
+            }
+            if (btnPrev) {
+                btnPrev.disabled = (gridPageIndex === 0);
+                btnPrev.style.opacity = (gridPageIndex === 0) ? '0.5' : '1';
+            }
+            if (btnNext) {
+                btnNext.disabled = (gridPageIndex >= totalPages - 1);
+                btnNext.style.opacity = (gridPageIndex >= totalPages - 1) ? '0.5' : '1';
             }
         }
 
@@ -1281,6 +1327,14 @@ async function fetchCameras() {
         if (mPtzController) mPtzController.style.display = hasPtz ? 'grid' : 'none';
 
         const mActiveCamLabel = document.getElementById('mActiveCamLabel');
+        const topActiveCamLabel = document.getElementById('topActiveCamLabel');
+        const camLabelText = cam ? `CH: ${cam.name}` : (activeChannel !== 'all' ? (cameras.find(c => c.id === activeChannel)?.name || `CH ${activeChannel}`) : 'Multi-View (Klik grid)');
+
+        if (topActiveCamLabel) {
+            topActiveCamLabel.textContent = cam ? cam.name : (activeChannel !== 'all' ? (cameras.find(c => c.id === activeChannel)?.name || `CH ${activeChannel}`) : 'Pilih di grid');
+            topActiveCamLabel.style.color = cam ? '#60a5fa' : '#94a3b8';
+        }
+
         if (mActiveCamLabel) {
             if (cam) {
                 mActiveCamLabel.textContent = `Kamera: ${cam.name}`;
@@ -1475,7 +1529,8 @@ async function fetchCameras() {
         
         let camsToShow = [];
         if (activeChannel === 'all') {
-            camsToShow = cameras.slice(0, count);
+            const startIdx = gridPageIndex * count;
+            camsToShow = cameras.slice(startIdx, startIdx + count);
         } else {
             const c = cameras.find(x => x.id === activeChannel);
             if (c) camsToShow.push(c);
