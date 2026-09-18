@@ -192,6 +192,34 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     object-fit: contain;
 }
 
+/* Gear button: ONLY visible in Fullscreen mode */
+#btnToggleControlsContainer {
+    display: none !important;
+}
+
+:fullscreen #btnToggleControlsContainer,
+#monitorWrapper:fullscreen #btnToggleControlsContainer {
+    display: block !important;
+}
+
+/* Top control container in Normal mode: standard static bar without floating */
+#topControlContainer {
+    display: flex !important;
+    position: relative;
+    width: 100%;
+    background: var(--surface);
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+}
+
+/* In Normal mode, topControlPanel is naturally open and part of the document flow */
+#topControlPanel {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+}
+
 /* In Fullscreen mode: Bottom control panel is hidden, Top controls float over video */
 :fullscreen #bottomControlPanel,
 #monitorWrapper:fullscreen #bottomControlPanel {
@@ -205,10 +233,29 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     left: 0;
     right: 0;
     z-index: 100;
-    background: rgba(15, 23, 42, 0.92) !important;
-    backdrop-filter: blur(8px);
+    background: transparent !important;
+    border-bottom: none !important;
+    pointer-events: none;
+}
+
+:fullscreen #btnToggleControlsContainer,
+#monitorWrapper:fullscreen #btnToggleControlsContainer {
+    pointer-events: auto;
+}
+
+:fullscreen #topControlPanel,
+#monitorWrapper:fullscreen #topControlPanel {
+    display: none !important; /* By default hidden in fullscreen until gear is clicked */
+    background: rgba(15, 23, 42, 0.95) !important;
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.85);
+    pointer-events: auto;
+}
+
+:fullscreen #topControlPanel.fullscreen-open,
+#monitorWrapper:fullscreen #topControlPanel.fullscreen-open {
+    display: flex !important;
 }
 
 :fullscreen #videoGridContainer,

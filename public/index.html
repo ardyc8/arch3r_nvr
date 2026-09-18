@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.6.6 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=9.6.6">
+    <title>Arch3r NVR Ver. 9.6.7 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=9.6.7">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.6</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.6.7</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.6</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.6.7</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -121,7 +121,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.6.5</h3>
+                <h3 style="margin:0; font-size:1.1rem;">Arch3r NVR Ver. 9.6.7</h3>
             </header>
 
             <!-- 1. VIEW MONITOR (LIVE VIEW) -->
@@ -129,15 +129,15 @@
             <div id="view-monitor" class="view-pane active">
                 <div id="monitorWrapper" class="grid-wrapper" style="position:relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: #000; padding: 0;">
                     
-                    <!-- Top Bar: Layout & Channels -->
-                    <div id="topControlContainer" style="display:flex; flex-direction:column; background: var(--surface); z-index: 10; border-bottom:1px solid var(--border); transition: max-height 0.3s ease-out; overflow:hidden;">
+                    <!-- Top Bar: Layout, Paging, Channels & Fullscreen Menu -->
+                    <div id="topControlContainer">
                         
-                        <!-- Toggle Button (Always visible on top right) -->
-                        <div style="position:absolute; top: 10px; right: 10px; z-index: 20;">
-                            <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 35px; height: 35px; padding:0; display:flex; justify-content:center; align-items:center; opacity: 0.7; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 2px 5px rgba(0,0,0,0.5);">⚙️</button>
+                        <!-- Toggle Button (ONLY shown in Fullscreen mode via CSS) -->
+                        <div id="btnToggleControlsContainer" style="position:absolute; top: 10px; right: 10px; z-index: 120;">
+                            <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 38px; height: 38px; padding:0; display:flex; justify-content:center; align-items:center; opacity: 0.85; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 4px 10px rgba(0,0,0,0.6); cursor:pointer; font-size:16px;" title="Buka Panel Navigasi & PTZ">⚙️</button>
                         </div>
 
-                        <div id="topControlPanel" style="display:none; flex-direction:column; padding-top: 5px;">
+                        <div id="topControlPanel">
                             <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem 1rem; flex-wrap: wrap; gap: 0.75rem;">
                                 <!-- Layout Switcher & Page Navigation -->
                                 <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
@@ -155,9 +155,9 @@
                                     </div>
                                 </div>
 
-                                <!-- Floating Menu PTZ & Action Tools -->
-                                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-right: 40px;">
-                                    <!-- Top PTZ Controls (Synchronized with selected camera) -->
+                                <!-- PTZ & Action Tools -->
+                                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                                    <!-- PTZ Controls (Synchronized with selected camera) -->
                                     <div id="topPtzWrapper" style="display:flex; align-items:center; gap:0.5rem; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:6px; border:1px solid var(--border);">
                                         <div style="display:flex; flex-direction:column; align-items:flex-start;">
                                             <span style="font-weight:bold; color:var(--text-muted); font-size:11px;">KENDALI PTZ:</span>
@@ -933,7 +933,7 @@
                                 <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
                                     <span>🚀</span> Update Sistem (OTA & Linux Pipeline)
                                 </h3>
-                                <span id="adminOtaStatusBadge" class="badge" style="background:#2563eb; color:white;">v9.6.6</span>
+                                <span id="adminOtaStatusBadge" class="badge" style="background:#2563eb; color:white;">v9.6.7</span>
                             </div>
                             <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
                                 Periksa pembaruan resmi repositori, lihat ringkasan changelog rilis, dan jalankan alur update sistem dengan perintah terminal Linux (Git Pull, NPM Install, PM2 Reload, Reboot).
@@ -1250,6 +1250,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=9.6.6"></script>
+    <script src="script.js?v=9.6.7"></script>
 </body>
 </html>

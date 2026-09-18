@@ -37,9 +37,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.6.6';
+        return pkg.version || '9.6.7';
     } catch {
-        return '9.6.6';
+        return '9.6.7';
     }
 }
 const APP_VERSION = getAppVersion();

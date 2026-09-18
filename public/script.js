@@ -1425,19 +1425,38 @@ async function fetchCameras() {
         const panel = document.getElementById('topControlPanel');
         const btn = document.getElementById('btnToggleControls');
         if (panel) {
-            if (panel.style.display === 'none') {
-                panel.style.display = 'flex';
-                btn.style.opacity = '1';
-                btn.style.background = '#3b82f6';
-                btn.style.color = '#fff';
+            const isOpen = panel.classList.contains('fullscreen-open');
+            if (isOpen) {
+                panel.classList.remove('fullscreen-open');
+                if (btn) {
+                    btn.style.opacity = '0.7';
+                    btn.style.background = 'var(--surface)';
+                    btn.style.color = '';
+                }
             } else {
-                panel.style.display = 'none';
+                panel.classList.add('fullscreen-open');
+                if (btn) {
+                    btn.style.opacity = '1';
+                    btn.style.background = '#3b82f6';
+                    btn.style.color = '#fff';
+                }
+            }
+        }
+    };
+
+    // Reset floating panel state when exiting fullscreen
+    document.addEventListener('fullscreenchange', () => {
+        const panel = document.getElementById('topControlPanel');
+        const btn = document.getElementById('btnToggleControls');
+        if (!document.fullscreenElement) {
+            if (panel) panel.classList.remove('fullscreen-open');
+            if (btn) {
                 btn.style.opacity = '0.7';
                 btn.style.background = 'var(--surface)';
                 btn.style.color = '';
             }
         }
-    };
+    });
 
 
     window.toggleGridFullscreen = function(gridId) {

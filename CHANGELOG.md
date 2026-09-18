@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 9.6.7] - 2026-09-18
+### Fixed & Improved
+- **Penyelesaian Redundansi Navigasi (Single-Bar Navigation & Fullscreen Gear Only):** Menghilangkan navigasi ganda pada mode biasa. Toolbar kontrol utama di bagian atas kini menjadi satu-satunya bar navigasi lengkap yang tampil konsisten di atas video grid, mencakup: pilihan layout grid (1x1, 2x2, 3x3, 4x4), navigasi halaman kamera (Prev/Next page), tombol channel langsung, kontrol D-Pad PTZ 3x3 yang tersinkronisasi dengan kamera terpilih, tombol Fullscreen, dan tombol Refresh.
+- **Tombol Gerigi (⚙️) Khusus Mode Fullscreen:** Tombol gerigi di sudut kanan atas kini disembunyikan sepenuhnya pada mode biasa (`display: none !important`) dan **hanya akan muncul saat pengguna masuk ke mode Fullscreen**. Pada mode Fullscreen, mengklik tombol gerigi akan membuka menu navigasi mengambang (floating overlay) dengan fungsi dan tombol navigasi yang identik dengan mode biasa.
+- **Transisi Fullscreen Otomatis:** Menambahkan event listener `fullscreenchange` untuk mereset panel mengambang saat keluar dari mode layar penuh agar antarmuka kembali rapi dan konsisten.
+- **Penyelarasan Versi Sistem:** Menaikkan nomor versi aplikasi ke `9.6.7` pada `package.json`, `server.js`, `index.html`, `superadmin.html`, dan `CHANGELOG.md` dengan penambahan cache-busting `?v=9.6.7`.
+
 ## [Ver 9.6.6] - 2026-09-18
 ### Added
 - **Dual-Mode Contextual Sync (Mode Layar Penuh & Biasa):** Mengoptimalkan pengalaman pemantauan video CCTV sesuai standar NVR profesional. Pada mode biasa (non-fullscreen), panel kontrol bawah (`#bottomControlPanel`) tetap tampil lengkap dengan navigasi PTZ statis dan pemutar. Pada mode Fullscreen (`:fullscreen`), bilah kontrol bawah disembunyikan secara otomatis (`display: none !important`) agar kanvas video grid memanfaatkan 100% layar tanpa terpotong. Seluruh kendali monitor (pilihan grid, channel kamera, navigasi halaman, dan PTZ terpadu) dapat diakses mengambang secara intuitif dengan menekan tombol gerigi ⚙️ di pojok kanan atas.
