@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.6.2 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.7.4 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -1112,7 +1112,11 @@ async function fetchCameras() {
             cameras.forEach((cam, idx) => {
                 const opt = document.createElement('option');
                 opt.value = cam.id;
-                opt.textContent = `Tampilkan: CH ${idx + 1} - ${cam.name || ('Kamera ' + (idx + 1))}`;
+                const camLabel = cam.name || `Kamera ${idx + 1}`;
+                opt.textContent = `Tampilkan: CH ${idx + 1} - ${camLabel}`;
+                if (cam.id === currentVal) {
+                    opt.selected = true;
+                }
                 sel.appendChild(opt);
             });
         }
@@ -1120,8 +1124,67 @@ async function fetchCameras() {
         sel.value = currentVal;
         if (sel.value !== currentVal) {
             sel.value = 'all';
+            activeChannel = 'all';
         }
     }
+
+    function populateCameraSelects() {
+        populateChannelDropdown();
+        
+        // Populate Playback Camera Select
+        const selRecCam = document.getElementById('selRecCam');
+        if (selRecCam && Array.isArray(cameras)) {
+            const prevVal = selRecCam.value;
+            selRecCam.innerHTML = '<option value="">-- Pilih Kamera --</option>';
+            cameras.forEach((cam, idx) => {
+                const opt = document.createElement('option');
+                opt.value = cam.id;
+                opt.textContent = `CH ${idx + 1}: ${cam.name || ('Kamera ' + (idx + 1))}`;
+                selRecCam.appendChild(opt);
+            });
+            if (prevVal && cameras.some(c => c.id === prevVal)) {
+                selRecCam.value = prevVal;
+            } else if (cameras.length > 0) {
+                selRecCam.value = cameras[0].id;
+            }
+        }
+        
+        // Populate Mobile Playback Camera Select
+        const mSelRecCam = document.getElementById('mSelRecCam');
+        if (mSelRecCam && Array.isArray(cameras)) {
+            const prevM = mSelRecCam.value;
+            mSelRecCam.innerHTML = '<option value="">-- Pilih Kamera --</option>';
+            cameras.forEach((cam, idx) => {
+                const opt = document.createElement('option');
+                opt.value = cam.id;
+                opt.textContent = `CH ${idx + 1}: ${cam.name || ('Kamera ' + (idx + 1))}`;
+                mSelRecCam.appendChild(opt);
+            });
+            if (prevM && cameras.some(c => c.id === prevM)) {
+                mSelRecCam.value = prevM;
+            } else if (cameras.length > 0) {
+                mSelRecCam.value = cameras[0].id;
+            }
+        }
+
+        // Populate AI Cam Select if element exists
+        const aiCamSelect = document.getElementById('ai-cam-select');
+        if (aiCamSelect && Array.isArray(cameras)) {
+            const prevAi = aiCamSelect.value;
+            aiCamSelect.innerHTML = '<option value="">-- Pilih Kamera --</option>';
+            cameras.forEach((cam, idx) => {
+                const opt = document.createElement('option');
+                opt.value = cam.id;
+                opt.textContent = `CH ${idx + 1}: ${cam.name || ('Kamera ' + (idx + 1))}`;
+                aiCamSelect.appendChild(opt);
+            });
+            if (prevAi && cameras.some(c => c.id === prevAi)) {
+                aiCamSelect.value = prevAi;
+            }
+        }
+    }
+    window.populateCameraSelects = populateCameraSelects;
+    window.populateChannelDropdown = populateChannelDropdown;
 
     function renderChannelButtons() {
         populateChannelDropdown();
@@ -1699,7 +1762,7 @@ async function fetchCameras() {
                             <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; gap:5px;">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
                             </div>
-                            <div class="cam-title-bar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(15, 23, 42, 0.75); text-align:center; padding: 2px 4px; font-size: 10px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
+                            <div class="cam-title-bar">
                                 ${cam.name || ('Kamera ' + (i + 1))}
                             </div>
                         </div>
@@ -1736,7 +1799,7 @@ async function fetchCameras() {
                             <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; gap:5px;">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
                             </div>
-                            <div class="cam-title-bar" style="position:absolute; bottom:0; left:0; right:0; background:rgba(15, 23, 42, 0.75); text-align:center; padding: 2px 4px; font-size: 10px; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; z-index:5;">
+                            <div class="cam-title-bar">
                                 ${cam.name || ('Kamera ' + (i + 1))}
                             </div>
                         </div>

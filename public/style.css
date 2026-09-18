@@ -268,7 +268,11 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     right: 0;
     max-height: 52vh;
     overflow-y: auto;
-    padding-right: 55px; /* Leave space so it doesn't overlap the gear button at bottom right */
+    overflow-x: hidden;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100vw;
+    padding-right: 60px; /* Leave space so it doesn't overlap the gear button at bottom right */
     padding-bottom: max(0.4rem, env(safe-area-inset-bottom));
 }
 
@@ -323,22 +327,26 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 
 .cam-title-bar {
     position: absolute;
-    bottom: 4px;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 6px;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
     background: rgba(7, 16, 31, 0.88);
     backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     color: #f1f5f9;
-    padding: 2px 10px;
+    padding: 3px 12px;
     font-size: 10px;
     font-weight: 600;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-    max-width: 90%;
+    max-width: 85%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-align: center;
+    pointer-events: none;
     z-index: 5;
 }
 
@@ -355,6 +363,9 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     padding: 6px 12px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .nvr-select-channel {
@@ -415,12 +426,14 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 .nvr-toolbar-strip {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: 6px 12px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     gap: 6px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .nvr-tool-btn {

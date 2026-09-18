@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.2.5)
+# ⚡ Arch3r NVR (Ver. 9.7.4)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, dan *Developer Console* (Superadmin).
@@ -87,6 +87,14 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
 - `/data/nvr_db.json` : Database lokal yang menampung data kamera & pengguna. *(Otomatis terbuat saat aplikasi jalan)*.
 - `/data/storage.json` : Konfigurasi jalur penyimpanan (Mount Point) Hardisk/USB.
 - `/install.sh` : Script instalasi ajaib satu-pintu.
+
+---
+
+## 📜 Log Pembaruan (Changelog)
+- **[Ver 9.7.4]**
+  - **Fixed Camera Title Centering**: Label nama kamera pada grid live view kini diposisikan secara presisi di tengah (*horizontal center*) dengan efek *pill badge* yang elegan.
+  - **Fixed Camera Channel Dropdown**: Memperbaiki fungsi `populateChannelDropdown` dan mendefinisikan `populateCameraSelects` secara komprehensif sehingga seluruh dropdown kamera (CH1, CH2, dst.) selalu terisi daftar kamera aktif tanpa terjadi *ReferenceError*.
+  - **Fixed Fullscreen Button Layout**: Menyesuaikan layout toolbar monitor (`.nvr-toolbar-strip`, `topControlPanel`) agar responsif dengan `flex-wrap: wrap` dan `box-sizing: border-box`, mencegah tombol layar penuh melebihi lebar tampilan UI.
 
 ---
 
