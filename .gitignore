@@ -22,3 +22,7 @@ TUTORIAL_PRODUKSI.md
 # SPLIT DB FILES
 data/db_*.json
 *.bak
+
+# LIVE DB FIX
+data/live_db/
+data/live_db/*
