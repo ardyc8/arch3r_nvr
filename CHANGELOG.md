@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 9.6.4] - 2026-09-18
+### Added
+- **Sistem Update OTA & Pipeline Terminal Linux Granular:** Menyediakan antarmuka pemeriksaan update resmi (tombol Cek Pembaruan, badge status versi, dan penampil catatan rilis/changelog interaktif) baik pada Console Superadmin maupun menu Informasi Sistem Administrator.
+- **Konfirmasi Interaktif Alur Eksekusi Update STB:** Menambahkan modal checklist perintah Linux sebelum eksekusi (Backup Database Lokal, Git Pull origin main, NPM Install dependensi, PM2 Reload service, Bersihkan Cache NPM, Git Reset Hard, dan Reboot Hardware STB).
+- **Live Terminal Console Viewer:** Menampilkan output log baris-per-baris dari proses eksekusi perintah terminal Linux di STB secara langsung di dalam antarmuka web.
+- **Mobile CCTV Desk & Eliminasi Void Hitam Monitor:** Menata ulang tata letak monitor pada perangkat mobile/Android dengan mengoptimalkan tinggi video grid (menghilangkan ruang kosong hitam) dan menyematkan panel kendali terpadu (pemilih channel cepat, D-Pad PTZ 4-arah, tombol snapshot instan, dan kontrol audio).
+
 ## [Ver 9.6.1] - 2026-09-18
 ### Fixed
 - **Root-Cause Fix for Database Wipe on Boot/Git Pull:** Mengidentifikasi dan memperbaiki akar masalah fatal di fungsi `initDB()` (`server.js`) di mana sistem lama memeriksa ketiadaan `nvrDbFile` (`data/live_db/nvr_db.json`) dan secara otomatis menimpa seluruh database akun administrator serta kamera menggunakan template kosong `getDefaultDb()`.

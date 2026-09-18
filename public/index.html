@@ -158,25 +158,73 @@
                     </div>
                     
                     <!-- Video Grid Area -->
-                    <div style="position:relative; flex:1; min-height:0; display:flex; padding: 4px;">
+                    <div id="videoGridContainer" style="position:relative; flex:1; min-height:0; display:flex; padding: 4px;">
                         <div id="videoGrid" class="video-grid grid-1" style="flex:1; width:100%;"></div>
                     </div>
 
                     <!-- Bottom Control Panel (Player & PTZ) -->
                     <div id="bottomControlPanel" style="background: var(--surface); border-top: 1px solid var(--border); padding: 0.5rem; display: flex; justify-content: center; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
                         
-                        <!-- Player Controls -->
-                        <div id="playerControls" style="display:flex; align-items:center; gap: 0.5rem; opacity: 0.5; pointer-events: none;">
+                        <!-- Mobile CCTV Desk (Prominently visible on Mobile, eliminates empty void) -->
+                        <div class="mobile-cctv-desk mobile-desk-visible" style="display:none; flex-direction:column; gap:0.65rem; width:100%;">
+                            <!-- Mobile Channel & Layout Bar -->
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem;">
+                                <div style="display:flex; align-items:center; gap:0.3rem;">
+                                    <span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">Grid:</span>
+                                    <button class="btn-sm btn-secondary grid-btn active" data-grid="1" style="background:#2563eb; color:white; padding:3px 7px; font-size:0.75rem;">1x1</button>
+                                    <button class="btn-sm btn-secondary grid-btn" data-grid="4" style="padding:3px 7px; font-size:0.75rem;">2x2</button>
+                                    <button class="btn-sm btn-secondary grid-btn" data-grid="9" style="padding:3px 7px; font-size:0.75rem;">3x3</button>
+                                </div>
+                                <div style="display:flex; gap:0.35rem;">
+                                    <button class="btn-sm btn-primary" onclick="window.toggleGridFullscreen('monitorWrapper')" style="padding:3px 7px; font-size:0.75rem;">⛶ Fullscreen</button>
+                                    <button id="btnReloadStreamsMob" class="btn-sm btn-secondary" onclick="window.reloadActiveStreams()" style="padding:3px 7px; font-size:0.75rem;">🔄 Muat Ulang</button>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Quick Channel Pills (Horizontal scrollable) -->
+                            <div id="mobileQuickChannels" style="display:flex; gap:0.4rem; overflow-x:auto; padding-bottom:4px; white-space:nowrap; -webkit-overflow-scrolling:touch;">
+                                <!-- JS Injected Channel Pills -->
+                            </div>
+
+                            <!-- Mobile PTZ D-Pad & Camera Controls -->
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:0.65rem 0.85rem; border-radius:8px; border:1px solid var(--border); gap:0.75rem;">
+                                <!-- Joystick D-Pad -->
+                                <div style="display:grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap:3px; align-items:center; justify-items:center;">
+                                    <div></div>
+                                    <button class="ptz-btn" style="width:100%; height:100%; font-size:13px; border-radius:6px;" onclick="window.ptzMoveSelected('up')">▲</button>
+                                    <div></div>
+                                    <button class="ptz-btn" style="width:100%; height:100%; font-size:13px; border-radius:6px;" onclick="window.ptzMoveSelected('left')">◀</button>
+                                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:9px; font-weight:bold; color:#60a5fa;">PTZ</div>
+                                    <button class="ptz-btn" style="width:100%; height:100%; font-size:13px; border-radius:6px;" onclick="window.ptzMoveSelected('right')">▶</button>
+                                    <div></div>
+                                    <button class="ptz-btn" style="width:100%; height:100%; font-size:13px; border-radius:6px;" onclick="window.ptzMoveSelected('down')">▼</button>
+                                    <div></div>
+                                </div>
+
+                                <!-- Mobile Audio & Snapshot Controls -->
+                                <div style="flex:1; display:flex; flex-direction:column; gap:0.4rem;">
+                                    <div style="font-size:0.8rem; font-weight:bold; color:#93c5fd;" id="mActiveCamLabel">Kamera: CH 1</div>
+                                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                                        <button class="btn-sm btn-secondary" onclick="window.toggleSelectedMute()" style="font-size:0.85rem; padding:4px 8px;">🔊 Audio</button>
+                                        <button class="btn-sm btn-secondary" onclick="window.takeSnapshotSelected()" style="font-size:0.8rem; padding:4px 8px;">📸 Snapshot</button>
+                                    </div>
+                                    <div style="font-size:0.72rem; color:var(--text-muted);">Pilih kamera di atas untuk kendali PTZ.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Player Controls (Desktop) -->
+                        <div id="playerControls" class="desktop-only-controls" style="display:flex; align-items:center; gap: 0.5rem; opacity: 0.5; pointer-events: none;">
                             <button id="btnPlayerPlay" class="btn-sm btn-secondary" style="border-radius:50%; width: 35px; height: 35px; padding:0; font-size:12px;">⏯️</button>
                             <button id="btnPlayerMute" class="btn-sm btn-secondary" style="border-radius:50%; width: 35px; height: 35px; padding:0; font-size:12px;">🔊</button>
                             <input type="range" id="playerVolume" min="0" max="1" step="0.05" value="1" style="width: 80px; accent-color: var(--primary);">
                             <button id="btnPlayerFullscreen" class="btn-sm btn-secondary" style="border-radius:50%; width: 35px; height: 35px; padding:0; font-size:12px;">⛶</button>
                         </div>
 
-                        <div style="width:1px; height:30px; background:var(--border);"></div>
+                        <div class="desktop-only-controls" style="width:1px; height:30px; background:var(--border);"></div>
 
-                        <!-- PTZ Controls -->
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <!-- PTZ Controls (Desktop) -->
+                        <div class="desktop-only-controls" style="display:flex; align-items:center; gap:0.5rem;">
                             <span style="font-weight:bold; color:var(--text-muted); font-size:12px;">PTZ:</span>
                             <div id="ptzController" class="ptz-controller" style="display:grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap:4px; align-items:center; justify-items:center;">
                                 <div></div>
@@ -847,6 +895,36 @@
                             <h1 style="margin:0; font-size:2rem; color:var(--primary);">Arch3r NVR</h1>
                             <p style="color:var(--text-muted); margin-top:0.5rem;" id="aboutAppVersion">Versi Memuat...</p>
                         </div>
+
+                        <!-- Update Sistem (OTA) Card for Administrator -->
+                        <div style="background:var(--surface); padding:1.25rem; border-radius:8px; border:1px solid var(--border);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
+                                    <span>🚀</span> Update Sistem (OTA & Linux Pipeline)
+                                </h3>
+                                <span id="adminOtaStatusBadge" class="badge" style="background:#2563eb; color:white;">v9.6.4</span>
+                            </div>
+                            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
+                                Periksa pembaruan resmi repositori, lihat ringkasan changelog rilis, dan jalankan alur update sistem dengan perintah terminal Linux (Git Pull, NPM Install, PM2 Reload, Reboot).
+                            </p>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+                                <button class="btn btn-secondary" id="btnAdminCheckOta" style="font-size:0.85rem;" onclick="window.checkAdminOtaUpdate()">
+                                    🔄 Periksa Pembaruan
+                                </button>
+                                <button class="btn btn-secondary" id="btnAdminToggleChangelog" style="font-size:0.85rem;" onclick="window.toggleAdminOtaChangelog()">
+                                    📋 Catatan Rilis (Changelog)
+                                </button>
+                                <button class="btn btn-primary" id="btnAdminOpenWorkflow" style="font-size:0.85rem; background:#10b981; border-color:#059669;" onclick="window.openOtaWorkflowModal()">
+                                    🚀 Alur Eksekusi Update
+                                </button>
+                            </div>
+                            <!-- Admin Changelog Container -->
+                            <div id="adminOtaChangelogContainer" style="display:none; background:var(--bg-dark); border:1px solid var(--border); border-radius:6px; padding:1rem; max-height:260px; overflow-y:auto; margin-top:0.75rem;">
+                                <div id="adminOtaChangelogList" style="display:flex; flex-direction:column; gap:0.75rem;">
+                                    <!-- Populated via JS -->
+                                </div>
+                            </div>
+                        </div>
                         
                         <div style="background:var(--surface); padding:1rem; border-radius:8px; border:1px solid var(--border);">
                             <h3 style="margin:0 0 1rem 0; font-size:1.1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">Informasi Lisensi Mesin</h3>
@@ -882,7 +960,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.6.2</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.6.4</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>
@@ -907,7 +985,7 @@
                     <!-- Channel Selector Injected via JS -->
                 </div>
                 <div class="grid-wrapper" style="position:relative;">
-                    <div id="mVideoGrid" class="video-grid grid-1" style="min-height:50vh;"></div>
+                    <div id="mVideoGrid" class="video-grid grid-1" style="min-height:220px; aspect-ratio:16/9;"></div>
                     <!-- PTZ Controller Mobile -->
                     <div id="mPtzController" class="ptz-controller" style="display:grid;">
                         <div></div>
@@ -1005,6 +1083,142 @@
         </nav>
     </div>
 
-    <script src="script.js?v=9.6.1"></script>
+    <!-- MODAL ALUR UPDATE SISTEM (LINUX COMMAND CHECKLIST & TERMINAL LOG) -->
+    <div id="modalOtaWorkflow" class="ota-modal-overlay">
+        <div class="ota-modal-box">
+            <div class="ota-modal-header">
+                <div>
+                    <h3 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                        <span>⚙️</span> Konfigurasi Alur Update Sistem Linux
+                    </h3>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                        Pilih instruksi terminal Linux yang hendak dieksekusi secara terstruktur pada STB / Server
+                    </div>
+                </div>
+                <button class="ota-btn-close" onclick="window.closeOtaWorkflowModal()">✖</button>
+            </div>
+
+            <div class="ota-modal-body">
+                <div style="background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:8px; padding:0.75rem 1rem; margin-bottom:1rem; font-size:0.8rem; color:#93c5fd; line-height:1.4;">
+                    ℹ️ <strong>Rekomendasi Produksi:</strong> Secara default, sistem mencentang <em>Git Pull</em>, <em>NPM Install</em>, dan <em>PM2 Restart</em> agar pembaruan diterapkan tanpa menghapus database atau memutus layanan lama.
+                </div>
+
+                <div style="font-size:0.82rem; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:0.5px; margin-bottom:0.6rem;">
+                    Daftar Instruksi Eksekusi:
+                </div>
+
+                <div class="ota-pipeline-checklist">
+                    <!-- Step 1: Backup Database -->
+                    <label class="ota-check-item">
+                        <input type="checkbox" id="chkOtaBackup" checked>
+                        <div class="ota-check-content">
+                            <div class="ota-step-title">
+                                <span>1. Backup Konfigurasi & Database Lokal</span>
+                                <span class="badge" style="background:#0284c7; color:#fff; font-size:0.65rem;">Pra-Update</span>
+                            </div>
+                            <div class="ota-step-cmd">cp -r live_db/ /tmp/arch3r_backup_...</div>
+                            <div class="ota-step-desc">Membuat cadangan arsip file database sebelum pembaruan kode dieksekusi.</div>
+                        </div>
+                    </label>
+
+                    <!-- Step 2: Git Pull (Default Mandatory) -->
+                    <label class="ota-check-item" style="border-left:3px solid #10b981;">
+                        <input type="checkbox" id="chkOtaGitPull" checked>
+                        <div class="ota-check-content">
+                            <div class="ota-step-title">
+                                <span>2. Git Fetch & Pull (Original Main)</span>
+                                <span class="badge badge-online" style="font-size:0.65rem;">Rekomendasi Utama</span>
+                            </div>
+                            <div class="ota-step-cmd">git fetch --all && git pull origin main</div>
+                            <div class="ota-step-desc">Menarik kode sumber terbaru dari repositori resmi tanpa merusak konfigurasi lokal.</div>
+                        </div>
+                    </label>
+
+                    <!-- Step 3: NPM Install -->
+                    <label class="ota-check-item">
+                        <input type="checkbox" id="chkOtaNpmInstall" checked>
+                        <div class="ota-check-content">
+                            <div class="ota-step-title">
+                                <span>3. NPM Install Dependencies</span>
+                                <span class="badge" style="background:#8b5cf6; color:#fff; font-size:0.65rem;">Dependensi</span>
+                            </div>
+                            <div class="ota-step-cmd">npm install --production --no-audit</div>
+                            <div class="ota-step-desc">Memperbarui paket dependensi Node.js jika terdapat modul atau fitur baru.</div>
+                        </div>
+                    </label>
+
+                    <!-- Step 4: PM2 Restart All -->
+                    <label class="ota-check-item" style="border-left:3px solid #3b82f6;">
+                        <input type="checkbox" id="chkOtaPm2Restart" checked>
+                        <div class="ota-check-content">
+                            <div class="ota-step-title">
+                                <span>4. PM2 Reload / Restart Service</span>
+                                <span class="badge" style="background:#2563eb; color:#fff; font-size:0.65rem;">Service Runner</span>
+                            </div>
+                            <div class="ota-step-cmd">pm2 reload all || pm2 restart arch3r-nvr</div>
+                            <div class="ota-step-desc">Memuat ulang proses aplikasi NVR di latar belakang agar versi terbaru langsung aktif.</div>
+                        </div>
+                    </label>
+
+                    <!-- Step 5: Clean Cache (Optional) -->
+                    <label class="ota-check-item">
+                        <input type="checkbox" id="chkOtaCleanCache">
+                        <div class="ota-check-content">
+                            <div class="ota-step-title">
+                                <span>5. Bersihkan Cache NPM & Temporary</span>
+                                <span class="badge" style="background:#64748b; color:#fff; font-size:0.65rem;">Opsional</span>
+                            </div>
+                            <div class="ota-step-cmd">npm cache clean --force</div>
+                            <div class="ota-step-desc">Menghemat ruang penyimpanan internal eMMC / MicroSD STB Linux Armbian.</div>
+                        </div>
+                    </label>
+
+                    <!-- Step 6: Git Reset Hard (Danger) -->
+                    <label class="ota-check-item" style="border-left:3px solid #ef4444;">
+                        <input type="checkbox" id="chkOtaGitReset">
+                        <div class="ota-check-content">
+                            <div class="ota-step-title" style="color:#f87171;">
+                                <span>6. Force Sync / Git Reset --Hard (Timpa Modifikasi Lokal)</span>
+                                <span class="badge badge-offline" style="font-size:0.65rem;">Perhatian Khusus</span>
+                            </div>
+                            <div class="ota-step-cmd">git reset --hard origin/main</div>
+                            <div class="ota-step-desc">Gunakan HANYA jika terjadi konflik git lokal yang menghambat proses git pull.</div>
+                        </div>
+                    </label>
+
+                    <!-- Step 7: Reboot Linux STB (Optional) -->
+                    <label class="ota-check-item" style="border-left:3px solid #f59e0b;">
+                        <input type="checkbox" id="chkOtaReboot">
+                        <div class="ota-check-content">
+                            <div class="ota-step-title" style="color:#fbbf24;">
+                                <span>7. Reboot Fisik Mesin Linux / Armbian STB</span>
+                                <span class="badge" style="background:#d97706; color:#fff; font-size:0.65rem;">Restart Hardware</span>
+                            </div>
+                            <div class="ota-step-cmd">sudo reboot || shutdown -r now</div>
+                            <div class="ota-step-desc">Melakukan reboot menyeluruh pada kernel Armbian STB setelah semua tahapan selesai.</div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Console Execution Window -->
+                <div id="otaConsoleWrapper" style="display:none; margin-top:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <span style="font-size:0.75rem; font-weight:bold; color:#cbd5e1;">Live Output Terminal STB:</span>
+                        <span id="otaExecutionSpinner" style="display:none; font-size:0.75rem; color:#60a5fa;">⏳ Sedang Berjalan...</span>
+                    </div>
+                    <pre id="otaTerminalLog" class="ota-term-console"></pre>
+                </div>
+            </div>
+
+            <div class="ota-modal-footer">
+                <button class="btn btn-secondary" onclick="window.closeOtaWorkflowModal()">Batal</button>
+                <button id="btnRunOtaPipeline" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:600; padding:0.6rem 1.25rem;" onclick="window.runOtaPipeline()">
+                    ⚡ Jalankan Pembaruan Terpilih
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=9.6.4"></script>
 </body>
 </html>

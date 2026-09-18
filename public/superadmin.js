@@ -641,7 +641,7 @@
         });
     }
     
-    // --- UPDATE SYSTEM LOGIC ---
+    // --- UPDATE SYSTEM LOGIC (OTA & LINUX PIPELINE) ---
     const btnCheckUpdate = document.getElementById('btnSaCheckUpdate');
     const btnExecuteUpdate = document.getElementById('btnSaExecuteUpdate');
     const btnSaveOta = document.getElementById('btnSaSaveOta');
@@ -649,20 +649,208 @@
     const updateDescText = document.getElementById('saUpdateDescText');
     const inputOtaUrl = document.getElementById('otaGithubUrl');
 
+    let currentUpdateData = null;
+
+    window.toggleOtaChangelog = function() {
+        const box = document.getElementById('saOtaChangelogContainer');
+        if (!box) return;
+        if (box.style.display === 'none' || !box.style.display) {
+            box.style.display = 'block';
+            if (!currentUpdateData) {
+                window.checkOtaUpdate();
+            }
+        } else {
+            box.style.display = 'none';
+        }
+    };
+
+    window.openOtaWorkflowModal = function() {
+        const modal = document.getElementById('modalOtaWorkflow');
+        if (modal) {
+            modal.classList.add('active');
+        }
+    };
+
+    window.closeOtaWorkflowModal = function() {
+        const modal = document.getElementById('modalOtaWorkflow');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    };
+
+    window.applyOtaUpdate = function() {
+        window.openOtaWorkflowModal();
+    };
+
+    window.checkOtaUpdate = async function() {
+        const btn = document.getElementById('btnSaCheckUpdate');
+        if (btn) btn.textContent = "⏳ Memeriksa...";
+
+        try {
+            const res = await authFetch('/api/superadmin/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'check' })
+            });
+            const data = await res.json();
+            currentUpdateData = data;
+
+            if (updateStatusText) {
+                const verText = data.latest_version || data.current_version || '9.6.4';
+                const isNew = data.update_available || data.isUpdateAvailable;
+                updateStatusText.innerHTML = `Versi Terpasang: <span class="badge" style="background:${isNew ? '#f59e0b' : '#2563eb'}; color:#fff;">v${data.current_version || '9.6.4'}</span> ${isNew ? '<span class="badge badge-online">Ada Update: v' + verText + '</span>' : '<span class="badge" style="background:#10b981; color:#fff;">Terbaru</span>'}`;
+            }
+
+            if (updateDescText) {
+                updateDescText.textContent = data.message || `Sistem berjalan pada commit ${data.git_commit || 'terbaru'} (Branch: ${data.git_branch || 'main'}).`;
+            }
+
+            // Sync with Maintenance pane elements if present
+            const otaCur = document.getElementById('otaCurrentVer');
+            const otaLat = document.getElementById('otaLatestVer');
+            const otaBtnApply = document.getElementById('btnApplyOta');
+            if (otaCur) otaCur.textContent = `v${data.current_version || '9.6.4'}`;
+            if (otaLat) otaLat.textContent = `v${data.latest_version || data.current_version || '9.6.4'}`;
+            if (otaBtnApply) otaBtnApply.style.display = 'inline-block';
+
+            // Render changelog list
+            const changelogListContainer = document.getElementById('saOtaChangelogList');
+            const branchInfo = document.getElementById('otaBranchInfo');
+            if (branchInfo && data.git_branch) {
+                branchInfo.textContent = `Branch: ${data.git_branch} (${data.git_commit || 'HEAD'})`;
+            }
+
+            if (changelogListContainer && Array.isArray(data.changelog)) {
+                changelogListContainer.innerHTML = data.changelog.map(c => `
+                    <div style="background:rgba(255,255,255,0.03); padding:0.65rem 0.85rem; border-radius:6px; border-left:3px solid #3b82f6;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <strong style="color:#93c5fd; font-size:0.85rem;">v${c.version} - ${c.title || 'Pembaruan Sistem'}</strong>
+                            <span style="font-size:0.75rem; color:var(--text-muted);">${c.date || ''}</span>
+                        </div>
+                        <ul style="margin:0; padding-left:1.2rem; font-size:0.78rem; color:#cbd5e1; line-height:1.4;">
+                            ${(c.items || []).map(item => `<li>${item}</li>`).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+            }
+
+            // Also populate Maintenance Changelog Box
+            const otaChangelogBox = document.getElementById('otaChangelogBox');
+            if (otaChangelogBox && Array.isArray(data.changelog)) {
+                otaChangelogBox.style.display = 'block';
+                otaChangelogBox.textContent = data.changelog.map(c => `[v${c.version}] ${c.title}\n` + (c.items || []).map(i => ` - ${i}`).join('\n')).join('\n\n');
+            }
+
+            if (btn) btn.textContent = "✅ Diperiksa";
+            setTimeout(() => {
+                if (btn) btn.textContent = "🔄 Periksa Pembaruan";
+            }, 2500);
+
+        } catch (err) {
+            console.error("[OTA Check Error]", err);
+            if (btn) btn.textContent = "❌ Gagal Memeriksa";
+            alert("Gagal memeriksa update: " + err.message);
+        }
+    };
+
+    window.runOtaPipeline = async function() {
+        const btnRun = document.getElementById('btnRunOtaPipeline');
+        const consoleWrapper = document.getElementById('otaConsoleWrapper');
+        const terminalLog = document.getElementById('otaTerminalLog');
+        const spinner = document.getElementById('otaExecutionSpinner');
+
+        const steps = {
+            backup: document.getElementById('chkOtaBackup')?.checked ?? true,
+            git_pull: document.getElementById('chkOtaGitPull')?.checked ?? true,
+            npm_install: document.getElementById('chkOtaNpmInstall')?.checked ?? true,
+            pm2_restart: document.getElementById('chkOtaPm2Restart')?.checked ?? true,
+            git_reset_hard: document.getElementById('chkOtaGitReset')?.checked ?? false,
+            clean_npm_cache: document.getElementById('chkOtaCleanCache')?.checked ?? false,
+            reboot: document.getElementById('chkOtaReboot')?.checked ?? false
+        };
+
+        if (!steps.git_pull && !steps.git_reset_hard && !steps.npm_install && !steps.pm2_restart && !steps.reboot) {
+            alert("Harap pilih setidaknya satu langkah pembaruan untuk dieksekusi.");
+            return;
+        }
+
+        if (!confirm("Konfirmasi eksekusi alur pembaruan sistem pilihan Anda sekarang?")) {
+            return;
+        }
+
+        if (consoleWrapper) consoleWrapper.style.display = 'block';
+        if (spinner) spinner.style.display = 'inline';
+        if (btnRun) {
+            btnRun.disabled = true;
+            btnRun.textContent = "⏳ Mengeksekusi...";
+        }
+
+        if (terminalLog) {
+            terminalLog.textContent = `[ARCH3R-OTA] Memulai alur pembaruan sistem...\n[ARCH3R-OTA] Waktu: ${new Date().toLocaleString()}\n`;
+        }
+
+        try {
+            const res = await authFetch('/api/superadmin/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'execute',
+                    steps: steps
+                })
+            });
+
+            const data = await res.json();
+
+            if (terminalLog && data.logs) {
+                terminalLog.textContent += "\n" + data.logs.join("\n");
+                terminalLog.scrollTop = terminalLog.scrollHeight;
+            }
+
+            if (res.ok && data.success) {
+                if (terminalLog) {
+                    terminalLog.textContent += `\n\n[ARCH3R-OTA] ✅ SELURUH TAHAPAN SELESAI DENGAN SUKSES!`;
+                    terminalLog.scrollTop = terminalLog.scrollHeight;
+                }
+                if (steps.reboot) {
+                    alert("STB sedang melakukan reboot fisik. Sistem akan online kembali dalam 1-2 menit.");
+                } else if (steps.pm2_restart) {
+                    alert("Pembaruan tuntas! Service NVR telah dimuat ulang (PM2). Halaman akan di-refresh otomatis.");
+                    setTimeout(() => window.location.reload(), 2500);
+                } else {
+                    alert("Alur pembaruan sistem selesai dijalankan.");
+                }
+                if (btnRun) btnRun.textContent = "✅ Berhasil Dieksekusi";
+            } else {
+                if (terminalLog) {
+                    terminalLog.textContent += `\n\n[ARCH3R-OTA] ❌ GAGAL: ${data.error || 'Terjadi kesalahan pada alur eksekusi'}`;
+                    terminalLog.scrollTop = terminalLog.scrollHeight;
+                }
+                alert("Eksekusi gagal: " + (data.error || 'Silakan cek terminal log'));
+                if (btnRun) btnRun.textContent = "❌ Gagal Dieksekusi";
+            }
+        } catch (err) {
+            if (terminalLog) {
+                terminalLog.textContent += `\n\n[ARCH3R-OTA] ❌ KESALAHAN JARINGAN/TIMEOUT: ${err.message}\nCatatan: Jika PM2 melakukan reload, server mungkin sempat terputus sesaat. Muat ulang halaman dalam beberapa detik.`;
+                terminalLog.scrollTop = terminalLog.scrollHeight;
+            }
+            alert("Proses eksekusi terputus atau server sedang restart: " + err.message);
+            if (btnRun) btnRun.textContent = "🔄 Selesai / Terputus";
+        } finally {
+            if (spinner) spinner.style.display = 'none';
+            if (btnRun) btnRun.disabled = false;
+        }
+    };
+
     if (btnSaveOta) {
         btnSaveOta.addEventListener('click', async (e) => {
-            e.preventDefault(); // In case it's behaving like a submit button inside some invisible form
+            e.preventDefault();
             const otaUrl = inputOtaUrl.value.trim();
-            console.log("[DEBUG] Menyimpan OTA URL:", otaUrl);
-            
             btnSaveOta.textContent = "⏳ Menyimpan...";
             try {
                 const res = await authFetch('/api/superadmin/settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        ota_github_url: otaUrl
-                    })
+                    body: JSON.stringify({ ota_github_url: otaUrl })
                 });
                 if (res.ok) {
                     btnSaveOta.textContent = "✅ Tersimpan";
@@ -670,77 +858,21 @@
                     setTimeout(() => btnSaveOta.textContent = "💾 Simpan URL", 2000);
                 } else {
                     btnSaveOta.textContent = "❌ Gagal";
-                    alert("Gagal menyimpan URL OTA. Server mengembalikan error.");
+                    alert("Gagal menyimpan URL OTA.");
                 }
             } catch (err) {
                 btnSaveOta.textContent = "❌ Error";
-                alert("Terjadi kesalahan saat menyimpan URL: " + err.message);
+                alert("Terjadi kesalahan: " + err.message);
             }
         });
     }
 
     if (btnCheckUpdate) {
-        btnCheckUpdate.addEventListener('click', async () => {
-            try {
-                btnCheckUpdate.textContent = "⏳ Memeriksa...";
-                const res = await authFetch('/api/superadmin/update', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: 'check' })
-                });
-                const data = await res.json();
-                
-                if (data.mode === 'git') {
-                    updateStatusText.innerHTML = `Mode STB: <span class="badge" style="background:#10b981;">Development (Git)</span>`;
-                    updateDescText.textContent = data.message;
-                    btnCheckUpdate.style.display = 'none';
-                    btnExecuteUpdate.style.display = 'block';
-                } else if (data.mode === 'binary') {
-                    updateStatusText.innerHTML = `Mode STB: <span class="badge" style="background:#8b5cf6;">Production (Binary)</span>`;
-                    updateDescText.textContent = data.message;
-                    if (data.isUpdateAvailable) {
-                        btnCheckUpdate.style.display = 'none';
-                        btnExecuteUpdate.style.display = 'block';
-                    } else {
-                         btnCheckUpdate.textContent = "✅ NVR Sudah Versi Terbaru";
-                    }
-                }
-            } catch (err) {
-                 btnCheckUpdate.textContent = "❌ Gagal Memeriksa";
-                 alert(err.message);
-            }
-        });
+        btnCheckUpdate.addEventListener('click', window.checkOtaUpdate);
     }
 
     if (btnExecuteUpdate) {
-        btnExecuteUpdate.addEventListener('click', async () => {
-            if (!confirm("Apakah Anda yakin ingin memulai update sistem? Proses ini mungkin membuat NVR offline sesaat.")) return;
-            
-            try {
-                btnExecuteUpdate.textContent = "⏳ Mengunduh & Update...";
-                btnExecuteUpdate.disabled = true;
-                
-                const res = await authFetch('/api/superadmin/update', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: 'execute' })
-                });
-                const data = await res.json();
-                
-                if (res.ok) {
-                    alert(data.message + "\n\nHarap restart NVR (PM2 / SystemD) secara manual.");
-                    btnExecuteUpdate.textContent = "✅ Update Berhasil";
-                } else {
-                    alert(data.error || 'Gagal update');
-                    btnExecuteUpdate.textContent = "❌ Gagal Update";
-                }
-            } catch (err) {
-                 alert(err.message);
-                 btnExecuteUpdate.textContent = "❌ Gagal Mengeksekusi";
-            } finally {
-                 btnExecuteUpdate.disabled = false;
-            }
-        });
+        btnExecuteUpdate.addEventListener('click', window.openOtaWorkflowModal);
     }
 
 checkAuth();

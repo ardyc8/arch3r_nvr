@@ -286,23 +286,54 @@
                     
                     <div class="camera-form-section" style="margin-bottom:1.5rem;">
                         <h3 style="margin:0 0 0.5rem 0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
-                            <span>🚀</span> Update Sistem (OTA)
+                            <span>🚀</span> Update Sistem (OTA & Linux Pipeline)
                         </h3>
                         <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
-                            Periksa dan unduh pembaruan Arch3r NVR terbaru secara otomatis (Over-The-Air).
+                            Periksa versi terbaru, baca changelog rilis, dan jalankan alur pembaruan sistem terpadu (Git Pull, NPM, PM2, dan Reboot).
                         </p>
-                        <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; background:var(--surface); padding:1rem; border-radius:6px; border:1px solid var(--border);">
-                             <div style="flex:1;">
-                                 <h4 id="saUpdateStatusText" style="margin:0 0 0.25rem 0; font-size:0.9rem;">Versi Terpasang: <span class="badge">9.6.1</span></h4>
-                                 <p id="saUpdateDescText" style="font-size:0.75rem; margin:0;">Klik periksa pembaruan untuk mengetahui update tersedia.</p>
+                        <div style="background:var(--surface); padding:1.25rem; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; gap:1rem;">
+                             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                                 <div>
+                                     <h4 id="saUpdateStatusText" style="margin:0 0 0.25rem 0; font-size:0.95rem;">
+                                         Versi Terpasang: <span class="badge" style="background:#2563eb; color:#fff;">v9.6.4</span>
+                                     </h4>
+                                     <p id="saUpdateDescText" style="font-size:0.78rem; margin:0; color:var(--text-muted);">
+                                         Tekan tombol di samping untuk mengecek ketersediaan update resmi dari Git / Cloud.
+                                     </p>
+                                 </div>
+                                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                     <button id="btnSaCheckUpdate" class="btn btn-secondary" style="font-size:0.85rem;" onclick="checkOtaUpdate()">
+                                         🔄 Periksa Pembaruan
+                                     </button>
+                                     <button id="btnSaToggleChangelog" class="btn btn-secondary" style="font-size:0.85rem;" onclick="toggleOtaChangelog()">
+                                         📋 Catatan Rilis (Changelog)
+                                     </button>
+                                     <button id="btnSaExecuteUpdate" class="btn btn-primary" style="font-size:0.85rem; background:#10b981; border-color:#059669;" onclick="openOtaWorkflowModal()">
+                                         🚀 Alur Eksekusi Update
+                                     </button>
+                                 </div>
                              </div>
-                             <div style="display:flex; gap:0.5rem; width: 100%; margin-top: 0.5rem;">
-                                 <input type="text" id="otaGithubUrl" class="input" placeholder="OTA URL (https://api.github.com/...)" style="flex:1; font-size:0.8rem; background:var(--bg-lighter);">
+
+                             <!-- Changelog Box Preview -->
+                             <div id="saOtaChangelogContainer" style="display:none; background:var(--bg-dark); border:1px solid var(--border); border-radius:6px; padding:1rem;">
+                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                                     <strong style="font-size:0.85rem; color:#60a5fa;">Daftar Catatan Pembaruan Resmi</strong>
+                                     <span id="otaBranchInfo" style="font-size:0.75rem; color:var(--text-muted);">Branch: main</span>
+                                 </div>
+                                 <div id="saOtaChangelogList" style="font-size:0.8rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.75rem;">
+                                     <!-- JS injected changelog items -->
+                                 </div>
                              </div>
-                             <div style="display:flex; gap:0.5rem; margin-top: 0.5rem;">
-                                 <button id="btnSaSaveOta" class="btn btn-secondary" style="font-size:0.85rem;">💾 Simpan URL</button>
-                                 <button id="btnSaCheckUpdate" class="btn btn-secondary" style="font-size:0.85rem;">🔄 Periksa Pembaruan</button>
-                                 <button id="btnSaExecuteUpdate" class="btn btn-primary" style="font-size:0.85rem; display:none;">⬇️ Eksekusi Update</button>
+
+                             <!-- Optional Custom Cloud OTA URL Configuration -->
+                             <div style="border-top:1px dashed var(--border); padding-top:0.75rem;">
+                                 <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.35rem;">
+                                     Kustomisasi URL Repositori Cloud OTA (Opsional GitHub Releases):
+                                 </label>
+                                 <div style="display:flex; gap:0.5rem; width: 100%;">
+                                     <input type="text" id="otaGithubUrl" class="input" placeholder="OTA URL (https://api.github.com/repos/.../releases/latest)" style="flex:1; font-size:0.8rem; background:var(--bg-lighter);">
+                                     <button id="btnSaSaveOta" class="btn btn-secondary" style="font-size:0.8rem; white-space:nowrap;">💾 Simpan URL</button>
+                                 </div>
                              </div>
                         </div>
                     </div>
@@ -425,6 +456,106 @@
         </main>
     </div>
 
-    <script src="superadmin.js?v=9.6.1"></script>
+    <!-- MODAL KONFIRMASI & CHECKLIST PERINTAH LINUX (OTA UPDATE WORKFLOW) -->
+    <div id="modalOtaWorkflow" class="ota-modal-overlay">
+        <div class="ota-modal-dialog">
+            <div class="ota-modal-header">
+                <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem; color:#60a5fa;">
+                    <span>🚀</span> Konfirmasi Eksekusi Pembaruan Sistem (OTA)
+                </h3>
+                <button onclick="closeOtaWorkflowModal()" style="background:transparent; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div class="ota-modal-body">
+                <div style="background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.3); border-radius:6px; padding:0.85rem; font-size:0.85rem;">
+                    <strong>ℹ️ Panduan Pembaruan:</strong> Silakan pilih perintah terminal Linux yang ingin Anda jalankan selama proses pembaruan. Sistem otomatis mencadangkan database Anda sebelum proses dimulai.
+                </div>
+
+                <div>
+                    <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:var(--text-main);">Daftar Perintah Terminal Linux (Checklist):</h4>
+                    <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                        <label class="ota-checklist-item">
+                            <input type="checkbox" id="chkOtaBackup" checked>
+                            <div>
+                                <strong style="font-size:0.85rem; display:block; color:#10b981;">[Default] Backup Database & Lisensi</strong>
+                                <code style="font-size:0.75rem; color:#94a3b8; display:block;">mkdir -p /tmp/arch3r_backup && cp -r data/* /tmp/arch3r_backup/</code>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">Menjaga konfigurasi kamera, lisensi, dan akun agar kebal dari penimpaan file.</span>
+                            </div>
+                        </label>
+
+                        <label class="ota-checklist-item">
+                            <input type="checkbox" id="chkOtaGitPull" checked>
+                            <div>
+                                <strong style="font-size:0.85rem; display:block; color:#60a5fa;">[Default] Tarik Kode Git (git pull origin main)</strong>
+                                <code style="font-size:0.75rem; color:#94a3b8; display:block;">git pull origin main</code>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">Mengunduh update source code terbaru langsung dari repository resmi.</span>
+                            </div>
+                        </label>
+
+                        <label class="ota-checklist-item">
+                            <input type="checkbox" id="chkOtaNpmInstall" checked>
+                            <div>
+                                <strong style="font-size:0.85rem; display:block; color:#a78bfa;">[Default] Perbarui Paket (npm install)</strong>
+                                <code style="font-size:0.75rem; color:#94a3b8; display:block;">npm install</code>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">Memasang dependensi package Node.js baru yang dibutuhkan sistem.</span>
+                            </div>
+                        </label>
+
+                        <label class="ota-checklist-item">
+                            <input type="checkbox" id="chkOtaPm2Restart" checked>
+                            <div>
+                                <strong style="font-size:0.85rem; display:block; color:#f59e0b;">[Default] Reload Daemon Service (pm2 restart all)</strong>
+                                <code style="font-size:0.75rem; color:#94a3b8; display:block;">pm2 restart all</code>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">Me-restart service NVR dan background worker secara halus tanpa mematikan STB.</span>
+                            </div>
+                        </label>
+
+                        <label class="ota-checklist-item">
+                            <input type="checkbox" id="chkOtaGitReset">
+                            <div>
+                                <strong style="font-size:0.85rem; display:block; color:#fbbf24;">[Opsi] Sinkronisasi Paksa (git fetch & reset --hard)</strong>
+                                <code style="font-size:0.75rem; color:#94a3b8; display:block;">git fetch --all && git reset --hard origin/main</code>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">Gunakan jika ada konflik file lokal yang menghalangi git pull.</span>
+                            </div>
+                        </label>
+
+                        <label class="ota-checklist-item">
+                            <input type="checkbox" id="chkOtaCleanCache">
+                            <div>
+                                <strong style="font-size:0.85rem; display:block; color:#cbd5e1;">[Opsi] Bersihkan Cache NPM (npm cache clean --force)</strong>
+                                <code style="font-size:0.75rem; color:#94a3b8; display:block;">npm cache clean --force</code>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">Membersihkan sampah temporary untuk menghemat ruang disk STB Armbian.</span>
+                            </div>
+                        </label>
+
+                        <label class="ota-checklist-item">
+                            <input type="checkbox" id="chkOtaReboot">
+                            <div>
+                                <strong style="font-size:0.85rem; display:block; color:#ef4444;">[Opsi] Reboot Total Sistem Operasi STB (sudo reboot)</strong>
+                                <code style="font-size:0.75rem; color:#94a3b8; display:block;">sudo reboot</code>
+                                <span style="font-size:0.75rem; color:var(--text-muted);">Mulai ulang fisik perangkat STB Linux setelah seluruh proses update tuntas.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- LIVE CONSOLE LOG -->
+                <div id="otaConsoleWrapper" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+                        <span style="font-size:0.8rem; font-weight:bold; color:#10b981;">📟 Terminal Log Eksekusi:</span>
+                        <span id="otaExecutionSpinner" style="font-size:0.75rem; color:#60a5fa; display:none;">⏳ Menjalankan...</span>
+                    </div>
+                    <div id="otaTerminalLog" class="ota-term-console">Menunggu instruksi eksekusi...</div>
+                </div>
+            </div>
+            <div class="ota-modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeOtaWorkflowModal()">Tutup</button>
+                <button type="button" id="btnRunOtaPipeline" class="btn btn-primary" style="background:#10b981; border-color:#059669;" onclick="runOtaPipeline()">
+                    ⚡ Mulai Eksekusi Pembaruan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="superadmin.js?v=9.6.4"></script>
 </body>
 </html>

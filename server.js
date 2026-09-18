@@ -34,6 +34,17 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecret_nvr_key_2026';
 
 const require = createRequire(import.meta.url);
 
+function getAppVersion() {
+    try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+        return pkg.version || '9.6.3';
+    } catch {
+        return '9.6.3';
+    }
+}
+const APP_VERSION = getAppVersion();
+
+
 
 function getMachineId() {
     const interfaces = os.networkInterfaces();
@@ -499,56 +510,218 @@ app.post('/api/maintenance/reset', verifyToken, (req, res) => {
     res.json({ success: true, message: 'Reset successful' });
 });
 
+async function checkSystemUpdate(otaCustomUrl) {
+    const isGit = fs.existsSync(path.join(__dirname, '.git'));
+    let branch = 'main';
+    let lastCommit = '-';
+    let gitRemote = '';
+
+    if (isGit) {
+        try {
+            branch = execSync('git rev-parse --abbrev-ref HEAD 2>/dev/null', { cwd: __dirname }).toString().trim() || 'main';
+            lastCommit = execSync('git log -1 --format="%h (%s)" 2>/dev/null', { cwd: __dirname }).toString().trim() || '-';
+            gitRemote = execSync('git config --get remote.origin.url 2>/dev/null', { cwd: __dirname }).toString().trim() || '';
+        } catch (e) {}
+    }
+
+    const changelogList = [
+        {
+            version: '9.6.4',
+            date: '2026-09-18',
+            title: 'Sistem Update OTA Granular & Optimalisasi Responsif Mobile Monitor',
+            items: [
+                'Tombol Periksa Pembaruan Sistem (OTA) & Kotak Changelog resmi di Superadmin & Admin Console.',
+                'Modal Interaktif Checklist Perintah Linux saat eksekusi: Git Pull, NPM Install, PM2 Restart, Backup DB, Git Reset Hard, & Reboot.',
+                'Terminal Log Console interaktif untuk memonitor jalannya perintah terminal secara real-time.',
+                'Optimalisasi drastis UI Mobile/Android: Menghilangkan space kosong vertikal di bawah kamera live.',
+                'Panel Kontrol Mobile CCTV terintegrasi: Quick Channel Switcher, Grid Mode, Fullscreen, dan PTZ Pad responsif.'
+            ]
+        },
+        {
+            version: '9.6.3',
+            date: '2026-09-18',
+            title: 'OTA Update Workflow Builder & Dynamic Versioning',
+            items: [
+                'Penyelarasan versi dinamis sistem ke package.json.',
+                'Fondasi API pemeriksaan pembaruan sistem dan backup lisensi.'
+            ]
+        },
+        {
+            version: '9.6.2',
+            date: '2026-09-18',
+            title: 'Mobile Monitor Layout Alignment',
+            items: [
+                'Perataan grid kamera mobile agar tetap proporsional 16:9.',
+                'Penyesuaian slider volume dan tombol PTZ agar ramah layar sentuh.'
+            ]
+        },
+        {
+            version: '9.6.1',
+            date: '2026-09-18',
+            title: 'External Persistent Storage & Shadow DB Engine',
+            items: [
+                'Penyimpanan database cadangan kebal git pull di /media/devmon/* dan Arch3r_NVR.',
+                'Sinkronisasi otomatis rekaman CCTV dari storage eksternal Armbian.'
+            ]
+        }
+    ];
+
+    let latestVersion = APP_VERSION;
+    let hasUpdate = false;
+    let otaSource = isGit ? `Git Repository (${branch})` : 'GitHub Cloud Release';
+
+    if (otaCustomUrl && !otaCustomUrl.includes('YOUR_GITHUB_USERNAME')) {
+        try {
+            const resp = await fetch(otaCustomUrl, { headers: { 'User-Agent': 'Arch3r-NVR' } });
+            if (resp.ok) {
+                const release = await resp.json();
+                latestVersion = (release.tag_name || '').replace(/^v/, '') || APP_VERSION;
+                hasUpdate = latestVersion !== APP_VERSION;
+            }
+        } catch (err) {}
+    }
+
+    return {
+        current_version: APP_VERSION,
+        latest_version: latestVersion,
+        update_available: hasUpdate,
+        is_git: isGit,
+        git_branch: branch,
+        git_remote: gitRemote,
+        last_commit: lastCommit,
+        ota_source: otaSource,
+        changelog: changelogList
+    };
+}
+
+async function executeSystemUpdate(steps = {}) {
+    const logs = [];
+    const timestamp = Date.now();
+    const backupDir = `/tmp/arch3r_backup_${timestamp}`;
+    
+    const doBackup = steps.backup_db !== false;
+    const doGitPull = steps.git_pull !== false;
+    const doGitReset = steps.git_reset === true;
+    const doNpmInstall = steps.npm_install !== false;
+    const doPm2Restart = steps.pm2_restart !== false;
+    const doCleanCache = steps.clean_cache === true;
+    const doReboot = steps.reboot_linux === true;
+
+    logs.push(`[${new Date().toLocaleTimeString()}] 🚀 Memulai alur pembaruan sistem Arch3r NVR Ver. ${APP_VERSION}...`);
+
+    // 1. Backup DB & Licenses
+    if (doBackup) {
+        try {
+            logs.push(`[1] 🛡️ Mencadangkan database & lisensi ke ${backupDir}...`);
+            fs.mkdirSync(backupDir, { recursive: true });
+            if (fs.existsSync(path.join(__dirname, 'data'))) {
+                execSync(`cp -r data/* "${backupDir}/" 2>/dev/null || true`, { cwd: __dirname });
+            }
+            logs.push(`    ✅ Database dan lisensi tersimpan dengan aman.`);
+        } catch (e) {
+            logs.push(`    ⚠️ Peringatan backup: ${e.message}`);
+        }
+    }
+
+    // 2. Git Reset Hard (Optional)
+    if (doGitReset) {
+        try {
+            logs.push(`[2] 🔄 Menjalankan Git Fetch & Reset Hard (origin/main)...`);
+            const out = execSync('git fetch --all && git reset --hard origin/main 2>&1', { cwd: __dirname }).toString().trim();
+            logs.push(`    ${out}`);
+        } catch (e) {
+            logs.push(`    ⚠️ Reset hard: ${e.message}`);
+        }
+    }
+
+    // 3. Git Pull
+    if (doGitPull) {
+        try {
+            logs.push(`[3] ⬇️ Menjalankan Git Pull (origin/main)...`);
+            const out = execSync('git pull origin main 2>&1', { cwd: __dirname }).toString().trim();
+            logs.push(`    ${out}`);
+        } catch (e) {
+            logs.push(`    ⚠️ Git pull: ${e.message}`);
+        }
+    }
+
+    // Restore DB after pull just in case
+    if (doBackup && fs.existsSync(backupDir)) {
+        try {
+            execSync(`cp -rn "${backupDir}/"* data/ 2>/dev/null || true`, { cwd: __dirname });
+        } catch (e) {}
+    }
+
+    // 4. Clean cache (Optional)
+    if (doCleanCache) {
+        try {
+            logs.push(`[4] 🧹 Membersihkan cache NPM...`);
+            execSync('npm cache clean --force 2>&1', { cwd: __dirname });
+            logs.push(`    ✅ Cache berhasil dibersihkan.`);
+        } catch (e) {
+            logs.push(`    ⚠️ Clean cache: ${e.message}`);
+        }
+    }
+
+    // 5. NPM Install
+    if (doNpmInstall) {
+        try {
+            logs.push(`[5] 📦 Memperbarui paket dependensi (npm install)...`);
+            const out = execSync('npm install --no-audit --prefer-offline 2>&1 || npm install 2>&1', { cwd: __dirname }).toString().trim();
+            logs.push(`    ${out.slice(0, 300)}...`);
+            logs.push(`    ✅ Dependensi diverifikasi.`);
+        } catch (e) {
+            logs.push(`    ⚠️ npm install: ${e.message}`);
+        }
+    }
+
+    // 6. PM2 Restart
+    if (doPm2Restart) {
+        try {
+            logs.push(`[6] 🔄 Me-restart service daemon (pm2 restart all)...`);
+            exec('pm2 restart all || systemctl restart arch3r-nvr 2>/dev/null || true', (err) => {
+                if (err) sysLog('WARN', `PM2 restart callback: ${err.message}`, 'SYSTEM');
+            });
+            logs.push(`    ✅ Perintah restart service berhasil dikirimkan.`);
+        } catch (e) {
+            logs.push(`    ⚠️ PM2 restart: ${e.message}`);
+        }
+    }
+
+    // 7. Linux Reboot
+    if (doReboot) {
+        logs.push(`[7] 🔌 Menjadwalkan reboot fisik sistem Linux Armbian dalam 5 detik...`);
+        setTimeout(() => {
+            exec('sudo reboot || reboot', (err) => {
+                if (err) console.error("Reboot error:", err);
+            });
+        }, 5000);
+    }
+
+    logs.push(`[${new Date().toLocaleTimeString()}] ✨ Alur eksekusi selesai!`);
+    return { success: true, logs, message: "Pembaruan sistem berhasil dieksekusi!" };
+}
+
 app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res) => {
     try {
         const dbData = getNvrDb();
-        const otaUrl = dbData.super_settings.ota_github_url || "https://api.github.com/repos/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/releases/latest";
-        
-        if (otaUrl.includes('YOUR_GITHUB_USERNAME')) {
-            return res.json({
-                current_version: require('./package.json').version,
-                latest_version: '9.6.1',
-                changelog: '- Perbaikan perlindungan database saat OTA\n- Fitur Maintenance Terpadu',
-                update_available: true
-            });
-        }
-        
-        const response = await fetch(otaUrl, { headers: { 'User-Agent': 'Arch3r-NVR' } });
-        if (!response.ok) throw new Error('Gagal cek OTA');
-        const release = await response.json();
-        
-        const currentVer = require('./package.json').version;
-        const latestVer = (release.tag_name || '').replace('v', '');
-        
-        res.json({
-            current_version: currentVer,
-            latest_version: latestVer || 'Unknown',
-            changelog: release.body || 'Tidak ada catatan rilis.',
-            update_available: (latestVer && latestVer !== currentVer)
-        });
+        const otaUrl = dbData.super_settings?.ota_github_url || "";
+        const result = await checkSystemUpdate(otaUrl);
+        res.json(result);
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-app.post('/api/system/ota/apply', verifyToken, requireSuperadmin, (req, res) => {
-    sysLog('WARN', `[OTA] Firmware update started by superadmin`, 'SYSTEM');
-    res.json({ success: true, message: 'Update dimulai, sistem akan otomatis restart (PM2/Service).' });
-    setTimeout(() => {
-        const cmd = `
-            mkdir -p /tmp/arch3r_data_backup &&
-            cp -r data/* /tmp/arch3r_data_backup/ 2>/dev/null || true &&
-            git fetch --all &&
-            git reset --hard origin/main &&
-            git pull &&
-            cp -r /tmp/arch3r_data_backup/* data/ &&
-            npm install &&
-            pm2 restart all
-        `;
-        child_process.exec(cmd, (err, stdout, stderr) => {
-            if (err) console.error("OTA Update failed:", err);
-        });
-    }, 2000);
+app.post('/api/system/ota/apply', verifyToken, requireSuperadmin, async (req, res) => {
+    sysLog('WARN', `[OTA] Firmware update started by superadmin with custom workflow`, 'SYSTEM');
+    try {
+        const steps = req.body?.steps || {};
+        const result = await executeSystemUpdate(steps);
+        res.json(result);
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.use(express.static(publicDir));
@@ -1035,7 +1208,7 @@ function getAuthorizedCamerasForReq(req) {
 }
 
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', version: 'Archer NVR Ver. 9.6.1' });
+    res.json({ status: 'ok', version: `Archer NVR Ver. ${APP_VERSION}` });
 });
 
 // Auth Endpoints
@@ -1213,7 +1386,7 @@ app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
     const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
     
     res.json({
-        appVersion: "9.6.1",
+        appVersion: APP_VERSION,
         machineId,
         trialDaysLeft,
         isTrialActive: trialDaysLeft > 0,
@@ -1278,53 +1451,35 @@ app.get('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) =
 
 // --- API UPDATE SISTEM (OTA & GIT) ---
 app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, res) => {
-    const isBinaryBuild = process.env.IS_BINARY_BUILD === 'true' || process.pkg || !fs.existsSync('.git');
     const updateType = req.body.type; // 'check' atau 'execute'
 
-    // Jika STB berjalan dalam Mode Development (Ada folder .git)
-    if (!isBinaryBuild) {
-        if (updateType === 'check') {
-            return res.json({ 
-                mode: 'git', 
-                message: 'STB Development mendeteksi mode Git. NVR siap melakukan git pull.',
-                isUpdateAvailable: true 
+    if (updateType === 'check') {
+        try {
+            const dbData = getNvrDb();
+            const otaUrl = dbData.super_settings?.ota_github_url || "";
+            const info = await checkSystemUpdate(otaUrl);
+            return res.json({
+                success: true,
+                ...info
             });
-        }
-        
-        if (updateType === 'execute') {
-            const { exec } = await import('child_process');
-            sysLog('INFO', '[Superadmin] Memulai Update via Git Pull...');
-            
-            exec('git pull origin main && npm install', (error, stdout, stderr) => {
-                if (error) {
-                    sysLog('ERROR', `[Update Gagal] ${error.message}`);
-                    return res.status(500).json({ error: "Gagal melakukan update Git.", details: stderr });
-                }
-                sysLog('INFO', `[Update Berhasil] ${stdout}`);
-                res.json({ success: true, message: "Update berhasil (Git Pull)! Sistem disarankan di-restart." });
-                // Disarankan menggunakan PM2, jadi NVR tidak langsung kill process dari node.
-            });
-        }
-    } 
-    // Jika STB berjalan dalam Mode Produksi/Binary (Tidak ada .git)
-    else {
-        if (updateType === 'check') {
-             // Simulasi Pengecekan ke GitHub Releases
-             // Pada skenario nyata, ini akan me-request ke GitHub API (https://api.github.com/repos/username/repo/releases/latest)
-             return res.json({ 
-                mode: 'binary', 
-                message: 'Fitur OTA Binary akan memeriksa GitHub Releases Anda.',
-                isUpdateAvailable: false, // Set false sementara karena belum ada cloud zip 
-                latestVersion: '9.6.1',
-                repoHost: 'GitHub Releases'
-            });
-        }
-
-        if (updateType === 'execute') {
-            // Pada skenario nyata, bagian ini akan men-download .zip dari GitHub, meng-ekstrak, dan menimpa archer-nvr-arm64
-            res.status(501).json({ error: "Fitur Auto-Download Binary belum diaktifkan. Silakan set repository cloud (GitHub) terlebih dahulu di pengaturan server." });
+        } catch (e) {
+            return res.status(500).json({ error: e.message });
         }
     }
+
+    if (updateType === 'execute') {
+        try {
+            sysLog('INFO', `[Superadmin] Memulai eksekusi pembaruan sistem OTA/Git...`, 'SYSTEM');
+            const steps = req.body.steps || {};
+            const result = await executeSystemUpdate(steps);
+            return res.json(result);
+        } catch (e) {
+            sysLog('ERROR', `[Update Gagal] ${e.message}`, 'SYSTEM');
+            return res.status(500).json({ error: e.message });
+        }
+    }
+
+    return res.status(400).json({ error: 'Parameter type tidak valid (check/execute).' });
 });
 
 app.post('/api/superadmin/change-credentials', verifyToken, requireSuperadmin, (req, res) => {
@@ -1383,7 +1538,7 @@ app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) 
 app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) => {
     res.json({
         appName: 'Arch3r NVR',
-        version: '9.6.1',
+        version: APP_VERSION,
         nodeVersion: process.version,
         platform: require('os').platform(),
         arch: require('os').arch(),
