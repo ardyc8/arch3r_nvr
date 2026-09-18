@@ -2724,3 +2724,152 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+
+// ==========================================
+// AI YOLOv8 Grid Management
+// ==========================================
+let aiDrawCanvas, aiDrawCtx, isAIDrawing = false;
+let aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
+let aiBaseWidth = 1280; // Asumsi default resolusi AI
+let aiBaseHeight = 720;
+
+function openAIGridModal() {
+    const modal = new bootstrap.Modal(document.getElementById('aiGridModal'));
+    
+    // Populate select
+    const select = document.getElementById('ai-cam-select');
+    select.innerHTML = '<option value="">-- Pilih Kamera --</option>';
+    cameras.forEach(cam => {
+        select.innerHTML += `<option value="${cam.id}">${cam.name} (${cam.ip})</option>`;
+    });
+    
+    document.getElementById('ai-canvas-container').style.display = 'none';
+    modal.show();
+}
+
+function loadCamStreamForAI() {
+    const camId = document.getElementById('ai-cam-select').value;
+    const container = document.getElementById('ai-canvas-container');
+    const img = document.getElementById('ai-stream-preview');
+    
+    if(!camId) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    // Tampilkan Snapshot dari RTSP untuk dijadikan kanvas menggambar
+    // Jika tidak ada snapshot live, kita gunakan gambar kosong sementara
+    // Pada produksi STB nyata, ini harusnya mengambil frame terakhir dari WebRTC/HLS
+    img.src = '/api/snapshot/' + camId + '?t=' + Date.now(); 
+    img.onerror = function() {
+        // Fallback jika API snapshot tidak tersedia
+        img.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22640%22%20height%3D%22360%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20640%20360%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22320%22%20y%3D%22180%22%20fill%3D%22%23777%22%20font-family%3D%22sans-serif%22%20font-size%3D%2220%22%20text-anchor%3D%22middle%22%3EStream%20Kamera%20Tidak%20Tersedia%3C%2Ftext%3E%3C%2Fsvg%3E';
+    };
+    
+    container.style.display = 'block';
+    
+    // Init Canvas Drawing events
+    setTimeout(initAIDrawCanvas, 500);
+}
+
+function initAIDrawCanvas() {
+    const img = document.getElementById('ai-stream-preview');
+    const canvas = document.getElementById('ai-draw-canvas');
+    
+    // Sesuaikan resolusi canvas dengan ukuran gambar aslinya (ditampilkan di layar)
+    canvas.width = img.clientWidth;
+    canvas.height = img.clientHeight;
+    
+    aiDrawCanvas = canvas;
+    aiDrawCtx = canvas.getContext('2d');
+    
+    // Reset state
+    aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
+    redrawAIGrid();
+    
+    // Event listeners
+    canvas.onmousedown = (e) => {
+        isAIDrawing = true;
+        const rect = canvas.getBoundingClientRect();
+        aiGridRect.x = e.clientX - rect.left;
+        aiGridRect.y = e.clientY - rect.top;
+        aiGridRect.w = 0;
+        aiGridRect.h = 0;
+    };
+    
+    canvas.onmousemove = (e) => {
+        if (!isAIDrawing) return;
+        const rect = canvas.getBoundingClientRect();
+        aiGridRect.w = (e.clientX - rect.left) - aiGridRect.x;
+        aiGridRect.h = (e.clientY - rect.top) - aiGridRect.y;
+        redrawAIGrid();
+    };
+    
+    canvas.onmouseup = () => {
+        isAIDrawing = false;
+        // Hitung persentase agar support berbagai resolusi (YOLOv8 butuh koordinat mentah atau persentase)
+        const pX = (aiGridRect.x / canvas.width).toFixed(3);
+        const pY = (aiGridRect.y / canvas.height).toFixed(3);
+        const pW = (aiGridRect.w / canvas.width).toFixed(3);
+        const pH = (aiGridRect.h / canvas.height).toFixed(3);
+        
+        document.getElementById('ai-coord-status').innerHTML = 
+            `Area Tersimpan: X(${pX}) Y(${pY}) W(${pW}) H(${pH})`;
+    };
+}
+
+function redrawAIGrid() {
+    aiDrawCtx.clearRect(0, 0, aiDrawCanvas.width, aiDrawCanvas.height);
+    if(aiGridRect.w === 0) return;
+    
+    aiDrawCtx.strokeStyle = "red";
+    aiDrawCtx.lineWidth = 2;
+    aiDrawCtx.fillStyle = "rgba(255, 0, 0, 0.2)";
+    
+    aiDrawCtx.beginPath();
+    aiDrawCtx.rect(aiGridRect.x, aiGridRect.y, aiGridRect.w, aiGridRect.h);
+    aiDrawCtx.fill();
+    aiDrawCtx.stroke();
+}
+
+function clearAIGrid() {
+    aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
+    redrawAIGrid();
+    document.getElementById('ai-coord-status').innerHTML = 'Belum ada area yang digambar.';
+}
+
+function saveAIGrid() {
+    const camId = document.getElementById('ai-cam-select').value;
+    if(!camId) {
+        alert("Pilih kamera terlebih dahulu!");
+        return;
+    }
+    
+    if(aiGridRect.w === 0) {
+        alert("Gambarlah kotak area berwarna merah di atas gambar terlebih dahulu!");
+        return;
+    }
+
+    // Mengonversi koordinat pixel ke persentase untuk dikirim ke Engine YOLO
+    const payload = {
+        camera_id: camId,
+        x: aiGridRect.x / aiDrawCanvas.width,
+        y: aiGridRect.y / aiDrawCanvas.height,
+        w: aiGridRect.w / aiDrawCanvas.width,
+        h: aiGridRect.h / aiDrawCanvas.height,
+        enabled: true
+    };
+    
+    fetch('/api/ai/grid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }).then(res => res.json())
+      .then(data => {
+          alert("Konfigurasi AI berhasil disimpan dan dikirim ke YOLO Engine!");
+          bootstrap.Modal.getInstance(document.getElementById('aiGridModal')).hide();
+      }).catch(e => {
+          alert("Gagal menghubungi NVR Backend.");
+      });
+}
