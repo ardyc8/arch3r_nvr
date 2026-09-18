@@ -1,5 +1,10 @@
 # Changelog
 
+## [Ver 9.5.9] - 2026-09-18
+### Fixed
+- **Fix 502 Bad Gateway (Camera Save):** Menghapus fungsi *synchronous deep-scan* (pemindaian memori secara sinkronus) pada `/media` dan `/mnt` saat menyimpan kamera. Pada STB Linux Armbian, pemindaian *disk* eksternal yang sedang *sleep* (spun-down) atau *network drive* dapat menyebabkan *Node.js event loop* terblokir. Pemblokiran ini menyebabkan Nginx/Cloudflare kehabisan waktu tunggu (*timeout*) dan menghasilkan *Error 502 Bad Gateway*. Sistem kini akan kembali menggunakan fallback folder lokal secara instan jika *path* tidak diatur.
+
+
 ## [Ver 9.5.8] - 2026-09-18
 ### Fixed
 - **Data Loss Root Cause Analysis:** Memperbaiki celah logika migrasi database. Pada versi sebelumnya, sistem mengganti nama file ke `local_db_accounts.json` namun gagal menyalin data dari `db_accounts.json` lama jika file tersebut ada, menyebabkan server secara otomatis membuat data kosong dan menimpa isi sebelumnya. Menambahkan logika *Fallback Auto-Migration* yang secara cerdas akan menyalin data lama jika file *local_db* masih kosong atau baru terbentuk.
