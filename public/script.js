@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.8.7 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.8.8 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
