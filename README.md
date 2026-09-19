@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.7.7)
+# ⚡ Arch3r NVR (Ver. 9.7.8)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, dan *Developer Console* (Superadmin).
@@ -91,6 +91,13 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
 ---
 
 ## 📜 Log Pembaruan (Changelog)
+- **[Ver 9.7.8]**
+  - **Fullscreen Gear Setting Button Relocation**: Tombol gerigi/pengaturan (`⚙️`) pada mode layar penuh (*Fullscreen*) kini diposisikan secara presisi tepat di bawah kotak semua video monitor (`#videoGridContainer`) dalam baris bilah kontrol khusus yang bersih, menggantikan posisi melayang lama di sudut kanan bawah.
+  - **PTZ Control Panel Responsive Architecture**: Menata ulang struktur kartu Kontrol PTZ & Player dalam mode biasa/landscape:
+    1. *Baris Atas (Horizontal Parallel)*: Panel **🔍 LENSA & FOKUS** (Zoom +, Focus +, Zoom -, Focus -) dan panel **🎬 KONTROL PLAYER & AUDIO** (Play/Pause, Kualitas HD/SD, Snapshot 📸, Slider Volume 🔊, Audio Mute 🔇) diletakkan sejajar secara horizontal dan adaptif/responsif.
+    2. *Baris Bawah (Center)*: Dial joystick **D-Pad Sirkular** (▲, ◀, Stop ■, ▶, ▼) diletakkan di bagian tengah bawah (*bottom center*) secara simetris dan rapi.
+  - **Unified Version & Metadata Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.7.8** di seluruh tampilan UI, login card, sidebar profil, mobile header, dan metadata sistem.
+
 - **[Ver 9.7.7]**
   - **Navigation & Control Panel Layout Alignment**: Menyesuaikan tata letak panel kontrol monitor secara presisi dengan arsitektur 3 baris terstruktur:
     1. *Baris 1*: Dropdown filter saluran (`View: ALL` / `View: CH x`) dan navigasi halaman kamera (`◀ Prev`, `Hal x/y`, `Next ▶`).

@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.7.7</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.7.8</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.7.7</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.7.8</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -121,7 +121,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 9.7.3</h3>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 9.7.8</h3>
                 <div style="display:flex; align-items:center; margin-left:auto;">
                     <img src="Archer.ico?v=2" alt="Arch3r" style="height:26px; width:26px; object-fit:contain; border-radius:4px;">
                 </div>
@@ -131,14 +131,14 @@
             <div id="view-monitor" class="view-pane active">
                 <div id="monitorWrapper" class="grid-wrapper" style="position:relative; width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--bg-main); padding: 0;">
                     
-                    <!-- Toggle Button (ONLY shown in Fullscreen mode) -->
-                    <div id="btnToggleControlsContainer">
-                        <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 40px; height: 40px; padding:0; display:flex; justify-content:center; align-items:center; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 4px 14px rgba(0,0,0,0.8); cursor:pointer; font-size:18px; color:var(--text-main);" title="Buka Panel Navigasi & PTZ">⚙️</button>
-                    </div>
-
                     <!-- Video Grid Area (Takes available space above controls) -->
                     <div id="videoGridContainer" style="position:relative; flex:1 1 auto; min-height:0; display:flex; padding: 4px; background: #000;">
                         <div id="videoGrid" class="video-grid grid-9" style="flex:1; width:100%;"></div>
+                    </div>
+
+                    <!-- Toggle Button (ONLY shown in Fullscreen mode - placed directly below video boxes) -->
+                    <div id="btnToggleControlsContainer">
+                        <button id="btnToggleControls" class="btn-sm btn-secondary" onclick="window.toggleTopControls()" style="border-radius:50%; width: 40px; height: 40px; padding:0; display:flex; justify-content:center; align-items:center; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 4px 14px rgba(0,0,0,0.8); cursor:pointer; font-size:18px; color:var(--text-main);" title="Buka Panel Navigasi & PTZ">⚙️</button>
                     </div>
 
                     <!-- Bottom Bar: Unified Navigation, Toolbar & PTZ Controller -->
@@ -186,21 +186,10 @@
                                 </div>
                                 <div class="nvr-ptz-divider"></div>
                                 <div class="nvr-ptz-body">
-                                    <!-- 1. Left: Circular D-Pad Dial -->
-                                    <div class="nvr-ptz-dial-wrapper">
-                                        <div class="nvr-ptz-dial">
-                                            <button class="nvr-ptz-arrow-btn nvr-ptz-up" onclick="window.ptzMoveSelected('up')" title="PTZ Atas">▲</button>
-                                            <button class="nvr-ptz-arrow-btn nvr-ptz-left" onclick="window.ptzMoveSelected('left')" title="PTZ Kiri">◀</button>
-                                            <button class="nvr-ptz-center-circle" onclick="window.ptzMoveSelected('stop')" title="PTZ Stop / Center"><span class="nvr-ptz-stop-square">■</span></button>
-                                            <button class="nvr-ptz-arrow-btn nvr-ptz-right" onclick="window.ptzMoveSelected('right')" title="PTZ Kanan">▶</button>
-                                            <button class="nvr-ptz-arrow-btn nvr-ptz-down" onclick="window.ptzMoveSelected('down')" title="PTZ Bawah">▼</button>
-                                        </div>
-                                    </div>
-
-                                    <!-- 2. Right: Stacked Column (Lensa & Fokus + Kontrol Player & Audio) -->
-                                    <div class="nvr-ptz-right-column">
-                                        <!-- Top Box: Lensa & Fokus -->
-                                        <div class="nvr-ptz-group-box">
+                                    <!-- Top Row: Horizontal parallel layout for (Lensa & Fokus) and (Kontrol Player & Audio) -->
+                                    <div class="nvr-ptz-top-panels">
+                                        <!-- 1. Left Box: Lensa & Fokus -->
+                                        <div class="nvr-ptz-group-box nvr-optics-box">
                                             <div class="nvr-ptz-group-title">🔍 LENSA & FOKUS</div>
                                             <div class="nvr-ptz-actions-grid">
                                                 <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('zoom_in')">Zoom +</button>
@@ -210,8 +199,8 @@
                                             </div>
                                         </div>
 
-                                        <!-- Bottom Box: Kontrol Player & Audio -->
-                                        <div class="nvr-ptz-group-box">
+                                        <!-- 2. Right Box: Kontrol Player & Audio -->
+                                        <div class="nvr-ptz-group-box nvr-media-box">
                                             <div class="nvr-ptz-group-title">🎬 KONTROL PLAYER & AUDIO</div>
                                             <!-- Row 1: Play, HD/SD Quality Toggle, Snapshot -->
                                             <div class="nvr-player-row-top">
@@ -235,6 +224,17 @@
                                                     <span id="playerMuteIcon" class="nvr-icon">🔇</span> Audio
                                                 </button>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Bottom Row: Centered D-Pad Dial -->
+                                    <div class="nvr-ptz-dial-wrapper nvr-ptz-dial-center">
+                                        <div class="nvr-ptz-dial">
+                                            <button class="nvr-ptz-arrow-btn nvr-ptz-up" onclick="window.ptzMoveSelected('up')" title="PTZ Atas">▲</button>
+                                            <button class="nvr-ptz-arrow-btn nvr-ptz-left" onclick="window.ptzMoveSelected('left')" title="PTZ Kiri">◀</button>
+                                            <button class="nvr-ptz-center-circle" onclick="window.ptzMoveSelected('stop')" title="PTZ Stop / Center"><span class="nvr-ptz-stop-square">■</span></button>
+                                            <button class="nvr-ptz-arrow-btn nvr-ptz-right" onclick="window.ptzMoveSelected('right')" title="PTZ Kanan">▶</button>
+                                            <button class="nvr-ptz-arrow-btn nvr-ptz-down" onclick="window.ptzMoveSelected('down')" title="PTZ Bawah">▼</button>
                                         </div>
                                     </div>
                                 </div>
