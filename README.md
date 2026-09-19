@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.8.6)
+# ⚡ Arch3r NVR (Ver. 9.8.7)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF PTZ fleksibel (toggle Ya/Tidak, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Kiosk HDMI, dan *Developer Console* (Superadmin).
@@ -106,6 +106,16 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
   - **Fixed 4x4 Grid Fullscreen Landscape Distortion**: Memperbaiki pembagian template baris dan kolom pada layout grid (`.video-grid.grid-16`, `grid-9`, `grid-4`, `grid-1`) dengan `grid-template-rows: repeat(N, minmax(0, 1fr))` dan `min-height: 0` / `min-width: 0` pada `.cam-cell`. Kotak video pada mode layar penuh 4x4 landscape kini terbagi rata dan proporsional sempurna tanpa ada baris yang gepeng atau terjepit.
   - **Translucent Subtle Watermark for Camera Names**: Mengubah tampilan nama kamera di dalam kotak video menjadi watermark semi-transparan (`rgba(0, 0, 0, 0.42)`) dengan *subtle backdrop blur* dan border halus di pojok kiri atas. Nama kamera kini tidak menutupi rekaman video dan tampak seperti *On-Screen Display (OSD)* standar kamera pengawas profesional.
   - **Unified Version & Metadata Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.7.9** di seluruh tampilan UI, login card, sidebar profil, mobile header, komentar skrip, dan metadata sistem.
+
+- **[Ver 9.8.7]**
+  - **Fixed PTZ/ONVIF Camera Setting Persistence & Form Sync**: Memperbaiki alur sinkronisasi form edit kamera. Saat tombol edit kamera ditekan, form otomatis memuat seluruh konfigurasi ONVIF (`camPtzSelect`, `camPtzUrl`, `camPtzUser`, `camPtzPass`) dari database dan mengembalikan tab aktif ke tab utama (`Stream`) tanpa kehilangan data.
+  - **Prevent Auto-Fill Overwrite on Edit Mode**: Menonaktifkan fungsi auto-extract blur pada input RTSP ketika sedang mengedit kamera lama, sehingga URL dan kredensial kustom ONVIF yang tersimpan tidak tertimpa otomatis.
+  - **Auto-Sync Network Scan to ONVIF Select**: Menyesuaikan integrasi Auto-Discovery LAN agar mengisi opsi `camPtzSelect` dan port host ONVIF secara serasi dengan arsitektur form baru.
+
+- **[Ver 9.8.6]**
+  - **Flexible ONVIF & PTZ Configuration**: Menambahkan opsi dropdown Ya/Tidak untuk mengaktifkan fitur ONVIF/PTZ pada pengaturan kamera.
+  - **Auto-Extract RTSP Credentials for ONVIF**: Tombol instan untuk mengekstrak host IP, username, dan password secara otomatis dari string URL RTSP.
+  - **Custom ONVIF URL/Port & Live Probe Test**: Mendukung port kustom (misal port 2020 Tapo atau 8899 XM/Bardi) serta tombol uji probe ONVIF langsung ke kamera sebelum disimpan.
 
 - **[Ver 9.7.8]**
   - **Fullscreen Gear Setting Button Relocation**: Tombol gerigi/pengaturan (`⚙️`) pada mode layar penuh (*Fullscreen*) kini diposisikan secara presisi tepat di bawah kotak semua video monitor (`#videoGridContainer`) dalam baris bilah kontrol khusus yang bersih, menggantikan posisi melayang lama di sudut kanan bawah.

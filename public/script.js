@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.8.6 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.8.7 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -408,11 +408,13 @@ async function handleLogout() {
                                             document.getElementById('camName').value = 'Kamera ' + dev.ip;
                                             document.getElementById('camMainUrl').value = `rtsp://admin:password@${dev.ip}:554/stream1`;
                                             document.getElementById('camSubUrl').value = `rtsp://admin:password@${dev.ip}:554/stream2`;
-                                            document.getElementById('camPtzEnabled').checked = dev.isOnvif;
+                                            const ptzSel = document.getElementById('camPtzSelect');
+                                            if (ptzSel) ptzSel.value = dev.isOnvif ? 'yes' : 'no';
                                             
                                             // Asumsi port ONVIF pertama
                                             const onvifPort = dev.ports.find(p => p !== 554) || 80;
-                                            document.getElementById('camPtzUrl').value = `http://${dev.ip}:${onvifPort}/onvif/device_service`;
+                                            const ptzUrlInput = document.getElementById('camPtzUrl');
+                                            if (ptzUrlInput) ptzUrlInput.value = `${dev.ip}:${onvifPort}`;
                                             
                                             document.getElementById('advancedScanBox').style.display = 'none';
                                             alert('Data IP disalin. Sesuaikan Username dan Password!');
@@ -596,6 +598,25 @@ async function handleLogout() {
         }
     }
 
+    function switchCameraTab(tabTargetId) {
+        const ctabBtns = document.querySelectorAll('.ctab-btn');
+        const ctabPanes = document.querySelectorAll('.ctab-pane');
+        ctabBtns.forEach(b => {
+            if (b.getAttribute('data-target') === tabTargetId) {
+                b.classList.add('active');
+            } else {
+                b.classList.remove('active');
+            }
+        });
+        ctabPanes.forEach(p => {
+            if (p.id === tabTargetId) {
+                p.classList.add('active');
+            } else {
+                p.classList.remove('active');
+            }
+        });
+    }
+
     function initCameraTabs() {
         const ctabBtns = document.querySelectorAll('.ctab-btn');
         const ctabPanes = document.querySelectorAll('.ctab-pane');
@@ -763,10 +784,16 @@ async function updateHardwareStats() {
         }
     }
 
-    // Auto extract saat input RTSP berubah
+    // Auto extract saat input RTSP berubah (hanya jika mode tambah baru atau form belum diisi)
     const camMainUrlInput = document.getElementById('camMainUrl');
     if (camMainUrlInput) {
-        camMainUrlInput.addEventListener('blur', () => autoFillPtzFromRtsp(false));
+        camMainUrlInput.addEventListener('blur', () => {
+            const currentEditingId = document.getElementById('camId') ? document.getElementById('camId').value : '';
+            // Jangan timpa otomatis jika sedang dalam mode edit kamera lama
+            if (!currentEditingId) {
+                autoFillPtzFromRtsp(false);
+            }
+        });
     }
 
     const btnAutoFillPtz = document.getElementById('btnAutoFillPtz');
@@ -870,6 +897,11 @@ async function updateHardwareStats() {
         const btnCancelEdit = document.getElementById('btnCancelEdit');
         if(btnCancelEdit) btnCancelEdit.style.display = 'inline-block';
         
+        // Kembalikan form ke tab utama (Stream) secara default saat buka edit
+        if (typeof switchCameraTab === 'function') {
+            switchCameraTab('ctab-stream');
+        }
+
         const cForm = document.getElementById('cameraForm');
         if(cForm) cForm.scrollIntoView({ behavior: 'smooth' });
     };
@@ -904,6 +936,10 @@ async function updateHardwareStats() {
         if (ptzPass) ptzPass.value = '';
         const statusEl = document.getElementById('ptzProbeStatus');
         if (statusEl) statusEl.innerHTML = '';
+
+        if (typeof switchCameraTab === 'function') {
+            switchCameraTab('ctab-stream');
+        }
 
         const formTitle = document.getElementById('formTitle');
         if (formTitle) formTitle.textContent = 'Tambah Kamera Baru';
