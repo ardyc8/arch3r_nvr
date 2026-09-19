@@ -18,7 +18,7 @@ echo "=========================================================="
 echo "⚡ Arch3r NVR - Konfigurasi Kiosk Layar HDMI Standalone"
 echo "=========================================================="
 
-echo "[1/4] Menginstal dependensi grafis minimal (Xorg, Matchbox/Openbox, Chromium)..."
+echo "[1/4] Menginstal dependensi grafis minimal (Xorg, Matchbox, Chromium)..."
 apt-get update -y
 apt-get install -y --no-install-recommends \
     xserver-xorg \
@@ -26,7 +26,7 @@ apt-get install -y --no-install-recommends \
     xinit \
     x11-xserver-utils \
     matchbox-window-manager \
-    chromium-browser || apt-get install -y chromium
+    chromium-browser || apt-get install -y chromium || true
 
 echo "[2/4] Mengonfigurasi hak akses Xwrapper untuk non-console..."
 mkdir -p /etc/X11
@@ -35,31 +35,43 @@ allowed_users=anybody
 needs_root_rights=yes
 EOF
 
-echo "[3/4] Membuat script peluncur Kiosk X11..."
+echo "[3/4] Membuat script peluncur Kiosk X11 dengan auto-restart loop..."
 mkdir -p /opt/arch3r-kiosk
 cat << 'EOF' > /opt/arch3r-kiosk/start-kiosk.sh
 #!/bin/bash
 export DISPLAY=:0
-xset -dpms
-xset s off
-xset s noblank
+xset -dpms 2>/dev/null || true
+xset s off 2>/dev/null || true
+xset s noblank 2>/dev/null || true
 
-# Jalankan window manager ringan agar Chromium stabil dan tidak overflow memori
+# Jalankan window manager ringan
 matchbox-window-manager -use_titlebar no &
 
-# Jalankan Chromium mode Kiosk
-CHROMIUM_BIN=$(which chromium-browser || which chromium)
-exec $CHROMIUM_BIN \
-    --kiosk \
-    --no-first-run \
-    --disable-infobars \
-    --disable-session-crashed-bubble \
-    --disable-translate \
-    --no-sandbox \
-    --disable-gpu \
-    --disable-software-rasterizer \
-    --check-for-update-interval=31536000 \
-    --app=http://localhost:3000
+# Deteksi binary Chromium
+CHROMIUM_BIN=$(which chromium-browser 2>/dev/null || which chromium 2>/dev/null || which google-chrome 2>/dev/null || echo "/usr/bin/chromium-browser")
+
+# Loop keep-alive agar Chromium selalu aktif dan memuat streaming NVR
+while true; do
+    rm -rf /tmp/arch3r_kiosk_chrome/Singleton* 2>/dev/null || true
+    $CHROMIUM_BIN \
+        --kiosk \
+        --no-first-run \
+        --no-default-browser-check \
+        --disable-infobars \
+        --disable-session-crashed-bubble \
+        --disable-translate \
+        --noerrdialogs \
+        --no-sandbox \
+        --test-type \
+        --user-data-dir=/tmp/arch3r_kiosk_chrome \
+        --disable-dev-shm-usage \
+        --disable-gpu \
+        --disable-software-rasterizer \
+        --autoplay-policy=no-user-gesture-required \
+        --check-for-update-interval=31536000 \
+        --app=http://localhost:3000
+    sleep 2
+done
 EOF
 chmod +x /opt/arch3r-kiosk/start-kiosk.sh
 
@@ -74,8 +86,8 @@ Type=simple
 User=root
 Environment=DISPLAY=:0
 ExecStart=/usr/bin/xinit /opt/arch3r-kiosk/start-kiosk.sh -- /usr/bin/X :0 -nocursor -nolisten tcp vt7
-Restart=on-failure
-RestartSec=10
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -88,7 +100,7 @@ echo "✅ Instalasi Kiosk Service Selesai!"
 echo "=========================================================="
 echo "Untuk mengaktifkan Kiosk saat STB booting:"
 echo "   sudo systemctl enable arch3r-kiosk"
-echo "   sudo systemctl start arch3r-kiosk"
+echo "   sudo systemctl restart arch3r-kiosk"
 echo ""
 echo "Untuk menonaktifkan:"
 echo "   sudo systemctl stop arch3r-kiosk"

@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 9.8.4] - 2026-09-19
+### Enhanced Armbian Kiosk Keep-Alive & Chromium Root Flags
+- **Kiosk Auto-Restart & Sandbox Hardening (`setup-kiosk-armbian.sh`):**
+  - **Auto Keep-Alive Loop**: Menambahkan *infinite watch loop* pada `/opt/arch3r-kiosk/start-kiosk.sh` sehingga Chromium tidak akan pernah keluar (*exit*) atau mati sendiri ketika terjadi navigasi atau transisi render.
+  - **Robust Chromium Root Flags**: Menambahkan parameter wajib Chromium untuk lingkungan root Armbian/Ubuntu Noble (`--user-data-dir=/tmp/arch3r_kiosk_chrome`, `--test-type`, `--disable-dev-shm-usage`, `--autoplay-policy=no-user-gesture-required`, dan pembersihan otomatis Singleton lock).
+  - **Systemd Always Restart**: Mengubah kebijakan *restart* `arch3r-kiosk.service` menjadi `Restart=always` dengan interval 5 detik untuk memastikan ketersediaan tampilan CCTV 24/7.
+
 ## [Ver 9.8.3] - 2026-09-18
 ### Absolute Stability & Anti-Reboot Decoupling
 - **Pembersihan Total Pemanggilan `startx` dari Backend Node.js:**
