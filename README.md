@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.7.4)
+# ⚡ Arch3r NVR (Ver. 9.7.5)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, dan *Developer Console* (Superadmin).
@@ -91,6 +91,12 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
 ---
 
 ## 📜 Log Pembaruan (Changelog)
+- **[Ver 9.7.5]**
+  - **Live View Dropdown Optimization**: Mengubah teks dropdown pilihan kamera menjadi format ringkas `View : ALL` dan `View : CH x - Nama Kamera` serta menata lebar dan padding kontrol agar tidak menggeser layout tombol navigasi halaman.
+  - **Responsive UI Manajemen User & Marketplace**: Menambahkan wrapper `.table-responsive` dengan horizontal scroll yang mulus, padding responsif, serta styling tombol aksi adaptif sehingga seluruh menu dan tabel di Manajemen User & Marketplace (Addons) terlihat lengkap di layar kecil/mobile.
+  - **Auto-Load Addons on Tab Select**: Menghubungkan trigger `fetchInstalledAddons()` langsung saat tab Marketplace diklik dari navigasi sidebar.
+  - **Optimized Sidebar & About NVR Visibility**: Mengoptimalkan padding profil, widget info, dan item navigasi sidebar serta menambahkan custom slim scrollbar sehingga seluruh 10 menu (termasuk *Marketplace* dan *About NVR*) pas dan langsung terlihat di layar tanpa terpotong di bawah lipatan.
+
 - **[Ver 9.7.4]**
   - **Fixed Camera Title Centering**: Label nama kamera pada grid live view kini diposisikan secara presisi di tengah (*horizontal center*) dengan efek *pill badge* yang elegan.
   - **Fixed Camera Channel Dropdown**: Memperbaiki fungsi `populateChannelDropdown` dan mendefinisikan `populateCameraSelects` secara komprehensif sehingga seluruh dropdown kamera (CH1, CH2, dst.) selalu terisi daftar kamera aktif tanpa terjadi *ReferenceError*.

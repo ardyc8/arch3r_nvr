@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.7.4 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.7.5 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -523,8 +523,11 @@ async function handleLogout() {
                 const targetPane = document.getElementById(targetId);
                 if (targetPane) targetPane.classList.add('active');
                 
-                if(targetId === 'view-about') {
+                if (targetId === 'view-about') {
                     if (typeof fetchAboutInfo === 'function') fetchAboutInfo();
+                }
+                if (targetId === 'view-addons') {
+                    if (typeof fetchInstalledAddons === 'function') fetchInstalledAddons();
                 }
 
                 // Close mobile sidebar if open
@@ -664,21 +667,6 @@ async function updateHardwareStats() {
         } catch (err) {
             // silent polling error
         }
-    }
-
-
-    
-    function populateCameraSelects() {
-        const selRecCam = document.getElementById('selRecCam');
-        const mSelRecCam = document.getElementById('mSelRecCam');
-        
-        let options = '<option value="">-- Pilih Kamera --</option>';
-        cameras.forEach(cam => {
-            options += `<option value="${cam.id}">${cam.name}</option>`;
-        });
-        
-        if (selRecCam) selRecCam.innerHTML = options;
-        if (mSelRecCam) mSelRecCam.innerHTML = options;
     }
 
     function renderModalCameraList() {
@@ -1106,14 +1094,14 @@ async function fetchCameras() {
         if (!sel) return;
         
         const currentVal = activeChannel || 'all';
-        sel.innerHTML = '<option value="all">Tampilkan: Semua Kamera</option>';
+        sel.innerHTML = '<option value="all">View : ALL</option>';
         
         if (Array.isArray(cameras) && cameras.length > 0) {
             cameras.forEach((cam, idx) => {
                 const opt = document.createElement('option');
                 opt.value = cam.id;
                 const camLabel = cam.name || `Kamera ${idx + 1}`;
-                opt.textContent = `Tampilkan: CH ${idx + 1} - ${camLabel}`;
+                opt.textContent = `View : CH ${idx + 1} - ${camLabel}`;
                 if (cam.id === currentVal) {
                     opt.selected = true;
                 }

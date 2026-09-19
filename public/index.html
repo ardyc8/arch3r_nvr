@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.7.4 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=9.7.4">
+    <title>Arch3r NVR Ver. 9.7.5 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=9.7.5">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.7.4</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.7.5</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.7.4</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.7.5</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -151,7 +151,7 @@
                             <div id="channelBarRow" class="nvr-filter-pagination-row">
                                 <div class="nvr-filter-left">
                                     <select id="camChannelSelect" class="nvr-select-channel" onchange="window.onChannelDropdownChange(this.value)">
-                                        <option value="all">Tampilkan: Semua Kamera</option>
+                                        <option value="all">View : ALL</option>
                                     </select>
                                 </div>
                                 <div id="gridPageNav" class="nvr-page-nav-group">
@@ -610,8 +610,8 @@
                     <!-- Tabel Daftar User -->
                     <div class="camera-form-section">
                         <h3 style="font-size:1rem; margin-bottom:1rem;">Daftar Akun User Aktif</h3>
-                        <div style="overflow-x:auto;">
-                            <table style="width:100%; border-collapse:collapse; font-size:0.9rem; text-align:left;">
+                        <div class="table-responsive">
+                            <table style="width:100%; border-collapse:collapse; font-size:0.9rem; text-align:left; min-width:560px;">
                                 <thead>
                                     <tr style="border-bottom:1px solid var(--border); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">
                                         <th style="padding:0.75rem;">ID</th>
@@ -751,20 +751,20 @@
 
                     <div class="addons-container">
                         <div style="background:var(--surface); border-radius:10px; border:1px solid var(--border); overflow:hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-                            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                                <h3 style="margin:0; font-size:1.2rem; color:#3b82f6;">Local Repository</h3>
+                            <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="margin:0; font-size:1.1rem; color:#3b82f6;">Local Repository</h3>
                                 <button class="btn-sm btn-secondary" onclick="fetchInstalledAddons()" title="Refresh List">🔄 Refresh</button>
                             </div>
                             
-                            <div style="overflow-x:auto;">
-                                <table style="width:100%; border-collapse: collapse; text-align: left;">
+                            <div class="table-responsive">
+                                <table style="width:100%; border-collapse: collapse; text-align: left; min-width:560px;">
                                     <thead>
                                         <tr style="background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--border);">
-                                            <th style="padding: 1rem 1.5rem; font-weight: 500; color:var(--text-muted);">Icon</th>
-                                            <th style="padding: 1rem 1.5rem; font-weight: 500; color:var(--text-muted);">Nama Addon</th>
-                                            <th style="padding: 1rem 1.5rem; font-weight: 500; color:var(--text-muted);">Versi</th>
-                                            <th style="padding: 1rem 1.5rem; font-weight: 500; color:var(--text-muted);">Status</th>
-                                            <th style="padding: 1rem 1.5rem; font-weight: 500; color:var(--text-muted); text-align:right;">Aksi</th>
+                                            <th style="padding: 0.75rem 1rem; font-weight: 500; color:var(--text-muted);">Icon</th>
+                                            <th style="padding: 0.75rem 1rem; font-weight: 500; color:var(--text-muted);">Nama Addon</th>
+                                            <th style="padding: 0.75rem 1rem; font-weight: 500; color:var(--text-muted);">Versi</th>
+                                            <th style="padding: 0.75rem 1rem; font-weight: 500; color:var(--text-muted);">Status</th>
+                                            <th style="padding: 0.75rem 1rem; font-weight: 500; color:var(--text-muted); text-align:right;">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="installed-addons-tbody">
@@ -938,7 +938,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.7.4</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 9.7.5</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>
