@@ -2933,6 +2933,33 @@ app.post('/api/cameras/:id/ptz-probe', verifyToken, async (req, res) => {
     }
 });
 
+// Endpoint untuk uji coba koneksi ONVIF custom langsung dari form modal (sebelum simpan)
+app.post('/api/onvif/probe-custom', verifyToken, async (req, res) => {
+    const { ptzUrl, ptzUser, ptzPass, mainStreamUrl } = req.body;
+    const dummyCam = {
+        id: 'probe_test',
+        ptzUrl: ptzUrl || '',
+        ptzUser: ptzUser || '',
+        ptzPass: ptzPass || '',
+        mainStreamUrl: mainStreamUrl || ''
+    };
+
+    try {
+        const session = await getOrInitOnvifDevice(dummyCam);
+        res.json({
+            success: true,
+            message: `Koneksi ONVIF Berhasil! Terhubung di port ${session.port} (Token: ${session.profileToken})`,
+            port: session.port,
+            profileToken: session.profileToken
+        });
+    } catch (e) {
+        res.status(500).json({
+            success: false,
+            error: e.message
+        });
+    }
+});
+
 app.delete('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
     if (req.userRole !== 'administrator') {
         return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator yang berhak menghapus kamera.' });

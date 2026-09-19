@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.8.5 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.8.6 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -724,6 +724,100 @@ async function updateHardwareStats() {
         modalCameraList.appendChild(table);
     }
 
+    function extractRtspCredentials(url) {
+        if (!url || typeof url !== 'string') return { host: '', user: '', pass: '' };
+        try {
+            const m = url.match(/rtsp:\/\/(?:([^:]+)(?::([^@]+))?@)?([^:\/\s]+)(?::(\d+))?/i);
+            if (m) {
+                return {
+                    user: m[1] ? decodeURIComponent(m[1]) : '',
+                    pass: m[2] ? decodeURIComponent(m[2]) : '',
+                    host: m[3] ? m[3] : ''
+                };
+            }
+        } catch(e) {}
+        return { host: '', user: '', pass: '' };
+    }
+
+    function autoFillPtzFromRtsp(force = false) {
+        const mainUrl = document.getElementById('camMainUrl') ? document.getElementById('camMainUrl').value.trim() : '';
+        const ptzUrlEl = document.getElementById('camPtzUrl');
+        const ptzUserEl = document.getElementById('camPtzUser');
+        const ptzPassEl = document.getElementById('camPtzPass');
+        const ptzSelectEl = document.getElementById('camPtzSelect');
+
+        if (!mainUrl) return;
+        const creds = extractRtspCredentials(mainUrl);
+
+        if (force || !ptzUrlEl.value) {
+            if (creds.host) ptzUrlEl.value = creds.host;
+        }
+        if (force || !ptzUserEl.value) {
+            if (creds.user) ptzUserEl.value = creds.user;
+        }
+        if (force || !ptzPassEl.value) {
+            if (creds.pass) ptzPassEl.value = creds.pass;
+        }
+        if (force && ptzSelectEl && ptzSelectEl.value === 'no') {
+            ptzSelectEl.value = 'yes';
+        }
+    }
+
+    // Auto extract saat input RTSP berubah
+    const camMainUrlInput = document.getElementById('camMainUrl');
+    if (camMainUrlInput) {
+        camMainUrlInput.addEventListener('blur', () => autoFillPtzFromRtsp(false));
+    }
+
+    const btnAutoFillPtz = document.getElementById('btnAutoFillPtz');
+    if (btnAutoFillPtz) {
+        btnAutoFillPtz.addEventListener('click', () => {
+            autoFillPtzFromRtsp(true);
+            const statusEl = document.getElementById('ptzProbeStatus');
+            if (statusEl) {
+                statusEl.innerHTML = '<span style="color:#22c55e;">✓ Data ONVIF berhasil diekstrak dari RTSP</span>';
+                setTimeout(() => { statusEl.innerHTML = ''; }, 3500);
+            }
+        });
+    }
+
+    const btnTestOnvifProbe = document.getElementById('btnTestOnvifProbe');
+    if (btnTestOnvifProbe) {
+        btnTestOnvifProbe.addEventListener('click', async () => {
+            const ptzUrl = document.getElementById('camPtzUrl') ? document.getElementById('camPtzUrl').value.trim() : '';
+            const ptzUser = document.getElementById('camPtzUser') ? document.getElementById('camPtzUser').value.trim() : '';
+            const ptzPass = document.getElementById('camPtzPass') ? document.getElementById('camPtzPass').value : '';
+            const mainStreamUrl = document.getElementById('camMainUrl') ? document.getElementById('camMainUrl').value.trim() : '';
+            const statusEl = document.getElementById('ptzProbeStatus');
+
+            if (!ptzUrl && !mainStreamUrl) {
+                if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444;">⚠️ Isi IP Kamera atau RTSP terlebih dahulu</span>';
+                return;
+            }
+
+            if (statusEl) statusEl.innerHTML = '<span style="color:#60a5fa;">⏳ Sedang menguji koneksi ONVIF...</span>';
+            btnTestOnvifProbe.disabled = true;
+
+            try {
+                const res = await authFetch('/api/onvif/probe-custom', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ptzUrl, ptzUser, ptzPass, mainStreamUrl })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    if (statusEl) statusEl.innerHTML = `<span style="color:#22c55e; font-weight:600;">✅ ${data.message}</span>`;
+                } else {
+                    if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444;">❌ Gagal: ${data.error || 'Tidak merespon'}</span>`;
+                }
+            } catch(e) {
+                if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444;">❌ Kesalahan: ${e.message}</span>`;
+            } finally {
+                btnTestOnvifProbe.disabled = false;
+            }
+        });
+    }
+
     window.editCamera = function(id) {
         const cam = cameras.find(c => c.id === id);
         if (!cam) return;
@@ -732,8 +826,22 @@ async function updateHardwareStats() {
         document.getElementById('camName').value = cam.name;
         const camCustomIdEl = document.getElementById('camCustomId');
         if (camCustomIdEl) camCustomIdEl.value = cam.id;
-        const camPtzEnabledEl = document.getElementById('camPtzEnabled');
-        if (camPtzEnabledEl) camPtzEnabledEl.checked = !!cam.ptzEnabled;
+        
+        const camPtzSelectEl = document.getElementById('camPtzSelect');
+        if (camPtzSelectEl) camPtzSelectEl.value = cam.ptzEnabled ? 'yes' : 'no';
+
+        const camPtzUrlEl = document.getElementById('camPtzUrl');
+        if (camPtzUrlEl) camPtzUrlEl.value = cam.ptzUrl || '';
+
+        const camPtzUserEl = document.getElementById('camPtzUser');
+        if (camPtzUserEl) camPtzUserEl.value = cam.ptzUser || '';
+
+        const camPtzPassEl = document.getElementById('camPtzPass');
+        if (camPtzPassEl) camPtzPassEl.value = cam.ptzPass || '';
+
+        const statusEl = document.getElementById('ptzProbeStatus');
+        if (statusEl) statusEl.innerHTML = '';
+
         document.getElementById('camMainUrl').value = cam.mainStreamUrl || '';
         document.getElementById('camSubUrl').value = cam.subStreamUrl || '';
         document.getElementById('camEnabled').checked = cam.enabled !== false;
@@ -785,8 +893,18 @@ async function updateHardwareStats() {
         if (idInput) idInput.value = '';
         const customIdInput = document.getElementById('camCustomId');
         if (customIdInput) customIdInput.value = '';
-        const ptzInput = document.getElementById('camPtzEnabled');
-        if (ptzInput) ptzInput.checked = false;
+        
+        const ptzSelect = document.getElementById('camPtzSelect');
+        if (ptzSelect) ptzSelect.value = 'no';
+        const ptzUrl = document.getElementById('camPtzUrl');
+        if (ptzUrl) ptzUrl.value = '';
+        const ptzUser = document.getElementById('camPtzUser');
+        if (ptzUser) ptzUser.value = '';
+        const ptzPass = document.getElementById('camPtzPass');
+        if (ptzPass) ptzPass.value = '';
+        const statusEl = document.getElementById('ptzProbeStatus');
+        if (statusEl) statusEl.innerHTML = '';
+
         const formTitle = document.getElementById('formTitle');
         if (formTitle) formTitle.textContent = 'Tambah Kamera Baru';
         const btnCancelEdit = document.getElementById('btnCancelEdit');
@@ -809,10 +927,16 @@ async function updateHardwareStats() {
         if (cameraForm) cameraForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('camId').value;
+            const ptzSelect = document.getElementById('camPtzSelect');
+            const isPtz = ptzSelect ? (ptzSelect.value === 'yes') : false;
+
             const payload = {
                 id: document.getElementById('camCustomId') ? document.getElementById('camCustomId').value.trim() : undefined,
                 name: document.getElementById('camName').value,
-                ptzEnabled: document.getElementById('camPtzEnabled') ? document.getElementById('camPtzEnabled').checked : false,
+                ptzEnabled: isPtz,
+                ptzUrl: document.getElementById('camPtzUrl') ? document.getElementById('camPtzUrl').value.trim() : '',
+                ptzUser: document.getElementById('camPtzUser') ? document.getElementById('camPtzUser').value.trim() : '',
+                ptzPass: document.getElementById('camPtzPass') ? document.getElementById('camPtzPass').value : '',
                 mainStreamUrl: document.getElementById('camMainUrl').value,
                 subStreamUrl: document.getElementById('camSubUrl').value,
                 enabled: document.getElementById('camEnabled').checked,
