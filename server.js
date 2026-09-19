@@ -2750,6 +2750,117 @@ app.post('/api/system/onvif-resolve', verifyToken, requireAdmin, async (req, res
     }
 });
 
+// Cache in-memory untuk sesi ONVIF agar respon kontrol PTZ instan (< 50ms)
+const onvifDeviceCache = new Map();
+
+function parseCameraPtzTarget(cam) {
+    let host = '';
+    let user = '';
+    let pass = '';
+    let customPort = null;
+
+    if (cam.ptzUrl && cam.ptzUrl.trim()) {
+        try {
+            const rawUrl = cam.ptzUrl.startsWith('http://') || cam.ptzUrl.startsWith('https://') 
+                ? cam.ptzUrl 
+                : `http://${cam.ptzUrl}`;
+            const u = new URL(rawUrl);
+            host = u.hostname;
+            if (u.port) customPort = parseInt(u.port, 10);
+            if (u.username) user = decodeURIComponent(u.username);
+            if (u.password) pass = decodeURIComponent(u.password);
+        } catch(e) {
+            const clean = cam.ptzUrl.replace(/^https?:\/\//, '').split('/')[0];
+            const parts = clean.split(':');
+            host = parts[0];
+            if (parts[1]) customPort = parseInt(parts[1], 10);
+        }
+        if (cam.ptzUser) user = cam.ptzUser;
+        if (cam.ptzPass) pass = cam.ptzPass;
+    }
+
+    if (!host && cam.mainStreamUrl) {
+        try {
+            const m = cam.mainStreamUrl.match(/rtsp:\/\/(?:([^:]+)(?::([^@]+))?@)?([^:\/\s]+)(?::(\d+))?/i);
+            if (m) {
+                if (m[1] && !user) user = decodeURIComponent(m[1]);
+                if (m[2] && !pass) pass = decodeURIComponent(m[2]);
+                if (m[3]) host = m[3];
+            }
+        } catch(e) {}
+    }
+
+    return { host, user, pass, customPort };
+}
+
+async function getOrInitOnvifDevice(cam) {
+    const { host, user, pass, customPort } = parseCameraPtzTarget(cam);
+    if (!host) throw new Error('Host / IP kamera tidak ditemukan pada konfigurasi.');
+
+    const cacheKey = `${cam.id}_${host}_${customPort || 'auto'}_${user}`;
+    const cached = onvifDeviceCache.get(cacheKey);
+
+    if (cached && (Date.now() - cached.timestamp < 10 * 60 * 1000) && cached.device) {
+        return cached;
+    }
+
+    const onvif = require('node-onvif');
+    // Prioritas port umum ONVIF kamera CCTV
+    const candidatePorts = customPort 
+        ? [customPort, 80, 8899, 2020, 8000, 5000, 8080] 
+        : [80, 8899, 2020, 8000, 5000, 8080];
+    const uniquePorts = [...new Set(candidatePorts)];
+
+    let device = null;
+    let successfulPort = null;
+    let lastError = null;
+
+    for (const port of uniquePorts) {
+        try {
+            const tempDev = new onvif.OnvifDevice({
+                xaddr: `http://${host}:${port}/onvif/device_service`,
+                user: user,
+                pass: pass
+            });
+            
+            // Timeout pendek per port agar tidak blocking
+            await Promise.race([
+                tempDev.init(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Port timeout')), 1200))
+            ]);
+
+            device = tempDev;
+            successfulPort = port;
+            break;
+        } catch (err) {
+            lastError = err;
+        }
+    }
+
+    if (!device) {
+        throw new Error(`Kamera tidak merespon protokol ONVIF pada port umum (${lastError ? lastError.message : 'Timeout'}). Pastikan ONVIF diaktifkan pada pengaturan kamera.`);
+    }
+
+    const ptz = device.services.ptz;
+    if (!ptz) {
+        throw new Error('Kamera terhubung ke ONVIF namun tidak mendukung layanan PTZ mekanik.');
+    }
+
+    const profile = device.getCurrentProfile();
+    if (!profile || !profile.token) {
+        throw new Error('Profil stream ONVIF kamera tidak memiliki token PTZ aktif.');
+    }
+
+    const entry = {
+        device,
+        profileToken: profile['token'],
+        port: successfulPort,
+        timestamp: Date.now()
+    };
+    onvifDeviceCache.set(cacheKey, entry);
+    return entry;
+}
+
 app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
     const { direction, speed = 1.0, durationMs = 500 } = req.body;
     const authorizedCams = getAuthorizedCamerasForReq(req);
@@ -2757,100 +2868,68 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
     if (!cam) return res.status(403).json({ error: 'Akses Ditolak: Kamera tidak terdaftar pada akun Anda.' });
     
     try {
-        const onvif = require('node-onvif');
-        
-        let host = '';
-        let user = '';
-        let pass = '';
-        let customPort = null;
+        const session = await getOrInitOnvifDevice(cam);
+        const { device, profileToken } = session;
 
-        // 1. Periksa apakah kamera memiliki konfigurasi PTZ khusus (ptzUrl, ptzUser, ptzPass)
-        if (cam.ptzUrl && cam.ptzUrl.trim()) {
-            try {
-                const u = new URL(cam.ptzUrl.startsWith('http') ? cam.ptzUrl : `http://${cam.ptzUrl}`);
-                host = u.hostname;
-                if (u.port) customPort = parseInt(u.port, 10);
-            } catch(e) {
-                host = cam.ptzUrl.replace(/^http:\/\//, '').split(':')[0].split('/')[0];
-            }
-            user = cam.ptzUser || '';
-            pass = cam.ptzPass || '';
-        }
-
-        // 2. Fallback baca dari mainStreamUrl (RTSP)
-        if (!host && cam.mainStreamUrl) {
-            try {
-                const urlObj = new URL(cam.mainStreamUrl);
-                host = urlObj.hostname;
-                user = decodeURIComponent(urlObj.username || '');
-                pass = decodeURIComponent(urlObj.password || '');
-            } catch(e) {}
-        }
-        
-        if (!host) throw new Error('Host IP tidak valid pada konfigurasi Kamera');
-        
-        // Prioritaskan port standar ONVIF Profile S (8899), lalu port umum lainnya
-        const candidatePorts = customPort ? [customPort, 8899, 80, 8080, 2020, 5000, 8000] : [8899, 80, 8080, 2020, 5000, 8000];
-        const uniquePorts = [...new Set(candidatePorts)];
-        
-        let device = null;
-        let initError = null;
-        
-        for (const port of uniquePorts) {
-            try {
-                const tempDev = new onvif.OnvifDevice({
-                    xaddr: `http://${host}:${port}/onvif/device_service`,
-                    user: user,
-                    pass: pass
-                });
-                await tempDev.init();
-                device = tempDev;
-                break; // Berhasil terhubung
-            } catch (err) {
-                initError = err;
-            }
-        }
-        
-        if (!device) throw new Error(`Gagal terhubung ke ONVIF (${initError ? initError.message : 'Timeout'})`);
-        
-        const ptz = device.services.ptz;
-        if (!ptz) throw new Error('Kamera ini tidak mendukung layanan PTZ ONVIF');
-        
-        const profile = device.getCurrentProfile();
-        if (!profile || !profile.token) throw new Error('Profil ONVIF tidak memiliki token PTZ');
-        
         let x = 0, y = 0, z = 0;
         const spd = Math.max(0.1, Math.min(1.0, parseFloat(speed) || 1.0));
         
         if (direction === 'up') y = spd;
-        if (direction === 'down') y = -spd;
-        if (direction === 'left') x = -spd;
-        if (direction === 'right') x = spd;
-        if (direction === 'zoom_in') z = spd;
-        if (direction === 'zoom_out') z = -spd;
+        else if (direction === 'down') y = -spd;
+        else if (direction === 'left') x = -spd;
+        else if (direction === 'right') x = spd;
+        else if (direction === 'zoom_in' || direction === 'focus_in') z = spd;
+        else if (direction === 'zoom_out' || direction === 'focus_out') z = -spd;
         
-        // Continuous Move
+        // Perintah Stop
         if (direction === 'stop') {
-            await device.ptzStop({'profileToken': profile['token'], 'panTilt': true, 'zoom': true});
-            return res.json({ success: true, message: 'PTZ stopped' });
+            await device.ptzStop({ 'profileToken': profileToken, 'panTilt': true, 'zoom': true });
+            return res.json({ success: true, message: 'PTZ dihentikan' });
         }
 
+        // Jalankan continuous move
         await device.ptzMove({
-            'profileToken': profile['token'],
-            'velocity': {'x': x, 'y': y, 'z': z},
+            'profileToken': profileToken,
+            'velocity': { 'x': x, 'y': y, 'z': z },
             'timeout': 1
         });
         
-        const stopDelay = Math.max(200, Math.min(3000, parseInt(durationMs, 10) || 500));
+        const stopDelay = Math.max(150, Math.min(3000, parseInt(durationMs, 10) || 450));
         setTimeout(() => {
-            device.ptzStop({'profileToken': profile['token'], 'panTilt': true, 'zoom': true}).catch(() => {});
+            device.ptzStop({ 'profileToken': profileToken, 'panTilt': true, 'zoom': true }).catch(() => {});
         }, stopDelay);
         
-        sysLog('INFO', `[PTZ] Kamera ${cam.name} (${host}) Continuous Move ke ${direction} (Speed: ${spd})`, 'CAMERA');
-        res.json({ success: true, message: `PTZ command ${direction} executed` });
+        sysLog('INFO', `[PTZ] Kamera ${cam.name} gerak ke ${direction} (Kecepatan: ${spd})`, 'CAMERA');
+        res.json({ success: true, message: `Perintah PTZ ${direction} berhasil dijalankan` });
     } catch (e) {
-        sysLog('ERROR', `[PTZ] Gagal ONVIF untuk ${cam ? cam.name : req.params.id}: ${e.message}`, 'CAMERA');
-        res.status(500).json({ error: 'Gagal mengontrol PTZ: ' + e.message });
+        // Hapus cache jika terjadi kegagalan agar koneksi diinisiasi ulang
+        const { host, user, customPort } = parseCameraPtzTarget(cam);
+        onvifDeviceCache.delete(`${cam.id}_${host}_${customPort || 'auto'}_${user}`);
+        
+        sysLog('WARN', `[PTZ] Gagal untuk ${cam.name}: ${e.message}`, 'CAMERA');
+        res.status(500).json({ error: 'Gagal PTZ: ' + e.message });
+    }
+});
+
+// Endpoint untuk cek status & tes ONVIF PTZ kamera
+app.post('/api/cameras/:id/ptz-probe', verifyToken, async (req, res) => {
+    const authorizedCams = getAuthorizedCamerasForReq(req);
+    const cam = authorizedCams.find(c => c.id === req.params.id);
+    if (!cam) return res.status(404).json({ error: 'Kamera tidak ditemukan' });
+
+    try {
+        const session = await getOrInitOnvifDevice(cam);
+        res.json({
+            success: true,
+            message: `ONVIF PTZ terdeteksi & aktif pada port ${session.port}`,
+            port: session.port,
+            profileToken: session.profileToken
+        });
+    } catch (e) {
+        res.status(500).json({
+            success: false,
+            error: e.message
+        });
     }
 });
 

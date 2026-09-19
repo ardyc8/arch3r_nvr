@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.8.4 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.8.5 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -1608,23 +1608,45 @@ async function fetchCameras() {
             alert("Gagal snapshot: " + e.message);
         }
     };
+    let isPtzSending = false;
     window.ptzMoveSelected = async function(direction) {
-        if (!selectedCamIdForPtz) {
-            alert('Pilih kamera di grid terlebih dahulu!');
+        let targetId = selectedCamIdForPtz;
+        if (!targetId) {
+            targetId = (activeChannel && activeChannel !== 'all') ? activeChannel : (cameras[0]?.id);
+            if (targetId) {
+                window.selectCellForPtz(targetId);
+            }
+        }
+
+        if (!targetId) {
+            alert('Pilih kamera di layar grid terlebih dahulu untuk mengontrol PTZ.');
             return;
         }
+
+        if (isPtzSending && direction !== 'stop') {
+            return; // Hindari spam request bersamaan
+        }
+
+        isPtzSending = true;
         try {
-            const res = await authFetch(`/api/cameras/${selectedCamIdForPtz}/ptz`, {
+            const res = await authFetch(`/api/cameras/${encodeURIComponent(targetId)}/ptz`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ direction })
+                body: JSON.stringify({ direction, speed: 1.0, durationMs: 450 })
             });
+            
             if (!res.ok) {
-                const data = await res.json();
-                alert(data.error || 'Gagal mengirim perintah PTZ');
+                const data = await res.json().catch(() => ({}));
+                const errMsg = data.error || 'Gagal mengirim perintah PTZ.';
+                console.warn('[PTZ Error]', errMsg);
+                // Alert ramah jika gagal
+                alert(`⚠️ Kontrol PTZ (${direction}):\n${errMsg}\n\nTips: Pastikan fitur ONVIF aktif di menu pengaturan IP Kamera Anda.`);
             }
         } catch(e) {
-            alert('Kesalahan jaringan: ' + e.message);
+            console.error('Kesalahan jaringan PTZ:', e);
+            alert('Kesalahan jaringan saat mengirim perintah PTZ: ' + e.message);
+        } finally {
+            setTimeout(() => { isPtzSending = false; }, 200);
         }
     };
 
