@@ -1,7 +1,7 @@
 {
   "name": "archer-nvr",
   "private": true,
-  "version": "9.8.8",
+  "version": "9.8.9",
   "type": "module",
   "scripts": {
     "dev": "node server.js",

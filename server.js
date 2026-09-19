@@ -2750,6 +2750,42 @@ app.post('/api/system/onvif-resolve', verifyToken, requireAdmin, async (req, res
     }
 });
 
+// Helper untuk menormalisasi dan memperbaiki URL endpoint ONVIF services (PTZ, Media, Events)
+// Masalah umum kamera (V380, XM, Xiongmai, dll): Firmware kamera mengembalikan XML Capabilities dengan port default internal (seperti 8080 atau 80)
+// meskipun daemon ONVIF sebenarnya berjalan di port 8899/2020.
+function sanitizeOnvifDeviceEndpoints(device, host, activePort, user = '', pass = '') {
+    if (!device || !device.services) return;
+    const urlModule = require('url');
+    
+    for (const [sKey, srv] of Object.entries(device.services)) {
+        if (srv && srv.xaddr) {
+            try {
+                const parsed = urlModule.parse(srv.xaddr);
+                const srvPath = parsed.path || `/onvif/${sKey}_service`;
+                const correctedUrl = `http://${host}:${activePort}${srvPath}`;
+                srv.xaddr = correctedUrl;
+                srv.oxaddr = urlModule.parse(correctedUrl);
+                if (user) {
+                    srv.oxaddr.auth = `${user}:${pass || ''}`;
+                }
+            } catch (e) {
+                console.warn(`[ONVIF] Warning sanitizing service ${sKey}:`, e.message);
+            }
+        }
+    }
+
+    if (device.profile_list && Array.isArray(device.profile_list)) {
+        for (const prof of device.profile_list) {
+            if (prof && prof.snapshot) {
+                try {
+                    const parsed = urlModule.parse(prof.snapshot);
+                    prof.snapshot = `http://${host}:${activePort}${parsed.path || ''}`;
+                } catch(e) {}
+            }
+        }
+    }
+}
+
 // Cache in-memory untuk sesi ONVIF agar respon kontrol PTZ instan (< 50ms)
 const onvifDeviceCache = new Map();
 
@@ -2805,10 +2841,10 @@ async function getOrInitOnvifDevice(cam) {
     }
 
     const onvif = require('node-onvif');
-    // Prioritas port umum ONVIF kamera CCTV
+    // Prioritas port umum ONVIF kamera CCTV (8899 untuk V380/XM/Xiongmai, 80 umum, 2020 Tapo)
     const candidatePorts = customPort 
-        ? [customPort, 80, 8899, 2020, 8000, 5000, 8080] 
-        : [80, 8899, 2020, 8000, 5000, 8080];
+        ? [customPort, 8899, 80, 2020, 8000, 5000, 8080] 
+        : [8899, 80, 2020, 8000, 5000, 8080];
     const uniquePorts = [...new Set(candidatePorts)];
 
     let device = null;
@@ -2829,6 +2865,9 @@ async function getOrInitOnvifDevice(cam) {
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Port timeout')), 1200))
             ]);
 
+            // Normalisasi seluruh endpoint service ONVIF ke host dan port yang benar
+            sanitizeOnvifDeviceEndpoints(tempDev, host, port, user, pass);
+
             device = tempDev;
             successfulPort = port;
             break;
@@ -2838,7 +2877,7 @@ async function getOrInitOnvifDevice(cam) {
     }
 
     if (!device) {
-        throw new Error(`Kamera tidak merespon protokol ONVIF pada port umum (${lastError ? lastError.message : 'Timeout'}). Pastikan ONVIF diaktifkan pada pengaturan kamera.`);
+        throw new Error(`Kamera tidak merespon protokol ONVIF pada port (${customPort || uniquePorts.join('/')}) - ${lastError ? lastError.message : 'Timeout'}. Pastikan ONVIF aktif pada IP Kamera.`);
     }
 
     const ptz = device.services.ptz;
@@ -2847,13 +2886,11 @@ async function getOrInitOnvifDevice(cam) {
     }
 
     const profile = device.getCurrentProfile();
-    if (!profile || !profile.token) {
-        throw new Error('Profil stream ONVIF kamera tidak memiliki token PTZ aktif.');
-    }
+    const token = (profile && profile.token) ? profile.token : (device.profile_list && device.profile_list[0] ? device.profile_list[0].token : 'Profile_1');
 
     const entry = {
         device,
-        profileToken: profile['token'],
+        profileToken: token,
         port: successfulPort,
         timestamp: Date.now()
     };
@@ -2883,20 +2920,44 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
         
         // Perintah Stop
         if (direction === 'stop') {
-            await device.ptzStop({ 'profileToken': profileToken, 'panTilt': true, 'zoom': true });
+            try {
+                await device.ptzStop();
+            } catch(e) {
+                if (device.services.ptz && device.services.ptz.stop) {
+                    await device.services.ptz.stop({ ProfileToken: profileToken, PanTilt: true, Zoom: true });
+                }
+            }
             return res.json({ success: true, message: 'PTZ dihentikan' });
         }
 
-        // Jalankan continuous move
-        await device.ptzMove({
-            'profileToken': profileToken,
-            'velocity': { 'x': x, 'y': y, 'z': z },
-            'timeout': 1
-        });
+        // Jalankan continuous move menggunakan driver node-onvif
+        try {
+            await device.ptzMove({
+                speed: { x, y, z },
+                timeout: 1
+            });
+        } catch(moveErr) {
+            // Fallback direct service SOAP call
+            if (device.services.ptz && device.services.ptz.continuousMove) {
+                await device.services.ptz.continuousMove({
+                    ProfileToken: profileToken,
+                    Velocity: { x, y, z },
+                    Timeout: 1
+                });
+            } else {
+                throw moveErr;
+            }
+        }
         
         const stopDelay = Math.max(150, Math.min(3000, parseInt(durationMs, 10) || 450));
-        setTimeout(() => {
-            device.ptzStop({ 'profileToken': profileToken, 'panTilt': true, 'zoom': true }).catch(() => {});
+        setTimeout(async () => {
+            try {
+                await device.ptzStop();
+            } catch(e) {
+                if (device.services.ptz && device.services.ptz.stop) {
+                    device.services.ptz.stop({ ProfileToken: profileToken, PanTilt: true, Zoom: true }).catch(() => {});
+                }
+            }
         }, stopDelay);
         
         sysLog('INFO', `[PTZ] Kamera ${cam.name} gerak ke ${direction} (Kecepatan: ${spd})`, 'CAMERA');
