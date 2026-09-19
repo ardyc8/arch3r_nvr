@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.9.0)
+# ⚡ Arch3r NVR (Ver. 9.9.1)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF PTZ fleksibel (toggle Ya/Tidak, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Kiosk HDMI, dan *Developer Console* (Superadmin).
@@ -106,6 +106,13 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
   - **Fixed 4x4 Grid Fullscreen Landscape Distortion**: Memperbaiki pembagian template baris dan kolom pada layout grid (`.video-grid.grid-16`, `grid-9`, `grid-4`, `grid-1`) dengan `grid-template-rows: repeat(N, minmax(0, 1fr))` dan `min-height: 0` / `min-width: 0` pada `.cam-cell`. Kotak video pada mode layar penuh 4x4 landscape kini terbagi rata dan proporsional sempurna tanpa ada baris yang gepeng atau terjepit.
   - **Translucent Subtle Watermark for Camera Names**: Mengubah tampilan nama kamera di dalam kotak video menjadi watermark semi-transparan (`rgba(0, 0, 0, 0.42)`) dengan *subtle backdrop blur* dan border halus di pojok kiri atas. Nama kamera kini tidak menutupi rekaman video dan tampak seperti *On-Screen Display (OSD)* standar kamera pengawas profesional.
   - **Unified Version & Metadata Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.7.9** di seluruh tampilan UI, login card, sidebar profil, mobile header, komentar skrip, dan metadata sistem.
+
+- **[Ver 9.9.1]**
+  - **Diagnostic ONVIF Profile Probing**: Mengimplementasikan fungsi diagnostik backend `diagnoseOnvifProfiles` yang melakukan probing terhadap kamera berkemampuan ONVIF pada port 8899 (serta custom port) untuk mengekstrak seluruh daftar profil media (`device.profile_list` / `GetProfiles`), resolusi video, encoding, token profil aktif, status layanan PTZ, dan response time.
+  - **ProfileToken Pre-flight Verification**: Menyediakan verifikasi pra-gerak motor PTZ untuk mendeteksi apakah kamera memiliki profil kosong (*empty profile list*) atau token yang hilang (*missing tokens*) sebelum instruksi Continuous Move/PTZ dikirimkan.
+  - **Dedicated Diagnostic Endpoints**: Menyediakan endpoint `/api/onvif/diagnose-profiles` serta menyempurnakan respons `/api/cameras/:id/ptz-probe` dan `/api/onvif/probe-custom` dengan detail token profil dan log diagnostik terstruktur.
+  - **Visual Token Diagnostic Tags in UI**: Memperbarui modal uji coba ONVIF pada antarmuka pengguna agar menampilkan badge token profil (misal: `ProfileToken000 (1920x1080)`) dan model kamera secara langsung saat tombol uji coba diklik.
+  - **Unified Version Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.9.1** di seluruh antarmuka, backend, package manifest, dan metadata sistem.
 
 - **[Ver 9.9.0]**
   - **V380 & ONVIF Profile Token Extraction**: Menyesuaikan alur kontrol PTZ kamera V380 dengan mengambil `profileToken` aktif (`const profile = device.getCurrentProfile(); const token = profile ? profile['token'] : 'ProfileToken000';`) sebelum eksekusi perintah motor PTZ.

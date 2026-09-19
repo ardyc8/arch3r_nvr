@@ -2989,6 +2989,140 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
     }
 });
 
+// =========================================================================
+// ONVIF DIAGNOSTIC & PROFILE PROBING FUNCTION
+// =========================================================================
+/**
+ * Diagnostic function to probe an ONVIF-enabled camera on a specific port (default 8899)
+ * and retrieve all available profiles, tokens, video encoding details, and PTZ capabilities.
+ */
+async function diagnoseOnvifProfiles({ host, port = 8899, user = '', pass = '', timeoutMs = 4000 }) {
+    const onvif = require('node-onvif');
+    const logs = [];
+    const targetPort = parseInt(port, 10) || 8899;
+    
+    logs.push(`[INIT] Memulai probe diagnostik ONVIF ke target http://${host}:${targetPort}/onvif/device_service`);
+
+    if (!host) {
+        throw new Error('Host/IP kamera harus ditentukan.');
+    }
+
+    const device = new onvif.OnvifDevice({
+        xaddr: `http://${host}:${targetPort}/onvif/device_service`,
+        user: user || '',
+        pass: pass || ''
+    });
+
+    const startTime = Date.now();
+    try {
+        await Promise.race([
+            device.init(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error(`Koneksi ONVIF timeout setelah ${timeoutMs}ms pada port ${targetPort}`)), timeoutMs))
+        ]);
+    } catch (err) {
+        logs.push(`[ERROR] Gagal inisialisasi koneksi ONVIF pada port ${targetPort}: ${err.message}`);
+        return {
+            success: false,
+            host,
+            port: targetPort,
+            responseTimeMs: Date.now() - startTime,
+            error: err.message,
+            diagnosticLogs: logs,
+            profilesCount: 0,
+            profiles: [],
+            hasValidToken: false,
+            recommendedToken: null,
+            ptzSupported: false
+        };
+    }
+
+    const responseTimeMs = Date.now() - startTime;
+    logs.push(`[OK] Terhubung ke daemon ONVIF dalam ${responseTimeMs}ms`);
+
+    // Normalisasi endpoint agar tidak diarahkan ke port internal 8080 oleh firmware V380
+    sanitizeOnvifDeviceEndpoints(device, host, targetPort, user, pass);
+
+    // Ambil informasi perangkat
+    let deviceInfo = {};
+    try {
+        deviceInfo = device.getInformation() || {};
+        logs.push(`[INFO] Perangkat: ${deviceInfo.Manufacturer || 'Generic'} | Model: ${deviceInfo.Model || 'Unknown'} | Firmware: ${deviceInfo.FirmwareVersion || '-'}`);
+    } catch(e) {
+        logs.push(`[WARN] Gagal membaca device information: ${e.message}`);
+    }
+
+    // Ambil daftar profil media dari ONVIF Profile S
+    const rawProfiles = device.profile_list || [];
+    logs.push(`[INFO] Ditemukan ${rawProfiles.length} profil media dari respons GetProfiles`);
+
+    const parsedProfiles = rawProfiles.map((p, idx) => {
+        const token = p.token || (p['$'] && p['$'].token) || `Profile_${idx+1}`;
+        const name = p.name || `Profile ${idx+1}`;
+        
+        let resolution = 'Unknown';
+        let encoding = 'Unknown';
+        let framerate = null;
+
+        if (p.video && p.video.encoder) {
+            const enc = p.video.encoder;
+            encoding = enc.encoding || enc.codec || 'H264';
+            if (enc.resolution) {
+                resolution = `${enc.resolution.width}x${enc.resolution.height}`;
+            }
+            if (enc.framerate) framerate = enc.framerate;
+        }
+
+        const hasPtzConfig = !!(p.ptz || p.ptzConfiguration || (p.video && p.video.ptz));
+        const snapshotUri = p.snapshot || null;
+
+        return {
+            index: idx,
+            token,
+            name,
+            resolution,
+            encoding,
+            framerate,
+            hasPtzConfig,
+            snapshotUri
+        };
+    });
+
+    // Ambil Current Profile Token
+    const currentProfile = device.getCurrentProfile();
+    const currentToken = (currentProfile && currentProfile.token) 
+        ? currentProfile.token 
+        : (parsedProfiles.length > 0 ? parsedProfiles[0].token : 'ProfileToken000');
+
+    logs.push(`[INFO] Current Profile Token: "${currentToken}"`);
+
+    // Periksa status layanan PTZ
+    const ptzServiceAvailable = !!(device.services && device.services.ptz);
+    logs.push(`[INFO] PTZ Service: ${ptzServiceAvailable ? 'Tersedia & Aktif' : 'Tidak Ditemukan'}`);
+
+    // Cek apakah ada masalah token kosong / missing
+    const hasValidToken = parsedProfiles.length > 0 && parsedProfiles.some(p => !!p.token && p.token.trim() !== '');
+    if (!hasValidToken) {
+        logs.push(`[WARNING] Daftar profil media kosong atau tidak memiliki token! Perintah PTZ akan menggunakan fallback "ProfileToken000".`);
+    } else {
+        logs.push(`[OK] Token profil valid ditemukan: ${parsedProfiles.map(p => p.token).join(', ')}`);
+    }
+
+    return {
+        success: true,
+        host,
+        port: targetPort,
+        responseTimeMs,
+        deviceInfo,
+        profilesCount: parsedProfiles.length,
+        profiles: parsedProfiles,
+        currentProfileToken: currentToken,
+        hasValidToken,
+        recommendedToken: currentToken,
+        ptzSupported: ptzServiceAvailable,
+        diagnosticLogs: logs
+    };
+}
+
 // Endpoint dedicated stop
 app.post('/api/cameras/:id/ptz-stop', verifyToken, async (req, res) => {
     const authorizedCams = getAuthorizedCamerasForReq(req);
@@ -3014,19 +3148,45 @@ app.post('/api/cameras/:id/ptz-stop', verifyToken, async (req, res) => {
     }
 });
 
-// Endpoint untuk cek status & tes ONVIF PTZ kamera
+// Endpoint untuk cek status, diagnosa profil & tes ONVIF PTZ kamera terdaftar
 app.post('/api/cameras/:id/ptz-probe', verifyToken, async (req, res) => {
     const authorizedCams = getAuthorizedCamerasForReq(req);
     const cam = authorizedCams.find(c => c.id === req.params.id);
     if (!cam) return res.status(404).json({ error: 'Kamera tidak ditemukan' });
 
+    const { host, user, pass, customPort } = parseCameraPtzTarget(cam);
+    const targetPort = customPort || 8899;
+
     try {
-        const session = await getOrInitOnvifDevice(cam);
+        const diag = await diagnoseOnvifProfiles({
+            host,
+            port: targetPort,
+            user,
+            pass,
+            timeoutMs: 3500
+        });
+
+        if (!diag.success) {
+            // Coba fallback inisialisasi multi-port standar
+            const session = await getOrInitOnvifDevice(cam);
+            return res.json({
+                success: true,
+                message: `ONVIF PTZ terdeteksi & aktif pada port ${session.port}`,
+                port: session.port,
+                profileToken: session.profileToken,
+                profiles: [{ token: session.profileToken, name: 'Default Profile' }]
+            });
+        }
+
         res.json({
             success: true,
-            message: `ONVIF PTZ terdeteksi & aktif pada port ${session.port}`,
-            port: session.port,
-            profileToken: session.profileToken
+            message: `ONVIF PTZ terdeteksi & aktif pada port ${diag.port} (${diag.profilesCount} profil ditemukan)`,
+            port: diag.port,
+            profileToken: diag.recommendedToken,
+            deviceInfo: diag.deviceInfo,
+            profilesCount: diag.profilesCount,
+            profiles: diag.profiles,
+            diagnosticLogs: diag.diagnosticLogs
         });
     } catch (e) {
         res.status(500).json({
@@ -3036,7 +3196,7 @@ app.post('/api/cameras/:id/ptz-probe', verifyToken, async (req, res) => {
     }
 });
 
-// Endpoint untuk uji coba koneksi ONVIF custom langsung dari form modal (sebelum simpan)
+// Endpoint untuk uji coba koneksi & diagnosa profil ONVIF custom langsung dari form modal (sebelum simpan)
 app.post('/api/onvif/probe-custom', verifyToken, async (req, res) => {
     const { ptzUrl, ptzUser, ptzPass, mainStreamUrl } = req.body;
     const dummyCam = {
@@ -3047,19 +3207,95 @@ app.post('/api/onvif/probe-custom', verifyToken, async (req, res) => {
         mainStreamUrl: mainStreamUrl || ''
     };
 
+    const { host, user, pass, customPort } = parseCameraPtzTarget(dummyCam);
+    const targetPort = customPort || 8899;
+
+    if (!host) {
+        return res.status(400).json({
+            success: false,
+            error: 'Host/IP kamera tidak ditemukan. Masukkan IP atau RTSP URL terlebih dahulu.'
+        });
+    }
+
     try {
-        const session = await getOrInitOnvifDevice(dummyCam);
+        const diag = await diagnoseOnvifProfiles({
+            host,
+            port: targetPort,
+            user,
+            pass,
+            timeoutMs: 3500
+        });
+
+        if (!diag.success) {
+            // Jika port 8899 gagal dan belum coba multi-port, fallback coba multi-port
+            const session = await getOrInitOnvifDevice(dummyCam);
+            return res.json({
+                success: true,
+                message: `Koneksi ONVIF Berhasil! Terhubung di port ${session.port} (Token: ${session.profileToken})`,
+                port: session.port,
+                profileToken: session.profileToken,
+                profiles: [{ token: session.profileToken, name: 'Default Profile' }]
+            });
+        }
+
+        const profileSummary = (diag.profiles || [])
+            .map(p => `${p.token} (${p.resolution !== 'Unknown' ? p.resolution : p.name})`)
+            .join(', ') || diag.recommendedToken;
+
         res.json({
             success: true,
-            message: `Koneksi ONVIF Berhasil! Terhubung di port ${session.port} (Token: ${session.profileToken})`,
-            port: session.port,
-            profileToken: session.profileToken
+            message: `Koneksi ONVIF Berhasil pada port ${diag.port}! Profil: [${profileSummary}]`,
+            port: diag.port,
+            profileToken: diag.recommendedToken,
+            deviceInfo: diag.deviceInfo,
+            profilesCount: diag.profilesCount,
+            profiles: diag.profiles,
+            diagnosticLogs: diag.diagnosticLogs
         });
     } catch (e) {
         res.status(500).json({
             success: false,
             error: e.message
         });
+    }
+});
+
+// Endpoint dedicated untuk diagnosa lengkap profil ONVIF (port 8899 atau custom)
+app.post('/api/onvif/diagnose-profiles', verifyToken, async (req, res) => {
+    const { host, port = 8899, user = '', pass = '', camId } = req.body;
+    
+    let targetHost = host;
+    let targetPort = port;
+    let targetUser = user;
+    let targetPass = pass;
+
+    if (camId) {
+        const authorizedCams = getAuthorizedCamerasForReq(req);
+        const cam = authorizedCams.find(c => c.id === camId);
+        if (cam) {
+            const parsed = parseCameraPtzTarget(cam);
+            if (parsed.host) targetHost = parsed.host;
+            if (parsed.customPort) targetPort = parsed.customPort;
+            if (parsed.user) targetUser = parsed.user;
+            if (parsed.pass) targetPass = parsed.pass;
+        }
+    }
+
+    if (!targetHost) {
+        return res.status(400).json({ success: false, error: 'Host/IP kamera tidak boleh kosong.' });
+    }
+
+    try {
+        const result = await diagnoseOnvifProfiles({
+            host: targetHost,
+            port: targetPort,
+            user: targetUser,
+            pass: targetPass,
+            timeoutMs: 4500
+        });
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

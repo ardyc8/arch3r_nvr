@@ -822,7 +822,7 @@ async function updateHardwareStats() {
                 return;
             }
 
-            if (statusEl) statusEl.innerHTML = '<span style="color:#60a5fa;">⏳ Sedang menguji koneksi ONVIF...</span>';
+            if (statusEl) statusEl.innerHTML = '<span style="color:#60a5fa;">⏳ Sedang menguji & mendiagnosa profil ONVIF (Port 8899)...</span>';
             btnTestOnvifProbe.disabled = true;
 
             try {
@@ -833,9 +833,19 @@ async function updateHardwareStats() {
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    if (statusEl) statusEl.innerHTML = `<span style="color:#22c55e; font-weight:600;">✅ ${data.message}</span>`;
+                    let detailHtml = `<div style="color:#22c55e; font-weight:600; margin-bottom:2px;">✅ ${data.message}</div>`;
+                    if (data.profiles && data.profiles.length > 0) {
+                        const profTags = data.profiles.map(p => {
+                            const resText = p.resolution && p.resolution !== 'Unknown' ? ` (${p.resolution})` : '';
+                            return `<span style="background:rgba(59,130,246,0.18); color:#93c5fd; padding:1px 6px; border-radius:3px; font-family:monospace; font-size:0.75rem; border:1px solid rgba(59,130,246,0.3);">${p.token}${resText}</span>`;
+                        }).join(' ');
+                        detailHtml += `<div style="font-size:0.75rem; color:#cbd5e1; margin-top:3px;">📋 Profil Terdeteksi (${data.profiles.length}): ${profTags}</div>`;
+                    } else if (data.profileToken) {
+                        detailHtml += `<div style="font-size:0.75rem; color:#cbd5e1; margin-top:3px;">🔑 Token Aktif: <code style="color:#93c5fd;">${data.profileToken}</code></div>`;
+                    }
+                    if (statusEl) statusEl.innerHTML = detailHtml;
                 } else {
-                    if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444;">❌ Gagal: ${data.error || 'Tidak merespon'}</span>`;
+                    if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444; font-weight:600;">❌ Gagal: ${data.error || 'Kamera tidak merespon protokol ONVIF'}</span>`;
                 }
             } catch(e) {
                 if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444;">❌ Kesalahan: ${e.message}</span>`;
