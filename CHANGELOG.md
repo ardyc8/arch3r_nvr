@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 9.8.3] - 2026-09-18
+### Absolute Stability & Anti-Reboot Decoupling
+- **Pembersihan Total Pemanggilan `startx` dari Backend Node.js:**
+  - **Eliminasi Kernel Panic Meson DRM**: Menghapus seluruh logika eksekusi *spawn* `startx` dari dalam *daemon* Node.js. Menjalankan `startx` langsung dari proses *background* tanpa alokasi TTY pada Linux Armbian (Amlogic HG860P) terbukti memicu *kernel crash* / *VT switch panic* dan *hardware watchdog reboot* saat kabel HDMI dicolok.
+  - **Safe Telemetry Mode**: Modul `./addons/hdmi-kiosk/index.js` kini murni beroperasi sebagai pembaca status sysfs HDMI (*read-only telemetry*) tanpa mengeksekusi subproses grafis apa pun.
+  - **Standalone Armbian Systemd Service Script (`setup-kiosk-armbian.sh`)**: Menyediakan skrip instalasi *service* OS Linux mandiri (`arch3r-kiosk.service`) yang mengalokasikan TTY7, `matchbox-window-manager`, dan izin `Xwrapper.config` yang benar pada level sistem operasi jika pengguna ingin menjalankan tampilan Kiosk HDMI tanpa membebani *runtime* Node.js.
+
 ## [Ver 9.8.2] - 2026-09-18
 ### Critical Fix & Stability (Anti-Restart STB Protection)
 - **Safe Standby Mode untuk HDMI Kiosk Add-on (`./addons/hdmi-kiosk/`):**

@@ -37,9 +37,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.8.2';
+        return pkg.version || '9.8.3';
     } catch {
-        return '9.8.2';
+        return '9.8.3';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -3532,7 +3532,7 @@ function boot() {
 
     
 // ==========================================
-// HDMI KIOSK ADDON INTEGRATION (Armbian STB)
+// HDMI STATUS MONITOR ADDON (Armbian STB)
 // ==========================================
 let hdmiKioskAddon = null;
 try {
@@ -3542,43 +3542,37 @@ try {
         if (typeof hdmiKioskAddon.init === 'function') {
             hdmiKioskAddon.init({
                 appUrl: `http://localhost:${port}`,
-                pollIntervalMs: 15000,
-                autoStart: false, // Default false: mencegah STB crash-loop / reboot jika Xorg belum terkonfigurasi
-                logger: (level, msg) => sysLog(level, msg, 'HDMI-KIOSK')
+                pollIntervalMs: 30000,
+                logger: (level, msg) => sysLog(level, msg, 'HDMI-MONITOR')
             });
-            sysLog('INFO', 'Arch3r HDMI Kiosk Add-on loaded in safe standby mode', 'ADDON');
+            sysLog('INFO', 'Arch3r HDMI Monitor Add-on loaded in safe telemetry mode', 'ADDON');
         }
     }
 } catch (addonErr) {
-    console.warn('[Addon] HDMI Kiosk addon load skipped:', addonErr.message);
+    console.warn('[Addon] HDMI Monitor addon load skipped:', addonErr.message);
 }
 
-// --- HDMI Kiosk Add-on API Endpoints ---
+// --- HDMI Monitor Add-on API Endpoints ---
 app.get('/api/addons/hdmi-kiosk/status', verifyToken, (req, res) => {
     if (!hdmiKioskAddon) {
-        return res.json({ installed: false, enabled: false, message: 'Add-on HDMI Kiosk belum terinstal' });
+        return res.json({ installed: false, enabled: false, message: 'Add-on HDMI belum terinstal' });
     }
     res.json({ installed: true, ...hdmiKioskAddon.getStatus() });
 });
 
 app.post('/api/addons/hdmi-kiosk/toggle', verifyToken, requireAdmin, (req, res) => {
     if (!hdmiKioskAddon) {
-        return res.status(404).json({ error: 'Add-on HDMI Kiosk tidak ditemukan di ./addons/hdmi-kiosk' });
+        return res.status(404).json({ error: 'Add-on HDMI tidak ditemukan di ./addons/hdmi-kiosk' });
     }
-    const { enabled, action } = req.body;
-    if (action === 'launch') {
-        hdmiKioskAddon.launchKioskSession();
-        return res.json({ success: true, message: 'Sesi Kiosk berhasil diluncurkan manual', status: hdmiKioskAddon.getStatus() });
+    const { action } = req.body;
+    if (action && typeof hdmiKioskAddon.controlService === 'function') {
+        hdmiKioskAddon.controlService(action, (err, result) => {
+            if (err) return res.status(500).json({ error: `Gagal menjalankan aksi service ${action}: ${err.message}` });
+            res.json({ success: true, ...result, status: hdmiKioskAddon.getStatus() });
+        });
+    } else {
+        res.json({ success: true, status: hdmiKioskAddon.getStatus() });
     }
-    if (action === 'kill') {
-        hdmiKioskAddon.killKioskSession();
-        return res.json({ success: true, message: 'Sesi Kiosk X11/Chromium dihentikan', status: hdmiKioskAddon.getStatus() });
-    }
-    if (enabled !== undefined) {
-        if (enabled) hdmiKioskAddon.start();
-        else hdmiKioskAddon.stop();
-    }
-    res.json({ success: true, status: hdmiKioskAddon.getStatus() });
 });
 
 // ==========================================
