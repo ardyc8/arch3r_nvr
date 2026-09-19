@@ -1,6 +1,23 @@
 # Changelog
 
-## [Ver 9.7.1] - 2026-09-18
+## [Ver 9.8.1] - 2026-09-18
+### Added & Enhanced
+- **Arsitektur Add-on Lokal: HDMI Hot-Plug Detection & X11/Chromium Kiosk Launcher (`./addons/hdmi-kiosk/`):**
+  - Membuat modul add-on lokal `arch3r-addon-hdmi-kiosk` dengan `package.json` mandiri dan `index.js`.
+  - Memonitor status fisik colokan kabel HDMI pada kernel Linux sysfs (`/sys/class/drm/card0-HDMI-A-1/status`, `/sys/class/drm/card0-HDMI-A-2/status`, serta driver Amlogic Meson `/sys/class/amhdmitx/amhdmitx0/hpd_state` untuk STB HG860P).
+  - Loop polling hot-plug otomatis setiap 10 detik. Jika status HDMI berubah menjadi "connected", sistem meluncurkan sesi grafis minimal X11 & Chromium mode Kiosk (`startx /usr/bin/chromium-browser --kiosk --no-first-run --disable-infobars --disable-session-crashed-bubble --app=http://localhost:3000 -- -nocursor`).
+  - Ketika kabel HDMI dicabut ("disconnected"), sistem secara otomatis mematikan sesi grafis (`pkill -f chromium-browser && pkill -f xinit`) untuk menghemat RAM dan resource CPU STB pada mode headless (tanpa monitor).
+  - Integrasi modular aman via `try-catch` di dalam `server.js` dengan endpoint kendali status `/api/addons/hdmi-kiosk/status` dan aksi manual `/api/addons/hdmi-kiosk/toggle`.
+- **Integrasi ONVIF Profile S & Stream Auto-Resolver:**
+  - Menambahkan endpoint backend `/api/system/onvif-resolve` yang membaca endpoint ONVIF Device Service (port standar `8899`), memvalidasi profile kamera, dan secara otomatis mengekstrak RTSP Stream URI (port `554`) tanpa perlu tebak URL manual.
+  - Memperbarui kendali Continuous Move PTZ (`/api/cameras/:id/ptz`) dengan dukungan port prioritas 8899 dan pembacaan fleksibel dari parameter kamera (`ptzUrl`, `ptzUser`, `ptzPass` atau RTSP URL).
+- **Penyelarasan Versi Sistem:** Menaikkan nomor versi aplikasi ke `9.8.1` pada `package.json`, `metadata.json`, `server.js`, `index.html`, `script.js`, `README.md`, dan `CHANGELOG.md`.
+
+## [Ver 9.8.0] - 2026-09-18
+### Fixed & Improved
+- **Grid Layout 4x4 Fix:** Memperbaiki layout grid 4x4 pada mode landscape fullscreen dengan `min-height: 0` dan `min-width: 0` agar sel kamera proporsional dan tidak terdistorsi.
+- **Watermark OSD Judul Kamera:** Mengubah judul kamera di pojok kiri atas sel video menjadi watermark semi-transparan dengan efek blur latar belakang.
+- **Cache-Busting Update:** Memperbarui query string aset statis ke `?v=9.8.0`.
 ### Fixed & Improved
 - **Penyelarasan Panel Navigasi Bawah di Mode Fullscreen & Landscape:** Pada mode Fullscreen, panel navigasi dan tombol gerigi (⚙️) kini ditempatkan di bagian bawah layar (`bottom: 0` / `bottom: 14px`), bukan di atas video. Pada mode landscape layar ponsel/tablet, layout video grid otomatis disesuaikan (`max-height: 65vh; aspect-ratio: 16/9;`) sehingga video tidak terpotong dan navigasi tetap nyaman diakses.
 - **Label Kamera Aktif PTZ Vertikal di Atas D-Pad:** Memindahkan label nama kamera aktif PTZ ke bagian atas tombol D-Pad (`flex-direction: column`). Penamaan kamera tidak lagi menggeser posisi atau mendistorsi tata letak tombol D-Pad 3x3.

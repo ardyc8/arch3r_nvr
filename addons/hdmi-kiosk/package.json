@@ -1,0 +1,18 @@
+{
+  "name": "arch3r-addon-hdmi-kiosk",
+  "version": "1.0.0",
+  "description": "HDMI Hot-Plug Auto-Detection & X11/Chromium Kiosk Mode Launcher for Arch3r NVR on Armbian STB",
+  "main": "index.js",
+  "keywords": [
+    "arch3r-nvr",
+    "armbian",
+    "hdmi",
+    "kiosk",
+    "stb",
+    "aml-hg860p",
+    "x11",
+    "chromium"
+  ],
+  "author": "Arch3r NVR Team",
+  "license": "ISC"
+}

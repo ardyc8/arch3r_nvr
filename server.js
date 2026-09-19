@@ -37,9 +37,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.7.1';
+        return pkg.version || '9.8.1';
     } catch {
-        return '9.7.1';
+        return '9.8.1';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -2695,27 +2695,108 @@ app.get('/api/system/scan-onvif', verifyToken, requireAdmin, async (req, res) =>
     }
 });
 
+// Resolve ONVIF Profile S device stream URI and PTZ capabilities automatically
+app.post('/api/system/onvif-resolve', verifyToken, requireAdmin, async (req, res) => {
+    const { ip, port = 8899, username = '', password = '', xaddr } = req.body;
+    if (!ip && !xaddr) {
+        return res.status(400).json({ error: 'IP Address atau xaddr ONVIF wajib diisi' });
+    }
+
+    try {
+        const onvif = require('node-onvif');
+        const targetXaddr = xaddr || `http://${ip}:${port}/onvif/device_service`;
+        
+        const device = new onvif.OnvifDevice({
+            xaddr: targetXaddr,
+            user: username,
+            pass: password
+        });
+
+        await device.init();
+
+        const info = device.getInformation ? device.getInformation() : {};
+        const ptzService = !!device.services.ptz;
+        const udpStream = device.getUdpStreamUrl ? device.getUdpStreamUrl() : '';
+        const profiles = device.getProfileList ? device.getProfileList() : [];
+        
+        let resolvedRtsp = udpStream;
+        if (!resolvedRtsp && profiles.length > 0 && profiles[0].stream && profiles[0].stream.udp) {
+            resolvedRtsp = profiles[0].stream.udp;
+        }
+
+        // Include credentials in RTSP URL if provided
+        let sanitizedRtsp = resolvedRtsp;
+        if (sanitizedRtsp && username && !sanitizedRtsp.includes('@')) {
+            try {
+                const u = new URL(sanitizedRtsp);
+                u.username = encodeURIComponent(username);
+                u.password = encodeURIComponent(password);
+                sanitizedRtsp = u.toString();
+            } catch(e) {}
+        }
+
+        res.json({
+            success: true,
+            rtspUrl: sanitizedRtsp || resolvedRtsp,
+            ptzSupported: ptzService,
+            deviceInformation: info,
+            profilesCount: profiles.length,
+            currentProfile: device.getCurrentProfile()?.name || 'Profile_1'
+        });
+    } catch (err) {
+        res.status(500).json({
+            error: `Gagal membaca ONVIF Profile S (${err.message}). Pastikan port device service benar (standar: 8899) dan kredensial sesuai.`
+        });
+    }
+});
+
 app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
-    const { direction } = req.body;
+    const { direction, speed = 1.0, durationMs = 500 } = req.body;
     const authorizedCams = getAuthorizedCamerasForReq(req);
     const cam = authorizedCams.find(c => c.id === req.params.id);
     if (!cam) return res.status(403).json({ error: 'Akses Ditolak: Kamera tidak terdaftar pada akun Anda.' });
     
     try {
         const onvif = require('node-onvif');
-        const urlObj = new URL(cam.mainStreamUrl);
-        const host = urlObj.hostname;
-        const user = decodeURIComponent(urlObj.username || '');
-        const pass = decodeURIComponent(urlObj.password || '');
         
-        if (!host) throw new Error('Host IP tidak valid di RTSP URL');
+        let host = '';
+        let user = '';
+        let pass = '';
+        let customPort = null;
+
+        // 1. Periksa apakah kamera memiliki konfigurasi PTZ khusus (ptzUrl, ptzUser, ptzPass)
+        if (cam.ptzUrl && cam.ptzUrl.trim()) {
+            try {
+                const u = new URL(cam.ptzUrl.startsWith('http') ? cam.ptzUrl : `http://${cam.ptzUrl}`);
+                host = u.hostname;
+                if (u.port) customPort = parseInt(u.port, 10);
+            } catch(e) {
+                host = cam.ptzUrl.replace(/^http:\/\//, '').split(':')[0].split('/')[0];
+            }
+            user = cam.ptzUser || '';
+            pass = cam.ptzPass || '';
+        }
+
+        // 2. Fallback baca dari mainStreamUrl (RTSP)
+        if (!host && cam.mainStreamUrl) {
+            try {
+                const urlObj = new URL(cam.mainStreamUrl);
+                host = urlObj.hostname;
+                user = decodeURIComponent(urlObj.username || '');
+                pass = decodeURIComponent(urlObj.password || '');
+            } catch(e) {}
+        }
         
-        // Coba port ONVIF umum
-        const ports = [8899, 80, 8080, 2020];
+        if (!host) throw new Error('Host IP tidak valid pada konfigurasi Kamera');
+        
+        // Prioritaskan port standar ONVIF Profile S (8899), lalu port umum lainnya
+        const candidatePorts = customPort ? [customPort, 8899, 80, 8080, 2020, 5000, 8000] : [8899, 80, 8080, 2020, 5000, 8000];
+        const uniquePorts = [...new Set(candidatePorts)];
+        
         let device = null;
         let initError = null;
         
-        for (const port of ports) {
+        for (const port of uniquePorts) {
             try {
                 const tempDev = new onvif.OnvifDevice({
                     xaddr: `http://${host}:${port}/onvif/device_service`,
@@ -2724,7 +2805,7 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
                 });
                 await tempDev.init();
                 device = tempDev;
-                break; // Berhasil
+                break; // Berhasil terhubung
             } catch (err) {
                 initError = err;
             }
@@ -2736,31 +2817,40 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
         if (!ptz) throw new Error('Kamera ini tidak mendukung layanan PTZ ONVIF');
         
         const profile = device.getCurrentProfile();
+        if (!profile || !profile.token) throw new Error('Profil ONVIF tidak memiliki token PTZ');
         
         let x = 0, y = 0, z = 0;
-        const speed = 1.0;
-        if (direction === 'up') y = speed;
-        if (direction === 'down') y = -speed;
-        if (direction === 'left') x = -speed;
-        if (direction === 'right') x = speed;
-        if (direction === 'zoom_in') z = speed;
-        if (direction === 'zoom_out') z = -speed;
+        const spd = Math.max(0.1, Math.min(1.0, parseFloat(speed) || 1.0));
         
+        if (direction === 'up') y = spd;
+        if (direction === 'down') y = -spd;
+        if (direction === 'left') x = -spd;
+        if (direction === 'right') x = spd;
+        if (direction === 'zoom_in') z = spd;
+        if (direction === 'zoom_out') z = -spd;
+        
+        // Continuous Move
+        if (direction === 'stop') {
+            await device.ptzStop({'profileToken': profile['token'], 'panTilt': true, 'zoom': true});
+            return res.json({ success: true, message: 'PTZ stopped' });
+        }
+
         await device.ptzMove({
             'profileToken': profile['token'],
             'velocity': {'x': x, 'y': y, 'z': z},
             'timeout': 1
         });
         
+        const stopDelay = Math.max(200, Math.min(3000, parseInt(durationMs, 10) || 500));
         setTimeout(() => {
             device.ptzStop({'profileToken': profile['token'], 'panTilt': true, 'zoom': true}).catch(() => {});
-        }, 500);
+        }, stopDelay);
         
-        sysLog('INFO', `[PTZ] Kamera ${cam.name} (${host}) bergerak ke ${direction}`, 'CAMERA');
-        res.json({ success: true, message: 'PTZ command sent' });
+        sysLog('INFO', `[PTZ] Kamera ${cam.name} (${host}) Continuous Move ke ${direction} (Speed: ${spd})`, 'CAMERA');
+        res.json({ success: true, message: `PTZ command ${direction} executed` });
     } catch (e) {
         sysLog('ERROR', `[PTZ] Gagal ONVIF untuk ${cam ? cam.name : req.params.id}: ${e.message}`, 'CAMERA');
-        res.status(500).json({ error: 'Gagal mengontrol PTZ. ' + e.message });
+        res.status(500).json({ error: 'Gagal mengontrol PTZ: ' + e.message });
     }
 });
 
@@ -3441,6 +3531,56 @@ function boot() {
     setInterval(autoCleanupTempSegments, 10 * 1000); // 10 detik auto-cleanup segmen temp .ts
 
     
+// ==========================================
+// HDMI KIOSK ADDON INTEGRATION (Armbian STB)
+// ==========================================
+let hdmiKioskAddon = null;
+try {
+    const addonEntry = path.join(__dirname, 'addons', 'hdmi-kiosk', 'index.js');
+    if (fs.existsSync(addonEntry)) {
+        hdmiKioskAddon = require(addonEntry);
+        if (typeof hdmiKioskAddon.init === 'function') {
+            hdmiKioskAddon.init({
+                appUrl: `http://localhost:${port}`,
+                pollIntervalMs: 10000,
+                autoStart: true,
+                logger: (level, msg) => sysLog(level, msg, 'HDMI-KIOSK')
+            });
+            sysLog('INFO', 'Arch3r HDMI Kiosk Add-on loaded successfully', 'ADDON');
+        }
+    }
+} catch (addonErr) {
+    console.warn('[Addon] HDMI Kiosk addon load skipped:', addonErr.message);
+}
+
+// --- HDMI Kiosk Add-on API Endpoints ---
+app.get('/api/addons/hdmi-kiosk/status', verifyToken, (req, res) => {
+    if (!hdmiKioskAddon) {
+        return res.json({ installed: false, enabled: false, message: 'Add-on HDMI Kiosk belum terinstal' });
+    }
+    res.json({ installed: true, ...hdmiKioskAddon.getStatus() });
+});
+
+app.post('/api/addons/hdmi-kiosk/toggle', verifyToken, requireAdmin, (req, res) => {
+    if (!hdmiKioskAddon) {
+        return res.status(404).json({ error: 'Add-on HDMI Kiosk tidak ditemukan di ./addons/hdmi-kiosk' });
+    }
+    const { enabled, action } = req.body;
+    if (action === 'launch') {
+        hdmiKioskAddon.launchKioskSession();
+        return res.json({ success: true, message: 'Sesi Kiosk berhasil diluncurkan manual', status: hdmiKioskAddon.getStatus() });
+    }
+    if (action === 'kill') {
+        hdmiKioskAddon.killKioskSession();
+        return res.json({ success: true, message: 'Sesi Kiosk X11/Chromium dihentikan', status: hdmiKioskAddon.getStatus() });
+    }
+    if (enabled !== undefined) {
+        if (enabled) hdmiKioskAddon.start();
+        else hdmiKioskAddon.stop();
+    }
+    res.json({ success: true, status: hdmiKioskAddon.getStatus() });
+});
+
 // ==========================================
 // AI YOLOv8 Routes
 // ==========================================

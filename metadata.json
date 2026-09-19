@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 9.8.0",
-  "description": "NVR CCTV Backend with Node.js, Express, FFmpeg and HLS streaming for Armbian STB.",
+  "name": "Arch3r NVR Ver. 9.8.1",
+  "description": "NVR CCTV Backend with Node.js, Express, FFmpeg, HDMI Kiosk Add-on and HLS streaming for Armbian STB.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

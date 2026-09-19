@@ -1,13 +1,14 @@
-# ⚡ Arch3r NVR (Ver. 9.8.0)
+# ⚡ Arch3r NVR (Ver. 9.8.1)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
-Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, dan *Developer Console* (Superadmin).
+Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, arsitektur Add-on Kiosk HDMI, dan *Developer Console* (Superadmin).
 
 ---
 
 ## 🌟 Fitur Unggulan
 
-- **🚀 Ringan & Mandiri**: Berjalan mulus di RAM 1GB - 2GB khas STB (Amlogic, Rockchip, Allwinner) tanpa membebani CPU karena menggunakan metode perekaman *-c:v copy* (tanpa re-encode).
+- **🚀 Ringan & Mandiri**: Berjalan mulus di RAM 1GB - 2GB khas STB (Amlogic HG860P/B860H, Rockchip, Allwinner) tanpa membebani CPU karena menggunakan metode perekaman *-c:v copy* (tanpa re-encode).
+- **📺 HDMI Kiosk Mode Add-on (`./addons/hdmi-kiosk`)**: Otomatis mendeteksi colokan kabel HDMI fisik melalui kernel Linux sysfs (`/sys/class/drm/card0-HDMI-A-1/status` atau `amhdmitx0/hpd_state`). Saat HDMI dicolok, meluncurkan X11/Chromium Kiosk ke TV/Monitor lokal (`http://localhost:3000`). Saat dicabut, otomatis mematikan sesi grafis untuk menghemat RAM dan CPU STB pada mode headless.
 - **🌐 Dual-Mode Streaming**: 
   - **WebRTC** untuk pantauan (Live View) *Real-time* nyaris tanpa delay (0.5 detik).
   - **HLS** untuk fallback pada peramban/jaringan yang lambat.
@@ -16,16 +17,22 @@ Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profes
   1. **Superadmin (Developer/Root)**: Penguasa sistem (Pemegang Lisensi).
   2. **Administrator (Pemilik Tempat)**: Bisa mengatur kamera & storage.
   3. **User (Klien/Karyawan)**: Hanya bisa memantau (View-only).
-- **🔍 Auto-Discovery (ONVIF)**: Pencarian IP Kamera otomatis di dalam satu jaringan WiFi/LAN tanpa repot mengetikkan IP satu per satu (didukung modul `node-onvif`).
+- **🔍 Auto-Discovery & Profile S ONVIF**: Pencarian IP Kamera otomatis di LAN dan auto-resolve RTSP Stream URI melalui port Device Service standar (8899) & Continuous Move PTZ tanpa tebak path manual.
 - **🛡️ Tanpa Backdoor**: Sistem dipaksa murni, tidak ada akun default publik yang berbahaya.
 
 ---
 
-## 🛠️ Persyaratan Sistem (Prerequisites)
+## 🛠️ Persyaratan Sistem & Dependensi Tambahan (Kiosk Mode)
 
-1. Perangkat STB dengan OS Linux **Armbian / Ubuntu Server**.
+1. Perangkat STB dengan OS Linux **Armbian / Ubuntu Server** (misal: Amlogic HG860P, B860H).
 2. **Node.js** terinstal (minimal versi 18+).
-3. Terhubung ke internet (Untuk proses instalasi awal).
+3. **Dependensi Shell untuk HDMI Kiosk GUI (Opsional jika menggunakan TV/Monitor HDMI langsung)**:
+   ```bash
+   sudo apt update
+   sudo apt install -y xserver-xorg xinit chromium-browser
+   # Jika paket chromium-browser tidak ditemukan di distro Anda, gunakan:
+   # sudo apt install -y xserver-xorg xinit chromium
+   ```
 
 ---
 
