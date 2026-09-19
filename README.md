@@ -1,7 +1,7 @@
-# ⚡ Arch3r NVR (Ver. 9.9.1)
+# ⚡ Arch3r NVR (Ver. 9.9.2)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
-Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF PTZ fleksibel (toggle Ya/Tidak, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Kiosk HDMI, dan *Developer Console* (Superadmin).
+Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Kiosk HDMI, dan *Developer Console* (Superadmin).
 
 ---
 
@@ -90,6 +90,7 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
 ## 📂 Struktur Direktori Penting
 
 - `/server.js` : Jantung sistem / Backend NVR (Express.js).
+- `/lib/v380_driver.js` : Driver Binary TCP Socket (Port 8800) untuk PTZ Macrovideo V380.
 - `/public/` : Antarmuka Web (UI/UX) untuk diakses via browser.
 - `/data/nvr_db.json` : Database lokal yang menampung data kamera & pengguna. *(Otomatis terbuat saat aplikasi jalan)*.
 - `/data/storage.json` : Konfigurasi jalur penyimpanan (Mount Point) Hardisk/USB.
@@ -98,7 +99,13 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
 ---
 
 ## 📜 Log Pembaruan (Changelog)
-- **[Ver 9.8.0]**
+- **[Ver 9.9.2]**
+  - **Macrovideo V380 Direct Binary TCP Socket PTZ Driver (`/lib/v380_driver.js`)**: Mengintegrasikan modul driver binary socket TCP (Port 8800) untuk mengontrol pergerakan motor PTZ kamera V380 / V380 Pro secara mandiri tanpa terhambat bug/ketiadaan profil ONVIF SOAP XML.
+  - **Smart Hybrid PTZ Routing & Auto-Fallback**: Mendukung mode `v380_native` serta fallback otomatis ke port 8800 jika transmisi ONVIF gagal.
+  - **UI Protocol Selector**: Menambahkan pilihan protokol PTZ (Universal ONVIF / Macrovideo V380 Native) di modal formulir kamera.
+  - **Unified Version Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.9.2** di seluruh antarmuka, backend, package manifest, dan metadata sistem.
+
+- **[Ver 9.9.1]**
   - **Asset Cache-Busting Synchronization**: Memperbarui parameter *query string* cache-busting untuk file aset statis (`style.css?v=9.8.0` dan `script.js?v=9.8.0`) pada `index.html`. Ini memastikan browser client dan mobile webview tidak memuat stylesheet atau script lama dari memori cache browser setelah OTA update / git pull.
   - **Penjelasan Alur Pembaruan OTA vs Git Pull**: Memberikan panduan verifikasi pembaruan pada lingkungan STB nyata (GitHub repo push -> OTA Update / git pull -> hard refresh browser).
   - **Unified Version & Metadata Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.8.0** di seluruh komponen antarmuka, file konfigurasi sistem, dan metadata.

@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.9.0 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.9.2 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -865,7 +865,13 @@ async function updateHardwareStats() {
         if (camCustomIdEl) camCustomIdEl.value = cam.id;
         
         const camPtzSelectEl = document.getElementById('camPtzSelect');
-        if (camPtzSelectEl) camPtzSelectEl.value = cam.ptzEnabled ? 'yes' : 'no';
+        if (camPtzSelectEl) {
+            if (cam.ptzProtocol === 'v380_native') {
+                camPtzSelectEl.value = 'v380_native';
+            } else {
+                camPtzSelectEl.value = cam.ptzEnabled ? 'yes' : 'no';
+            }
+        }
 
         const camPtzUrlEl = document.getElementById('camPtzUrl');
         if (camPtzUrlEl) camPtzUrlEl.value = cam.ptzUrl || '';
@@ -974,12 +980,15 @@ async function updateHardwareStats() {
             e.preventDefault();
             const id = document.getElementById('camId').value;
             const ptzSelect = document.getElementById('camPtzSelect');
-            const isPtz = ptzSelect ? (ptzSelect.value === 'yes') : false;
+            const ptzVal = ptzSelect ? ptzSelect.value : 'no';
+            const isPtz = ptzVal === 'yes' || ptzVal === 'v380_native';
+            const ptzProtocol = ptzVal === 'v380_native' ? 'v380_native' : (isPtz ? 'onvif' : 'none');
 
             const payload = {
                 id: document.getElementById('camCustomId') ? document.getElementById('camCustomId').value.trim() : undefined,
                 name: document.getElementById('camName').value,
                 ptzEnabled: isPtz,
+                ptzProtocol: ptzProtocol,
                 ptzUrl: document.getElementById('camPtzUrl') ? document.getElementById('camPtzUrl').value.trim() : '',
                 ptzUser: document.getElementById('camPtzUser') ? document.getElementById('camPtzUser').value.trim() : '',
                 ptzPass: document.getElementById('camPtzPass') ? document.getElementById('camPtzPass').value : '',

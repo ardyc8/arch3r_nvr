@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import cookieParser from 'cookie-parser';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { sendV380PtzCommand, probeV380Socket } from './lib/v380_driver.js';
 
 dotenv.config();
 
@@ -37,9 +38,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.8.4';
+        return pkg.version || '9.9.2';
     } catch {
-        return '9.8.4';
+        return '9.9.2';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -2913,6 +2914,29 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
     const cam = authorizedCams.find(c => c.id === req.params.id);
     if (!cam) return res.status(403).json({ error: 'Akses Ditolak: Kamera tidak terdaftar pada akun Anda.' });
     
+    const ptzProto = cam.ptzProtocol || 'auto'; // 'auto' | 'onvif' | 'v380_native'
+    const { host, user, pass, customPort } = parseCameraPtzTarget(cam);
+
+    // Jalur 1: Jika kamera secara eksplisit diset ke Macrovideo V380 Native (Port 8800 Binary)
+    if (ptzProto === 'v380_native' || customPort === 8800) {
+        try {
+            const v380Speed = Math.max(1, Math.min(10, Math.round((parseFloat(speed) || 1.0) * 8)));
+            const result = await sendV380PtzCommand({
+                host,
+                port: customPort || 8800,
+                direction,
+                speed: v380Speed,
+                durationMs: parseInt(durationMs, 10) || 450
+            });
+            sysLog('INFO', `[PTZ-V380-NATIVE] Kamera ${cam.name} (${host}:${customPort || 8800}) gerak ${direction}`, 'CAMERA');
+            return res.json({ success: true, message: result.message, protocol: 'v380_native' });
+        } catch (v380Err) {
+            sysLog('WARN', `[PTZ-V380-NATIVE] Gagal kirim ke ${cam.name}: ${v380Err.message}`, 'CAMERA');
+            return res.status(500).json({ error: 'Gagal PTZ V380 Native: ' + v380Err.message });
+        }
+    }
+
+    // Jalur 2: ONVIF Universal dengan Auto-Fallback ke V380 Native jika ONVIF gagal
     try {
         const session = await getOrInitOnvifDevice(cam);
         const { device } = session;
@@ -2978,11 +3002,28 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
         }, stopDelay);
         
         sysLog('INFO', `[PTZ] Kamera ${cam.name} gerak ke ${direction} (Kecepatan: ${spd}) [Token: ${token}]`, 'CAMERA');
-        res.json({ success: true, message: `Perintah PTZ ${direction} berhasil dijalankan`, token });
+        res.json({ success: true, message: `Perintah PTZ ${direction} berhasil dijalankan`, token, protocol: 'onvif' });
     } catch (e) {
         // Hapus cache jika terjadi kegagalan agar koneksi diinisiasi ulang
-        const { host, user, customPort } = parseCameraPtzTarget(cam);
         onvifDeviceCache.delete(`${cam.id}_${host}_${customPort || 'auto'}_${user}`);
+
+        // Fallback cerdas: Jika ONVIF gagal dan host valid, coba tembakkan ke driver V380 Native Socket Port 8800
+        if (host) {
+            try {
+                sysLog('INFO', `[PTZ-FALLBACK] ONVIF gagal (${e.message}), mencoba fallback V380 Socket ${host}:8800...`, 'CAMERA');
+                const v380Speed = Math.max(1, Math.min(10, Math.round((parseFloat(speed) || 1.0) * 8)));
+                const result = await sendV380PtzCommand({
+                    host,
+                    port: 8800,
+                    direction,
+                    speed: v380Speed,
+                    durationMs: parseInt(durationMs, 10) || 450
+                });
+                return res.json({ success: true, message: result.message, protocol: 'v380_native_fallback' });
+            } catch (fallbackErr) {
+                sysLog('WARN', `[PTZ-FALLBACK] V380 Native Fallback juga gagal: ${fallbackErr.message}`, 'CAMERA');
+            }
+        }
         
         sysLog('WARN', `[PTZ] Gagal untuk ${cam.name}: ${e.message}`, 'CAMERA');
         res.status(500).json({ error: 'Gagal PTZ: ' + e.message });
@@ -3129,6 +3170,23 @@ app.post('/api/cameras/:id/ptz-stop', verifyToken, async (req, res) => {
     const cam = authorizedCams.find(c => c.id === req.params.id);
     if (!cam) return res.status(403).json({ error: 'Akses Ditolak: Kamera tidak terdaftar.' });
 
+    const ptzProto = cam.ptzProtocol || 'auto';
+    const { host, user, pass, customPort } = parseCameraPtzTarget(cam);
+
+    // Jika Macrovideo V380 Native, kirim perintah Stop langsung via binary socket
+    if (ptzProto === 'v380_native' || customPort === 8800) {
+        try {
+            await sendV380PtzCommand({
+                host,
+                port: customPort || 8800,
+                direction: 'stop'
+            });
+            return res.json({ success: true, message: 'PTZ V380 dihentikan' });
+        } catch(e) {
+            return res.status(500).json({ error: 'Gagal stop PTZ V380: ' + e.message });
+        }
+    }
+
     try {
         const session = await getOrInitOnvifDevice(cam);
         const { device } = session;
@@ -3144,6 +3202,13 @@ app.post('/api/cameras/:id/ptz-stop', verifyToken, async (req, res) => {
         }
         res.json({ success: true, message: 'PTZ dihentikan' });
     } catch(err) {
+        // Coba fallback stop V380 socket jika host ada
+        if (host) {
+            try {
+                await sendV380PtzCommand({ host, port: 8800, direction: 'stop' });
+                return res.json({ success: true, message: 'PTZ dihentikan (Fallback V380 Socket)' });
+            } catch(e) {}
+        }
         res.status(500).json({ error: 'Gagal stop PTZ: ' + err.message });
     }
 });
@@ -3227,6 +3292,19 @@ app.post('/api/onvif/probe-custom', verifyToken, async (req, res) => {
         });
 
         if (!diag.success) {
+            // Cek jika port 8800 V380 socket terbuka
+            const v380Probe = await probeV380Socket({ host, port: 8800, timeoutMs: 1500 });
+            if (v380Probe.success) {
+                return res.json({
+                    success: true,
+                    message: `Terdeteksi Kamera Macrovideo V380 Native! Port socket 8800 aktif (${v380Probe.responseTimeMs}ms). Siap PTZ via Binary Driver.`,
+                    port: 8800,
+                    protocol: 'v380_native',
+                    profileToken: 'V380_NATIVE_STREAM',
+                    profiles: [{ token: 'V380_NATIVE_STREAM', name: 'Macrovideo Binary Stream' }]
+                });
+            }
+
             // Jika port 8899 gagal dan belum coba multi-port, fallback coba multi-port
             const session = await getOrInitOnvifDevice(dummyCam);
             return res.json({

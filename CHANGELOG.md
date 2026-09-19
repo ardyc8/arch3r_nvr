@@ -1,6 +1,34 @@
 # Changelog
 
-## [Ver 9.8.4] - 2026-09-19
+## [Ver 9.9.2] - 2026-09-19
+### Macrovideo V380 Direct Binary TCP Socket PTZ Driver & Hybrid Fallback Engine
+- **Macrovideo V380 Native Binary Driver (`/lib/v380_driver.js`):**
+  - **Direct TCP Socket (Port 8800)**: Mengintegrasikan pustaka driver biner untuk mengontrol motor PTZ kamera V380/V380 Pro melalui soket TCP port 8800 secara mandiri tanpa tergantung pada protokol ONVIF XML SOAP yang sering diblokir atau tidak lengkap pada firmware Macrovideo terbaru.
+  - **Standard 32-Byte Packet Constructor (`buildV380PtzPacket`)**: Menyusun frame biner dengan header magic `0x00 0x00 0x01 0x07 0x20 0x21 0x00 0x00`, Command ID `0x284A`, dan mapping opcode terarah (`UP=0x01`, `DOWN=0x02`, `LEFT=0x03`, `RIGHT=0x04`, `ZOOM_IN=0x05`, `ZOOM_OUT=0x06`, `STOP=0x00`).
+  - **TCP Connection Lifecycle & Auto-Stop Management (`sendV380PtzCommand`)**: Mengatur koneksi soket cepat (<2500ms timeout) dengan pengiriman paket continuous move diikuti paket stop biner otomatis sesuai durasi tanpa resiko *socket leak* atau *process blocking*.
+  - **Socket Probe Utility (`probeV380Socket`)**: Menyediakan fungsi diagnostik konektivitas soket TCP port 8800 untuk deteksi instan kamera V380 di jaringan lokal.
+- **Smart Hybrid PTZ Routing & Auto-Fallback (`server.js`):**
+  - **Multi-Protocol PTZ Routing (`/api/cameras/:id/ptz`)**: Mendukung pemilihan protokol PTZ (`ptzProtocol: 'auto' | 'onvif' | 'v380_native'`). Kamera dengan konfigurasi V380 Native atau port 8800 langsung diarahkan ke driver biner.
+  - **Zero-Failure Fallback Engine**: Jika pengiriman perintah via ONVIF standar mengalami kegagalan (XML timeout / parsing error), backend otomatis melakukan *fallback* cerdas dengan menembakkan perintah PTZ ke socket V380 port 8800 secara transparan.
+  - **Dedicated Stop & Probing Endpoint Updates**: Memperbarui rute `/api/cameras/:id/ptz-stop`, `/api/cameras/:id/ptz-probe`, dan `/api/onvif/probe-custom` dengan penanganan ganda (ONVIF + V380 binary socket).
+- **Frontend UI Protocol Selector (`index.html` & `script.js`):**
+  - Menambahkan opsi pilihan protokol **Macrovideo V380 Native (Port 8800 Binary Socket)** pada dropdown pengaturan PTZ di modal konfigurasi kamera.
+  - Menyelaraskan form autofill, edit kamera, reset form, dan submit payload dengan parameter `ptzProtocol`.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 9.9.2** pada `package.json`, `metadata.json`, `server.js`, `index.html`, `README.md`, dan `CHANGELOG.md`.
+
+## [Ver 9.9.1] - 2026-09-19
+### Diagnostic ONVIF Profile Probing & ProfileToken Pre-flight Verification
+- **Diagnostic ONVIF Profile Probing**: Mengimplementasikan fungsi diagnostik backend `diagnoseOnvifProfiles` yang melakukan probing terhadap kamera berkemampuan ONVIF pada port 8899 (serta custom port) untuk mengekstrak seluruh daftar profil media (`device.profile_list` / `GetProfiles`), resolusi video, encoding, token profil aktif, status layanan PTZ, dan response time.
+- **ProfileToken Pre-flight Verification**: Menyediakan verifikasi pra-gerak motor PTZ untuk mendeteksi apakah kamera memiliki profil kosong (*empty profile list*) atau token yang hilang (*missing tokens*) sebelum instruksi Continuous Move/PTZ dikirimkan.
+- **Dedicated Diagnostic Endpoints**: Menyediakan endpoint `/api/onvif/diagnose-profiles` serta menyempurnakan respons `/api/cameras/:id/ptz-probe` dan `/api/onvif/probe-custom` dengan detail token profil dan log diagnostik terstruktur.
+- **Visual Token Diagnostic Tags in UI**: Memperbarui modal uji coba ONVIF pada antarmuka pengguna agar menampilkan badge token profil (misal: `ProfileToken000 (1920x1080)`) dan model kamera secara langsung saat tombol uji coba diklik.
+
+## [Ver 9.9.0] - 2026-09-19
+### V380 & ONVIF Profile Token Extraction & Continuous Move Refactoring
+- **V380 Profile Token Extraction**: Menyesuaikan alur kontrol PTZ kamera V380 dengan mengambil `profileToken` aktif (`const profile = device.getCurrentProfile(); const token = profile ? profile['token'] : 'ProfileToken000';`) sebelum eksekusi perintah motor PTZ.
+- **Continuous Move & Explicit Stop Routing**: Menerapkan routing `/api/cameras/:id/ptz` dan endpoint dedicated `/api/cameras/:id/ptz-stop` dengan passing `profileToken`, koordinat kecepatan x/y/z, serta eksekusi stop (`device.ptzStop({ profileToken: token })` dan SOAP fallback).
+- **Auto-assigned Device Profile**: Memastikan properti internal `device.current_profile` selalu terinisialisasi pada instance `OnvifDevice` untuk mencegah penolakan perintah dari driver internal.
 ### Enhanced Armbian Kiosk Keep-Alive & Chromium Root Flags
 - **Kiosk Auto-Restart & Sandbox Hardening (`setup-kiosk-armbian.sh`):**
   - **Auto Keep-Alive Loop**: Menambahkan *infinite watch loop* pada `/opt/arch3r-kiosk/start-kiosk.sh` sehingga Chromium tidak akan pernah keluar (*exit*) atau mati sendiri ketika terjadi navigasi atau transisi render.
