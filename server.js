@@ -2886,7 +2886,16 @@ async function getOrInitOnvifDevice(cam) {
     }
 
     const profile = device.getCurrentProfile();
-    const token = (profile && profile.token) ? profile.token : (device.profile_list && device.profile_list[0] ? device.profile_list[0].token : 'Profile_1');
+    const token = (profile && profile.token) 
+        ? profile.token 
+        : ((device.profile_list && device.profile_list[0] && device.profile_list[0].token) 
+            ? device.profile_list[0].token 
+            : 'ProfileToken000');
+
+    // Pastikan internal profile selalu terpasang pada instance device
+    if (!device.current_profile) {
+        device.current_profile = profile || (device.profile_list && device.profile_list[0]) || { token: token };
+    }
 
     const entry = {
         device,
@@ -2906,7 +2915,14 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
     
     try {
         const session = await getOrInitOnvifDevice(cam);
-        const { device, profileToken } = session;
+        const { device } = session;
+
+        // 1. Ambil Profile Token aktif kamera (Kritikal untuk V380 & Onvif Profile S)
+        const profile = device.getCurrentProfile();
+        const token = profile ? profile['token'] : (session.profileToken || 'ProfileToken000');
+        if (!device.current_profile) {
+            device.current_profile = profile || { token: token };
+        }
 
         let x = 0, y = 0, z = 0;
         const spd = Math.max(0.1, Math.min(1.0, parseFloat(speed) || 1.0));
@@ -2918,29 +2934,29 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
         else if (direction === 'zoom_in' || direction === 'focus_in') z = spd;
         else if (direction === 'zoom_out' || direction === 'focus_out') z = -spd;
         
-        // Perintah Stop
+        // 2. Perintah Stop Eksplisit
         if (direction === 'stop') {
             try {
-                await device.ptzStop();
+                await device.ptzStop({ profileToken: token });
             } catch(e) {
-                if (device.services.ptz && device.services.ptz.stop) {
-                    await device.services.ptz.stop({ ProfileToken: profileToken, PanTilt: true, Zoom: true });
+                if (device.services && device.services.ptz && device.services.ptz.stop) {
+                    await device.services.ptz.stop({ ProfileToken: token, PanTilt: true, Zoom: true });
                 }
             }
             return res.json({ success: true, message: 'PTZ dihentikan' });
         }
 
-        // Jalankan continuous move menggunakan driver node-onvif
+        // 3. Jalankan continuous move dengan token dan koordinat kecepatan
         try {
             await device.ptzMove({
                 speed: { x, y, z },
                 timeout: 1
             });
         } catch(moveErr) {
-            // Fallback direct service SOAP call
-            if (device.services.ptz && device.services.ptz.continuousMove) {
+            // Fallback direct SOAP call untuk firmware V380 / Xiongmai
+            if (device.services && device.services.ptz && device.services.ptz.continuousMove) {
                 await device.services.ptz.continuousMove({
-                    ProfileToken: profileToken,
+                    ProfileToken: token,
                     Velocity: { x, y, z },
                     Timeout: 1
                 });
@@ -2949,19 +2965,20 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
             }
         }
         
+        // Auto stop timer
         const stopDelay = Math.max(150, Math.min(3000, parseInt(durationMs, 10) || 450));
         setTimeout(async () => {
             try {
-                await device.ptzStop();
+                await device.ptzStop({ profileToken: token });
             } catch(e) {
-                if (device.services.ptz && device.services.ptz.stop) {
-                    device.services.ptz.stop({ ProfileToken: profileToken, PanTilt: true, Zoom: true }).catch(() => {});
+                if (device.services && device.services.ptz && device.services.ptz.stop) {
+                    device.services.ptz.stop({ ProfileToken: token, PanTilt: true, Zoom: true }).catch(() => {});
                 }
             }
         }, stopDelay);
         
-        sysLog('INFO', `[PTZ] Kamera ${cam.name} gerak ke ${direction} (Kecepatan: ${spd})`, 'CAMERA');
-        res.json({ success: true, message: `Perintah PTZ ${direction} berhasil dijalankan` });
+        sysLog('INFO', `[PTZ] Kamera ${cam.name} gerak ke ${direction} (Kecepatan: ${spd}) [Token: ${token}]`, 'CAMERA');
+        res.json({ success: true, message: `Perintah PTZ ${direction} berhasil dijalankan`, token });
     } catch (e) {
         // Hapus cache jika terjadi kegagalan agar koneksi diinisiasi ulang
         const { host, user, customPort } = parseCameraPtzTarget(cam);
@@ -2969,6 +2986,31 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
         
         sysLog('WARN', `[PTZ] Gagal untuk ${cam.name}: ${e.message}`, 'CAMERA');
         res.status(500).json({ error: 'Gagal PTZ: ' + e.message });
+    }
+});
+
+// Endpoint dedicated stop
+app.post('/api/cameras/:id/ptz-stop', verifyToken, async (req, res) => {
+    const authorizedCams = getAuthorizedCamerasForReq(req);
+    const cam = authorizedCams.find(c => c.id === req.params.id);
+    if (!cam) return res.status(403).json({ error: 'Akses Ditolak: Kamera tidak terdaftar.' });
+
+    try {
+        const session = await getOrInitOnvifDevice(cam);
+        const { device } = session;
+        const profile = device.getCurrentProfile();
+        const token = profile ? profile['token'] : (session.profileToken || 'ProfileToken000');
+        
+        try {
+            await device.ptzStop({ profileToken: token });
+        } catch(e) {
+            if (device.services && device.services.ptz && device.services.ptz.stop) {
+                await device.services.ptz.stop({ ProfileToken: token, PanTilt: true, Zoom: true });
+            }
+        }
+        res.json({ success: true, message: 'PTZ dihentikan' });
+    } catch(err) {
+        res.status(500).json({ error: 'Gagal stop PTZ: ' + err.message });
     }
 });
 
