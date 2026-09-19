@@ -1,5 +1,5 @@
 {
-  "name": "Arch3r NVR Ver. 9.7.8",
+  "name": "Arch3r NVR Ver. 9.7.9",
   "description": "NVR CCTV Backend with Node.js, Express, FFmpeg and HLS streaming for Armbian STB.",
   "requestFramePermissions": [],
   "majorCapabilities": [
