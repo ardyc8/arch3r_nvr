@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.7.9)
+# ⚡ Arch3r NVR (Ver. 9.8.0)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, dan *Developer Console* (Superadmin).
@@ -91,6 +91,10 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
 ---
 
 ## 📜 Log Pembaruan (Changelog)
+- **[Ver 9.8.0]**
+  - **Asset Cache-Busting Synchronization**: Memperbarui parameter *query string* cache-busting untuk file aset statis (`style.css?v=9.8.0` dan `script.js?v=9.8.0`) pada `index.html`. Ini memastikan browser client dan mobile webview tidak memuat stylesheet atau script lama dari memori cache browser setelah OTA update / git pull.
+  - **Penjelasan Alur Pembaruan OTA vs Git Pull**: Memberikan panduan verifikasi pembaruan pada lingkungan STB nyata (GitHub repo push -> OTA Update / git pull -> hard refresh browser).
+  - **Unified Version & Metadata Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.8.0** di seluruh komponen antarmuka, file konfigurasi sistem, dan metadata.
 - **[Ver 9.7.9]**
   - **Fixed 4x4 Grid Fullscreen Landscape Distortion**: Memperbaiki pembagian template baris dan kolom pada layout grid (`.video-grid.grid-16`, `grid-9`, `grid-4`, `grid-1`) dengan `grid-template-rows: repeat(N, minmax(0, 1fr))` dan `min-height: 0` / `min-width: 0` pada `.cam-cell`. Kotak video pada mode layar penuh 4x4 landscape kini terbagi rata dan proporsional sempurna tanpa ada baris yang gepeng atau terjepit.
   - **Translucent Subtle Watermark for Camera Names**: Mengubah tampilan nama kamera di dalam kotak video menjadi watermark semi-transparan (`rgba(0, 0, 0, 0.42)`) dengan *subtle backdrop blur* dan border halus di pojok kiri atas. Nama kamera kini tidak menutupi rekaman video dan tampak seperti *On-Screen Display (OSD)* standar kamera pengawas profesional.
