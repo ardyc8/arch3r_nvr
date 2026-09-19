@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.9.2 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.9.3 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -834,6 +834,10 @@ async function updateHardwareStats() {
                 const data = await res.json();
                 if (res.ok && data.success) {
                     let detailHtml = `<div style="color:#22c55e; font-weight:600; margin-bottom:2px;">✅ ${data.message}</div>`;
+                    if (data.protocol === 'v380_native') {
+                        const ptzSelectEl = document.getElementById('camPtzSelect');
+                        if (ptzSelectEl) ptzSelectEl.value = 'v380_native';
+                    }
                     if (data.profiles && data.profiles.length > 0) {
                         const profTags = data.profiles.map(p => {
                             const resText = p.resolution && p.resolution !== 'Unknown' ? ` (${p.resolution})` : '';

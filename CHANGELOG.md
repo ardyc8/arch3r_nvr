@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 9.9.3] - 2026-09-19
+### Multi-Variant Macrovideo V380 Pro PTZ Driver & Automated Protocol Auto-Select
+- **Multi-Variant Binary Packet Generator (`/lib/v380_driver.js`):**
+  - **Dual Header Support**: Menambahkan generator paket biner varian kedua (`buildV380PtzVariant2Packet`) dengan Magic Header `0x7F 0x00 0x00 0x01` dan Opcode `0x2710` (24-byte packet) khusus untuk kamera generasi baru V380 Pro / V380 Q7/Q8 yang menggunakan protokol V2.
+  - **Dual-Burst Transmission (`sendV380PtzCommand`)**: Mengirimkan burst biner gabungan (*Standard 0x284A + V380 Pro 0x2710*) pada soket TCP port 8800 secara berurutan untuk menjamin kompatibilitas menyeluruh pada semua firmware kamera Macrovideo lama maupun baru.
+- **Frontend Intelligent Protocol Detection (`public/script.js`):**
+  - Mengotomatisasi pemilihan dropdown protokol kamera (`camPtzSelect` otomatis beralih ke `v380_native`) saat pengujian probe koneksi mendeteksi respon aktif pada socket Macrovideo port 8800.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 9.9.3** pada `package.json`, `metadata.json`, `server.js`, `public/index.html`, `public/superadmin.html`, `README.md`, dan `CHANGELOG.md`.
+
 ## [Ver 9.9.2] - 2026-09-19
 ### Macrovideo V380 Direct Binary TCP Socket PTZ Driver & Hybrid Fallback Engine
 - **Macrovideo V380 Native Binary Driver (`/lib/v380_driver.js`):**
