@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.7.6)
+# ⚡ Arch3r NVR (Ver. 9.7.7)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, dan *Developer Console* (Superadmin).
@@ -91,6 +91,14 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
 ---
 
 ## 📜 Log Pembaruan (Changelog)
+- **[Ver 9.7.7]**
+  - **Navigation & Control Panel Layout Alignment**: Menyesuaikan tata letak panel kontrol monitor secara presisi dengan arsitektur 3 baris terstruktur:
+    1. *Baris 1*: Dropdown filter saluran (`View: ALL` / `View: CH x`) dan navigasi halaman kamera (`◀ Prev`, `Hal x/y`, `Next ▶`).
+    2. *Baris 2*: Pemilih tata letak grid (`▢ 1x1`, `⊞ 2x2`, `▦ 3x3`, `㗊 4x4`) dengan tombol Aksi Kanan (Refresh `🔄` dan Layar Penuh `⛶`).
+    3. *Baris 3*: Kartu Kontrol PTZ & Player terpadu yang membagi D-Pad sirkular di sebelah kiri, dan kolom bertumpuk di sebelah kanan yang terdiri dari kotak atas (*🔍 LENSA & FOKUS*: Zoom +, Focus +, Zoom -, Focus -) dan kotak bawah (*🎬 KONTROL PLAYER & AUDIO*: Tombol Play/Pause, Toggle Kualitas Video HD/SD, Tombol Snapshot 📸, Baris Slider Volume 🔊, serta Tombol Audio 🔇).
+  - **HD/SD Video Quality Dynamic Toggle**: Mengintegrasikan tombol `HD` / `SD` interaktif pada kontrol player yang dapat beralih kualitas video secara langsung untuk kamera terpilih, otomatis beralih antara stream utama (*Main Stream*) dan sub-stream (*Sub Stream*), serta memperbarui indikator visual tombol.
+  - **Visual & Component Refinement**: Tombol Stop tengah pada D-Pad kini menampilkan ikon henti oranye yang presisi (`■`), serta sinkronisasi dinamis status kontrol player saat pergantian kamera di grid.
+
 - **[Ver 9.7.6]**
   - **Dropdown Standardized to (View: ALL)**: Memastikan label default pada dropdown filter kamera di monitor live view selalu tampil rapi dengan teks `View: ALL` (dan `View: CH x - Nama Kamera`), serta menjaga sinkronisasi pilihan kamera saat refresh.
   - **Player & Media Controls Integrated in PTZ Card**: Memindahkan kontrol player utama (*Play/Pause*, *Audio/Mute*, *Slider Volume*, dan *Snapshot Kamera 📸*) langsung ke dalam kotak panel kontrol PTZ, tepat di samping kontrol Lensa (Zoom & Fokus) dalam tata letak yang bersih, terorganisir, dan mudah diakses.

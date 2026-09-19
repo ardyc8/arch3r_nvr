@@ -377,7 +377,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 /* NVR MONITOR CONTROLS (Row 1: Filter/Page, Row 2: Media Toolbar, Row 3: PTZ Card) */
 /* ============================================================== */
 
-/* Row 1: Filter Dropdown, Pagination, Grid Selector, Refresh & Fullscreen Strip */
+/* Row 1: Filter Dropdown & Page Navigation Strip */
 .nvr-filter-pagination-row {
     display: flex;
     align-items: center;
@@ -386,7 +386,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     padding: 6px 12px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     max-width: 100%;
     box-sizing: border-box;
 }
@@ -395,7 +395,8 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    flex: 1;
+    min-width: 0;
 }
 
 .nvr-select-channel {
@@ -407,8 +408,8 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
-    min-width: 110px;
-    max-width: 180px;
+    width: 100%;
+    max-width: 200px;
     outline: none;
     transition: border-color 0.2s;
     text-overflow: ellipsis;
@@ -456,7 +457,19 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     text-align: center;
 }
 
-.nvr-top-actions-group {
+/* Row 2: Grid Toolbar Row */
+.nvr-grid-toolbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-sizing: border-box;
+}
+
+.nvr-grid-actions-right {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -532,7 +545,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     background: var(--accent-blue);
 }
 
-/* Row 2: PTZ Control Panel Card */
+/* Row 3: PTZ Control Panel Card */
 .nvr-ptz-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -638,8 +651,8 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     border-radius: 50%;
     background: var(--surface-dark);
     border: 1px solid var(--border);
-    color: var(--text-muted);
-    font-size: 12px;
+    color: #f59e0b;
+    font-size: 13px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -649,11 +662,27 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 }
 .nvr-ptz-center-circle:hover {
     background: var(--surface-lighter);
-    color: var(--accent-blue);
-    border-color: var(--accent-blue);
+    color: #fbbf24;
+    border-color: #f59e0b;
 }
 .nvr-ptz-center-circle:active {
     transform: scale(0.92);
+}
+
+.nvr-ptz-stop-square {
+    color: #f59e0b;
+    font-size: 13px;
+    line-height: 1;
+}
+
+/* 2. Right Stacked Column */
+.nvr-ptz-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 220px;
+    max-width: 280px;
 }
 
 /* PTZ Group Boxes (Optics & Media) */
@@ -661,11 +690,11 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background: rgba(0,0,0,0.2);
+    background: rgba(0,0,0,0.25);
     padding: 8px 10px;
     border-radius: 8px;
     border: 1px solid var(--border);
-    flex-shrink: 0;
+    box-sizing: border-box;
 }
 
 .nvr-ptz-group-title {
@@ -676,12 +705,12 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     font-weight: 700;
 }
 
-/* 2. Middle: Right 2x2 Function Actions Grid */
+/* Middle 2x2 Function Actions Grid */
 .nvr-ptz-actions-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 6px;
-    width: 160px;
+    width: 100%;
 }
 
 .nvr-ptz-action-btn {
@@ -689,7 +718,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     border: 1px solid var(--border);
     color: var(--text-main);
     border-radius: 6px;
-    padding: 7px 8px;
+    padding: 6px 8px;
     font-size: 11px;
     font-weight: 600;
     text-align: center;
@@ -712,12 +741,29 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     transform: scale(0.96);
 }
 
-/* 3. Right: Player & Audio & Snapshot Media Controls */
-.nvr-ptz-player-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+/* Player Media Rows */
+.nvr-player-row-top {
+    display: flex;
     gap: 6px;
-    width: 190px;
+    align-items: center;
+    width: 100%;
+}
+
+.nvr-player-row-top .nvr-ptz-media-btn {
+    flex: 1;
+    min-width: 0;
+}
+
+.nvr-player-row-bottom {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    width: 100%;
+}
+
+.nvr-player-row-bottom .nvr-ptz-media-btn {
+    flex-shrink: 0;
+    min-width: 70px;
 }
 
 .nvr-ptz-media-btn {
@@ -725,7 +771,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     border: 1px solid var(--border);
     color: var(--text-main);
     border-radius: 6px;
-    padding: 7px 8px;
+    padding: 6px 6px;
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
@@ -744,6 +790,17 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 }
 .nvr-ptz-media-btn:active {
     transform: scale(0.96);
+}
+
+.nvr-btn-quality {
+    border-color: #3b82f6;
+    color: #38bdf8;
+    background: rgba(59, 130, 246, 0.15);
+}
+.nvr-btn-quality.is-sd {
+    border-color: #eab308;
+    color: #facc15;
+    background: rgba(234, 179, 8, 0.15);
 }
 
 .nvr-btn-snapshot-ptz {
@@ -776,10 +833,15 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     cursor: pointer;
 }
 
-.nvr-vol-ptz {
-    grid-column: span 2;
+.nvr-vol-ptz-row {
+    flex: 1;
+    min-width: 0;
     height: 30px;
-    justify-content: space-between;
+    padding: 0 6px;
+}
+.nvr-vol-ptz-row .nvr-vol-slider {
+    width: 100%;
+    flex: 1;
 }
 
 /* Floating PTZ Controller (Mobile / Free Floating in grid-wrapper) */

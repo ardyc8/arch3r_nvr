@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.7.6 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=9.7.6">
+    <title>Arch3r NVR Ver. 9.7.7 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=9.7.7">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
@@ -15,7 +15,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.7.6</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.7.7</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -49,7 +49,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 9.7.6</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 9.7.7</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -147,7 +147,7 @@
                             <!-- Hidden backwards compatibility container if needed -->
                             <div id="channelBar" style="display:none;"></div>
 
-                            <!-- Row 1: Filter Dropdown, Page Navigation, Grid Layout Selector, Refresh & Fullscreen Strip -->
+                            <!-- Row 1: Filter Dropdown & Page Navigation Strip -->
                             <div id="channelBarRow" class="nvr-filter-pagination-row">
                                 <div class="nvr-filter-left">
                                     <select id="camChannelSelect" class="nvr-select-channel" onchange="window.onChannelDropdownChange(this.value)">
@@ -159,13 +159,17 @@
                                     <span id="gridPageIndicator" class="nvr-page-indicator">Hal 1/1</span>
                                     <button id="btnNextGridPage" class="nvr-btn-nav" onclick="window.nextGridPage()" title="Halaman Kamera Berikutnya">Next ▶</button>
                                 </div>
-                                <div class="nvr-top-actions-group">
-                                    <div class="nvr-grid-selector-group">
-                                        <button class="nvr-grid-btn grid-btn" data-grid="1" onclick="window.setGridLayout(1)" title="Layout 1x1">▢ 1x1</button>
-                                        <button class="nvr-grid-btn grid-btn" data-grid="4" onclick="window.setGridLayout(4)" title="Layout 2x2">⊞ 2x2</button>
-                                        <button class="nvr-grid-btn grid-btn active" data-grid="9" onclick="window.setGridLayout(9)" title="Layout 3x3">▦ 3x3</button>
-                                        <button class="nvr-grid-btn grid-btn" data-grid="16" onclick="window.setGridLayout(16)" title="Layout 4x4">㗊 4x4</button>
-                                    </div>
+                            </div>
+
+                            <!-- Row 2: Grid Layout Selector & Action Buttons (Refresh & Fullscreen) -->
+                            <div id="gridToolbarRow" class="nvr-grid-toolbar-row">
+                                <div class="nvr-grid-selector-group">
+                                    <button class="nvr-grid-btn grid-btn" data-grid="1" onclick="window.setGridLayout(1)" title="Layout 1x1">▢ 1x1</button>
+                                    <button class="nvr-grid-btn grid-btn" data-grid="4" onclick="window.setGridLayout(4)" title="Layout 2x2">⊞ 2x2</button>
+                                    <button class="nvr-grid-btn grid-btn active" data-grid="9" onclick="window.setGridLayout(9)" title="Layout 3x3">▦ 3x3</button>
+                                    <button class="nvr-grid-btn grid-btn" data-grid="16" onclick="window.setGridLayout(16)" title="Layout 4x4">㗊 4x4</button>
+                                </div>
+                                <div class="nvr-grid-actions-right">
                                     <button id="btnPlayerRefresh" class="nvr-tool-btn" onclick="window.refreshAllStreams()" title="Muat Ulang Semua Aliran (Refresh)">
                                         <span class="nvr-icon">🔄</span>
                                     </button>
@@ -175,51 +179,61 @@
                                 </div>
                             </div>
 
-                            <!-- Row 2: PTZ Control Panel Card with Optics & Player Media Controls -->
+                            <!-- Row 3: PTZ Control Panel Card with Optics & Player Media Controls -->
                             <div id="ptzControlPanelCard" class="nvr-ptz-card">
                                 <div class="nvr-ptz-header">
                                     <span>🎮 Kontrol PTZ & Player: <strong id="topActiveCamLabel" style="color:var(--accent-blue);">Pilih di grid</strong></span>
                                 </div>
                                 <div class="nvr-ptz-divider"></div>
                                 <div class="nvr-ptz-body">
-                                    <!-- 1. Left: Enlarged Circular D-Pad Dial -->
+                                    <!-- 1. Left: Circular D-Pad Dial -->
                                     <div class="nvr-ptz-dial-wrapper">
                                         <div class="nvr-ptz-dial">
                                             <button class="nvr-ptz-arrow-btn nvr-ptz-up" onclick="window.ptzMoveSelected('up')" title="PTZ Atas">▲</button>
                                             <button class="nvr-ptz-arrow-btn nvr-ptz-left" onclick="window.ptzMoveSelected('left')" title="PTZ Kiri">◀</button>
-                                            <button class="nvr-ptz-center-circle" onclick="window.ptzMoveSelected('stop')" title="PTZ Stop / Center">⏹</button>
+                                            <button class="nvr-ptz-center-circle" onclick="window.ptzMoveSelected('stop')" title="PTZ Stop / Center"><span class="nvr-ptz-stop-square">■</span></button>
                                             <button class="nvr-ptz-arrow-btn nvr-ptz-right" onclick="window.ptzMoveSelected('right')" title="PTZ Kanan">▶</button>
                                             <button class="nvr-ptz-arrow-btn nvr-ptz-down" onclick="window.ptzMoveSelected('down')" title="PTZ Bawah">▼</button>
                                         </div>
                                     </div>
 
-                                    <!-- 2. Middle: Zoom & Focus Optics Grid -->
-                                    <div class="nvr-ptz-group-box">
-                                        <div class="nvr-ptz-group-title">🔍 Lensa & Fokus</div>
-                                        <div class="nvr-ptz-actions-grid">
-                                            <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('zoom_in')">Zoom +</button>
-                                            <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('focus_in')">Focus +</button>
-                                            <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('zoom_out')">Zoom -</button>
-                                            <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('focus_out')">Focus -</button>
+                                    <!-- 2. Right: Stacked Column (Lensa & Fokus + Kontrol Player & Audio) -->
+                                    <div class="nvr-ptz-right-column">
+                                        <!-- Top Box: Lensa & Fokus -->
+                                        <div class="nvr-ptz-group-box">
+                                            <div class="nvr-ptz-group-title">🔍 LENSA & FOKUS</div>
+                                            <div class="nvr-ptz-actions-grid">
+                                                <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('zoom_in')">Zoom +</button>
+                                                <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('focus_in')">Focus +</button>
+                                                <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('zoom_out')">Zoom -</button>
+                                                <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('focus_out')">Focus -</button>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <!-- 3. Right: Player & Audio & Snapshot Media Controls -->
-                                    <div class="nvr-ptz-group-box">
-                                        <div class="nvr-ptz-group-title">🎬 Kontrol Player & Audio</div>
-                                        <div class="nvr-ptz-player-grid">
-                                            <button id="btnPlayerPlayPause" class="nvr-ptz-media-btn" onclick="window.toggleSelectedPlayPause()" title="Play / Pause">
-                                                <span id="playerPlayIcon" class="nvr-icon">▶</span> Play
-                                            </button>
-                                            <button id="btnPlayerAudioMute" class="nvr-ptz-media-btn" onclick="window.toggleSelectedMute()" title="Bisu / Bunyikan Audio">
-                                                <span id="playerMuteIcon" class="nvr-icon">🔇</span> Audio
-                                            </button>
-                                            <button id="btnTakeSnapshot" class="nvr-ptz-media-btn nvr-btn-snapshot-ptz" onclick="window.takeSnapshotSelected()" title="Ambil Foto Snapshot">
-                                                <span class="nvr-icon">📸</span> Snapshot
-                                            </button>
-                                            <div class="nvr-vol-container nvr-vol-ptz" title="Volume Suara">
-                                                <span class="nvr-vol-icon">🔊</span>
-                                                <input id="selectedCamVolume" type="range" class="nvr-vol-slider" min="0" max="100" value="100" oninput="window.setSelectedVolume(this.value)" title="Volume">
+                                        <!-- Bottom Box: Kontrol Player & Audio -->
+                                        <div class="nvr-ptz-group-box">
+                                            <div class="nvr-ptz-group-title">🎬 KONTROL PLAYER & AUDIO</div>
+                                            <!-- Row 1: Play, HD/SD Quality Toggle, Snapshot -->
+                                            <div class="nvr-player-row-top">
+                                                <button id="btnPlayerPlayPause" class="nvr-ptz-media-btn" onclick="window.toggleSelectedPlayPause()" title="Play / Pause">
+                                                    <span id="playerPlayIcon" class="nvr-icon">▶</span> <span id="playerPlayText">Play</span>
+                                                </button>
+                                                <button id="btnPlayerQuality" class="nvr-ptz-media-btn nvr-btn-quality" onclick="window.toggleSelectedQuality()" title="Ganti Kualitas Video HD / SD">
+                                                    <strong id="playerQualityLabel">HD</strong>
+                                                </button>
+                                                <button id="btnTakeSnapshot" class="nvr-ptz-media-btn nvr-btn-snapshot-ptz" onclick="window.takeSnapshotSelected()" title="Ambil Foto Snapshot">
+                                                    <span class="nvr-icon">📸</span> Snapshot
+                                                </button>
+                                            </div>
+                                            <!-- Row 2: Volume Slider & Audio Button -->
+                                            <div class="nvr-player-row-bottom">
+                                                <div class="nvr-vol-container nvr-vol-ptz-row" title="Volume Suara">
+                                                    <span class="nvr-vol-icon">🔊</span>
+                                                    <input id="selectedCamVolume" type="range" class="nvr-vol-slider" min="0" max="100" value="100" oninput="window.setSelectedVolume(this.value)" title="Volume">
+                                                </div>
+                                                <button id="btnPlayerAudioMute" class="nvr-ptz-media-btn" onclick="window.toggleSelectedMute()" title="Bisu / Bunyikan Audio">
+                                                    <span id="playerMuteIcon" class="nvr-icon">🔇</span> Audio
+                                                </button>
                                             </div>
                                         </div>
                                     </div>

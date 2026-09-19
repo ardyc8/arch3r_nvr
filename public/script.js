@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.7.6 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.7.7 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -1362,10 +1362,74 @@ async function fetchCameras() {
         });
     }
 
+    window.camStreamQualities = window.camStreamQualities || {};
+
+    function updateQualityButtonUI(camId) {
+        const btnQuality = document.getElementById('btnPlayerQuality');
+        const labelQuality = document.getElementById('playerQualityLabel');
+        const effectiveId = camId || selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : cameras[0]?.id);
+        const q = (effectiveId && window.camStreamQualities[effectiveId]) || 'HD';
+        if (labelQuality) labelQuality.textContent = q;
+        if (btnQuality) {
+            if (q === 'SD') {
+                btnQuality.classList.add('is-sd');
+            } else {
+                btnQuality.classList.remove('is-sd');
+            }
+        }
+    }
+    window.updateQualityButtonUI = updateQualityButtonUI;
+
+    window.toggleSelectedQuality = function() {
+        const targetId = selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : (cameras[0]?.id));
+        if (!targetId) {
+            alert('Pilih kamera di layar terlebih dahulu.');
+            return;
+        }
+        
+        const cur = window.camStreamQualities[targetId] || 'HD';
+        const next = (cur === 'HD') ? 'SD' : 'HD';
+        window.camStreamQualities[targetId] = next;
+        
+        updateQualityButtonUI(targetId);
+        
+        // Find video element and switch source dynamically
+        const cam = cameras.find(c => c.id === targetId);
+        if (!cam) return;
+        
+        let hlsUrl = '';
+        if (next === 'SD') {
+            if (cam.subStreamUrl && cam.subStreamUrl.startsWith('http')) {
+                hlsUrl = cam.subStreamUrl;
+            } else if (cam.subStreamUrl && cam.subStreamUrl.trim() !== '') {
+                hlsUrl = '/stream/' + (cam.mediaMtxPath || cam.id) + '_sub/index.m3u8?token=' + encodeURIComponent(getAuthToken());
+            } else {
+                hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+            }
+        } else {
+            hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+        }
+
+        const cell = document.getElementById('cell_' + targetId) || document.getElementById('m_cell_' + targetId);
+        if (cell) {
+            const video = cell.querySelector('video');
+            if (video && video.id) {
+                if (activeHlsPlayers[video.id]) {
+                    activeHlsPlayers[video.id].destroy();
+                    delete activeHlsPlayers[video.id];
+                }
+                initHlsPlayer(video.id, hlsUrl);
+            }
+        }
+    };
+
     function updateBottomPlayerUI() {
         const pCtrl = document.getElementById('playerControls');
         const btnPlay = document.getElementById('btnPlayerPlayPause') || document.getElementById('btnPlayerPlay');
+        const btnPlayIcon = document.getElementById('playerPlayIcon');
+        const btnPlayText = document.getElementById('playerPlayText');
         const btnMute = document.getElementById('btnPlayerAudioMute') || document.getElementById('btnPlayerMute');
+        const btnMuteIcon = document.getElementById('playerMuteIcon');
         const sliderVol = document.getElementById('selectedCamVolume') || document.getElementById('playerVolume');
 
         if (!selectedVideoElement) {
@@ -1378,18 +1442,32 @@ async function fetchCameras() {
                 pCtrl.style.opacity = '1';
                 pCtrl.style.pointerEvents = 'auto';
             }
-            if (btnPlay) btnPlay.textContent = selectedVideoElement.paused ? '▶️ Play' : '⏸️ Pause';
-            if (btnMute) btnMute.textContent = selectedVideoElement.muted ? '🔇 Bisu' : '🔊 Suara';
+            if (btnPlayIcon) {
+                btnPlayIcon.textContent = selectedVideoElement.paused ? '▶' : '⏸';
+            }
+            if (btnPlayText) {
+                btnPlayText.textContent = selectedVideoElement.paused ? 'Play' : 'Pause';
+            }
+            if (btnPlay && !btnPlayIcon) {
+                btnPlay.textContent = selectedVideoElement.paused ? '▶️ Play' : '⏸️ Pause';
+            }
+            if (btnMuteIcon) {
+                btnMuteIcon.textContent = selectedVideoElement.muted ? '🔇' : '🔊';
+            }
+            if (btnMute && !btnMuteIcon) {
+                btnMute.textContent = selectedVideoElement.muted ? '🔇 Bisu' : '🔊 Suara';
+            }
             if (sliderVol) {
                 sliderVol.value = selectedVideoElement.muted ? 0 : Math.round((selectedVideoElement.volume || 1) * 100);
             }
         }
+        updateQualityButtonUI(selectedCamIdForPtz);
     }
 
     window.selectCellForPtz = function(camId) {
         selectedCamIdForPtz = camId;
         document.querySelectorAll('.cam-cell').forEach(cell => cell.classList.remove('selected'));
-        const activeCell = document.getElementById('cell_' + camId);
+        const activeCell = document.getElementById('cell_' + camId) || document.getElementById('m_cell_' + camId);
         if (activeCell) {
             activeCell.classList.add('selected');
             selectedVideoElement = activeCell.querySelector('video');
@@ -1740,7 +1818,19 @@ async function fetchCameras() {
                     cell.id = "cell_" + cam.id;
                     cell.onclick = () => window.selectCellForPtz(cam.id);
                     
-                    const hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                    const curQuality = (window.camStreamQualities && window.camStreamQualities[cam.id]) || 'HD';
+                    let hlsUrl = '';
+                    if (curQuality === 'SD') {
+                        if (cam.subStreamUrl && cam.subStreamUrl.startsWith('http')) {
+                            hlsUrl = cam.subStreamUrl;
+                        } else if (cam.subStreamUrl && cam.subStreamUrl.trim() !== '') {
+                            hlsUrl = '/stream/' + (cam.mediaMtxPath || cam.id) + '_sub/index.m3u8?token=' + encodeURIComponent(getAuthToken());
+                        } else {
+                            hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                        }
+                    } else {
+                        hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                    }
                     const videoId = "cam_video_admin_" + i;
                     
                     cell.innerHTML = `
@@ -1777,7 +1867,19 @@ async function fetchCameras() {
                     mCell.id = "m_cell_" + cam.id;
                     mCell.onclick = () => window.selectCellForPtz(cam.id);
                     
-                    const hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                    const curQuality = (window.camStreamQualities && window.camStreamQualities[cam.id]) || 'HD';
+                    let hlsUrl = '';
+                    if (curQuality === 'SD') {
+                        if (cam.subStreamUrl && cam.subStreamUrl.startsWith('http')) {
+                            hlsUrl = cam.subStreamUrl;
+                        } else if (cam.subStreamUrl && cam.subStreamUrl.trim() !== '') {
+                            hlsUrl = '/stream/' + (cam.mediaMtxPath || cam.id) + '_sub/index.m3u8?token=' + encodeURIComponent(getAuthToken());
+                        } else {
+                            hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                        }
+                    } else {
+                        hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                    }
                     const videoId = "cam_video_mobile_" + i;
                     
                     mCell.innerHTML = `
