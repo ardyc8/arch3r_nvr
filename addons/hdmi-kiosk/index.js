@@ -1,22 +1,26 @@
 /**
  * ============================================================================
- * ARCH3R NVR ADDON: HDMI HOT-PLUG & CHROMIUM KIOSK LAUNCHER (VER 1.0.0)
+ * ARCH3R NVR ADDON: HDMI HOT-PLUG & CHROMIUM KIOSK LAUNCHER (VER 1.0.1)
  * ============================================================================
  * Target Environment: Linux Armbian on Amlogic STB (e.g., Fiberhome HG860P)
  * Description: Automatically detects physical HDMI cable hot-plug state and
  * manages an ultra-lightweight standalone X11 / Chromium Kiosk session.
- * When HDMI is unplugged, kills GUI processes to free memory/CPU in headless mode.
+ * 
+ * SAFETY MEASURES:
+ * - Disabled by default (autoStart: false) to prevent crash loops / STB reboot.
+ * - Validates binary prerequisites (startx, xorg, chromium) before execution.
+ * - Circuit breaker: Cooldown & auto-pause on repeated launch failures.
  * ============================================================================
  */
 
 const fs = require('fs');
 const path = require('path');
-const { exec, spawn } = require('child_process');
+const { exec, spawn, execSync } = require('child_process');
 
 class HdmiKioskAddon {
     constructor() {
-        this.enabled = true;
-        this.pollIntervalMs = 10000; // 10 seconds hot-plug check
+        this.enabled = false; // DISABLED BY DEFAULT FOR STABILITY
+        this.pollIntervalMs = 15000; // 15 seconds polling interval
         this.timer = null;
         this.isHdmiConnected = false;
         this.isKioskRunning = false;
@@ -24,6 +28,11 @@ class HdmiKioskAddon {
         this.lastCheckTime = null;
         this.detectedSysPath = null;
         this.appUrl = 'http://localhost:3000';
+        this.consecutiveFailures = 0;
+        this.maxFailures = 3;
+        this.lastFailureTime = 0;
+        this.failureCooldownMs = 60000; // 1 minute cooldown after failure
+        this.lastError = null;
         this.logger = (lvl, msg) => console.log(`[HDMI-KIOSK][${lvl}] ${msg}`);
         
         // Candidate sysfs status paths for HDMI in Linux kernel / DRM subsystem & Amlogic SoC
@@ -34,6 +43,79 @@ class HdmiKioskAddon {
             '/sys/class/amhdmitx/amhdmitx0/hpd_state',           // Amlogic STB (HG860P / B860H)
             '/sys/devices/virtual/amhdmitx/amhdmitx0/hpd_state' // Amlogic alternative sysfs
         ];
+
+        this.configPath = path.join(__dirname, 'kiosk_config.json');
+        this.loadConfig();
+    }
+
+    loadConfig() {
+        try {
+            if (fs.existsSync(this.configPath)) {
+                const data = JSON.parse(fs.readFileSync(this.configPath, 'utf8'));
+                if (typeof data.enabled === 'boolean') this.enabled = data.enabled;
+                if (data.appUrl) this.appUrl = data.appUrl;
+            }
+        } catch (e) {
+            // Ignore config read error
+        }
+    }
+
+    saveConfig() {
+        try {
+            fs.writeFileSync(this.configPath, JSON.stringify({
+                enabled: this.enabled,
+                appUrl: this.appUrl,
+                updatedAt: new Date().toISOString()
+            }, null, 2));
+        } catch (e) {
+            // Ignore config write error
+        }
+    }
+
+    /**
+     * Check if necessary binaries (startx, Xorg, Chromium) exist on the system
+     */
+    checkPrerequisites() {
+        const results = {
+            startXExists: false,
+            xorgExists: false,
+            chromiumPath: null,
+            ready: false,
+            missing: []
+        };
+
+        // Check startx
+        const startxPaths = ['/usr/bin/startx', '/bin/startx', '/usr/local/bin/startx'];
+        for (const p of startxPaths) {
+            if (fs.existsSync(p)) {
+                results.startXExists = true;
+                break;
+            }
+        }
+        if (!results.startXExists) {
+            results.missing.push('xinit (startx)');
+        }
+
+        // Check Xorg
+        const xorgPaths = ['/usr/bin/Xorg', '/usr/lib/xorg/Xorg', '/usr/bin/X'];
+        for (const p of xorgPaths) {
+            if (fs.existsSync(p)) {
+                results.xorgExists = true;
+                break;
+            }
+        }
+        if (!results.xorgExists) {
+            results.missing.push('xserver-xorg');
+        }
+
+        // Check Chromium
+        results.chromiumPath = this.getChromiumBinary();
+        if (!results.chromiumPath) {
+            results.missing.push('chromium-browser / chromium');
+        }
+
+        results.ready = results.startXExists && results.xorgExists && !!results.chromiumPath;
+        return results;
     }
 
     /**
@@ -43,12 +125,21 @@ class HdmiKioskAddon {
     init(options = {}) {
         if (options.appUrl) this.appUrl = options.appUrl;
         if (typeof options.pollIntervalMs === 'number') this.pollIntervalMs = options.pollIntervalMs;
-        if (typeof options.enabled === 'boolean') this.enabled = options.enabled;
         if (typeof options.logger === 'function') this.logger = options.logger;
 
-        this.logger('INFO', `Initialized Arch3r HDMI Kiosk Add-on. Target App: ${this.appUrl}, Interval: ${this.pollIntervalMs}ms`);
+        // Only start if explicitly enabled in config or options
+        if (options.enabled !== undefined) {
+            this.enabled = !!options.enabled;
+        }
 
-        if (this.enabled !== false && options.autoStart !== false) {
+        const prereqs = this.checkPrerequisites();
+        if (!prereqs.ready) {
+            this.logger('WARN', `HDMI Kiosk Add-on in Standby. Paket yang belum terpasang: ${prereqs.missing.join(', ')}. Mode Kiosk tidak akan dijalankan otomatis.`);
+        } else {
+            this.logger('INFO', `HDMI Kiosk Add-on siap. Status Enabled: ${this.enabled}`);
+        }
+
+        if (this.enabled && prereqs.ready) {
             this.start();
         }
         return this;
@@ -60,8 +151,11 @@ class HdmiKioskAddon {
     start() {
         if (this.timer) clearInterval(this.timer);
         this.enabled = true;
+        this.consecutiveFailures = 0;
+        this.lastError = null;
+        this.saveConfig();
         
-        // Immediate check on startup
+        // Immediate check on start
         this.evaluateState();
 
         // Run hot-plug interval polling
@@ -81,6 +175,7 @@ class HdmiKioskAddon {
             this.timer = null;
         }
         this.enabled = false;
+        this.saveConfig();
         this.killKioskSession();
         this.logger('INFO', 'HDMI Hot-Plug monitor stopped.');
     }
@@ -108,7 +203,6 @@ class HdmiKioskAddon {
             }
         }
 
-        // Fallback if running inside sandbox or headless Linux without active DRM sysfs
         return { connected: false, path: null, rawValue: 'no_sysfs_found' };
     }
 
@@ -118,22 +212,32 @@ class HdmiKioskAddon {
     evaluateState() {
         if (!this.enabled) return;
 
+        // Circuit breaker check
+        if (this.consecutiveFailures >= this.maxFailures) {
+            const now = Date.now();
+            if (now - this.lastFailureTime < this.failureCooldownMs) {
+                return; // Silently wait for cooldown to expire
+            }
+            // Cooldown expired, allow one retry
+            this.consecutiveFailures = 0;
+            this.logger('INFO', 'Circuit breaker cooldown selesai. Mencoba ulang evaluasi HDMI...');
+        }
+
         const { connected, path: activePath, rawValue } = this.checkHdmiPhysicalStatus();
         const prevStatus = this.isHdmiConnected;
         this.isHdmiConnected = connected;
 
-        // Log when cable status changes
         if (connected !== prevStatus) {
             this.logger('INFO', `HDMI Status Transition: ${prevStatus ? 'CONNECTED' : 'DISCONNECTED'} -> ${connected ? 'CONNECTED' : 'DISCONNECTED'} (sysfs: ${activePath || 'none'}, raw: ${rawValue})`);
         }
 
-        // 1. HDMI is plugged in and Kiosk is not running -> Launch GUI
+        // 1. HDMI is plugged in and Kiosk is not running -> Launch GUI safely
         if (this.isHdmiConnected && !this.isKioskRunning) {
             this.launchKioskSession();
         }
         // 2. HDMI is unplugged while Kiosk is running -> Kill GUI to save RAM/CPU
         else if (!this.isHdmiConnected && this.isKioskRunning) {
-            this.logger('INFO', 'HDMI cable unplugged! Reclaiming STB memory by terminating X11/Chromium session.');
+            this.logger('INFO', 'HDMI cable unplugged. Terminating X11/Chromium session.');
             this.killKioskSession();
         }
     }
@@ -151,22 +255,32 @@ class HdmiKioskAddon {
         for (const c of candidates) {
             if (fs.existsSync(c)) return c;
         }
-        return '/usr/bin/chromium-browser'; // default standard debian/armbian path
+        return null;
     }
 
     /**
-     * Launch standalone minimal X11 + Chromium in Kiosk mode
+     * Launch standalone minimal X11 + Chromium in Kiosk mode safely
      */
     launchKioskSession() {
         if (this.isKioskRunning) return;
 
-        const chromBin = this.getChromiumBinary();
+        // Check prerequisites before spawning
+        const prereqs = this.checkPrerequisites();
+        if (!prereqs.ready) {
+            this.lastError = `Paket belum lengkap: ${prereqs.missing.join(', ')}`;
+            this.logger('WARN', `Tidak dapat meluncurkan Kiosk: ${this.lastError}. Jalankan 'sudo apt install xserver-xorg xinit chromium-browser'`);
+            this.consecutiveFailures = this.maxFailures; // Pause until installed
+            this.lastFailureTime = Date.now();
+            return;
+        }
+
+        const chromBin = prereqs.chromiumPath;
         const kioskCmd = `startx ${chromBin} --kiosk --no-first-run --disable-infobars --disable-session-crashed-bubble --no-sandbox --disable-features=TranslateUI --disable-extensions --overscroll-history-navigation=0 --check-for-update-interval=31536000 --app=${this.appUrl} -- -nocursor`;
 
-        this.logger('INFO', `Launching Kiosk Session: ${kioskCmd}`);
+        this.logger('INFO', `Launching Kiosk Session safely...`);
+        const startTime = Date.now();
 
         try {
-            // Spawn in background detached process
             const proc = spawn('bash', ['-c', kioskCmd], {
                 detached: true,
                 stdio: 'ignore',
@@ -181,20 +295,41 @@ class HdmiKioskAddon {
             this.isKioskRunning = true;
 
             proc.on('exit', (code, signal) => {
-                this.logger('WARN', `Kiosk session process exited (code: ${code}, signal: ${signal})`);
+                const duration = Date.now() - startTime;
                 this.isKioskRunning = false;
                 this.activeProcess = null;
+
+                // If process exited very quickly (< 5 seconds), it's a failure (e.g. Xorg driver crash or permission issue)
+                if (duration < 5000 || (code !== null && code !== 0)) {
+                    this.consecutiveFailures++;
+                    this.lastFailureTime = Date.now();
+                    this.lastError = `Process exited unexpectedly in ${Math.round(duration/1000)}s (exit code: ${code})`;
+                    this.logger('WARN', `Kiosk gagal berjalan (${this.lastError}). Percobaan gagal: ${this.consecutiveFailures}/${this.maxFailures}`);
+                    
+                    if (this.consecutiveFailures >= this.maxFailures) {
+                        this.logger('ERROR', `Kiosk gagal berturut-turut. Menghentikan peluncuran otomatis selama ${this.failureCooldownMs/1000} detik untuk mencegah restart/beban CPU.`);
+                    }
+                } else {
+                    this.consecutiveFailures = 0;
+                    this.lastError = null;
+                }
             });
 
             proc.on('error', (err) => {
-                this.logger('ERROR', `Failed to launch Kiosk session: ${err.message}`);
+                this.logger('ERROR', `Failed to spawn Kiosk session: ${err.message}`);
                 this.isKioskRunning = false;
                 this.activeProcess = null;
+                this.consecutiveFailures++;
+                this.lastFailureTime = Date.now();
+                this.lastError = err.message;
             });
 
         } catch (e) {
             this.logger('ERROR', `Execution exception launching Kiosk: ${e.message}`);
             this.isKioskRunning = false;
+            this.consecutiveFailures++;
+            this.lastFailureTime = Date.now();
+            this.lastError = e.message;
         }
     }
 
@@ -202,12 +337,14 @@ class HdmiKioskAddon {
      * Terminate running X11 and Chromium sessions cleanly
      */
     killKioskSession() {
+        if (!this.isKioskRunning && !this.activeProcess) {
+            return;
+        }
         this.logger('INFO', 'Stopping Kiosk and cleaning up X11/Chromium processes...');
 
-        const killCmd = 'pkill -f chromium-browser; pkill -f chromium; pkill -f xinit; pkill -f Xorg; pkill -f startx';
+        const killCmd = 'pkill -f chromium-browser 2>/dev/null; pkill -f chromium 2>/dev/null; pkill -f xinit 2>/dev/null; pkill -f Xorg 2>/dev/null; pkill -f startx 2>/dev/null';
         
-        exec(killCmd, (err) => {
-            // Ignore no process found errors
+        exec(killCmd, () => {
             this.isKioskRunning = false;
             this.activeProcess = null;
         });
@@ -217,16 +354,20 @@ class HdmiKioskAddon {
      * Get real-time status representation
      */
     getStatus() {
+        const prereqs = this.checkPrerequisites();
         return {
             addonName: 'arch3r-addon-hdmi-kiosk',
-            version: '1.0.0',
+            version: '1.0.1',
             enabled: this.enabled,
             isHdmiConnected: this.isHdmiConnected,
             isKioskRunning: this.isKioskRunning,
             detectedSysPath: this.detectedSysPath,
             targetUrl: this.appUrl,
             pollIntervalMs: this.pollIntervalMs,
-            lastCheckTime: this.lastCheckTime
+            lastCheckTime: this.lastCheckTime,
+            prerequisites: prereqs,
+            consecutiveFailures: this.consecutiveFailures,
+            lastError: this.lastError
         };
     }
 }

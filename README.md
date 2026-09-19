@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.8.1)
+# ⚡ Arch3r NVR (Ver. 9.8.2)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, arsitektur Add-on Kiosk HDMI, dan *Developer Console* (Superadmin).

@@ -1,5 +1,13 @@
 # Changelog
 
+## [Ver 9.8.2] - 2026-09-18
+### Critical Fix & Stability (Anti-Restart STB Protection)
+- **Safe Standby Mode untuk HDMI Kiosk Add-on (`./addons/hdmi-kiosk/`):**
+  - **Pencegahan Restart Loop STB**: Mengubah konfigurasi `autoStart` menjadi `false` (dinonaktifkan secara *default*). Add-on Kiosk tidak akan pernah otomatis mengeksekusi `startx` saat sistem *boot* kecuali jika diaktifkan secara sengaja oleh pengguna.
+  - **Validasi Prasyarat Biner (Binary Pre-flight Check)**: Sistem sekarang memeriksa ketersediaan biner `/usr/bin/startx`, `Xorg`, dan `chromium-browser` terlebih dahulu sebelum mencoba menjalankan display grafis. Jika paket X11 belum terpasang pada Armbian STB, sistem tetap dalam kondisi *idle* tanpa memicu *error* atau *GPU crash*.
+  - **Circuit Breaker & Cooldown Fail-Safe**: Menerapkan mekanisme pendinginan otomatis (*cooldown* 60 detik) dan batas toleransi kegagalan (maksimal 3 kali). Jika X11 keluar mendadak (*crash* driver GPU Mali/DRM), sistem langsung menghentikan proses peluncuran secara permanen untuk mencegah kehabisan RAM (*OOM*) dan *reboot loop* pada STB Amlogic HG860P.
+  - **Isolasi Perintah Pembersihan (Safe `pkill`)**: Mencegah benturan proses sistem latar belakang dengan memastikan *cleanup* hanya dieksekusi saat sesi Kiosk aktif.
+
 ## [Ver 9.8.1] - 2026-09-18
 ### Added & Enhanced
 - **Arsitektur Add-on Lokal: HDMI Hot-Plug Detection & X11/Chromium Kiosk Launcher (`./addons/hdmi-kiosk/`):**

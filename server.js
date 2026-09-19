@@ -37,9 +37,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.8.1';
+        return pkg.version || '9.8.2';
     } catch {
-        return '9.8.1';
+        return '9.8.2';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -3542,11 +3542,11 @@ try {
         if (typeof hdmiKioskAddon.init === 'function') {
             hdmiKioskAddon.init({
                 appUrl: `http://localhost:${port}`,
-                pollIntervalMs: 10000,
-                autoStart: true,
+                pollIntervalMs: 15000,
+                autoStart: false, // Default false: mencegah STB crash-loop / reboot jika Xorg belum terkonfigurasi
                 logger: (level, msg) => sysLog(level, msg, 'HDMI-KIOSK')
             });
-            sysLog('INFO', 'Arch3r HDMI Kiosk Add-on loaded successfully', 'ADDON');
+            sysLog('INFO', 'Arch3r HDMI Kiosk Add-on loaded in safe standby mode', 'ADDON');
         }
     }
 } catch (addonErr) {
