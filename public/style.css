@@ -377,18 +377,25 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 /* NVR MONITOR CONTROLS (Row 1: Filter/Page, Row 2: Media Toolbar, Row 3: PTZ Card) */
 /* ============================================================== */
 
-/* Row 1: Filter Dropdown & Pagination */
+/* Row 1: Filter Dropdown, Pagination, Grid Selector, Refresh & Fullscreen Strip */
 .nvr-filter-pagination-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 6px;
-    padding: 4px 10px;
+    gap: 8px;
+    padding: 6px 12px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     max-width: 100%;
     box-sizing: border-box;
+}
+
+.nvr-filter-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
 .nvr-select-channel {
@@ -396,7 +403,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     color: var(--text-main);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 4px 8px;
+    padding: 5px 10px;
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
@@ -423,7 +430,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     border: 1px solid var(--border);
     color: var(--text-main);
     border-radius: 6px;
-    padding: 3px 8px;
+    padding: 4px 10px;
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
@@ -449,26 +456,19 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     text-align: center;
 }
 
-/* Row 2: Unified Media Toolbar Strip */
-.nvr-toolbar-strip {
+.nvr-top-actions-group {
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    padding: 6px 12px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
     gap: 6px;
-    flex-wrap: wrap;
-    max-width: 100%;
-    box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .nvr-tool-btn {
     background: var(--surface-lighter);
     border: 1px solid var(--border);
     color: var(--text-main);
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border-radius: 6px;
     display: flex;
     align-items: center;
@@ -487,38 +487,6 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     transform: scale(0.94);
 }
 
-.nvr-btn-snapshot {
-    background: var(--surface-lighter);
-    border: 1px solid var(--border);
-    color: #38bdf8;
-}
-.nvr-btn-snapshot:hover {
-    background: #0284c7;
-    color: #ffffff;
-    border-color: #38bdf8;
-}
-
-.nvr-vol-container {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    background: var(--surface-dark);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 0 8px;
-    height: 34px;
-    flex-shrink: 0;
-}
-.nvr-vol-icon {
-    font-size: 11px;
-}
-.nvr-vol-slider {
-    width: 55px;
-    height: 4px;
-    accent-color: var(--accent-blue);
-    cursor: pointer;
-}
-
 .nvr-grid-selector-group {
     display: flex;
     align-items: center;
@@ -534,15 +502,16 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     background: transparent;
     border: none;
     color: var(--text-muted);
-    width: 28px;
-    height: 28px;
+    padding: 3px 6px;
+    height: 26px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: bold;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 3px;
     transition: all 0.15s;
 }
 .nvr-grid-btn:hover {
@@ -563,7 +532,7 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     background: var(--accent-blue);
 }
 
-/* Row 3: PTZ Control Panel Card */
+/* Row 2: PTZ Control Panel Card */
 .nvr-ptz-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -574,6 +543,9 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 }
 
 .nvr-ptz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 12px;
     font-weight: 600;
     color: var(--text-main);
@@ -590,25 +562,26 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     display: flex;
     align-items: center;
     justify-content: space-around;
-    gap: 16px;
-    flex-wrap: nowrap;
+    gap: 14px;
+    flex-wrap: wrap;
 }
 
-/* Left Circular Joystick Dial */
+/* 1. Left Circular Joystick Dial - ENLARGED */
 .nvr-ptz-dial-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .nvr-ptz-dial {
-    width: 96px;
-    height: 96px;
+    width: 130px;
+    height: 130px;
     border-radius: 50%;
     background: radial-gradient(circle, var(--surface-lighter) 0%, var(--surface-dark) 100%);
     border: 2px solid var(--border);
     position: relative;
-    box-shadow: inset 0 2px 6px rgba(0,0,0,0.6), 0 4px 10px rgba(0,0,0,0.4);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.7), 0 4px 12px rgba(0,0,0,0.5);
 }
 
 .nvr-ptz-arrow-btn {
@@ -617,64 +590,98 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     border: 1px solid var(--border);
     color: var(--text-main);
     border-radius: 50%;
-    width: 25px;
-    height: 25px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 13px;
+    font-weight: bold;
     cursor: pointer;
-    transition: all 0.1s ease;
+    transition: all 0.12s ease;
     padding: 0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
 }
 .nvr-ptz-arrow-btn:hover {
     background: var(--accent-blue);
     color: #fff;
     border-color: var(--accent-blue);
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
 }
 .nvr-ptz-arrow-btn:active {
-    transform: scale(0.9);
+    transform: scale(0.92);
 }
 
 .nvr-ptz-up {
-    top: 4px;
-    left: 34px;
+    top: 6px;
+    left: 47px;
 }
 .nvr-ptz-down {
-    bottom: 4px;
-    left: 34px;
+    bottom: 6px;
+    left: 47px;
 }
 .nvr-ptz-left {
-    left: 4px;
-    top: 34px;
+    left: 6px;
+    top: 47px;
 }
 .nvr-ptz-right {
-    right: 4px;
-    top: 34px;
+    right: 6px;
+    top: 47px;
 }
 
 .nvr-ptz-center-circle {
     position: absolute;
-    top: 34px;
-    left: 34px;
-    width: 26px;
-    height: 26px;
+    top: 47px;
+    left: 47px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: var(--surface-dark);
     border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.15s ease;
+    padding: 0;
 }
 .nvr-ptz-center-circle:hover {
     background: var(--surface-lighter);
+    color: var(--accent-blue);
+    border-color: var(--accent-blue);
+}
+.nvr-ptz-center-circle:active {
+    transform: scale(0.92);
 }
 
-/* Right 2x2 Function Actions Grid */
+/* PTZ Group Boxes (Optics & Media) */
+.nvr-ptz-group-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: rgba(0,0,0,0.2);
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.nvr-ptz-group-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+/* 2. Middle: Right 2x2 Function Actions Grid */
 .nvr-ptz-actions-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 6px;
-    width: 150px;
+    width: 160px;
 }
 
 .nvr-ptz-action-btn {
@@ -689,6 +696,10 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     cursor: pointer;
     transition: all 0.15s;
     outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
 }
 .nvr-ptz-action-btn:hover {
     background: var(--accent-blue);
@@ -698,6 +709,77 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 .nvr-ptz-action-btn:active {
     background: #2563eb;
     color: #fff;
+    transform: scale(0.96);
+}
+
+/* 3. Right: Player & Audio & Snapshot Media Controls */
+.nvr-ptz-player-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 190px;
+}
+
+.nvr-ptz-media-btn {
+    background: var(--surface-dark);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    border-radius: 6px;
+    padding: 7px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    outline: none;
+    white-space: nowrap;
+}
+.nvr-ptz-media-btn:hover {
+    background: var(--accent-blue);
+    color: #ffffff;
+    border-color: var(--accent-blue);
+}
+.nvr-ptz-media-btn:active {
+    transform: scale(0.96);
+}
+
+.nvr-btn-snapshot-ptz {
+    color: #38bdf8;
+}
+.nvr-btn-snapshot-ptz:hover {
+    background: #0284c7;
+    color: #fff;
+    border-color: #38bdf8;
+}
+
+.nvr-vol-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--surface-dark);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0 8px;
+    height: 30px;
+    flex-shrink: 0;
+}
+.nvr-vol-icon {
+    font-size: 11px;
+}
+.nvr-vol-slider {
+    width: 55px;
+    height: 4px;
+    accent-color: var(--accent-blue);
+    cursor: pointer;
+}
+
+.nvr-vol-ptz {
+    grid-column: span 2;
+    height: 30px;
+    justify-content: space-between;
 }
 
 /* Floating PTZ Controller (Mobile / Free Floating in grid-wrapper) */

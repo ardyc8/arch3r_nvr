@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.7.5 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.7.6 Multi-Tenant Controller
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -1094,14 +1094,14 @@ async function fetchCameras() {
         if (!sel) return;
         
         const currentVal = activeChannel || 'all';
-        sel.innerHTML = '<option value="all">View : ALL</option>';
+        sel.innerHTML = '<option value="all">View: ALL</option>';
         
         if (Array.isArray(cameras) && cameras.length > 0) {
             cameras.forEach((cam, idx) => {
                 const opt = document.createElement('option');
                 opt.value = cam.id;
                 const camLabel = cam.name || `Kamera ${idx + 1}`;
-                opt.textContent = `View : CH ${idx + 1} - ${camLabel}`;
+                opt.textContent = `View: CH ${idx + 1} - ${camLabel}`;
                 if (cam.id === currentVal) {
                     opt.selected = true;
                 }

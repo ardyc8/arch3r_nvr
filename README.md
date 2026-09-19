@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.7.5)
+# ⚡ Arch3r NVR (Ver. 9.7.6)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, dan *Developer Console* (Superadmin).
@@ -91,6 +91,12 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
 ---
 
 ## 📜 Log Pembaruan (Changelog)
+- **[Ver 9.7.6]**
+  - **Dropdown Standardized to (View: ALL)**: Memastikan label default pada dropdown filter kamera di monitor live view selalu tampil rapi dengan teks `View: ALL` (dan `View: CH x - Nama Kamera`), serta menjaga sinkronisasi pilihan kamera saat refresh.
+  - **Player & Media Controls Integrated in PTZ Card**: Memindahkan kontrol player utama (*Play/Pause*, *Audio/Mute*, *Slider Volume*, dan *Snapshot Kamera 📸*) langsung ke dalam kotak panel kontrol PTZ, tepat di samping kontrol Lensa (Zoom & Fokus) dalam tata letak yang bersih, terorganisir, dan mudah diakses.
+  - **Enlarged PTZ D-Pad Controller**: Memperbesar diameter dial D-Pad PTZ dari 96px menjadi 130px dengan tombol navigasi arah (36px) dan tombol stop tengah yang nyaman disentuh di desktop, tablet, maupun layar sentuh STB.
+  - **Aligned Top Controls Bar**: Menata tombol pilihan layout grid (`1x1`, `2x2`, `3x3`, `4x4`), tombol Refresh (`🔄`), dan tombol Layar Penuh (*Fullscreen* `⛶`) sejajar horizontal pada baris atas tepat di atas kotak panel PTZ.
+
 - **[Ver 9.7.5]**
   - **Live View Dropdown Optimization**: Mengubah teks dropdown pilihan kamera menjadi format ringkas `View : ALL` dan `View : CH x - Nama Kamera` serta menata lebar dan padding kontrol agar tidak menggeser layout tombol navigasi halaman.
   - **Responsive UI Manajemen User & Marketplace**: Menambahkan wrapper `.table-responsive` dengan horizontal scroll yang mulus, padding responsif, serta styling tombol aksi adaptif sehingga seluruh menu dan tabel di Manajemen User & Marketplace (Addons) terlihat lengkap di layar kecil/mobile.
