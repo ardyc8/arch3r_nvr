@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 9.9.8",
-  "description": "Arch3r NVR Ver. 10.0.2 - NVR CCTV Backend with Node.js, Express, FFmpeg, Custom ONVIF PTZ Settings & Macrovideo V380 Multi-Variant Driver, Modular Addons Marketplace, YOLOv8 Vision Detection with Live NVR RTSP Video, .yai Preset Config Marketplace, Real-Time Text Telemetry, Isolated Simulation Lab, and ESP8266 IoT Alarm Triggers for Armbian STB.",
+  "description": "Arch3r NVR Ver. 10.0.4 - NVR CCTV Backend with Node.js, Express, FFmpeg, Custom ONVIF PTZ Settings & Macrovideo V380 Multi-Variant Driver, Dedicated YOLOv8 AI Vision Page & Addons Marketplace, Real-time Camera RTSP/HLS Video Playback, .yai Preset Config Import/Export, Real-Time Text Telemetry, Isolated Simulation Lab, and ESP8266 IoT Alarm Triggers for Armbian STB.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

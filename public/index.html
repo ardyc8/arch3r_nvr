@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.0.1 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=10.0.1">
+    <title>Arch3r NVR Ver. 10.0.3 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=10.0.3">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="version_sync.js?v=10.0.1"></script>
+    <script src="version_sync.js?v=10.0.3"></script>
 </head>
 <body>
     <!-- AUTH OVERLAY / LOGIN UNIVERSAL -->
@@ -16,7 +16,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 10.0.1</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 10.0.3</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -50,7 +50,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 10.0.1</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 10.0.3</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -113,6 +113,10 @@
                     <span class="icon">🧩</span>
                     <span class="text">Marketplace (Addons)</span>
                 </a>
+                <a href="#yolo-ai" class="nav-item" data-target="view-yolo-ai" id="nav-item-yolo-ai">
+                    <span class="icon">🤖</span>
+                    <span class="text">YOLO AI Vision</span>
+                </a>
                 <a href="#about" class="nav-item" data-target="view-about">
                     <span class="icon">ℹ️</span> About NVR
                 </a>
@@ -122,7 +126,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.0.0</h3>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.0.3</h3>
                 <div style="display:flex; align-items:center; margin-left:auto;">
                     <img src="Archer.ico?v=2" alt="Arch3r" style="height:26px; width:26px; object-fit:contain; border-radius:4px;">
                 </div>
@@ -880,22 +884,37 @@
                 </div>
             </div>
 
-            <!-- Modal Konfigurasi AI Grid & ESP8266 IoT (Custom Vanilla JS, not Bootstrap) -->
-            <div id="aiGridModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(4px); z-index:9999; justify-content:center; align-items:center;">
-                <div style="background:var(--surface); width:96%; max-width:980px; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; max-height:94vh; box-shadow:0 25px 50px -12px rgba(0,0,0,0.85);">
-                    <!-- Modal Header -->
-                    <div style="padding:0.75rem 1.25rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.25);">
-                        <div style="display:flex; align-items:center; gap:0.6rem;">
-                            <h3 style="margin:0; color:#3b82f6; display:flex; align-items:center; gap:0.5rem; font-size:1.05rem;">
-                                <span>🎯</span> AI Vision YOLOv8 & Engine Prompt SPBU
-                            </h3>
-                            <span class="badge" style="background:#2563eb; font-size:0.7rem; padding:2px 7px;">Ver. 10.0.2</span>
+            <!-- 8.6 VIEW DEDICATED YOLO AI ADDON (SEPARATE PAGE) -->
+            <div id="view-yolo-ai" class="view-pane">
+                <div class="content-wrapper" style="padding: 1.5rem; max-width: 1200px; margin: 0 auto;">
+                    
+                    <!-- Dedicated Page Header -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.25rem 1.5rem; box-shadow:0 4px 6px rgba(0,0,0,0.3);">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:0.6rem;">
+                                <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                    <span>🤖</span> YOLOv8 AI Vision Engine & Presets
+                                </h2>
+                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.0.3</span>
+                            </div>
+                            <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
+                                Addon Analitik Cerdas untuk NVR: Deteksi Area ROI Live RTSP, Engine Aturan Prompt SPBU, Notifikasi Alarm ESP8266 IoT, dan Manajemen File Preset .yai.
+                            </p>
                         </div>
-                        <button onclick="closeAIGridModal()" style="background:none; border:none; color:var(--text); font-size:1.5rem; cursor:pointer; line-height:1;" title="Tutup">&times;</button>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center;">
+                            <button type="button" class="btn btn-secondary" onclick="navigateToView('view-addons')" style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem;">
+                                <span>🧩</span> Addons Marketplace
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="saveAIGrid()" id="btn-save-ai-grid" style="background:#2563eb; border-color:#2563eb; display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:600;">
+                                <span>💾</span> Simpan Konfigurasi Kamera
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Modal Tabs Navigation -->
-                    <div style="display:flex; border-bottom:1px solid var(--border); background:rgba(15,23,42,0.9); padding:0 1rem; gap:0.5rem; overflow-x:auto;">
+                    <!-- Workstation Card -->
+                    <div style="background:var(--surface); border-radius:10px; border:1px solid var(--border); overflow:hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                        <!-- Tabs Navigation -->
+                        <div style="display:flex; border-bottom:1px solid var(--border); background:rgba(15,23,42,0.9); padding:0 1.25rem; gap:0.5rem; overflow-x:auto;">
                         <button type="button" id="ai-tab-btn-live" onclick="switchAIGridTab('live')" style="padding:0.65rem 1rem; font-size:0.84rem; font-weight:600; border:none; background:none; color:#38bdf8; border-bottom:2px solid #38bdf8; cursor:pointer; display:flex; align-items:center; gap:0.4rem; white-space:nowrap;">
                             🔴 Live Kamera NVR & Seleksi Grid
                         </button>
@@ -968,10 +987,15 @@
                                     <div style="font-size:2.6rem; margin-bottom:0.5rem; opacity:0.85;">📹</div>
                                     <div style="font-size:1.15rem; font-weight:bold; letter-spacing:2px; color:#ef4444;">● NO VIDEO SIGNAL</div>
                                     <div style="font-size:0.82rem; color:#94a3b8; margin-top:0.4rem; font-weight:600;">KAMERA OFFLINE ATAU TIDAK ADA FEED STREAM DI NVR</div>
-                                    <div style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">Pastikan kamera telah ditambahkan di menu "Kamera" atau stream RTSP aktif.</div>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="switchAIGridTab('sim')" style="margin-top:0.75rem; font-size:0.78rem; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.35);">
-                                        🧪 Buka Tab Lab Simulasi untuk Uji Coba
-                                    </button>
+                                    <div style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">Pastikan kamera telah ditambahkan di menu "Kamera" atau stream RTSP lokal aktif.</div>
+                                    <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap; justify-content:center;">
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="loadCamStreamForAI()" style="font-size:0.78rem; background:#2563eb; border-color:#2563eb;">
+                                            🔄 Hubungkan Ulang Kamera
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="switchAIGridTab('sim')" style="font-size:0.78rem; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.35);">
+                                            🧪 Uji di Lab Simulasi
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- Video Meta Overlay Badge -->
@@ -1281,18 +1305,20 @@
                         </div>
                     </div>
                     
-                    <!-- Modal Footer -->
-                    <div style="padding:0.75rem 1.25rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.15); flex-wrap:wrap; gap:0.5rem;">
+                    <!-- Workstation Footer -->
+                    <div style="padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.15); flex-wrap:wrap; gap:0.5rem;">
                         <div style="font-size:0.78rem; color:var(--text-muted);">
-                            Format file: <strong style="color:#60a5fa;">.yai</strong> &bull; Kompatibel dengan Armbian STB & ESP8266 IoT
+                            Format file: <strong style="color:#60a5fa;">.yai</strong> &bull; Kompatibel dengan Armbian STB, MediaMTX HLS & ESP8266 IoT
                         </div>
-                        <div style="display:flex; gap:0.6rem;">
-                            <button class="btn btn-secondary" onclick="closeAIGridModal()">Tutup</button>
-                            <button class="btn btn-primary" id="btn-save-ai-grid" onclick="saveAIGrid()" style="background:#2563eb; border-color:#2563eb;">💾 Simpan Konfigurasi Kamera</button>
+                        <div style="display:flex; gap:0.6rem; align-items:center;">
+                            <span id="ai-save-feedback" style="font-size:0.82rem; font-weight:600;"></span>
+                            <button class="btn btn-secondary" onclick="navigateToView('view-addons')">Kembali ke Addons</button>
+                            <button class="btn btn-primary" onclick="saveAIGrid()" style="background:#2563eb; border-color:#2563eb;">💾 Simpan Konfigurasi Kamera</button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
             <!-- Modal Contoh Kode Arduino ESP8266 -->
             <div id="arduinoCodeModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(4px); z-index:10000; justify-content:center; align-items:center;">

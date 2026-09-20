@@ -522,32 +522,50 @@ async function handleLogout() {
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
 
+        window.navigateToView = function(targetId) {
+            navItems.forEach(n => {
+                if (n.getAttribute('data-target') === targetId) {
+                    n.classList.add('active');
+                } else {
+                    n.classList.remove('active');
+                }
+            });
+            viewPanes.forEach(v => {
+                if (v.id === targetId) {
+                    v.classList.add('active');
+                } else {
+                    v.classList.remove('active');
+                }
+            });
+
+            // Close mobile sidebar if open
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+
+            if (targetId === 'view-yolo-ai') {
+                if (typeof openYoloAiPage === 'function') {
+                    openYoloAiPage();
+                }
+            } else if (targetId === 'view-about') {
+                if (typeof fetchAboutInfo === 'function') fetchAboutInfo();
+            } else if (targetId === 'view-addons') {
+                if (typeof fetchInstalledAddons === 'function') fetchInstalledAddons();
+            } else if (targetId === 'view-logs') {
+                if (typeof fetchLogs === 'function') fetchLogs();
+            } else if (targetId === 'view-setting-users') {
+                if (typeof loadUsersList === 'function') loadUsersList();
+            } else if (targetId === 'view-setting-record') {
+                if (typeof loadStorageDevices === 'function') loadStorageDevices();
+            } else if (targetId === 'view-playback') {
+                if (typeof fetchRecordings === 'function') fetchRecordings();
+            }
+        };
+
         navItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
-                navItems.forEach(n => n.classList.remove('active'));
-                viewPanes.forEach(v => v.classList.remove('active'));
-
-                item.classList.add('active');
                 const targetId = item.getAttribute('data-target');
-                const targetPane = document.getElementById(targetId);
-                if (targetPane) targetPane.classList.add('active');
-                
-                if (targetId === 'view-about') {
-                    if (typeof fetchAboutInfo === 'function') fetchAboutInfo();
-                }
-                if (targetId === 'view-addons') {
-                    if (typeof fetchInstalledAddons === 'function') fetchInstalledAddons();
-                }
-
-                // Close mobile sidebar if open
-                if (sidebar) sidebar.classList.remove('mobile-open');
-                if (sidebarOverlay) sidebarOverlay.classList.remove('active');
-
-                if (targetId === 'view-logs') fetchLogs();
-                if (targetId === 'view-setting-users') loadUsersList();
-                if (targetId === 'view-setting-record') loadStorageDevices();
-                if (targetId === 'view-playback') fetchRecordings();
+                window.navigateToView(targetId);
             });
         });
 
@@ -1942,10 +1960,18 @@ async function fetchCameras() {
         }
     }
     window.destroyHlsPlayers = destroyHlsPlayers;
+    window.activeHlsPlayers = activeHlsPlayers;
 
-    function initHlsPlayer(elementId, hlsUrl) {
-        const video = document.getElementById(elementId);
-        if (!video) return;
+    function initHlsPlayer(elementId, hlsUrl, onReady, onError) {
+        const video = (typeof elementId === 'string') ? document.getElementById(elementId) : elementId;
+        if (!video) return null;
+
+        const id = video.id || (typeof elementId === 'string' ? elementId : 'video_' + Math.random().toString(36).substr(2, 9));
+
+        if (activeHlsPlayers[id]) {
+            try { activeHlsPlayers[id].destroy(); } catch (e) {}
+            delete activeHlsPlayers[id];
+        }
 
         if (Hls.isSupported()) {
             const hls = new Hls({
@@ -1956,19 +1982,24 @@ async function fetchCameras() {
                 backBufferLength: 0,
                 enableWorker: true
             });
-            activeHlsPlayers[elementId] = hls;
+            activeHlsPlayers[id] = hls;
             hls.loadSource(hlsUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                video.play().catch(e => console.log('Autoplay prevented:', e));
+                video.play().then(() => {
+                    if (typeof onReady === 'function') onReady(hls);
+                }).catch(e => {
+                    console.log('Autoplay prevented:', e);
+                    if (typeof onReady === 'function') onReady(hls);
+                });
             });
             hls.on(Hls.Events.ERROR, function(event, data) {
                 if (data.fatal) {
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
-                            // Add a delay to prevent infinite immediate retry loop if backend is down
+                            if (typeof onError === 'function') onError(data);
                             setTimeout(() => {
-                                if (activeHlsPlayers[elementId]) {
+                                if (activeHlsPlayers[id]) {
                                     hls.startLoad();
                                 }
                             }, 5000);
@@ -1977,18 +2008,25 @@ async function fetchCameras() {
                             hls.recoverMediaError();
                             break;
                         default:
+                            if (typeof onError === 'function') onError(data);
                             hls.destroy();
                             break;
                     }
                 }
             });
+            return hls;
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = hlsUrl;
             video.addEventListener('loadedmetadata', function() {
-                video.play().catch(e => console.log('Autoplay prevented:', e));
+                video.play().then(() => {
+                    if (typeof onReady === 'function') onReady(null);
+                }).catch(e => console.log('Autoplay prevented:', e));
             });
+            return null;
         }
+        return null;
     }
+    window.initHlsPlayer = initHlsPlayer;
 
     window.refreshAllStreams = function() {
         destroyHlsPlayers();
@@ -3440,23 +3478,32 @@ let aiSimState = {
     pump: { x: 0.52, y: 0.38, w: 0.12, h: 0.35 } // relative coordinates
 };
 
-async function openAIGridModal(defaultCamId = null) {
-    const modal = document.getElementById('aiGridModalOverlay');
-    if (!modal) return;
-    modal.style.display = 'flex';
+async function openYoloAiPage(defaultCamId = null) {
+    if (typeof window.navigateToView === 'function') {
+        window.navigateToView('view-yolo-ai');
+    } else {
+        const targetPane = document.getElementById('view-yolo-ai');
+        if (targetPane) {
+            document.querySelectorAll('.view-pane').forEach(v => v.classList.remove('active'));
+            targetPane.classList.add('active');
+        }
+    }
     
     // Switch to live tab by default when opened
     switchAIGridTab('live');
     
     // Ensure cameras list is fetched and available
-    const camList = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+    let camList = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
     if ((!camList || camList.length === 0) && (typeof window.fetchCameras === 'function' || typeof fetchCameras === 'function')) {
         const fetcher = window.fetchCameras || fetchCameras;
-        try { await fetcher(); } catch (e) {}
+        try { 
+            await fetcher(); 
+            camList = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+        } catch (e) {}
     }
     
     // Filter real cameras only from NVR database (no virtual_test in live feed list)
-    const activeCams = (window.cameras || (typeof cameras !== 'undefined' ? cameras : [])).filter(c => c && c.id && c.id !== 'virtual_test');
+    const activeCams = (camList || []).filter(c => c && c.id && c.id !== 'virtual_test');
     
     // Populate camera selector
     const select = document.getElementById('ai-cam-select');
@@ -3491,6 +3538,10 @@ async function openAIGridModal(defaultCamId = null) {
         const group = document.getElementById('aiCamSelectGroup') || select.parentElement;
         if (group) group.style.display = 'block';
         select.style.display = 'block';
+
+        select.onchange = () => {
+            loadCamStreamForAI();
+        };
     }
     
     const feedback = document.getElementById('ai-save-feedback');
@@ -3501,7 +3552,7 @@ async function openAIGridModal(defaultCamId = null) {
     
     // Clear & seed initial telemetry log
     clearAITelemetryLog();
-    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.0.2...', 'system');
+    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.0.3...', 'system');
     appendAITelemetry('📋 Memuat konfigurasi kamera nyata NVR & Engine Prompt SPBU.', 'system');
     
     // Start continuous rendering loop
@@ -3511,6 +3562,12 @@ async function openAIGridModal(defaultCamId = null) {
     setTimeout(() => {
         loadCamStreamForAI();
     }, 40);
+}
+
+window.openYoloAiPage = openYoloAiPage;
+window.openAIGridModal = openYoloAiPage;
+function openAIGridModal(defaultCamId = null) {
+    return openYoloAiPage(defaultCamId);
 }
 
 function toggleCustomStreamBox() {
@@ -3723,45 +3780,73 @@ async function loadCamStreamForAI() {
 
     if (cam && (cam.mainStreamUrl || cam.mediaMtxPath || cam.id) && hlsFn && video) {
         const hlsPath = cam.mediaMtxPath || cam.id;
-        const hlsUrl = (cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http')) 
+        const primaryHlsUrl = (cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http')) 
             ? cam.mainStreamUrl 
-            : ('/stream/' + hlsPath + '/index.m3u8?token=' + encodeURIComponent(token));
+            : ('/stream/' + encodeURIComponent(hlsPath) + '/index.m3u8?token=' + encodeURIComponent(token));
+        const fallbackHlsUrl = `/streams/${encodeURIComponent(cam.id)}/main.m3u8`;
         
+        let currentStreamUrl = primaryHlsUrl;
+        let isPlaying = false;
+
         if (badge) {
             badge.innerHTML = '📡 Menghubungkan Live Stream Kamera...';
             badge.style.color = '#60a5fa';
         }
 
-        try {
+        const markSuccess = () => {
+            if (isPlaying) return;
+            isPlaying = true;
+            if (noVideoOverlay) noVideoOverlay.style.display = 'none';
             video.style.display = 'block';
-            hlsFn('ai-stream-preview', hlsUrl);
-            
-            video.onplaying = () => {
-                if (noVideoOverlay) noVideoOverlay.style.display = 'none';
-                video.style.display = 'block';
-                if (badge) {
-                    badge.innerHTML = '🟢 Live NVR Stream Aktif';
-                    badge.style.color = '#34d399';
+            if (badge) {
+                badge.innerHTML = '🟢 Live NVR Stream Aktif';
+                badge.style.color = '#34d399';
+            }
+            if (metaBadge) metaBadge.textContent = 'LIVE RTSP • 25 FPS';
+            appendAITelemetry(`🟢 Stream video kamera "${cam.name}" terhubung aktif: ${currentStreamUrl}`, 'success');
+        };
+
+        const markFailure = () => {
+            if (isPlaying) return;
+            if (currentStreamUrl === primaryHlsUrl && fallbackHlsUrl) {
+                currentStreamUrl = fallbackHlsUrl;
+                appendAITelemetry(`🔄 Mencoba rute stream fallback NVR: ${fallbackHlsUrl}...`, 'info');
+                try {
+                    hlsFn('ai-stream-preview', fallbackHlsUrl, markSuccess, markFinalFailure);
+                } catch (e) {
+                    markFinalFailure();
                 }
-                if (metaBadge) metaBadge.textContent = 'LIVE RTSP • 25 FPS';
-                appendAITelemetry(`🟢 Stream video kamera "${cam.name}" terhubung: ${hlsUrl}`, 'success');
-            };
-            
-            video.onerror = () => {
-                if (noVideoOverlay) noVideoOverlay.style.display = 'flex';
-                if (badge) {
-                    badge.innerHTML = '🔴 Kamera Offline / Stream Terputus';
-                    badge.style.color = '#ef4444';
-                }
-                if (metaBadge) metaBadge.textContent = 'SIGNAL LOSS';
-                appendAITelemetry(`⚠️ Sinyal video kamera "${cam.name}" terputus atau offline di NVR.`, 'alarm');
-            };
-        } catch (hlsErr) {
+                return;
+            }
+            markFinalFailure();
+        };
+
+        const markFinalFailure = () => {
+            if (isPlaying) return;
             if (noVideoOverlay) noVideoOverlay.style.display = 'flex';
             if (badge) {
-                badge.innerHTML = '🔴 Gagal Menghubungkan Stream';
+                badge.innerHTML = '🔴 Kamera Offline / Stream Terputus';
                 badge.style.color = '#ef4444';
             }
+            if (metaBadge) metaBadge.textContent = 'NO VIDEO SIGNAL';
+            appendAITelemetry(`⚠️ Sinyal video kamera "${cam.name}" (${cam.ip || 'RTSP'}) tidak terdeteksi. Pastikan kamera RTSP lokal menyala.`, 'alarm');
+        };
+
+        try {
+            video.style.display = 'block';
+            video.onplaying = markSuccess;
+            video.onerror = markFailure;
+
+            hlsFn('ai-stream-preview', primaryHlsUrl, markSuccess, markFailure);
+
+            // Safety timeout: if after 6 seconds stream hasn't produced frames, check fallback or notify
+            setTimeout(() => {
+                if (!isPlaying && video.paused) {
+                    markFailure();
+                }
+            }, 6000);
+        } catch (hlsErr) {
+            markFailure();
         }
     } else {
         if (noVideoOverlay) noVideoOverlay.style.display = 'flex';
@@ -5581,9 +5666,9 @@ async function fetchInstalledAddons() {
                             </span>
                         </td>
                         <td style="padding: 1rem 1.5rem; text-align:right;">
-                            <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                            <div style="display:flex; justify-content:flex-end; gap:0.5rem; flex-wrap:wrap;">
                                 <button class="btn-sm btn-primary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan">⚙️</button>
-                                ${addon.id === 'ai_yolo' ? `<button class="btn-sm btn-primary" onclick="openAIGridModal()" title="Konfigurasi Area">🎯</button>` : ''}
+                                ${(addon.id === 'ai_yolo' || addon.id === 'ai-yolo') ? `<button class="btn-sm btn-primary" onclick="openYoloAiPage()" title="Buka Halaman YOLO AI Vision" style="background:#2563eb; border-color:#2563eb; font-weight:600;">🎯 Buka Panel AI</button>` : ''}
                                 <button class="btn-sm btn-secondary" onclick="toggleAddonState('${addon.id}', ${!addon.active})" title="${addon.active ? 'Matikan' : 'Nyalakan'}">
                                     ${addon.active ? '⏹️' : '▶️'}
                                 </button>
@@ -5736,8 +5821,8 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                     </span>
                 </div>
                 <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm btn-primary" onclick="openAIGridModal('${currentCam}')" style="display:flex; align-items:center; gap:0.3rem;">
-                        <span>🎯</span> Buka Visual Intrusion Area (Grid Editor)
+                    <button type="button" class="btn btn-sm btn-primary" onclick="closeAddonConfigModal(); openYoloAiPage('${currentCam}')" style="display:flex; align-items:center; gap:0.3rem; background:#2563eb; border-color:#2563eb;">
+                        <span>🎯</span> Buka Halaman YOLO AI Vision & Area Grid
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary" onclick="testAIYoloAlarm()" style="display:flex; align-items:center; gap:0.3rem;">
                         <span>🔔</span> Uji Alarm / Test Webhook

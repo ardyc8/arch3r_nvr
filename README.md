@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 10.0.2)
+# ⚡ Arch3r NVR (Ver. 10.0.4)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
@@ -180,6 +180,13 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
     1. *Baris Atas (Horizontal Parallel)*: Panel **🔍 LENSA & FOKUS** (Zoom +, Focus +, Zoom -, Focus -) dan panel **🎬 KONTROL PLAYER & AUDIO** (Play/Pause, Kualitas HD/SD, Snapshot 📸, Slider Volume 🔊, Audio Mute 🔇) diletakkan sejajar secara horizontal dan adaptif/responsif.
     2. *Baris Bawah (Center)*: Dial joystick **D-Pad Sirkular** (▲, ◀, Stop ■, ▶, ▼) diletakkan di bagian tengah bawah (*bottom center*) secara simetris dan rapi.
   - **Unified Version & Metadata Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.7.8** di seluruh tampilan UI, login card, sidebar profil, mobile header, dan metadata sistem.
+
+- **[Ver 10.0.4]**
+  - **Dedicated YOLO AI Vision Page Navigation**: Integrasi navigasi mandiri ke halaman terpisah `view-yolo-ai` melalui sidebar menu dan tombol pintasan di kartu Addon/Marketplace tanpa batasan modal popup.
+  - **Auto Camera Stream Initialization**: Memastikan stream video kamera aktif diinisialisasi secara otomatis saat halaman YOLO AI dibuka, dilengkapi dengan pemilihan kamera dinamis dan deteksi stream otomatis.
+  - **Real-Time Video Feed & Fallback Stream Handling**: Menghubungkan player HLS ke stream real-time kamera NVR (MediaMTX `/stream/:path/index.m3u8` dan fallback `/streams/:camId/main.m3u8`).
+  - **NO VIDEO SIGNAL Overlay & Reconnect Engine**: Menyajikan overlay sinyal status jika kamera offline atau belum menerima sinyal RTSP lokal, dilengkapi tombol *"🔄 Hubungkan Ulang Kamera"* dan *"🧪 Uji di Lab Simulasi"*.
+  - **Integrated .yai Preset Import/Export & Marketplace**: Mendukung penuh download dan upload konfigurasi preset dengan ekstensi kustom `.yai` (seperti `kios_bensin.yai`) serta marketplace preset.
 
 - **[Ver 9.7.7]**
   - **Navigation & Control Panel Layout Alignment**: Menyesuaikan tata letak panel kontrol monitor secara presisi dengan arsitektur 3 baris terstruktur:
