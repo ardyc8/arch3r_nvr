@@ -112,10 +112,27 @@ class HdmiKioskAddon {
     }
 
     /**
+     * Load persisted config from config.json
+     */
+    loadConfig() {
+        const configPath = path.join(__dirname, 'config.json');
+        if (fs.existsSync(configPath)) {
+            try {
+                this.config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                if (this.config.display_url) this.appUrl = this.config.display_url;
+            } catch (e) {
+                this.logger('WARN', 'Failed to read config.json: ' + e.message);
+            }
+        }
+        return this.config || {};
+    }
+
+    /**
      * Get real-time status representation
      */
     getStatus() {
         this.checkHdmiPhysicalStatus();
+        this.loadConfig();
         return {
             addonName: 'arch3r-addon-hdmi-kiosk',
             version: '1.0.2',
@@ -124,6 +141,7 @@ class HdmiKioskAddon {
             detectedSysPath: this.detectedSysPath,
             targetUrl: this.appUrl,
             lastCheckTime: this.lastCheckTime,
+            config: this.config || {},
             mode: 'safe-telemetry'
         };
     }

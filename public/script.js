@@ -1,10 +1,11 @@
-// script.js - Archer NVR Ver. 9.9.5 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.9.6 Multi-Tenant Controller
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
     return localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
 }
 window.getAuthToken = getAuthToken;
+window.cameras = window.cameras || [];
 
 function authFetch(url, options = {}) {
     const opts = { ...options };
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUserRole = null;
     let currentUsername = '';
     let cameras = [];
+    window.cameras = cameras;
     let currentGridCount = 4;
     let mCurrentGridCount = 1;
     let detectedStorageDevices = [];
@@ -1201,6 +1203,7 @@ async function fetchCameras() {
             }
             const data = await res.json();
             cameras = data.cameras || [];
+            window.cameras = cameras;
             window.globalStorageMode = data.globalStorageMode || 'disabled';
 
             // Update Kuota UI untuk Administrator Gedung
@@ -3236,7 +3239,9 @@ let allLogsCache = [];
 
             if (badge) {
                 const isNew = data.update_available || data.isUpdateAvailable;
-                badge.innerHTML = `v${data.current_version || '9.6.4'} ${isNew ? '• Ada Update v' + (data.latest_version || '9.6.4') : '• Versi Terbaru'}`;
+                const curVer = data.current_version || window.APP_VERSION || '9.9.6';
+                const latVer = data.latest_version || window.APP_VERSION || '9.9.6';
+                badge.innerHTML = `v${curVer} ${isNew ? '• Ada Update v' + latVer : '• Versi Terbaru'}`;
                 badge.style.background = isNew ? '#f59e0b' : '#10b981';
             }
 
@@ -3744,14 +3749,23 @@ async function fetchInstalledAddons() {
                 tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">Belum ada addon yang terinstal. Silakan instal melalui GitHub/URL.</td></tr>';
             }
         } else if (response.status === 401 || response.status === 403) {
-            tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #f59e0b;">Sesi login kedaluwarsa atau memerlukan hak akses Administrator / Superadmin.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #f59e0b;">
+                Sesi login kedaluwarsa atau memerlukan hak akses Administrator / Superadmin.<br>
+                <button class="btn-sm btn-secondary" onclick="fetchInstalledAddons()" style="margin-top:0.75rem;">🔄 Coba Segarkan</button>
+            </td></tr>`;
         } else {
             const errData = await response.json().catch(() => ({}));
-            tbody.innerHTML = `<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">Gagal memuat daftar addon: ${errData.error || 'HTTP ' + response.status}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">
+                Gagal memuat daftar addon: ${errData.error || 'HTTP ' + response.status}<br>
+                <button class="btn-sm btn-secondary" onclick="fetchInstalledAddons()" style="margin-top:0.75rem;">🔄 Coba Lagi</button>
+            </td></tr>`;
         }
     } catch (e) {
         console.error('[Addons] Error fetching installed addons:', e);
-        tbody.innerHTML = `<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">Error koneksi ke server: ${e.message || e}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">
+            Error koneksi ke server: ${e.message || e}<br>
+            <button class="btn-sm btn-secondary" onclick="fetchInstalledAddons()" style="margin-top:0.75rem;">🔄 Coba Hubungkan Ulang</button>
+        </td></tr>`;
     }
 }
 
@@ -3808,48 +3822,278 @@ let currentConfigAddonId = null;
 
 async function openAddonConfig(addonId, addonName) {
     currentConfigAddonId = addonId;
-    document.getElementById('addonConfigTitle').textContent = addonName;
-    document.getElementById('addonConfigBody').innerHTML = '<p style="color:var(--text-muted);text-align:center;">Memuat konfigurasi...</p>';
-    document.getElementById('addonConfigModalOverlay').style.display = 'flex';
+    const titleEl = document.getElementById('addonConfigTitle');
+    const bodyEl = document.getElementById('addonConfigBody');
+    if (titleEl) titleEl.textContent = addonName;
+    if (bodyEl) bodyEl.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">Memuat modul konfigurasi...</p>';
+    
+    const modal = document.getElementById('addonConfigModalOverlay');
+    if (modal) modal.style.display = 'flex';
 
     try {
-        const res = await authFetch('/api/addons/' + addonId + '/config');
-        const data = await res.json();
-        if (res.ok) {
-            renderAddonConfigForm(data.config);
+        const [configRes, statusRes] = await Promise.all([
+            authFetch('/api/addons/' + addonId + '/config'),
+            (addonId === 'ai_yolo' || addonId === 'ai-yolo') ? authFetch('/api/addons/ai_yolo/status').catch(() => null) :
+            (addonId === 'hdmi-kiosk' || addonId === 'hdmi_kiosk') ? authFetch('/api/addons/hdmi-kiosk/status').catch(() => null) :
+            Promise.resolve(null)
+        ]);
+
+        const configData = await configRes.json();
+        let statusData = null;
+        if (statusRes && statusRes.ok) {
+            statusData = await statusRes.json().catch(() => null);
+        }
+
+        if (configRes.ok) {
+            renderAddonConfigForm(addonId, addonName, configData.config || {}, statusData);
         } else {
-            document.getElementById('addonConfigBody').innerHTML = `<p style="color:#ef4444;text-align:center;">Gagal: ${data.error || 'Terjadi kesalahan'}</p>`;
+            if (bodyEl) bodyEl.innerHTML = `<p style="color:#ef4444;text-align:center;padding:2rem;">Gagal memuat: ${configData.error || 'Terjadi kesalahan'}</p>`;
         }
     } catch (e) {
-        document.getElementById('addonConfigBody').innerHTML = `<p style="color:#ef4444;text-align:center;">Gagal menghubungi server.</p>`;
+        if (bodyEl) bodyEl.innerHTML = `<p style="color:#ef4444;text-align:center;padding:2rem;">Gagal menghubungi server: ${e.message || e}</p>`;
     }
 }
 
-function renderAddonConfigForm(configObj) {
+function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
     const container = document.getElementById('addonConfigBody');
-    if (!configObj || Object.keys(configObj).length === 0) {
-        container.innerHTML = '<p style="color:var(--text-muted);text-align:center;margin-top:2rem;">Addon ini tidak memiliki parameter yang bisa dikonfigurasi dari antarmuka.</p>';
+    if (!container) return;
+
+    const availableCams = window.cameras || [];
+
+    // --- 1. SPESIFIKASI: AI YOLOv8 Human Detection Addon ---
+    if (addonId === 'ai_yolo' || addonId === 'ai-yolo') {
+        const isRunning = statusData ? statusData.active : true;
+        const currentCam = configObj.camera_id || '';
+        const confPercent = Math.round((configObj.confidence_threshold !== undefined ? configObj.confidence_threshold : 0.50) * 100);
+        const frameSkip = configObj.frame_skip || 15;
+        const streamType = configObj.stream_type || 'sub';
+
+        let camOptionsHtml = '<option value="">-- Analisis Semua Kamera / Standar --</option>';
+        availableCams.forEach(cam => {
+            const isSel = String(cam.id) === String(currentCam) ? 'selected' : '';
+            camOptionsHtml += `<option value="${cam.id}" ${isSel}>${cam.name} (${cam.ip || 'RTSP'})</option>`;
+        });
+
+        container.innerHTML = `
+            <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                    <div>
+                        <strong style="color:#60a5fa; font-size:1rem; display:block;">🧠 Mesin AI: YOLOv8n (Ultra-Lightweight ARM64)</strong>
+                        <span style="font-size:0.85rem; color:var(--text-muted);">Dioptimalkan untuk SoC Amlogic STB Linux Armbian (Zero-Crash Guard)</span>
+                    </div>
+                    <span style="padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isRunning ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isRunning ? '#22c55e' : '#ef4444'}; border: 1px solid ${isRunning ? '#22c55e' : '#ef4444'};">
+                        ${isRunning ? '🟢 Layanan Aktif' : '⚪ Siaga / Mati'}
+                    </span>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="openAIGridModal('${currentCam}')" style="display:flex; align-items:center; gap:0.3rem;">
+                        <span>🎯</span> Buka Visual Intrusion Area (Grid Editor)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="testAIYoloAlarm()" style="display:flex; align-items:center; gap:0.3rem;">
+                        <span>🔔</span> Uji Alarm / Test Webhook
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="restartAIYoloService()" style="display:flex; align-items:center; gap:0.3rem;">
+                        <span>⚡</span> Terapkan & Restart Service
+                    </button>
+                </div>
+            </div>
+
+            <form id="addonConfigForm">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Target Kamera Pengawasan:</label>
+                        <select name="camera_id" id="addon_cfg_cam_id" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            ${camOptionsHtml}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Sumber Stream Video:</label>
+                        <select name="stream_type" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="sub" ${streamType === 'sub' ? 'selected' : ''}>Sub-Stream (RTSP Ringan - Sangat Disarankan STB)</option>
+                            <option value="main" ${streamType === 'main' ? 'selected' : ''}>Main-Stream (Full HD - Butuh Kapasitas CPU Tinggi)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.25rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                        <label style="font-weight:600; font-size:0.88rem; color:var(--text);">Ambang Batas Kepercayaan (Confidence Threshold):</label>
+                        <span id="addon_conf_label" style="font-weight:bold; color:#3b82f6; font-size:0.9rem;">${confPercent}%</span>
+                    </div>
+                    <input type="range" name="confidence_threshold" min="0.10" max="0.95" step="0.05" value="${configObj.confidence_threshold || 0.50}"
+                        oninput="document.getElementById('addon_conf_label').textContent = Math.round(this.value * 100) + '%';"
+                        style="width:100%; accent-color:#3b82f6;">
+                    <small style="color:var(--text-muted); display:block; margin-top:0.25rem;">Rekomendasi 50% untuk mengurangi false alarm dari dedaunan atau bayangan cahaya.</small>
+                </div>
+
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Interval Pemrosesan Frame (Frame Skip Rate):</label>
+                    <select name="frame_skip" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                        <option value="15" ${frameSkip === 15 ? 'selected' : ''}>15 Frames (~2 FPS) - Sangat Hemat CPU (Rekomendasi STB Armbian)</option>
+                        <option value="10" ${frameSkip === 10 ? 'selected' : ''}>10 Frames (~3 FPS) - Deteksi Sedang</option>
+                        <option value="5" ${frameSkip === 5 ? 'selected' : ''}>5 Frames (~6 FPS) - Deteksi Cepat</option>
+                    </select>
+                </div>
+
+                <div style="background:rgba(0,0,0,0.15); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
+                    <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Aksi Respon & Notifikasi Alarm:</strong>
+                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                            <input type="checkbox" name="sound_buzzer" value="true" ${configObj.sound_buzzer !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
+                            <span>Bunyikan Alarm Buzzer Audio di Web UI saat terjadi intrusi manusia</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                            <input type="checkbox" name="log_alerts" value="true" ${configObj.log_alerts !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
+                            <span>Catat setiap event deteksi manusia ke NVR System Logs</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                            <input type="checkbox" name="auto_start" value="true" ${configObj.auto_start ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
+                            <span>Otomatis jalankan layanan AI YOLO saat STB dinyalakan (Boot)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Webhook Alarm Endpoint (Opsional):</label>
+                    <input type="text" name="webhook_url" value="${configObj.webhook_url || 'http://127.0.0.1:3000/api/ai/webhook'}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px; font-family:monospace; font-size:0.85rem;">
+                </div>
+            </form>
+        `;
         return;
     }
-    
+
+    // --- 2. SPESIFIKASI: HDMI Monitor & Kiosk Service Addon ---
+    if (addonId === 'hdmi-kiosk' || addonId === 'hdmi_kiosk') {
+        const isHdmiConn = statusData ? !!statusData.isHdmiConnected : false;
+        const isKioskAct = statusData ? !!statusData.isKioskServiceActive : false;
+        const sysPath = (statusData && statusData.detectedSysPath) || '/sys/class/drm/...';
+        const preset = configObj.preset || 'live_grid';
+
+        let camOptionsHtml = '<option value="">-- Pilih Kamera Fullscreen --</option>';
+        availableCams.forEach(cam => {
+            const isSel = String(cam.id) === String(configObj.target_cam_id) ? 'selected' : '';
+            camOptionsHtml += `<option value="${cam.id}" ${isSel}>${cam.name}</option>`;
+        });
+
+        container.innerHTML = `
+            <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                    <div>
+                        <strong style="color:#34d399; font-size:1rem; display:block;">📺 Telemetri Port HDMI & Layar TV/Monitor</strong>
+                        <span style="font-size:0.82rem; color:var(--text-muted); font-family:monospace;">Sysfs: ${sysPath}</span>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isHdmiConn ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isHdmiConn ? '#22c55e' : '#ef4444'}; border: 1px solid ${isHdmiConn ? '#22c55e' : '#ef4444'};">
+                            ${isHdmiConn ? '🟢 Kabel HDMI Terhubung' : '⚪ Kabel Terlepas (Headless)'}
+                        </span>
+                        <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isKioskAct ? 'rgba(59,130,246,0.15)' : 'rgba(156,163,175,0.15)'}; color:${isKioskAct ? '#60a5fa' : '#9ca3af'}; border: 1px solid ${isKioskAct ? '#60a5fa' : '#9ca3af'};">
+                            ${isKioskAct ? '🖥️ Layar Aktif' : '⏹️ Layar Siaga'}
+                        </span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="toggleHdmiKioskOutput('start')" style="display:flex; align-items:center; gap:0.3rem;">
+                        <span>▶️</span> Nyalakan Output HDMI
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleHdmiKioskOutput('stop')" style="display:flex; align-items:center; gap:0.3rem;">
+                        <span>⏹️</span> Matikan Output HDMI
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="refreshHdmiKioskStatus()" style="display:flex; align-items:center; gap:0.3rem;">
+                        <span>🔄</span> Cek Kabel Ulang
+                    </button>
+                </div>
+            </div>
+
+            <form id="addonConfigForm">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Preset Tampilan Kiosk:</label>
+                        <select name="preset" id="kioskPresetSelect" onchange="toggleKioskCamSelector(this.value)" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="live_grid" ${preset === 'live_grid' ? 'selected' : ''}>Grid 4 Kamera (2x2 Quad Live View)</option>
+                            <option value="live_grid_3x3" ${preset === 'live_grid_3x3' ? 'selected' : ''}>Grid 9 Kamera (3x3 Live View)</option>
+                            <option value="single_cam" ${preset === 'single_cam' ? 'selected' : ''}>Kamera Tunggal Fullscreen</option>
+                            <option value="full_dashboard" ${preset === 'full_dashboard' ? 'selected' : ''}>Tampilan Penuh Dashboard NVR</option>
+                        </select>
+                    </div>
+
+                    <div id="kioskSingleCamBox" style="display:${preset === 'single_cam' ? 'block' : 'none'};">
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Pilih Kamera Utama:</label>
+                        <select name="target_cam_id" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            ${camOptionsHtml}
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Resolusi Tampilan Layar:</label>
+                        <select name="resolution" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="auto" ${configObj.resolution === 'auto' ? 'selected' : ''}>Otomatis (Sesuai EDID Layar TV/Monitor)</option>
+                            <option value="1080p" ${configObj.resolution === '1080p' ? 'selected' : ''}>1080p Full HD (1920x1080)</option>
+                            <option value="720p" ${configObj.resolution === '720p' ? 'selected' : ''}>720p HD (1280x720)</option>
+                            <option value="4k" ${configObj.resolution === '4k' ? 'selected' : ''}>4K UHD (3840x2160)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Rotasi Orientasi Layar:</label>
+                        <select name="rotation" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="0" ${String(configObj.rotation) === '0' ? 'selected' : ''}>0° (Normal Horizontal Landscape)</option>
+                            <option value="90" ${String(configObj.rotation) === '90' ? 'selected' : ''}>90° (Vertical Signage Kanan)</option>
+                            <option value="180" ${String(configObj.rotation) === '180' ? 'selected' : ''}>180° (Terbalik Inverted)</option>
+                            <option value="270" ${String(configObj.rotation) === '270' ? 'selected' : ''}>270° (Vertical Signage Kiri)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="background:rgba(0,0,0,0.15); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
+                    <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Pengaturan Sistem & Penghemat Daya:</strong>
+                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                            <input type="checkbox" name="auto_start" value="true" ${configObj.auto_start ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
+                            <span>Otomatis nyalakan tampilan HDMI saat STB Boot jika kabel terdeteksi</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                            <input type="checkbox" name="auto_restart_crash" value="true" ${configObj.auto_restart_crash !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
+                            <span>Auto-restart tampilan peramban Kiosk jika sesi grafis crash / tertutup</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">URL Tampilan Lokal (Default Port NVR):</label>
+                    <input type="text" name="display_url" value="${configObj.display_url || 'http://localhost:3000'}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px; font-family:monospace; font-size:0.85rem;">
+                </div>
+            </form>
+        `;
+        return;
+    }
+
+    // --- 3. FORMAT GENERIK (Untuk Addon Kustom Lainnya) ---
+    if (!configObj || Object.keys(configObj).length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">Addon ini siap beroperasi secara default dan tidak memerlukan parameter konfigurasi tambahan.</p>';
+        return;
+    }
+
     let html = '<form id="addonConfigForm">';
     for (let key in configObj) {
         const val = configObj[key];
         const type = typeof val;
         const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        
+
         html += `<div style="margin-bottom:1.2rem;">
-            <label style="display:block; margin-bottom:0.5rem; color:var(--text); font-size:0.9rem; font-weight:bold;">${displayKey}</label>`;
-        
+            <label style="display:block; margin-bottom:0.4rem; color:var(--text); font-size:0.88rem; font-weight:600;">${displayKey}</label>`;
+
         if (type === 'boolean') {
-            html += `<select name="${key}" style="width:100%; padding:0.75rem; background:rgba(0,0,0,0.2); border:1px solid var(--border); color:white; border-radius:4px;">
+            html += `<select name="${key}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
                 <option value="true" ${val ? 'selected' : ''}>Aktif (True)</option>
                 <option value="false" ${!val ? 'selected' : ''}>Mati (False)</option>
             </select>`;
         } else if (type === 'number') {
-            html += `<input type="number" name="${key}" value="${val}" style="width:100%; padding:0.75rem; background:rgba(0,0,0,0.2); border:1px solid var(--border); color:white; border-radius:4px;">`;
+            html += `<input type="number" name="${key}" value="${val}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">`;
         } else {
-            html += `<input type="text" name="${key}" value="${val}" style="width:100%; padding:0.75rem; background:rgba(0,0,0,0.2); border:1px solid var(--border); color:white; border-radius:4px;">`;
+            html += `<input type="text" name="${key}" value="${val}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">`;
         }
         html += `</div>`;
     }
@@ -3857,19 +4101,113 @@ function renderAddonConfigForm(configObj) {
     container.innerHTML = html;
 }
 
+function toggleKioskCamSelector(val) {
+    const box = document.getElementById('kioskSingleCamBox');
+    if (box) box.style.display = (val === 'single_cam') ? 'block' : 'none';
+}
+
+async function testAIYoloAlarm() {
+    const camSelect = document.getElementById('addon_cfg_cam_id');
+    const camId = camSelect ? camSelect.value : '';
+    const camName = camSelect && camSelect.selectedIndex >= 0 ? camSelect.options[camSelect.selectedIndex].text : 'Kamera 1';
+    
+    try {
+        const res = await authFetch('/api/addons/ai_yolo/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ camera_id: camId, camera_name: camName })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            // Mainkan suara chime buzzer jika audio context tersedia
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch (_) {}
+            
+            alert(data.message || 'Alarm simulasi deteksi manusia berhasil dipicu!');
+        } else {
+            alert('Gagal uji alarm: ' + (data.error || 'Terjadi kesalahan'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server untuk memicu alarm uji.');
+    }
+}
+
+async function restartAIYoloService() {
+    try {
+        const res = await authFetch('/api/addons/ai_yolo/restart', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            alert(data.message || 'AI YOLO Service berhasil direstart!');
+            openAddonConfig(currentConfigAddonId, document.getElementById('addonConfigTitle').textContent);
+        } else {
+            alert('Gagal restart: ' + (data.error || 'Terjadi kesalahan'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server untuk restart service.');
+    }
+}
+
+async function toggleHdmiKioskOutput(action) {
+    try {
+        const res = await authFetch('/api/addons/hdmi-kiosk/toggle', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: action })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert(`Aksi ${action} pada tampilan HDMI berhasil dikirim ke systemd service.`);
+            openAddonConfig('hdmi-kiosk', 'HDMI Monitor & Armbian Kiosk');
+        } else {
+            alert('Gagal mengatur tampilan HDMI: ' + (data.error || 'Terjadi kesalahan'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server.');
+    }
+}
+
+async function refreshHdmiKioskStatus() {
+    openAddonConfig('hdmi-kiosk', 'HDMI Monitor & Armbian Kiosk');
+}
+
 async function saveAddonConfig() {
     if (!currentConfigAddonId) return;
     const form = document.getElementById('addonConfigForm');
-    if (!form) return closeAddonConfigModal(); 
+    if (!form) return closeAddonConfigModal();
 
     const formData = new FormData(form);
     const newConfig = {};
-    for (let [k, v] of formData.entries()) {
-        if (v === 'true') newConfig[k] = true;
-        else if (v === 'false') newConfig[k] = false;
-        else if (!isNaN(v) && v.trim() !== '') newConfig[k] = Number(v);
-        else newConfig[k] = v;
-    }
+
+    // First collect all elements to handle unchecked checkboxes properly
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        const name = input.name;
+        if (!name) return;
+
+        if (input.type === 'checkbox') {
+            newConfig[name] = input.checked;
+        } else if (input.type === 'number' || input.type === 'range') {
+            newConfig[name] = input.value === '' ? 0 : Number(input.value);
+        } else if (input.value === 'true') {
+            newConfig[name] = true;
+        } else if (input.value === 'false') {
+            newConfig[name] = false;
+        } else {
+            newConfig[name] = input.value;
+        }
+    });
 
     try {
         const res = await authFetch('/api/addons/' + currentConfigAddonId + '/config', {
@@ -3879,18 +4217,20 @@ async function saveAddonConfig() {
         });
         const data = await res.json();
         if (res.ok) {
-            alert('Konfigurasi berhasil disimpan dan diaplikasikan ke addon.');
+            alert('Konfigurasi berhasil disimpan dan langsung diterapkan ke addon!');
             closeAddonConfigModal();
+            fetchInstalledAddons();
         } else {
-            alert('Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan'));
+            alert('Gagal menyimpan konfigurasi: ' + (data.error || 'Terjadi kesalahan'));
         }
     } catch (e) {
-        alert('Gagal menghubungi server untuk menyimpan konfigurasi.');
+        alert('Gagal menghubungi server untuk menyimpan konfigurasi: ' + (e.message || e));
     }
 }
 
 function closeAddonConfigModal() {
-    document.getElementById('addonConfigModalOverlay').style.display = 'none';
+    const modal = document.getElementById('addonConfigModalOverlay');
+    if (modal) modal.style.display = 'none';
 }
 
 async function submitInstallAddon() {

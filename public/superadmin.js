@@ -699,7 +699,7 @@
             currentUpdateData = data;
 
             if (updateStatusText) {
-                const sysVer = data.current_version || window.APP_VERSION || '9.9.5';
+                const sysVer = data.current_version || window.APP_VERSION || '9.9.6';
                 const verText = data.latest_version || sysVer;
                 const isNew = data.update_available || data.isUpdateAvailable;
                 updateStatusText.innerHTML = `Versi Terpasang: <span class="badge" style="background:${isNew ? '#f59e0b' : '#2563eb'}; color:#fff;">v${sysVer}</span> ${isNew ? '<span class="badge badge-online">Ada Update: v' + verText + '</span>' : '<span class="badge" style="background:#10b981; color:#fff;">Terbaru</span>'}`;
@@ -713,7 +713,7 @@
             const otaCur = document.getElementById('otaCurrentVer');
             const otaLat = document.getElementById('otaLatestVer');
             const otaBtnApply = document.getElementById('btnApplyOta');
-            const defVer = data.current_version || window.APP_VERSION || '9.9.5';
+            const defVer = data.current_version || window.APP_VERSION || '9.9.6';
             if (otaCur) otaCur.textContent = `v${defVer}`;
             if (otaLat) otaLat.textContent = `v${data.latest_version || defVer}`;
             if (otaBtnApply) otaBtnApply.style.display = 'inline-block';

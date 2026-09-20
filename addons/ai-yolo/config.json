@@ -1,0 +1,11 @@
+{
+    "camera_id": "cam-1",
+    "stream_type": "sub",
+    "confidence_threshold": 0.65,
+    "detection_model": "yolov8n.pt",
+    "frame_skip": 10,
+    "sound_buzzer": true,
+    "log_alerts": true,
+    "auto_start": true,
+    "webhook_url": "http://127.0.0.1:3000/api/ai/webhook"
+}

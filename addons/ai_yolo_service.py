@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import threading
+import os
+import json
 from fastapi import FastAPI
 from pydantic import BaseModel
 from ultralytics import YOLO
@@ -22,6 +24,39 @@ class GridConfig(BaseModel):
     active_cells: list  # format: ["0,0", "0,1", "1,0", ...]
 
 active_configs = {}
+current_app_config = {}
+
+def load_persisted_config():
+    global current_app_config
+    candidate_paths = [
+        os.path.join(os.path.dirname(__file__), "ai-yolo", "config.json"),
+        os.path.join(os.path.dirname(__file__), "ai_yolo", "config.json"),
+        os.path.join(os.path.dirname(__file__), "config.json"),
+    ]
+    for p in candidate_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    current_app_config = json.load(f)
+                    print(f"[AI YOLO] Berhasil memuat config dari {p}: {current_app_config}")
+                    return current_app_config
+            except Exception as e:
+                print(f"[AI YOLO] Gagal membaca config dari {p}: {e}")
+    return {}
+
+@app.on_event("startup")
+def startup_event():
+    load_persisted_config()
+
+@app.get("/api/ai/status")
+def get_ai_status():
+    load_persisted_config()
+    return {
+        "status": "online",
+        "model": "yolov8n.pt",
+        "active_workers": list(workers.keys()),
+        "config": current_app_config
+    }
 
 @app.post("/api/ai/config")
 def update_ai_config(config: GridConfig):

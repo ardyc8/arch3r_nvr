@@ -1,6 +1,6 @@
 // version_sync.js - Arch3r NVR Centralized Dynamic Version Synchronizer
 (function () {
-    const CURRENT_STATIC_VERSION = '9.9.5';
+    const CURRENT_STATIC_VERSION = '9.9.6';
     window.APP_VERSION = CURRENT_STATIC_VERSION;
 
     function applyVersionToDOM(version) {
@@ -8,18 +8,42 @@
         window.APP_VERSION = version;
 
         // 1. Update Document Title
-        if (document.title && /Ver\.?\s*[0-9]+\.[0-9]+\.[0-9]+/i.test(document.title)) {
-            document.title = document.title.replace(/Ver\.?\s*[0-9]+\.[0-9]+\.[0-9]+/i, `Ver. ${version}`);
+        if (document.title) {
+            document.title = document.title
+                .replace(/Ver\.?\s*[0-9]+(\.[0-9]+)+/gi, `Ver. ${version}`)
+                .replace(/v[0-9]+(\.[0-9]+)+/gi, `v${version}`);
         }
 
-        // 2. Update all text nodes or elements containing "Ver."
+        // 2. Target specific version badges and elements
+        const specificIds = ['adminOtaStatusBadge', 'aboutAppVersion'];
+        specificIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (id === 'aboutAppVersion') {
+                    el.textContent = `Arch3r NVR Ver. ${version}`;
+                } else {
+                    el.textContent = `v${version}`;
+                }
+            }
+        });
+
+        // 3. Update all text nodes or elements containing "Ver." or "v9."
         const targets = document.querySelectorAll(
-            '.app-version, [data-app-version], .badge, span, h2, h3, p'
+            '.app-version, [data-app-version], .badge, span, h2, h3, h4, p'
         );
 
         targets.forEach(el => {
-            if (el.children.length === 0 && el.textContent.includes('Ver.')) {
-                el.textContent = el.textContent.replace(/Ver\.?\s*[0-9]+\.[0-9]+\.[0-9]+/gi, `Ver. ${version}`);
+            // If leaf element or simple text container
+            if (el.children.length === 0 && el.textContent) {
+                const txt = el.textContent.trim();
+                // Replace "Ver. X.Y.Z" or "Ver X.Y.Z"
+                if (/Ver\.?\s*[0-9]+(\.[0-9]+)+/i.test(txt)) {
+                    el.textContent = el.textContent.replace(/Ver\.?\s*[0-9]+(\.[0-9]+)+/gi, `Ver. ${version}`);
+                }
+                // Replace standalone "v9.x.x" or "vX.Y.Z"
+                else if (/^v[0-9]+(\.[0-9]+)+$/i.test(txt) || /Versi Terpasang:\s*v[0-9]+(\.[0-9]+)+/i.test(txt)) {
+                    el.textContent = el.textContent.replace(/v[0-9]+(\.[0-9]+)+/gi, `v${version}`);
+                }
             }
         });
     }

@@ -38,9 +38,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.9.5';
+        return pkg.version || '9.9.6';
     } catch {
-        return '9.9.5';
+        return '9.9.6';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -564,14 +564,34 @@ app.get('/api/addons/:id/config', verifyToken, (req, res) => {
     // Auto-generate default configuration layout if missing
     if (!addon.config || Object.keys(addon.config).length === 0) {
         if (addon.id === 'ai_yolo' || addon.id === 'ai-yolo') {
-            addon.config = { confidence_threshold: 0.5, log_alerts: true, auto_start: false, detection_model: 'yolov8n.pt' };
+            addon.config = {
+                camera_id: '',
+                stream_type: 'sub',
+                confidence_threshold: 0.50,
+                detection_model: 'yolov8n.pt',
+                frame_skip: 15,
+                sound_buzzer: true,
+                log_alerts: true,
+                auto_start: false,
+                webhook_url: `http://127.0.0.1:${port}/api/ai/webhook`
+            };
         } else if (addon.id === 'hdmi-kiosk' || addon.id === 'hdmi_kiosk') {
-            addon.config = { auto_start: false, display_url: `http://localhost:${port}`, poll_interval_sec: 30 };
+            addon.config = {
+                display_url: `http://localhost:${port}`,
+                preset: 'live_grid',
+                target_cam_id: '',
+                resolution: 'auto',
+                rotation: '0',
+                auto_start: false,
+                poll_interval_sec: 30,
+                auto_restart_crash: true
+            };
         } else {
             addon.config = {};
         }
+        saveNvrDb(dbData);
     }
-    res.json({ success: true, config: addon.config });
+    res.json({ success: true, config: addon.config, addon });
 });
 
 app.post('/api/addons/:id/config', verifyToken, (req, res) => {
@@ -584,18 +604,72 @@ app.post('/api/addons/:id/config', verifyToken, (req, res) => {
     addon.config = { ...addon.config, ...req.body.config };
     saveNvrDb(dbData);
     
-    // Write out to the actual config.json file in the addon's directory if it exists
+    // Write out to the actual config.json file in all matching directory variations
     try {
-        const addonConfigPath = path.join(__dirname, 'addons', addon.id, 'config.json');
-        if (fs.existsSync(path.dirname(addonConfigPath))) {
-            fs.writeFileSync(addonConfigPath, JSON.stringify(addon.config, null, 4));
-        }
+        const candidateDirs = [
+            path.join(__dirname, 'addons', addon.id),
+            path.join(__dirname, 'addons', addon.id.replace(/_/g, '-')),
+            path.join(__dirname, 'addons', addon.id.replace(/-/g, '_'))
+        ];
+        candidateDirs.forEach(cDir => {
+            if (fs.existsSync(cDir)) {
+                fs.writeFileSync(path.join(cDir, 'config.json'), JSON.stringify(addon.config, null, 4));
+            }
+        });
     } catch(e) {
         console.error('Failed to write addon config to filesystem', e);
     }
     
     sysLog('INFO', `[Addons] Konfigurasi diupdate untuk module: ${addon.name}`, 'SYSTEM');
-    res.json({ success: true, message: 'Konfigurasi disimpan' });
+    res.json({ success: true, message: 'Konfigurasi disimpan', config: addon.config });
+});
+
+// AI YOLO Specific Endpoints
+app.get('/api/addons/ai_yolo/status', verifyToken, (req, res) => {
+    const dbData = getNvrDb();
+    const addon = (dbData.addons || []).find(a => a.id === 'ai_yolo' || a.id === 'ai-yolo') || { active: false, config: {} };
+    res.json({
+        success: true,
+        installed: true,
+        active: !!addon.active,
+        model: (addon.config && addon.config.detection_model) || 'yolov8n.pt',
+        port: 8000,
+        service_running: !!addon.active,
+        status_text: addon.active ? 'Aktif (Mendeteksi Real-time)' : 'Nonaktif (Siaga)',
+        environment: 'Linux Armbian STB (Zero-Crash Guard)',
+        config: addon.config || {}
+    });
+});
+
+app.post('/api/addons/ai_yolo/restart', verifyToken, (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator' && req.userRole !== 'admin') {
+        return res.status(403).json({ error: 'Akses Ditolak' });
+    }
+    const dbData = getNvrDb();
+    const addon = (dbData.addons || []).find(a => a.id === 'ai_yolo' || a.id === 'ai-yolo');
+    if (addon) {
+        addon.active = true;
+        if (req.body && req.body.config) {
+            addon.config = { ...addon.config, ...req.body.config };
+        }
+        saveNvrDb(dbData);
+    }
+    child_process.exec('pm2 restart arch3r-ai-yolo 2>/dev/null || true', () => {});
+    sysLog('INFO', `[Addons] AI YOLO Service berhasil di-restart / diaplikasikan`, 'SYSTEM');
+    res.json({ success: true, message: 'AI YOLO Service berhasil direstart dan konfigurasi diterapkan.' });
+});
+
+app.post('/api/addons/ai_yolo/test', verifyToken, (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator' && req.userRole !== 'admin') {
+        return res.status(403).json({ error: 'Akses Ditolak' });
+    }
+    const { camera_id, camera_name } = req.body || {};
+    const camLabel = camera_name || camera_id || 'Kamera 1';
+    sysLog('WARN', `[AI ALARM] Uji Deteksi Manusia pada ${camLabel} (Confidence: 89% - Area Intrusi Terpicu)`, 'SECURITY');
+    res.json({
+        success: true,
+        message: `Alarm simulasi deteksi manusia berhasil dipicu pada ${camLabel}! Notifikasi alarm dikirim ke sistem logs.`
+    });
 });
 
 // ==========================================
@@ -902,7 +976,10 @@ app.use(express.static(publicDir));
 // Universal Token Extractor (Bearer header > Cookie > Query Param)
 function extractToken(req) {
     if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-        return req.headers.authorization.substring(7);
+        const rawToken = req.headers.authorization.substring(7).trim();
+        if (rawToken && rawToken !== 'null' && rawToken !== 'undefined' && rawToken !== '""') {
+            return rawToken;
+        }
     }
     if (req.cookies && req.cookies.nvr_auth_token) {
         return req.cookies.nvr_auth_token;

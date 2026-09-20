@@ -1,0 +1,9 @@
+{
+  "preset": "live_grid",
+  "target_cam_id": "",
+  "resolution": "auto",
+  "rotation": "0",
+  "auto_start": true,
+  "auto_restart_crash": true,
+  "display_url": "http://localhost:3000"
+}
