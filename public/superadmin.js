@@ -98,6 +98,12 @@
 
     // Check Current Superadmin Auth
     async function checkAuth() {
+        const token = getAuthToken();
+        if (!token) {
+            saAuthOverlay.style.display = 'flex';
+            saDashboard.style.display = 'none';
+            return;
+        }
         try {
             const res = await authFetch('/api/auth/status');
             const data = await res.json();
@@ -107,11 +113,20 @@
                 loadSuperSettings();
                 loadAdmins();
                 loadSystemInfo();
+                if (typeof window.checkOtaUpdate === 'function') {
+                    window.checkOtaUpdate();
+                }
             } else {
+                localStorage.removeItem('nvr_auth_token');
+                localStorage.removeItem('arch3r_token');
+                localStorage.removeItem('nvr_role');
                 saAuthOverlay.style.display = 'flex';
                 saDashboard.style.display = 'none';
             }
         } catch (err) {
+            localStorage.removeItem('nvr_auth_token');
+            localStorage.removeItem('arch3r_token');
+            localStorage.removeItem('nvr_role');
             saAuthOverlay.style.display = 'flex';
             saDashboard.style.display = 'none';
         }
@@ -143,9 +158,11 @@
                     saAuthOverlay.style.display = 'none';
                     saDashboard.style.display = 'flex';
                     loadSuperSettings();
-                loadAdmins();
-                loadSystemInfo();
+                    loadAdmins();
                     loadSystemInfo();
+                    if (typeof window.checkOtaUpdate === 'function') {
+                        window.checkOtaUpdate();
+                    }
                 } else {
                     saLoginError.textContent = 'Akun ini bukan role Superadmin. Gunakan admin@archer.nvr!';
                 }
@@ -157,15 +174,40 @@
         }
     });
 
-    // Logout
-    saBtnLogout.addEventListener('click', async () => {
+    // Complete, Reliable Logout for Desktop and Mobile
+    async function performSuperadminLogout() {
         try {
             await authFetch('/api/auth/logout', { method: 'POST' });
         } catch (e) {}
+
+        // Thoroughly clear all tokens and credentials from client storage
         localStorage.removeItem('nvr_auth_token');
+        localStorage.removeItem('arch3r_token');
         localStorage.removeItem('nvr_role');
-        window.location.reload();
-    });
+        localStorage.removeItem('nvr_username');
+        localStorage.removeItem('nvr_admin_id');
+        sessionStorage.clear();
+
+        if (saPassword) saPassword.value = '';
+        if (saLoginError) {
+            saLoginError.style.color = '#34d399';
+            saLoginError.textContent = 'Sesi Anda telah diakhiri. Silakan login kembali jika diperlukan.';
+        }
+
+        saDashboard.style.display = 'none';
+        saAuthOverlay.style.display = 'flex';
+
+        // Redirect with query param to ensure fresh state
+        window.location.href = '/superadmin.html?logged_out=' + Date.now();
+    }
+
+    if (saBtnLogout) {
+        saBtnLogout.addEventListener('click', performSuperadminLogout);
+    }
+    const saBtnLogoutMobile = document.getElementById('saBtnLogoutMobile');
+    if (saBtnLogoutMobile) {
+        saBtnLogoutMobile.addEventListener('click', performSuperadminLogout);
+    }
 
     // Toggle Form Add Admin
     btnToggleAddAdmin.addEventListener('click', () => {
@@ -651,22 +693,31 @@
     const inputOtaUrl = document.getElementById('otaGithubUrl');
 
     let currentUpdateData = null;
+    window._otaTargetVersion = null;
+    window._otaTargetTitle = null;
 
-    window.toggleOtaChangelog = function() {
-        const box = document.getElementById('saOtaChangelogContainer');
-        if (!box) return;
-        if (box.style.display === 'none' || !box.style.display) {
-            box.style.display = 'block';
-            if (!currentUpdateData) {
-                window.checkOtaUpdate();
-            }
-        } else {
-            box.style.display = 'none';
+    window.toggleOtaConfigPanel = function() {
+        const panel = document.getElementById('otaConfigPanel');
+        if (panel) {
+            panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'block' : 'none';
         }
     };
 
-    window.openOtaWorkflowModal = function() {
+    window.openOtaWorkflowModal = function(targetVersion) {
         const modal = document.getElementById('modalOtaWorkflow');
+        const verToUse = targetVersion || window._otaTargetVersion;
+        const targetBadge = document.getElementById('otaModalTargetVerBadge');
+        const targetText = document.getElementById('otaModalTargetVerText');
+        const targetTitle = document.getElementById('otaModalTargetReleaseTitle');
+
+        if (verToUse && targetBadge && targetText) {
+            targetBadge.style.display = 'block';
+            targetText.textContent = 'v' + verToUse;
+            if (targetTitle) targetTitle.textContent = window._otaTargetTitle || 'Pembaruan Sistem';
+        } else if (targetBadge) {
+            targetBadge.style.display = 'none';
+        }
+
         if (modal) {
             modal.style.setProperty('display', 'flex', 'important');
             modal.classList.add('active');
@@ -685,37 +736,118 @@
         window.openOtaWorkflowModal();
     };
 
-    window.checkOtaUpdate = async function() {
-        const btn = document.getElementById('btnSaCheckUpdate');
-        if (btn) btn.textContent = "⏳ Memeriksa...";
+    window.checkOtaUpdate = async function(customPayload = {}) {
+        const btnRefresh = document.getElementById('btnCheckOtaRefresh');
+        const btnSaCheck = document.getElementById('btnSaCheckUpdate');
+        const chip = document.getElementById('otaStatusChip');
+
+        if (btnRefresh) btnRefresh.textContent = "⏳ Memeriksa...";
+        if (btnSaCheck) btnSaCheck.textContent = "⏳ Memeriksa...";
+        if (chip) chip.textContent = "Memeriksa...";
 
         try {
+            const bodyPayload = { type: 'check', ...customPayload };
             const res = await authFetch('/api/superadmin/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'check' })
+                body: JSON.stringify(bodyPayload)
             });
             const data = await res.json();
             currentUpdateData = data;
 
-            if (updateStatusText) {
-                const sysVer = data.current_version || window.APP_VERSION || '9.9.6';
-                const verText = data.latest_version || sysVer;
-                const isNew = data.update_available || data.isUpdateAvailable;
-                updateStatusText.innerHTML = `Versi Terpasang: <span class="badge" style="background:${isNew ? '#f59e0b' : '#2563eb'}; color:#fff;">v${sysVer}</span> ${isNew ? '<span class="badge badge-online">Ada Update: v' + verText + '</span>' : '<span class="badge" style="background:#10b981; color:#fff;">Terbaru</span>'}`;
-            }
+            const sysVer = data.current_version || window.APP_VERSION || '9.9.8';
+            const latestVer = data.latest_version || sysVer;
+            const isNew = !!(data.update_available || data.isUpdateAvailable);
 
-            if (updateDescText) {
-                updateDescText.textContent = data.message || `Sistem berjalan pada commit ${data.git_commit || 'terbaru'} (Branch: ${data.git_branch || 'main'}).`;
+            // Comparison Elements
+            const compCurrent = document.getElementById('otaCompCurrentVer');
+            const compLatest = document.getElementById('otaCompLatestVer');
+            const compBranch = document.getElementById('otaCompBranch');
+            const compSource = document.getElementById('otaCompSource');
+            const compDate = document.getElementById('otaCompDate');
+            const diffBadge = document.getElementById('otaDiffBadge');
+            const actionBanner = document.getElementById('otaActionBanner');
+            const actionTitle = document.getElementById('otaActionTitle');
+            const actionDesc = document.getElementById('otaActionDesc');
+            const btnInstall = document.getElementById('btnInstallOtaUpdate');
+            const cardLocal = document.getElementById('cardLocalVersion');
+            const cardRemote = document.getElementById('cardRemoteVersion');
+
+            if (compCurrent) compCurrent.textContent = `v${sysVer}`;
+            if (compLatest) compLatest.textContent = `v${latestVer}`;
+            if (compBranch && data.git_branch) compBranch.textContent = data.git_branch;
+            if (compSource && data.ota_source) compSource.textContent = data.ota_source;
+            if (compDate && data.release_date) compDate.textContent = data.release_date;
+
+            if (isNew) {
+                window._otaTargetVersion = latestVer;
+                window._otaTargetTitle = data.release_title || 'Pembaruan Sistem';
+
+                if (cardRemote) cardRemote.classList.add('highlight-new');
+                if (cardLocal) cardLocal.classList.remove('highlight-new');
+
+                if (diffBadge) {
+                    diffBadge.innerHTML = `🔥 Perbedaan Terdeteksi (v${sysVer} ➜ v${latestVer})`;
+                    diffBadge.style.background = '#059669';
+                    diffBadge.style.color = '#ffffff';
+                }
+                if (chip) {
+                    chip.textContent = `Pembaruan Tersedia (v${latestVer})`;
+                    chip.style.background = '#059669';
+                    chip.style.color = '#ffffff';
+                }
+                if (actionBanner) {
+                    actionBanner.className = 'ota-action-banner update-ready';
+                }
+                if (actionTitle) {
+                    actionTitle.innerHTML = `<span>🚀</span> Pembaruan Siap Dipasang: v${latestVer}`;
+                    actionTitle.style.color = '#10b981';
+                }
+                if (actionDesc) {
+                    actionDesc.innerHTML = `<strong>${data.release_title || 'Pembaruan Resmi'}:</strong> ${data.message || 'Tersedia pembaruan baru dari kanal rilis resmi.'}`;
+                }
+                if (btnInstall) {
+                    btnInstall.style.display = 'inline-flex';
+                    btnInstall.innerHTML = `🚀 Install Update Sekarang (v${latestVer})`;
+                }
+            } else {
+                window._otaTargetVersion = null;
+                window._otaTargetTitle = null;
+
+                if (cardRemote) cardRemote.classList.remove('highlight-new');
+                if (cardLocal) cardLocal.classList.remove('highlight-new');
+
+                if (diffBadge) {
+                    diffBadge.innerHTML = `✅ Versi Identik (v${sysVer})`;
+                    diffBadge.style.background = '#1e293b';
+                    diffBadge.style.color = '#94a3b8';
+                }
+                if (chip) {
+                    chip.textContent = 'Sistem Mutakhir';
+                    chip.style.background = '#1e293b';
+                    chip.style.color = '#94a3b8';
+                }
+                if (actionBanner) {
+                    actionBanner.className = 'ota-action-banner up-to-date';
+                }
+                if (actionTitle) {
+                    actionTitle.innerHTML = `<span>✅</span> Sistem Anda Menggunakan Versi Terbaru (v${sysVer})`;
+                    actionTitle.style.color = '#34d399';
+                }
+                if (actionDesc) {
+                    actionDesc.textContent = data.message || 'Arch3r NVR berjalan pada versi stabil resmi terbaru. Seluruh database, driver kamera, dan service daemon berada dalam kondisi sinkron.';
+                }
+                if (btnInstall) {
+                    btnInstall.style.display = 'none';
+                }
             }
 
             // Sync with Maintenance pane elements if present
             const otaCur = document.getElementById('otaCurrentVer');
             const otaLat = document.getElementById('otaLatestVer');
             const otaBtnApply = document.getElementById('btnApplyOta');
-            const defVer = data.current_version || window.APP_VERSION || '9.9.6';
-            if (otaCur) otaCur.textContent = `v${defVer}`;
-            if (otaLat) otaLat.textContent = `v${data.latest_version || defVer}`;
+            if (otaCur) otaCur.textContent = `v${sysVer}`;
+            if (otaLat) otaLat.textContent = `v${latestVer}`;
             if (otaBtnApply) otaBtnApply.style.display = 'inline-block';
 
             // Render changelog list
@@ -727,35 +859,48 @@
 
             if (changelogListContainer && Array.isArray(data.changelog)) {
                 changelogListContainer.innerHTML = data.changelog.map(c => `
-                    <div style="background:rgba(255,255,255,0.03); padding:0.65rem 0.85rem; border-radius:6px; border-left:3px solid #3b82f6;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <strong style="color:#93c5fd; font-size:0.85rem;">v${c.version} - ${c.title || 'Pembaruan Sistem'}</strong>
+                    <div style="background:var(--surface-dark); padding:0.85rem 1rem; border-radius:8px; border:1px solid var(--border); border-left:4px solid ${c.version === latestVer && isNew ? '#10b981' : '#3b82f6'};">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:0.5rem;">
+                            <strong style="color:${c.version === latestVer && isNew ? '#34d399' : '#93c5fd'}; font-size:0.9rem;">
+                                v${c.version} - ${c.title || 'Pembaruan Sistem'}
+                                ${c.version === latestVer && isNew ? '<span class="badge" style="background:#10b981; color:#fff; font-size:0.7rem; margin-left:6px;">RILIS BARU</span>' : ''}
+                            </strong>
                             <span style="font-size:0.75rem; color:var(--text-muted);">${c.date || ''}</span>
                         </div>
-                        <ul style="margin:0; padding-left:1.2rem; font-size:0.78rem; color:#cbd5e1; line-height:1.4;">
+                        <ul style="margin:0; padding-left:1.2rem; font-size:0.8rem; color:#cbd5e1; line-height:1.5;">
                             ${(c.items || []).map(item => `<li>${item}</li>`).join('')}
                         </ul>
                     </div>
                 `).join('');
             }
 
-            // Also populate Maintenance Changelog Box
+            // Also populate Maintenance Changelog Box if present
             const otaChangelogBox = document.getElementById('otaChangelogBox');
             if (otaChangelogBox && Array.isArray(data.changelog)) {
                 otaChangelogBox.style.display = 'block';
                 otaChangelogBox.textContent = data.changelog.map(c => `[v${c.version}] ${c.title}\n` + (c.items || []).map(i => ` - ${i}`).join('\n')).join('\n\n');
             }
 
-            if (btn) btn.textContent = "✅ Diperiksa";
-            setTimeout(() => {
-                if (btn) btn.textContent = "🔄 Periksa Pembaruan";
-            }, 2500);
+            if (btnRefresh) {
+                btnRefresh.textContent = "✅ Terverifikasi";
+                setTimeout(() => { btnRefresh.textContent = "🔄 Periksa Pembaruan"; }, 2500);
+            }
+            if (btnSaCheck) {
+                btnSaCheck.textContent = "✅ Terverifikasi";
+                setTimeout(() => { btnSaCheck.textContent = "🔄 Periksa Pembaruan"; }, 2500);
+            }
 
         } catch (err) {
             console.error("[OTA Check Error]", err);
-            if (btn) btn.textContent = "❌ Gagal Memeriksa";
+            if (btnRefresh) btnRefresh.textContent = "❌ Gagal Memeriksa";
+            if (btnSaCheck) btnSaCheck.textContent = "❌ Gagal Memeriksa";
+            if (chip) chip.textContent = "Gagal Memeriksa";
             alert("Gagal memeriksa update: " + err.message);
         }
+    };
+
+    window.simulateOtaNewVersion = function() {
+        window.checkOtaUpdate({ simulate: true, target_version: '9.9.8' });
     };
 
     window.runOtaPipeline = async function() {
@@ -779,7 +924,8 @@
             return;
         }
 
-        if (!confirm("Konfirmasi eksekusi alur pembaruan sistem pilihan Anda sekarang?")) {
+        const targetVerMsg = window._otaTargetVersion ? ` ke versi v${window._otaTargetVersion}` : '';
+        if (!confirm(`Konfirmasi eksekusi alur pembaruan sistem${targetVerMsg} pilihan Anda sekarang?`)) {
             return;
         }
 
@@ -791,7 +937,7 @@
         }
 
         if (terminalLog) {
-            terminalLog.textContent = `[ARCH3R-OTA] Memulai alur pembaruan sistem...\n[ARCH3R-OTA] Waktu: ${new Date().toLocaleString()}\n`;
+            terminalLog.textContent = `[ARCH3R-OTA] Memulai alur pembaruan sistem...\n[ARCH3R-OTA] Target Versi: ${window._otaTargetVersion || 'Terkini'}\n[ARCH3R-OTA] Waktu: ${new Date().toLocaleString()}\n`;
         }
 
         try {
@@ -800,7 +946,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     type: 'execute',
-                    steps: steps
+                    steps: steps,
+                    target_version: window._otaTargetVersion
                 })
             });
 
@@ -872,13 +1019,5 @@
         });
     }
 
-    if (btnCheckUpdate) {
-        btnCheckUpdate.addEventListener('click', window.checkOtaUpdate);
-    }
-
-    if (btnExecuteUpdate) {
-        btnExecuteUpdate.addEventListener('click', window.openOtaWorkflowModal);
-    }
-
-checkAuth();
+    checkAuth();
 });

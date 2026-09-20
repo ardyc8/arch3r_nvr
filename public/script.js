@@ -1204,6 +1204,7 @@ async function fetchCameras() {
             const data = await res.json();
             cameras = data.cameras || [];
             window.cameras = cameras;
+            window.fetchCameras = fetchCameras;
             window.globalStorageMode = data.globalStorageMode || 'disabled';
 
             // Update Kuota UI untuk Administrator Gedung
@@ -1930,8 +1931,7 @@ async function fetchCameras() {
     
 
     const activeHlsPlayers = {};
-
-
+    window.activeHlsPlayers = activeHlsPlayers;
 
     function destroyHlsPlayers() {
         for (const id in activeHlsPlayers) {
@@ -1941,6 +1941,7 @@ async function fetchCameras() {
             delete activeHlsPlayers[id];
         }
     }
+    window.destroyHlsPlayers = destroyHlsPlayers;
 
     function initHlsPlayer(elementId, hlsUrl) {
         const video = document.getElementById(elementId);
@@ -3380,323 +3381,598 @@ let allLogsCache = [];
 
 
 
-// ==========================================
-// ARCH3R AI ADDON - GRID SELECTION LOGIC
-// ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    const aiCanvas = document.getElementById('aiGridCanvas');
-    const aiVideo = document.getElementById('aiVideoPlayer');
-    if(!aiCanvas) return; // Hanya jalankan jika elemen ada
-
-    const ctx = aiCanvas.getContext('2d');
-    const ROWS = 10;
-    const COLS = 10;
-    let activeCells = new Set();
-    let isDrawing = false;
-    let drawMode = true; // true = mengaktifkan, false = menghapus
-
-    function resizeCanvas() {
-        const rect = aiCanvas.parentElement.getBoundingClientRect();
-        aiCanvas.width = rect.width;
-        aiCanvas.height = rect.height;
-        drawGrid();
-    }
-    window.addEventListener('resize', resizeCanvas);
-
-    function drawGrid() {
-        ctx.clearRect(0, 0, aiCanvas.width, aiCanvas.height);
-        const cellW = aiCanvas.width / COLS;
-        const cellH = aiCanvas.height / ROWS;
-
-        // Gambar petak aktif
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.4)'; // Merah transparan
-        activeCells.forEach(cell => {
-            const [r, c] = cell.split(',').map(Number);
-            ctx.fillRect(c * cellW, r * cellH, cellW, cellH);
-        });
-
-        // Gambar garis grid
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        for(let i = 1; i < COLS; i++) {
-            ctx.moveTo(i * cellW, 0);
-            ctx.lineTo(i * cellW, aiCanvas.height);
-        }
-        for(let i = 1; i < ROWS; i++) {
-            ctx.moveTo(0, i * cellH);
-            ctx.lineTo(aiCanvas.width, i * cellH);
-        }
-        ctx.stroke();
-    }
-
-    function getCellFromMouseEvent(e) {
-        const rect = aiCanvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const cellW = aiCanvas.width / COLS;
-        const cellH = aiCanvas.height / ROWS;
-        const c = Math.floor(x / cellW);
-        const r = Math.floor(y / cellH);
-        return {r, c, id: `${r},${c}`};
-    }
-
-    aiCanvas.addEventListener('mousedown', (e) => {
-        isDrawing = true;
-        const cell = getCellFromMouseEvent(e);
-        drawMode = !activeCells.has(cell.id); // Jika sudah aktif, mode hapus
-        if(drawMode) activeCells.add(cell.id);
-        else activeCells.delete(cell.id);
-        drawGrid();
-    });
-
-    aiCanvas.addEventListener('mousemove', (e) => {
-        if(!isDrawing) return;
-        const cell = getCellFromMouseEvent(e);
-        if(drawMode) activeCells.add(cell.id);
-        else activeCells.delete(cell.id);
-        drawGrid();
-    });
-
-    window.addEventListener('mouseup', () => { isDrawing = false; });
-
-    document.getElementById('btnAiGridClear').addEventListener('click', () => {
-        activeCells.clear();
-        drawGrid();
-    });
-
-    document.getElementById('btnAiGridSave').addEventListener('click', async () => {
-        const camId = aiCamSelect.value;
-        if(!camId) return alert('Pilih kamera terlebih dahulu!');
-        
-        const payload = {
-            camera_id: camId,
-            grid_rows: ROWS,
-            grid_cols: COLS,
-            active_cells: Array.from(activeCells)
-        };
-        
-        try {
-            // Asumsi Node.js meneruskan (proxy) ke Python di port 8000
-            document.getElementById('aiStatusMsg').textContent = "Menyimpan konfigurasi AI...";
-            const res = await fetch('/api/ai/save_grid', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('arch3r_token') },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            if(res.ok) {
-                document.getElementById('aiStatusMsg').textContent = "Konfigurasi AI berhasil disimpan dan dikirim ke YOLO Engine!";
-            } else {
-                throw new Error(data.error || 'Gagal menyimpan');
-            }
-        } catch(e) {
-            document.getElementById('aiStatusMsg').textContent = "Error: " + e.message;
-        }
-    });
-
-    // Populasi Kamera (Dipanggil saat menu Addons dibuka)
-    const mNavs = document.querySelectorAll('.sidebar-nav .nav-item');
-    mNavs.forEach(nav => {
-        nav.addEventListener('click', () => {
-            if (nav.dataset.target === 'view-addons') {
-                setTimeout(resizeCanvas, 100);
-                
-                // Fetch addon list
-                if (typeof fetchInstalledAddons === 'function') {
-                    fetchInstalledAddons();
-                }
-            }
-        });
-    });
-});
-
-
-// ==========================================
-// AI YOLOv8 Grid Management
-// ==========================================
-let aiDrawCanvas, aiDrawCtx, isAIDrawing = false;
+// =========================================================
+// AI YOLOv8 Visual Detection Grid & Tactical Surveillance HUD
+// Arch3r NVR Ver 9.9.8 (Zero-Crash & Persistent Multi-Tenant)
+// =========================================================
+let aiDrawCanvas = null;
+let aiDrawCtx = null;
+let isAIDrawing = false;
 let aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
-let aiBaseWidth = 1280; // Asumsi default resolusi AI
-let aiBaseHeight = 720;
+let aiDragStart = { x: 0, y: 0 };
+let aiCurrentCam = null;
 
-function openAIGridModal(defaultCamId = null) {
-    document.getElementById('aiGridModalOverlay').style.display = 'flex';
+async function openAIGridModal(defaultCamId = null) {
+    const modal = document.getElementById('aiGridModalOverlay');
+    if (!modal) return;
+    modal.style.display = 'flex';
     
-    // Populate select
-    const select = document.getElementById('ai-cam-select');
-    select.innerHTML = '<option value="">-- Pilih Kamera --</option>';
-    cameras.forEach(cam => {
-        select.innerHTML += `<option value="${cam.id}">${cam.name} (${cam.ip})</option>`;
-    });
-    
-    document.getElementById('ai-canvas-container').style.display = 'none';
-    
-    if (defaultCamId) {
-        select.value = defaultCamId;
-        if(select.parentElement && select.parentElement.classList.contains('form-group')) {
-            select.parentElement.style.display = 'none';
-        } else {
-            select.style.display = 'none';
-        }
-        loadCamStreamForAI();
-    } else {
-        if(select.parentElement && select.parentElement.classList.contains('form-group')) {
-            select.parentElement.style.display = 'block';
-        } else {
-            select.style.display = 'block';
-        }
+    // Ensure cameras list is fetched and available
+    const camList = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+    if ((!camList || camList.length === 0) && (typeof window.fetchCameras === 'function' || typeof fetchCameras === 'function')) {
+        const fetcher = window.fetchCameras || fetchCameras;
+        try { await fetcher(); } catch (e) {}
     }
+    
+    const activeCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+    
+    // Populate camera selector
+    const select = document.getElementById('ai-cam-select');
+    if (select) {
+        select.innerHTML = '';
+        if (activeCams && activeCams.length > 0) {
+            activeCams.forEach((cam, idx) => {
+                const opt = document.createElement('option');
+                opt.value = cam.id;
+                opt.textContent = `${cam.name || 'Kamera ' + (idx + 1)} (${cam.ip || 'Stream ' + (idx + 1)})`;
+                select.appendChild(opt);
+            });
+        }
+        
+        // Add virtual simulation option so grid is testable anytime even with no physical cameras
+        const optSim = document.createElement('option');
+        optSim.value = 'virtual_test';
+        optSim.textContent = '📹 Kamera Simulasi Visual (1080p Grid Matrix)';
+        select.appendChild(optSim);
+        
+        if (defaultCamId) {
+            const hasOpt = Array.from(select.options).some(o => o.value === defaultCamId);
+            if (hasOpt) {
+                select.value = defaultCamId;
+            } else if (select.options.length > 0) {
+                select.selectedIndex = 0;
+            }
+        } else if (select.options.length > 0) {
+            select.selectedIndex = 0;
+        }
+        
+        // Ensure camera selector container is always visible
+        const group = document.getElementById('aiCamSelectGroup') || select.parentElement;
+        if (group) group.style.display = 'block';
+        select.style.display = 'block';
+    }
+    
+    const feedback = document.getElementById('ai-save-feedback');
+    if (feedback) feedback.textContent = '';
+    
+    // Ensure canvas container is visible
+    const container = document.getElementById('ai-canvas-container');
+    if (container) container.style.display = 'flex';
+    
+    // Load feed and initialize canvas immediately
+    setTimeout(() => {
+        loadCamStreamForAI();
+    }, 50);
 }
 
-function loadCamStreamForAI() {
-    const camId = document.getElementById('ai-cam-select').value;
+async function loadCamStreamForAI() {
+    const select = document.getElementById('ai-cam-select');
+    const camId = select ? select.value : null;
     const container = document.getElementById('ai-canvas-container');
     const video = document.getElementById('ai-stream-preview');
+    const badge = document.getElementById('ai-grid-stream-badge');
     
-    if(!camId) {
-        container.style.display = 'none';
-        if (activeHlsPlayers['ai-stream-preview']) {
-            activeHlsPlayers['ai-stream-preview'].destroy();
-            delete activeHlsPlayers['ai-stream-preview'];
-        }
-        return;
+    if (!container) return;
+    container.style.display = 'flex';
+    
+    // Clean up previous HLS stream preview if running
+    const players = window.activeHlsPlayers || (typeof activeHlsPlayers !== 'undefined' ? activeHlsPlayers : null);
+    if (players && players['ai-stream-preview']) {
+        try { players['ai-stream-preview'].destroy(); } catch (e) {}
+        delete players['ai-stream-preview'];
     }
     
-    const cam = cameras.find(c => c.id === camId);
-    if (!cam) return;
+    if (video) {
+        video.pause();
+        video.style.display = 'none';
+        video.src = '';
+    }
     
-    container.style.display = 'block';
+    if (badge) {
+        badge.innerHTML = '📡 Menyiapkan Canvas Grid...';
+        badge.style.color = '#60a5fa';
+    }
     
-    // Gunakan live HLS feed untuk preview AI
-    const hlsUrl = cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + cam.mediaMtxPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
-    initHlsPlayer('ai-stream-preview', hlsUrl);
+    // Identify camera record
+    const activeCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+    let cam = (activeCams || []).find(c => String(c.id) === String(camId));
+    if (!cam) {
+        cam = {
+            id: camId || 'virtual_test',
+            name: camId === 'virtual_test' ? 'Kamera Simulasi' : 'Kamera Target',
+            ip: '127.0.0.1'
+        };
+    }
+    aiCurrentCam = cam;
     
-    video.onloadeddata = function() {
-        initAIDrawCanvas();
-    };
+    // Initialize canvas first so it is immediately visible (preventing black screen)
+    initAIDrawCanvas();
     
-    // Fallback if video takes too long to load
-    setTimeout(() => {
-        if (!aiDrawCanvas || aiDrawCanvas.width === 0) {
-            initAIDrawCanvas();
+    // Fetch saved persistent grid for this camera from database
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
+        const res = await fetchFn('/api/ai/grid/' + encodeURIComponent(cam.id));
+        if (res.ok) {
+            const data = await res.json();
+            if (data.grid) {
+                restoreAIGridFromData(data.grid);
+            } else {
+                aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
+                updateCoordStatusText();
+                redrawAIGrid();
+            }
         }
-    }, 1500);
+    } catch (err) {
+        console.warn('[AI Grid] Info: Grid tersimpan belum ada atau default:', err);
+    }
+    
+    // If real camera with stream URL, attempt HLS preview safely
+    const hlsFn = window.initHlsPlayer || (typeof initHlsPlayer === 'function' ? initHlsPlayer : null);
+    const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('nvr_auth_token') || '');
+    
+    if (cam && (cam.mainStreamUrl || cam.mediaMtxPath) && cam.id !== 'virtual_test' && hlsFn && video) {
+        const hlsPath = cam.mediaMtxPath || cam.id;
+        const hlsUrl = (cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http')) 
+            ? cam.mainStreamUrl 
+            : ('/stream/' + hlsPath + '/index.m3u8?token=' + encodeURIComponent(token));
+        
+        try {
+            hlsFn('ai-stream-preview', hlsUrl);
+            video.onplaying = () => {
+                video.style.display = 'block';
+                if (badge) {
+                    badge.innerHTML = '🟢 Live Stream Feed Aktif';
+                    badge.style.color = '#34d399';
+                }
+                initAIDrawCanvas();
+            };
+            video.onerror = () => {
+                video.style.display = 'none';
+                if (badge) {
+                    badge.innerHTML = '⚪ Mode Grid Siaga (Matrix HUD Active)';
+                    badge.style.color = '#94a3b8';
+                }
+                redrawAIGrid();
+            };
+        } catch (hlsErr) {
+            video.style.display = 'none';
+            if (badge) {
+                badge.innerHTML = '⚪ Mode Grid Siaga (Matrix HUD Active)';
+                badge.style.color = '#94a3b8';
+            }
+        }
+    } else {
+        if (badge) {
+            badge.innerHTML = '⚪ Mode Grid Siaga (Matrix HUD Active)';
+            badge.style.color = '#94a3b8';
+        }
+        redrawAIGrid();
+    }
 }
 
 function initAIDrawCanvas() {
-    const video = document.getElementById('ai-stream-preview');
+    const container = document.getElementById('ai-canvas-container');
     const canvas = document.getElementById('ai-draw-canvas');
+    if (!container || !canvas) return;
     
-    // Sesuaikan resolusi canvas dengan ukuran gambar aslinya (ditampilkan di layar)
-    canvas.width = video.clientWidth || 640;
-    canvas.height = video.clientHeight || 360;
+    // Set internal resolution matching display size
+    const rect = container.getBoundingClientRect();
+    const width = Math.max(Math.round(rect.width) || 800, 320);
+    const height = Math.max(Math.round(rect.height) || 450, 240);
+    
+    if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+    }
     
     aiDrawCanvas = canvas;
     aiDrawCtx = canvas.getContext('2d');
     
-    // Reset state
-    aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
-    redrawAIGrid();
+    function getPointerPos(evt) {
+        const cRect = canvas.getBoundingClientRect();
+        const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+        const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+        return {
+            x: Math.max(0, Math.min(canvas.width, clientX - cRect.left)),
+            y: Math.max(0, Math.min(canvas.height, clientY - cRect.top))
+        };
+    }
     
-    // Event listeners
     canvas.onmousedown = (e) => {
         isAIDrawing = true;
-        const rect = canvas.getBoundingClientRect();
-        aiGridRect.x = e.clientX - rect.left;
-        aiGridRect.y = e.clientY - rect.top;
-        aiGridRect.w = 0;
-        aiGridRect.h = 0;
+        const pos = getPointerPos(e);
+        aiDragStart = pos;
+        aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0 };
+        redrawAIGrid();
     };
     
     canvas.onmousemove = (e) => {
         if (!isAIDrawing) return;
-        const rect = canvas.getBoundingClientRect();
-        aiGridRect.w = (e.clientX - rect.left) - aiGridRect.x;
-        aiGridRect.h = (e.clientY - rect.top) - aiGridRect.y;
+        const pos = getPointerPos(e);
+        const x = Math.min(aiDragStart.x, pos.x);
+        const y = Math.min(aiDragStart.y, pos.y);
+        const w = Math.abs(pos.x - aiDragStart.x);
+        const h = Math.abs(pos.y - aiDragStart.y);
+        aiGridRect = { x, y, w, h };
+        redrawAIGrid();
+        updateCoordStatusText();
+    };
+    
+    const endDrawing = () => {
+        if (!isAIDrawing) return;
+        isAIDrawing = false;
+        if (aiGridRect.w < 12 || aiGridRect.h < 12) {
+            aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
+        }
+        redrawAIGrid();
+        updateCoordStatusText();
+    };
+    
+    canvas.onmouseup = endDrawing;
+    canvas.onmouseleave = endDrawing;
+    
+    // Touch support for STB Android / touchscreen monitors
+    canvas.ontouchstart = (e) => {
+        e.preventDefault();
+        isAIDrawing = true;
+        const pos = getPointerPos(e);
+        aiDragStart = pos;
+        aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0 };
         redrawAIGrid();
     };
     
-    canvas.onmouseup = () => {
-        isAIDrawing = false;
-        // Hitung persentase agar support berbagai resolusi (YOLOv8 butuh koordinat mentah atau persentase)
-        const pX = (aiGridRect.x / canvas.width).toFixed(3);
-        const pY = (aiGridRect.y / canvas.height).toFixed(3);
-        const pW = (aiGridRect.w / canvas.width).toFixed(3);
-        const pH = (aiGridRect.h / canvas.height).toFixed(3);
-        
-        document.getElementById('ai-coord-status').innerHTML = 
-            `Area Tersimpan: X(${pX}) Y(${pY}) W(${pW}) H(${pH})`;
+    canvas.ontouchmove = (e) => {
+        if (!isAIDrawing) return;
+        e.preventDefault();
+        const pos = getPointerPos(e);
+        const x = Math.min(aiDragStart.x, pos.x);
+        const y = Math.min(aiDragStart.y, pos.y);
+        const w = Math.abs(pos.x - aiDragStart.x);
+        const h = Math.abs(pos.y - aiDragStart.y);
+        aiGridRect = { x, y, w, h };
+        redrawAIGrid();
+        updateCoordStatusText();
     };
+    
+    canvas.ontouchend = endDrawing;
+    
+    redrawAIGrid();
 }
 
 function redrawAIGrid() {
-    aiDrawCtx.clearRect(0, 0, aiDrawCanvas.width, aiDrawCanvas.height);
-    if(aiGridRect.w === 0) return;
+    if (!aiDrawCanvas || !aiDrawCtx) return;
+    const ctx = aiDrawCtx;
+    const w = aiDrawCanvas.width;
+    const h = aiDrawCanvas.height;
+    const video = document.getElementById('ai-stream-preview');
+    const isVideoVisible = video && video.style.display !== 'none' && video.readyState >= 2;
     
-    aiDrawCtx.strokeStyle = "red";
-    aiDrawCtx.lineWidth = 2;
-    aiDrawCtx.fillStyle = "rgba(255, 0, 0, 0.2)";
+    ctx.clearRect(0, 0, w, h);
     
-    aiDrawCtx.beginPath();
-    aiDrawCtx.rect(aiGridRect.x, aiGridRect.y, aiGridRect.w, aiGridRect.h);
-    aiDrawCtx.fill();
-    aiDrawCtx.stroke();
+    // If video is not playing, render the Tactical Surveillance Matrix HUD
+    if (!isVideoVisible) {
+        // High contrast dark canvas
+        const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+        bgGrad.addColorStop(0, '#0a0f1d');
+        bgGrad.addColorStop(1, '#070a12');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+        
+        // 10x10 Matrix Grid lines
+        const cols = 10;
+        const rows = 10;
+        const cellW = w / cols;
+        const cellH = h / rows;
+        
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.14)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let c = 1; c < cols; c++) {
+            ctx.moveTo(c * cellW, 0);
+            ctx.lineTo(c * cellW, h);
+        }
+        for (let r = 1; r < rows; r++) {
+            ctx.moveTo(0, r * cellH);
+            ctx.lineTo(w, r * cellH);
+        }
+        ctx.stroke();
+        
+        // Axis Coordinate markers
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+        ctx.font = '10px monospace';
+        const colLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+        for (let c = 0; c < cols; c++) {
+            ctx.fillText(colLetters[c], c * cellW + cellW / 2 - 4, 14);
+        }
+        for (let r = 0; r < rows; r++) {
+            ctx.fillText(String(r + 1), 6, r * cellH + cellH / 2 + 4);
+        }
+        
+        // Center Crosshair indicator
+        const cx = w / 2;
+        const cy = h / 2;
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cx - 16, cy); ctx.lineTo(cx + 16, cy);
+        ctx.moveTo(cx, cy - 16); ctx.lineTo(cx, cy + 16);
+        ctx.stroke();
+        
+        // Corner HUD brackets
+        const bSize = 16;
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.45)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(8, 8 + bSize); ctx.lineTo(8, 8); ctx.lineTo(8 + bSize, 8);
+        ctx.moveTo(w - 8 - bSize, 8); ctx.lineTo(w - 8, 8); ctx.lineTo(w - 8, 8 + bSize);
+        ctx.moveTo(8, h - 8 - bSize); ctx.lineTo(8, h - 8); ctx.lineTo(8 + bSize, h - 8);
+        ctx.moveTo(w - 8 - bSize, h - 8); ctx.lineTo(w - 8, h - 8); ctx.lineTo(w - 8, h - 8 - bSize);
+        ctx.stroke();
+        
+        // Surveillance HUD Status Bar
+        ctx.fillStyle = '#60a5fa';
+        ctx.font = '11px monospace';
+        const camLabel = aiCurrentCam ? aiCurrentCam.name : 'KAMERA NVR';
+        ctx.fillText(`● CAM: ${camLabel.toUpperCase()} | 1920x1080 @ 25FPS | YOLOv8 INTRUSION ROI`, 24, 28);
+        
+        // Center instructional prompt if no box drawn
+        if (aiGridRect.w === 0) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎯 Klik & Tarik untuk Menggambar Area Deteksi Intrusi (ROI)', cx, cy + 30);
+            ctx.textAlign = 'left';
+        }
+    } else {
+        // Video playing: subtle matrix lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const cols = 6;
+        const rows = 4;
+        for (let c = 1; c < cols; c++) {
+            ctx.moveTo((c * w) / cols, 0);
+            ctx.lineTo((c * w) / cols, h);
+        }
+        for (let r = 1; r < rows; r++) {
+            ctx.moveTo(0, (r * h) / rows);
+            ctx.lineTo(w, (r * h) / rows);
+        }
+        ctx.stroke();
+    }
+    
+    // Draw Intrusion Detection Rect if active
+    if (aiGridRect.w > 0 && aiGridRect.h > 0) {
+        const { x, y, w: rw, h: rh } = aiGridRect;
+        
+        // Translucent red fill
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.28)';
+        ctx.fillRect(x, y, rw, rh);
+        
+        // High contrast dashed red border
+        ctx.save();
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(x, y, rw, rh);
+        ctx.restore();
+        
+        // Solid corner anchors
+        const pSize = 6;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        const corners = [
+            [x, y],
+            [x + rw, y],
+            [x, y + rh],
+            [x + rw, y + rh]
+        ];
+        corners.forEach(([cx, cy]) => {
+            ctx.fillRect(cx - pSize/2, cy - pSize/2, pSize, pSize);
+            ctx.strokeRect(cx - pSize/2, cy - pSize/2, pSize, pSize);
+        });
+        
+        // Badge Label on top of box
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+        const tagH = 20;
+        const tagW = Math.min(rw, 180);
+        ctx.fillRect(x, Math.max(0, y - tagH), tagW, tagH);
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px monospace';
+        ctx.fillText('🚨 AREA DETEKSI INTRUSI', x + 6, Math.max(14, y - 5));
+    }
+}
+
+function updateCoordStatusText() {
+    const el = document.getElementById('ai-coord-status');
+    if (!el) return;
+    if (!aiDrawCanvas || aiGridRect.w === 0 || aiGridRect.h === 0) {
+        el.innerHTML = '<span style="color:#94a3b8;">Belum ada area yang digambar.</span>';
+        return;
+    }
+    const cw = aiDrawCanvas.width;
+    const ch = aiDrawCanvas.height;
+    const px = ((aiGridRect.x / cw) * 100).toFixed(1);
+    const py = ((aiGridRect.y / ch) * 100).toFixed(1);
+    const pw = ((aiGridRect.w / cw) * 100).toFixed(1);
+    const ph = ((aiGridRect.h / ch) * 100).toFixed(1);
+    el.innerHTML = `<span style="color:#34d399; font-weight:600;">✓ Area ROI Aktif:</span> ` +
+        `X: <span style="color:#60a5fa;">${px}%</span> | ` +
+        `Y: <span style="color:#60a5fa;">${py}%</span> | ` +
+        `Lebar: <span style="color:#f59e0b;">${pw}%</span> | ` +
+        `Tinggi: <span style="color:#f59e0b;">${ph}%</span>`;
+}
+
+function setAIGridPreset(preset) {
+    if (!aiDrawCanvas) initAIDrawCanvas();
+    if (!aiDrawCanvas) return;
+    const cw = aiDrawCanvas.width;
+    const ch = aiDrawCanvas.height;
+    
+    if (preset === 'full') {
+        aiGridRect = { x: 4, y: 4, w: cw - 8, h: ch - 8 };
+    } else if (preset === 'center') {
+        aiGridRect = {
+            x: Math.round(cw * 0.15),
+            y: Math.round(ch * 0.15),
+            w: Math.round(cw * 0.70),
+            h: Math.round(ch * 0.70)
+        };
+    } else if (preset === 'gate') {
+        aiGridRect = {
+            x: Math.round(cw * 0.10),
+            y: Math.round(ch * 0.45),
+            w: Math.round(cw * 0.80),
+            h: Math.round(ch * 0.50)
+        };
+    }
+    redrawAIGrid();
+    updateCoordStatusText();
 }
 
 function clearAIGrid() {
     aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
     redrawAIGrid();
-    document.getElementById('ai-coord-status').innerHTML = 'Belum ada area yang digambar.';
+    updateCoordStatusText();
+    const feedback = document.getElementById('ai-save-feedback');
+    if (feedback) feedback.textContent = 'Area intrusi dibersihkan.';
 }
 
-function saveAIGrid() {
-    const camId = document.getElementById('ai-cam-select').value;
-    if(!camId) {
-        alert("Pilih kamera terlebih dahulu!");
+function restoreAIGridFromData(grid) {
+    if (!aiDrawCanvas || !grid) return;
+    const cw = aiDrawCanvas.width;
+    const ch = aiDrawCanvas.height;
+    
+    let x = Number(grid.x) || 0;
+    let y = Number(grid.y) || 0;
+    let w = Number(grid.w) || 0;
+    let h = Number(grid.h) || 0;
+    
+    // If normalized float (0..1), scale to canvas width/height
+    if (x <= 1 && w <= 1 && (x > 0 || w > 0)) {
+        x = x * cw;
+        y = y * ch;
+        w = w * cw;
+        h = h * ch;
+    }
+    aiGridRect = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
+    redrawAIGrid();
+    updateCoordStatusText();
+}
+
+async function saveAIGrid() {
+    const select = document.getElementById('ai-cam-select');
+    const camId = select ? select.value : null;
+    const btnSave = document.getElementById('btn-save-ai-grid');
+    const feedback = document.getElementById('ai-save-feedback');
+    
+    if (!camId) {
+        alert('Pilih target kamera terlebih dahulu!');
         return;
     }
     
-    if(aiGridRect.w === 0) {
-        alert("Gambarlah kotak area berwarna merah di atas gambar terlebih dahulu!");
-        return;
+    if (aiGridRect.w === 0 || aiGridRect.h === 0) {
+        if (!confirm('Belum ada area deteksi (kotak merah) yang digambar. Apakah Anda ingin mengosongkan area ROI kamera ini?')) {
+            return;
+        }
     }
-
-    // Mengonversi koordinat pixel ke persentase untuk dikirim ke Engine YOLO
+    
+    const cw = (aiDrawCanvas && aiDrawCanvas.width) || 800;
+    const ch = (aiDrawCanvas && aiDrawCanvas.height) || 450;
+    
     const payload = {
         camera_id: camId,
-        x: aiGridRect.x / aiDrawCanvas.width,
-        y: aiGridRect.y / aiDrawCanvas.height,
-        w: aiGridRect.w / aiDrawCanvas.width,
-        h: aiGridRect.h / aiDrawCanvas.height,
-        enabled: true
+        x: parseFloat(((aiGridRect.x || 0) / cw).toFixed(4)),
+        y: parseFloat(((aiGridRect.y || 0) / ch).toFixed(4)),
+        w: parseFloat(((aiGridRect.w || 0) / cw).toFixed(4)),
+        h: parseFloat(((aiGridRect.h || 0) / ch).toFixed(4)),
+        pixel_width: cw,
+        pixel_height: ch,
+        enabled: aiGridRect.w > 0,
+        updated_at: new Date().toISOString()
     };
     
-    fetch('/api/ai/grid', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    }).then(res => res.json())
-      .then(data => {
-          alert("Konfigurasi AI berhasil disimpan dan dikirim ke YOLO Engine!");
-          closeAIGridModal();
-      }).catch(e => {
-          alert("Gagal menghubungi NVR Backend.");
-      });
+    if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.textContent = '💾 Menyimpan...';
+    }
+    if (feedback) {
+        feedback.textContent = 'Menyimpan konfigurasi...';
+        feedback.style.color = '#60a5fa';
+    }
+    
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
+        const res = await fetchFn('/api/ai/save_grid', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+            if (feedback) {
+                feedback.textContent = '✅ Berhasil disimpan ke NVR database!';
+                feedback.style.color = '#10b981';
+            }
+            alert('Konfigurasi Area Deteksi Visual berhasil disimpan secara persisten ke NVR!');
+            setTimeout(() => {
+                closeAIGridModal();
+            }, 600);
+        } else {
+            throw new Error(data.error || 'Server error ' + res.status);
+        }
+    } catch (e) {
+        console.error('[AI Grid Save Error]', e);
+        if (feedback) {
+            feedback.textContent = '❌ Gagal: ' + e.message;
+            feedback.style.color = '#ef4444';
+        }
+        alert('Gagal menyimpan area deteksi: ' + (e.message || e));
+    } finally {
+        if (btnSave) {
+            btnSave.disabled = false;
+            btnSave.textContent = '💾 Simpan ke AI Engine';
+        }
+    }
 }
 
 function closeAIGridModal() {
-    document.getElementById('aiGridModalOverlay').style.display = 'none';
+    const modal = document.getElementById('aiGridModalOverlay');
+    if (modal) modal.style.display = 'none';
+    
     const video = document.getElementById('ai-stream-preview');
     if (video) {
         video.pause();
         video.src = '';
     }
-    if (activeHlsPlayers['ai-stream-preview']) {
-        activeHlsPlayers['ai-stream-preview'].destroy();
-        delete activeHlsPlayers['ai-stream-preview'];
+    
+    const players = window.activeHlsPlayers || (typeof activeHlsPlayers !== 'undefined' ? activeHlsPlayers : null);
+    if (players && players['ai-stream-preview']) {
+        try { players['ai-stream-preview'].destroy(); } catch (e) {}
+        delete players['ai-stream-preview'];
     }
 }
+
+// Bind to window for global invocation
+window.openAIGridModal = openAIGridModal;
+window.loadCamStreamForAI = loadCamStreamForAI;
+window.setAIGridPreset = setAIGridPreset;
+window.clearAIGrid = clearAIGrid;
+window.saveAIGrid = saveAIGrid;
+window.closeAIGridModal = closeAIGridModal;
 
 // ADDON MARKETPLACE LOGIC
 async function fetchInstalledAddons() {
@@ -3773,20 +4049,21 @@ async function toggleAddonState(addonId, newState) {
     if (!confirm(`Apakah Anda yakin ingin ${newState ? 'menyalakan' : 'mematikan'} addon ini?`)) return;
     
     try {
-        const response = await authFetch('/api/addons/' + addonId + '/toggle', {
+        const response = await authFetch('/api/addons/' + encodeURIComponent(addonId) + '/toggle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ active: newState })
         });
         
+        const data = await response.json().catch(() => ({}));
         if (response.ok) {
             fetchInstalledAddons();
         } else {
-            const data = await response.json();
-            alert('Gagal: ' + (data.error || 'Terjadi kesalahan'));
+            alert('Gagal mengubah status addon: ' + (data.error || 'HTTP ' + response.status));
         }
     } catch (e) {
-        alert('Gagal menghubungi server.');
+        console.error('[Addon Toggle Error]', e);
+        alert('Gagal menghubungi server: ' + (e.message || e));
     }
 }
 
@@ -3794,18 +4071,19 @@ async function deleteAddon(addonId) {
     if (!confirm('Apakah Anda yakin ingin MENGHAPUS addon ini? Data dan script addon akan dihapus permanen.')) return;
     
     try {
-        const response = await authFetch('/api/addons/' + addonId, {
+        const response = await authFetch('/api/addons/' + encodeURIComponent(addonId), {
             method: 'DELETE'
         });
         
+        const data = await response.json().catch(() => ({}));
         if (response.ok) {
             fetchInstalledAddons();
         } else {
-            const data = await response.json();
-            alert('Gagal menghapus addon: ' + (data.error || 'Terjadi kesalahan'));
+            alert('Gagal menghapus addon: ' + (data.error || 'HTTP ' + response.status));
         }
     } catch (e) {
-        alert('Gagal menghubungi server.');
+        console.error('[Addon Delete Error]', e);
+        alert('Gagal menghubungi server: ' + (e.message || e));
     }
 }
 

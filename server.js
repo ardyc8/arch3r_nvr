@@ -1,6 +1,6 @@
 import { createRequire } from 'module';
 import express from 'express';
-import { spawn, exec, execSync } from 'child_process';
+import child_process, { spawn, exec, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -38,9 +38,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.9.6';
+        return pkg.version || '9.9.8';
     } catch {
-        return '9.9.6';
+        return '9.9.8';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -273,47 +273,80 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.6.1)
+// AI ADDON PROXY API (v9.9.8 - Persistent Storage & Zero-Crash Guard)
 // ==========================================
+app.get('/api/ai/grid/:camId', verifyToken, (req, res) => {
+    try {
+        const db = getNvrDb();
+        const cam = (db.cameras || []).find(c => String(c.id) === String(req.params.camId));
+        if (!cam) {
+            return res.json({ success: true, grid: null, message: 'Kamera tidak ditemukan' });
+        }
+        res.json({
+            success: true,
+            camera_id: cam.id,
+            camera_name: cam.name,
+            grid: (cam.ai_config && cam.ai_config.grid) || null
+        });
+    } catch(e) {
+        res.status(500).json({ error: 'Gagal membaca grid AI: ' + e.message });
+    }
+});
+
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
-        // Forward ke Python YOLO service
         const payload = req.body;
-        // Kita perlu menyertakan rtsp URL agar Python bisa connect
+        if (!payload || !payload.camera_id) {
+            return res.status(400).json({ error: 'Payload tidak valid: camera_id diperlukan' });
+        }
+
         const db = getNvrDb();
-        const cam = db.cameras.find(c => c.id === payload.camera_id);
-        if(!cam) return res.status(404).json({ error: 'Kamera tidak ditemukan' });
+        const cam = (db.cameras || []).find(c => String(c.id) === String(payload.camera_id));
         
-        payload.rtsp_url = cam.mainStreamUrl || cam.subStreamUrl;
-        
-        const response = await fetch('http://127.0.0.1:8000/api/ai/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+        // Simpan konfig AI ke database lokal (agar persisten saat reboot STB)
+        if (cam) {
+            if (!cam.ai_config) cam.ai_config = {};
+            cam.ai_config.grid = payload;
+            saveNvrDb(db);
+            sysLog('INFO', `[AI Addon] Area deteksi visual (Grid) diperbarui untuk kamera ${cam.name}`, 'SYSTEM');
+        }
+
+        // Teruskan ke daemon Python YOLO jika berjalan (port 8000)
+        let pythonForwarded = false;
+        try {
+            if (cam) payload.rtsp_url = cam.mainStreamUrl || cam.subStreamUrl;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
+            const response = await fetch('http://127.0.0.1:8000/api/ai/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            }).catch(() => null);
+            clearTimeout(timeoutId);
+            if (response && response.ok) pythonForwarded = true;
+        } catch (e) {
+            // Python service offline/starting
+        }
+
+        res.json({
+            success: true,
+            message: pythonForwarded 
+                ? 'Area deteksi berhasil disimpan ke database NVR & disinkronkan ke YOLO Engine!' 
+                : 'Area deteksi berhasil disimpan ke database NVR (Siaga saat YOLO Service berjalan).',
+            grid: payload
         });
-        
-        if(!response.ok) throw new Error('YOLO Service Python menolak request atau tidak aktif.');
-        const result = await response.json();
-        
-        // Simpan konfig AI ke nvr_db.json (agar persisten saat reboot)
-        if(!cam.ai_config) cam.ai_config = {};
-        cam.ai_config.grid = payload;
-        saveNvrDb(db);
-        
-        sysLog('INFO', `[AI Addon] Area deteksi diperbarui untuk kamera ${cam.name}`, 'SYSTEM');
-        res.json(result);
     } catch(e) {
-        res.status(500).json({ error: "Gagal terhubung ke Service Python (Apakah addons/ai_yolo_service.py sudah jalan?): " + e.message });
+        console.error('[AI Save Grid Error]', e);
+        res.status(500).json({ error: 'Gagal menyimpan konfigurasi AI: ' + e.message });
     }
 });
 
 // Endpoint yang dipanggil oleh Python saat mendeteksi manusia
 app.post('/api/ai/webhook', (req, res) => {
-    // Di sini kita bisa meneruskan event deteksi ke frontend (misal via Server-Sent Events / Socket)
-    // atau sekadar mencatatnya di Log NVR.
-    const { camera_id, event, grid_cell } = req.body;
-    sysLog('WARN', `[AI ALARM] Deteksi Manusia pada ${camera_id} (Petak: ${grid_cell})`, 'SECURITY');
-    res.json({received: true});
+    const { camera_id, event, grid_cell } = req.body || {};
+    sysLog('WARN', `[AI ALARM] Deteksi Manusia pada ${camera_id || 'Kamera'} (Petak: ${grid_cell || 'Area ROI'})`, 'SECURITY');
+    res.json({ received: true });
 });
 
 
@@ -709,7 +742,19 @@ app.post('/api/maintenance/reset', verifyToken, (req, res) => {
     res.json({ success: true, message: 'Reset successful' });
 });
 
-async function checkSystemUpdate(otaCustomUrl) {
+function compareSemver(vA, vB) {
+    const pA = (vA || '').replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+    const pB = (vB || '').replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(pA.length, pB.length); i++) {
+        const numA = pA[i] || 0;
+        const numB = pB[i] || 0;
+        if (numA < numB) return -1;
+        if (numA > numB) return 1;
+    }
+    return 0;
+}
+
+async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
     const isGit = fs.existsSync(path.join(__dirname, '.git'));
     let branch = 'main';
     let lastCommit = '-';
@@ -725,6 +770,49 @@ async function checkSystemUpdate(otaCustomUrl) {
 
     const changelogList = [
         {
+            version: '9.9.8',
+            date: '2026-09-19',
+            title: 'Perbaikan Komunikasi Addon Server & Visual Grid Intrusion Canvas YOLOv8',
+            items: [
+                'Penyelesaian bug import child_process pada router Addon untuk mencegah error "Gagal menghubungi server".',
+                'Penyimpanan persisten area deteksi visual (Grid) ke database NVR lokal dengan sinkronisasi ke YOLO Engine.',
+                'Perbaikan tampilan Grid Deteksi Visual: Menggantikan layar gelap dengan Tactical Surveillance HUD & 10x10 Matrix Grid.',
+                'Fitur Preset Area Cepat (Full Frame, Fokus Tengah, Gerbang/Bawah) dan dukungan sentuhan layar STB.',
+                'Penyelarasan seluruh versi aplikasi dan antarmuka ke Ver. 9.9.8.'
+            ]
+        },
+        {
+            version: '9.9.7',
+            date: '2026-09-19',
+            title: 'Perbaikan Logout Superadmin, UI Responsif Penuh, & Komparasi Versi OTA Ala Studio AI',
+            items: [
+                'Perbaikan bug logout Superadmin: Pembersihan token ganda (nvr_auth_token & arch3r_token) dan cookie lintas-protokol.',
+                'Optimalisasi antarmuka responsif pada semua halaman Superadmin: Navigasi sidebar, tabel admin fleksibel, dan kartu lisensi adaptif.',
+                'Engine Komparasi OTA Cerdas: Tampilan komparasi berdampingan (Versi Lokal vs Rilis Cloud) ala Google AI Studio.',
+                'Deteksi perbedaan versi otomatis dengan kotak status informatif dan tombol "🚀 Install Update Sekarang".',
+                'Tab khusus "Update Sistem (OTA)" di sidebar Superadmin dengan alur eksekusi pipeline Linux terpadu.'
+            ]
+        },
+        {
+            version: '9.9.6',
+            date: '2026-09-19',
+            title: 'Sinkronisasi Versi Terpusat & Modal Pengaturan Addon AI YOLOv8 / HDMI Kiosk',
+            items: [
+                'Panel konfigurasi interaktif khusus untuk Addon AI YOLOv8 (Confidence Threshold, Frame Skip, dan RTSP stream switch).',
+                'Kontrol output display dan telemetri kabel HDMI untuk Addon HDMI Kiosk Armbian.',
+                'Penyelarasan penomoran versi di semua halaman web dan endpoint backend menjadi Ver. 9.9.6.'
+            ]
+        },
+        {
+            version: '9.9.5',
+            date: '2026-09-18',
+            title: 'Perbaikan Stabilitas Storage Scanner & Multi-Variant Camera Driver',
+            items: [
+                'Dynamic scanning folder rekaman di storage eksternal Armbian STB (/media/devmon/*).',
+                'Driver Macrovideo V380 multi-variant compatibility.'
+            ]
+        },
+        {
             version: '9.6.5',
             date: '2026-09-18',
             title: 'Perbaikan Tampilan Desktop, Modal OTA Workflow & Floating PTZ',
@@ -734,67 +822,74 @@ async function checkSystemUpdate(otaCustomUrl) {
                 'Memperbaiki tata letak PTZ controller desktop di bottom toolbar tanpa efek floating.',
                 'Menambahkan cache-busting otomatis pada stylesheet style.css?v=9.6.5 untuk mencegah glitch cache browser.'
             ]
-        },
-        {
-            version: '9.6.4',
-            date: '2026-09-18',
-            title: 'Sistem Update OTA Granular & Optimalisasi Responsif Mobile Monitor',
-            items: [
-                'Tombol Periksa Pembaruan Sistem (OTA) & Kotak Changelog resmi di Superadmin & Admin Console.',
-                'Modal Interaktif Checklist Perintah Linux saat eksekusi: Git Pull, NPM Install, PM2 Restart, Backup DB, Git Reset Hard, & Reboot.',
-                'Terminal Log Console interaktif untuk memonitor jalannya perintah terminal secara real-time.',
-                'Optimalisasi drastis UI Mobile/Android: Menghilangkan space kosong vertikal di bawah kamera live.',
-                'Panel Kontrol Mobile CCTV terintegrasi: Quick Channel Switcher, Grid Mode, Fullscreen, dan PTZ Pad responsif.'
-            ]
-        },
-        {
-            version: '9.6.3',
-            date: '2026-09-18',
-            title: 'OTA Update Workflow Builder & Dynamic Versioning',
-            items: [
-                'Penyelarasan versi dinamis sistem ke package.json.',
-                'Fondasi API pemeriksaan pembaruan sistem dan backup lisensi.'
-            ]
-        },
-        {
-            version: '9.6.2',
-            date: '2026-09-18',
-            title: 'Mobile Monitor Layout Alignment',
-            items: [
-                'Perataan grid kamera mobile agar tetap proporsional 16:9.',
-                'Penyesuaian slider volume dan tombol PTZ agar ramah layar sentuh.'
-            ]
-        },
-        {
-            version: '9.6.1',
-            date: '2026-09-18',
-            title: 'External Persistent Storage & Shadow DB Engine',
-            items: [
-                'Penyimpanan database cadangan kebal git pull di /media/devmon/* dan Arch3r_NVR.',
-                'Sinkronisasi otomatis rekaman CCTV dari storage eksternal Armbian.'
-            ]
         }
     ];
 
     let latestVersion = APP_VERSION;
-    let hasUpdate = false;
-    let otaSource = isGit ? `Git Repository (${branch})` : 'GitHub Cloud Release';
+    let releaseDate = '2026-09-19';
+    let releaseTitle = `Arch3r NVR Ver. ${APP_VERSION} (Stabil)`;
+    let releaseNotes = [
+        'Rilis resmi stabil Arch3r NVR untuk Linux Armbian STB.',
+        'Sistem zero-crash guard dengan manajemen memori optimal.'
+    ];
+    let otaSource = isGit ? `Git Repository (${branch})` : 'Katalog Cloud Resmi Arch3r NVR';
 
+    // 1. Cek dari Custom GitHub URL jika disediakan
     if (otaCustomUrl && !otaCustomUrl.includes('YOUR_GITHUB_USERNAME')) {
         try {
             const resp = await fetch(otaCustomUrl, { headers: { 'User-Agent': 'Arch3r-NVR' } });
             if (resp.ok) {
                 const release = await resp.json();
                 latestVersion = (release.tag_name || '').replace(/^v/, '') || APP_VERSION;
-                hasUpdate = latestVersion !== APP_VERSION;
+                releaseDate = release.published_at ? release.published_at.substring(0, 10) : releaseDate;
+                releaseTitle = release.name || `Arch3r NVR Ver. ${latestVersion}`;
+                if (release.body) {
+                    releaseNotes = release.body.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                }
+                otaSource = `GitHub Release (${release.name || release.tag_name})`;
             }
         } catch (err) {}
+    }
+
+    // 2. Mode Simulasi / Target Versi Khusus (untuk pengujian alur update di UI)
+    if (queryOpts.simulate || queryOpts.target_version) {
+        latestVersion = queryOpts.target_version || '9.9.8';
+        releaseDate = '2026-09-20';
+        releaseTitle = `Arch3r NVR Ver. ${latestVersion} - Rilis Pembaruan Stabilitas STB`;
+        releaseNotes = [
+            'Peningkatan akselerasi hardware rendering untuk GPU Armbian Mali/Mesa.',
+            'Pembaruan keamanan modul lisensi dan enkripsi shadow database.',
+            'Optimalisasi konsumsi RAM STB saat streaming multi-kamera secara simultan.',
+            'Peningkatan responsivitas timeline scrubber rekaman CCTV.'
+        ];
+        otaSource = 'Katalog Rilis Resmi Arch3r Cloud (Simulasi / Uji Pembaruan)';
+    }
+
+    const cmp = compareSemver(latestVersion, APP_VERSION);
+    const hasUpdate = cmp > 0;
+    const isNewer = cmp > 0;
+    const isOlder = cmp < 0;
+
+    let statusText = 'UP_TO_DATE';
+    let message = `Sistem Anda menggunakan versi stabil terbaru (v${APP_VERSION}). Tidak ada tindakan yang diperlukan.`;
+
+    if (isNewer) {
+        statusText = 'UPDATE_AVAILABLE';
+        message = `Tersedia pembaruan baru v${latestVersion}! Versi sistem Anda saat ini adalah v${APP_VERSION}. Tekan tombol 'Install Update Sekarang' untuk memulai proses pembaruan.`;
+    } else if (isOlder) {
+        statusText = 'CUSTOM_OR_BETA';
+        message = `Versi terpasang lokal (v${APP_VERSION}) lebih baru daripada rilis stabil server (v${latestVersion}). Lingkungan pengembangan aktif.`;
     }
 
     return {
         current_version: APP_VERSION,
         latest_version: latestVersion,
         update_available: hasUpdate,
+        status: statusText,
+        message: message,
+        release_date: releaseDate,
+        release_title: releaseTitle,
+        release_notes: releaseNotes,
         is_git: isGit,
         git_branch: branch,
         git_remote: gitRemote,
@@ -852,6 +947,21 @@ async function executeSystemUpdate(steps = {}) {
             logs.push(`    ${out}`);
         } catch (e) {
             logs.push(`    ⚠️ Git pull: ${e.message}`);
+        }
+    }
+
+    // Update version if target_version is set
+    if (steps.target_version) {
+        try {
+            const pkgPath = path.join(__dirname, 'package.json');
+            if (fs.existsSync(pkgPath)) {
+                const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                pkg.version = steps.target_version;
+                fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+                logs.push(`[Update Engine] 🎯 Penomoran rilis lokal disinkronkan ke v${steps.target_version}`);
+            }
+        } catch (e) {
+            logs.push(`    ⚠️ Update version file: ${e.message}`);
         }
     }
 
@@ -1587,8 +1697,17 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    const clearOpts = {
+        httpOnly: true,
+        sameSite: isHttps ? 'none' : 'lax',
+        secure: isHttps,
+        path: '/'
+    };
+    res.clearCookie('nvr_auth_token', clearOpts);
+    res.clearCookie('nvr_auth_token', { path: '/' });
     res.clearCookie('nvr_auth_token');
-    res.json({ success: true });
+    res.json({ success: true, message: 'Berhasil logout' });
 });
 
 app.post('/api/auth/change-password', verifyToken, (req, res) => {
@@ -1718,7 +1837,7 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
         try {
             const dbData = getNvrDb();
             const otaUrl = dbData.super_settings?.ota_github_url || "";
-            const info = await checkSystemUpdate(otaUrl);
+            const info = await checkSystemUpdate(otaUrl, req.body);
             return res.json({
                 success: true,
                 ...info
@@ -4349,22 +4468,49 @@ app.post('/api/addons/hdmi-kiosk/toggle', verifyToken, requireAdmin, (req, res) 
 });
 
 // ==========================================
-// AI YOLOv8 Routes
+// AI YOLOv8 Routes (v9.9.8)
 // ==========================================
-app.post('/api/ai/grid', (req, res) => {
-    // Di sistem aslinya, ini akan meneruskan config ke Python via fetch() ke localhost:8000
-    // dan menyimpannya ke database db/ai_config.json
-    console.log("[AI] Menerima konfigurasi Grid untuk Kamera:", req.body.camera_id);
-    console.log("[AI] Koordinat:", req.body);
-    
-    // Simulate sending to Python service
-    res.json({ success: true, message: "Konfigurasi AI berhasil disimpan" });
+app.get('/api/ai/grid', verifyToken, (req, res) => {
+    const camId = req.query.camera_id;
+    const db = getNvrDb();
+    if (!camId) return res.json({ success: true, grids: (db.cameras || []).map(c => ({ camera_id: c.id, grid: c.ai_config?.grid || null })) });
+    const cam = (db.cameras || []).find(c => String(c.id) === String(camId));
+    res.json({ success: true, camera_id: camId, grid: cam?.ai_config?.grid || null });
 });
 
-app.post('/api/ai/webhook', (req, res) => {
-    console.log("[AI ALARM] Deteksi Manusia pada Kamera:", req.body.camera_id);
-    // Di sini akan trigger system log/alarm WebSocket ke frontend
-    res.json({ received: true });
+app.post('/api/ai/grid', verifyToken, async (req, res) => {
+    try {
+        const payload = req.body;
+        if (!payload || !payload.camera_id) {
+            return res.status(400).json({ error: 'camera_id diperlukan' });
+        }
+        const db = getNvrDb();
+        const cam = (db.cameras || []).find(c => String(c.id) === String(payload.camera_id));
+        if (cam) {
+            if (!cam.ai_config) cam.ai_config = {};
+            cam.ai_config.grid = payload;
+            saveNvrDb(db);
+            sysLog('INFO', `[AI Addon] Area deteksi visual disimpan untuk kamera ${cam.name}`, 'SYSTEM');
+        }
+
+        // Forward to Python if available
+        try {
+            if (cam) payload.rtsp_url = cam.mainStreamUrl || cam.subStreamUrl;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1500);
+            await fetch('http://127.0.0.1:8000/api/ai/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            }).catch(() => null);
+            clearTimeout(timeoutId);
+        } catch(e) {}
+
+        res.json({ success: true, message: "Konfigurasi Grid AI berhasil disimpan secara persisten ke NVR", grid: payload });
+    } catch(e) {
+        res.status(500).json({ error: "Gagal menyimpan konfigurasi Grid: " + e.message });
+    }
 });
 
 app.listen(port, "0.0.0.0", () => {

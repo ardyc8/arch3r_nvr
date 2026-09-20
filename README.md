@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.9.6)
+# ⚡ Arch3r NVR (Ver. 9.9.7)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
@@ -132,6 +132,15 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
   - **Dedicated Diagnostic Endpoints**: Menyediakan endpoint `/api/onvif/diagnose-profiles` serta menyempurnakan respons `/api/cameras/:id/ptz-probe` dan `/api/onvif/probe-custom` dengan detail token profil dan log diagnostik terstruktur.
   - **Visual Token Diagnostic Tags in UI**: Memperbarui modal uji coba ONVIF pada antarmuka pengguna agar menampilkan badge token profil (misal: `ProfileToken000 (1920x1080)`) dan model kamera secara langsung saat tombol uji coba diklik.
   - **Unified Version Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.9.1** di seluruh antarmuka, backend, package manifest, dan metadata sistem.
+
+- **[Ver 9.9.7]**
+  - **Fixed Superadmin Logout Loop**: Mengatasi masalah sesi superadmin yang kembali terus ke halaman dashboard saat logout. Menghapus cookie `nvr_auth_token` di backend (`/api/auth/logout`) dengan konfigurasi `path: '/'`, `httpOnly`, `sameSite: 'lax'`, serta membersihkan seluruh storage kredensial client-side (`localStorage`, `sessionStorage`) dan mengarahkan kembali ke form login secara bersih.
+  - **Superadmin Responsive UI Redesign**: Merombak seluruh antarmuka Superadmin Console agar responsif di semua resolusi layar (Mobile, Tablet, Desktop). Menambahkan mobile top navigation bar dengan hamburger menu, sidebar drawer geser dengan overlay, kartu statistik fleksibel (`grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))`), horizontal scroll wrapper (`.table-responsive`) untuk tabel akun admin dan audit log, serta penataan form kontrol yang rapi.
+  - **Professional OTA Update Architecture (Studio AI Style)**:
+    1. *Visual Version Comparison*: Panel perbandingan versi berdampingan (Versi Terpasang vs Versi Rilis Terbaru di Server) dengan indikator badge perbedaan versi yang jelas.
+    2. *Release Action Banner & Install Button*: Banner dinamis yang mendeteksi ketersediaan rilis baru beserta tombol aksi `Install Update Sekarang` yang otomatis muncul hanya jika terdapat rilis baru.
+    3. *Dual-Mode Verification*: Mendukung pembaruan versi dinamis via repositori Git resmi dengan fallback semver comparison, auto-sync target version ke `package.json`, dan simulasi deteksi versi baru untuk pengujian.
+  - **Unified Version Alignment**: Menaikkan versi sistem ke **Ver. 9.9.7** pada `package.json`, `public/version_sync.js`, `public/superadmin.html`, `public/superadmin.js`, dan `server.js`.
 
 - **[Ver 9.9.0]**
   - **V380 & ONVIF Profile Token Extraction**: Menyesuaikan alur kontrol PTZ kamera V380 dengan mengambil `profileToken` aktif (`const profile = device.getCurrentProfile(); const token = profile ? profile['token'] : 'ProfileToken000';`) sebelum eksekusi perintah motor PTZ.

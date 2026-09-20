@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 9.9.6 - Superadmin Console</title>
-    <link rel="stylesheet" href="style.css?v=9.9.6">
+    <title>Arch3r NVR Ver. 9.9.8 - Superadmin Console</title>
+    <link rel="stylesheet" href="style.css?v=9.9.8">
     <meta name="theme-color" content="#0f172a">
-    <script src="version_sync.js?v=9.9.6"></script>
+    <script src="version_sync.js?v=9.9.8"></script>
 </head>
 <body>
     <div id="saAuthOverlay" class="auth-overlay" style="display:flex;">
         <div class="auth-card" style="max-width:440px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.1rem;">Arch3r NVR <span class="badge" style="font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 9.9.6 Superadmin</span></h2>
+                <h2 style="margin:0; font-size:1.1rem;">Arch3r NVR <span class="badge" style="font-size:0.75rem; padding:2px 8px; border-radius:4px; background:#2563eb;">Ver. 9.9.8 Superadmin</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">Console Pengembang &bull; Arsitektur Eksklusif Arch3r NVR Multi-Tenant</p>
             <form id="saLoginForm">
@@ -25,7 +25,7 @@
                 <div class="form-group">
                     <label>Password Developer</label>
                     <div class="password-wrapper">
-                        <input type="password" id="saPassword" value="archer" required autocomplete="current-password">
+                        <input type="password" id="saPassword" placeholder="Masukkan password superadmin" required autocomplete="current-password">
                         <button type="button" class="btn-peek-pwd" data-target="saPassword" title="Lihat Password"><span class="peek-icon">👁️</span></button>
                     </div>
                 </div>
@@ -44,7 +44,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge" style="">Ver. 9.9.6</span></h2>
+                    <h2>Arch3r NVR <span class="badge" style="background:#2563eb;">Ver. 9.9.8</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👑</div>
@@ -52,7 +52,7 @@
                         <strong id="lblAdminName">Superadmin</strong>
                         <span id="lblAdminRole" style="color:#8b5cf6;">Developer Console</span>
                     </div>
-                    <button id="saBtnLogout" title="Keluar">🚪</button>
+                    <button id="saBtnLogout" class="btn-logout-sa" title="Keluar dari Superadmin">🚪</button>
                 </div>
             </div>
             
@@ -63,6 +63,9 @@
                 <a href="#admins" class="nav-item" data-target="view-admins">
                     <span class="icon">👥</span> Manajemen Admin
                 </a>
+                <a href="#ota" class="nav-item" data-target="view-ota">
+                    <span class="icon">🚀</span> Update Sistem (OTA)
+                </a>
                 <a href="#system" class="nav-item" data-target="view-system">
                     <span class="icon">⚙️</span> Sistem & Reset
                 </a>
@@ -70,9 +73,15 @@
         </aside>
 
         <main class="main-content">
-            <header class="mobile-header">
-                <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.1rem;">Superadmin Console</h3>
+            <header class="mobile-header" style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 1rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <button id="btnMobileMenu" class="btn-icon" title="Menu Navigasi">☰</button>
+                    <h3 style="margin:0; font-size:1rem; font-weight:600;">Superadmin Console</h3>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">v9.9.8</span>
+                    <button id="saBtnLogoutMobile" class="btn-logout-sa" title="Keluar dari Superadmin">🚪</button>
+                </div>
             </header>
 
             <!-- VIEW: LICENSE & P2P -->
@@ -237,7 +246,7 @@
                         </div>
                     </div>
 
-                    <div style="overflow-x:auto;">
+                    <div class="responsive-table-container">
                         <table style="width:100%; border-collapse:collapse; font-size:0.9rem; text-align:left;">
                             <thead>
                                 <tr style="border-bottom:1px solid var(--border); color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">
@@ -262,82 +271,146 @@
                 </div>
             </div>
 
+            <!-- VIEW: OTA UPDATE (STUDIO AI STYLE COMPARISON) -->
+            <div id="view-ota" class="view-pane">
+                <div class="view-header">
+                    <h2>Update Sistem & Firmware (OTA)</h2>
+                    <p>Pemeriksaan rilis resmi, komparasi versi lokal vs cloud, dan alur eksekusi Linux terpadu.</p>
+                </div>
+                <div class="view-content" style="max-width:960px; padding:1.5rem;">
+
+                    <!-- Studio AI-Style Version Comparison Card -->
+                    <div class="ota-comparison-panel">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.5rem;">
+                            <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem; color:#f8fafc;">
+                                <span>⚖️</span> Komparasi Versi Sistem
+                            </h3>
+                            <span id="otaStatusChip" class="badge" style="background:#1e293b; color:#94a3b8; font-size:0.75rem; padding:4px 10px; border-radius:6px; border:1px solid var(--border);">Memeriksa Komparasi...</span>
+                        </div>
+
+                        <!-- Side by Side Visual Comparison Grid -->
+                        <div class="ota-version-grid">
+                            
+                            <!-- Card Local Installed -->
+                            <div class="ota-vcard" id="cardLocalVersion">
+                                <div class="vcard-header">
+                                    <span class="vcard-title">🖥️ Versi Terpasang (STB)</span>
+                                    <span class="badge" style="background:#2563eb; color:#fff; font-size:0.75rem; padding:2px 8px;">Lokal Aktif</span>
+                                </div>
+                                <div class="vcard-number" id="otaCompCurrentVer" style="color:#60a5fa;">v9.9.8</div>
+                                <div style="font-size:0.8rem; color:var(--text-muted); line-height:1.5;">
+                                    <div>Platform: <span style="color:#e2e8f0;">Linux Armbian (Zero-Crash Guard)</span></div>
+                                    <div>Branch: <span id="otaCompBranch" style="color:#93c5fd;">main</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Central Transition Indicator -->
+                            <div class="ota-arrow-column">
+                                <div class="ota-arrow-icon" id="otaArrowIcon">➜</div>
+                                <div id="otaDiffBadge" class="badge" style="background:#1e293b; color:#94a3b8; font-size:0.75rem; padding:3px 10px; margin-top:0.4rem; white-space:nowrap;">
+                                    Periksa Status
+                                </div>
+                            </div>
+
+                            <!-- Card Remote Cloud Release -->
+                            <div class="ota-vcard" id="cardRemoteVersion">
+                                <div class="vcard-header">
+                                    <span class="vcard-title">☁️ Rilis Server Resmi</span>
+                                    <span id="otaRemoteBadge" class="badge" style="background:#10b981; color:#fff; font-size:0.75rem; padding:2px 8px;">Kanal Stabil</span>
+                                </div>
+                                <div class="vcard-number" id="otaCompLatestVer" style="color:#10b981;">v9.9.8</div>
+                                <div style="font-size:0.8rem; color:var(--text-muted); line-height:1.5;">
+                                    <div>Saluran: <span id="otaCompSource" style="color:#e2e8f0;">Arch3r Cloud Releases</span></div>
+                                    <div>Tanggal Rilis: <span id="otaCompDate" style="color:#e2e8f0;">2026-09-19</span></div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Action Banner (Diff notice & Install CTA) -->
+                        <div id="otaActionBanner" class="ota-action-banner up-to-date">
+                            <div style="flex:1; min-width:280px;">
+                                <h4 id="otaActionTitle" style="margin:0 0 0.35rem 0; font-size:1rem; color:#34d399; display:flex; align-items:center; gap:0.5rem;">
+                                    <span>✅</span> Sistem Anda Menggunakan Versi Terbaru
+                                </h4>
+                                <p id="otaActionDesc" style="margin:0; font-size:0.85rem; color:#cbd5e1; line-height:1.5;">
+                                    Arch3r NVR berjalan pada versi stabil resmi terbaru. Seluruh database, driver kamera, dan service daemon berada dalam kondisi sinkron.
+                                </p>
+                            </div>
+                            <div id="otaActionButtons" style="display:flex; gap:0.65rem; align-items:center; flex-wrap:wrap;">
+                                <button id="btnCheckOtaRefresh" class="btn btn-secondary" style="font-size:0.85rem; padding:0.65rem 1.1rem;" onclick="checkOtaUpdate()">
+                                    🔄 Periksa Pembaruan
+                                </button>
+                                <!-- High-Visibility Install Button (Shown if version difference is detected) -->
+                                <button id="btnInstallOtaUpdate" class="btn-install-ota" style="display:none;" onclick="openOtaWorkflowModal()">
+                                    🚀 Install Update Sekarang
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Developer Testing & Advanced Actions -->
+                        <div style="margin-top:1.25rem; padding-top:1rem; border-top:1px dashed var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:5px 12px;" onclick="simulateOtaNewVersion()">
+                                    🧪 Uji Coba Tampilan Ada Update (Simulasi)
+                                </button>
+                                <button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:5px 12px;" onclick="openOtaWorkflowModal()">
+                                    ⚡ Alur Eksekusi & Pemeliharaan Linux
+                                </button>
+                            </div>
+                            <button type="button" id="btnToggleOtaRepoConfig" class="btn-link" style="font-size:0.78rem; color:var(--text-muted); background:transparent; border:none; cursor:pointer; text-decoration:underline;" onclick="toggleOtaConfigPanel()">
+                                ⚙️ Kustomisasi URL Repositori Cloud OTA
+                            </button>
+                        </div>
+
+                        <!-- Custom Repo Configuration Panel -->
+                        <div id="otaConfigPanel" style="display:none; margin-top:1rem; padding:1rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:8px;">
+                            <label style="font-size:0.78rem; color:var(--text-muted); display:block; margin-bottom:0.4rem;">
+                                URL Kustom GitHub Releases API (Kosongkan jika menggunakan server rilis resmi Arch3r):
+                            </label>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                <input type="text" id="otaGithubUrl" class="input" placeholder="https://api.github.com/repos/USERNAME/REPO/releases/latest" style="flex:1; min-width:240px; font-size:0.8rem; background:var(--surface-dark);">
+                                <button id="btnSaSaveOta" class="btn btn-secondary" style="font-size:0.8rem; white-space:nowrap;">💾 Simpan URL</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Changelog / Release Notes Section -->
+                    <div class="camera-form-section">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                            <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
+                                <span>📋</span> Catatan Rilis & Log Pembaruan (Changelog)
+                            </h3>
+                            <span id="otaBranchInfo" style="font-size:0.75rem; color:var(--text-muted); font-family:monospace;">Branch: main</span>
+                        </div>
+                        <div id="saOtaChangelogList" style="display:flex; flex-direction:column; gap:0.85rem;">
+                            <!-- Injected changelog cards -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
             <!-- VIEW: SYSTEM -->
-            
-            
-<style>
-@media (max-width: 768px) {
-    .zone-bahaya-mobile {
-        padding-left: 0 !important;
-        border-left: none !important;
-        border-top: 1px solid var(--border);
-        padding-top: 1.5rem;
-        margin-top: 1rem;
-        width: 100% !important;
-    }
-}
-</style>
+            <style>
+            @media (max-width: 768px) {
+                .zone-bahaya-mobile {
+                    padding-left: 0 !important;
+                    border-left: none !important;
+                    border-top: 1px solid var(--border);
+                    padding-top: 1.5rem;
+                    margin-top: 1rem;
+                    width: 100% !important;
+                }
+            }
+            </style>
 
             <div id="view-system" class="view-pane">
                 <div class="view-header">
                     <h2>Sistem & Reset</h2>
-                    <p>Informasi server, database, dan kembalikan ke pengaturan pabrik.</p>
+                    <p>Informasi server, database, cadangan konfigurasi, dan pengaturan pabrik.</p>
                 </div>
-                <div class="view-content" style="max-width:800px; padding:1.5rem;">
-                    
-                    <div class="camera-form-section" style="margin-bottom:1.5rem;">
-                        <h3 style="margin:0 0 0.5rem 0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
-                            <span>🚀</span> Update Sistem (OTA & Linux Pipeline)
-                        </h3>
-                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
-                            Periksa versi terbaru, baca changelog rilis, dan jalankan alur pembaruan sistem terpadu (Git Pull, NPM, PM2, dan Reboot).
-                        </p>
-                        <div style="background:var(--surface); padding:1.25rem; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; gap:1rem;">
-                             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
-                                 <div>
-                                     <h4 id="saUpdateStatusText" style="margin:0 0 0.25rem 0; font-size:0.95rem;">
-                                         Versi Terpasang: <span class="badge" style="background:#2563eb; color:#fff;">v9.9.6</span>
-                                     </h4>
-                                     <p id="saUpdateDescText" style="font-size:0.78rem; margin:0; color:var(--text-muted);">
-                                         Tekan tombol di samping untuk mengecek ketersediaan update resmi dari Git / Cloud.
-                                     </p>
-                                 </div>
-                                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                                     <button id="btnSaCheckUpdate" class="btn btn-secondary" style="font-size:0.85rem;" onclick="checkOtaUpdate()">
-                                         🔄 Periksa Pembaruan
-                                     </button>
-                                     <button id="btnSaToggleChangelog" class="btn btn-secondary" style="font-size:0.85rem;" onclick="toggleOtaChangelog()">
-                                         📋 Catatan Rilis (Changelog)
-                                     </button>
-                                     <button id="btnSaExecuteUpdate" class="btn btn-primary" style="font-size:0.85rem; background:#10b981; border-color:#059669;" onclick="openOtaWorkflowModal()">
-                                         🚀 Alur Eksekusi Update
-                                     </button>
-                                 </div>
-                             </div>
-
-                             <!-- Changelog Box Preview -->
-                             <div id="saOtaChangelogContainer" style="display:none; background:var(--bg-dark); border:1px solid var(--border); border-radius:6px; padding:1rem;">
-                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                                     <strong style="font-size:0.85rem; color:#60a5fa;">Daftar Catatan Pembaruan Resmi</strong>
-                                     <span id="otaBranchInfo" style="font-size:0.75rem; color:var(--text-muted);">Branch: main</span>
-                                 </div>
-                                 <div id="saOtaChangelogList" style="font-size:0.8rem; color:var(--text-muted); display:flex; flex-direction:column; gap:0.75rem;">
-                                     <!-- JS injected changelog items -->
-                                 </div>
-                             </div>
-
-                             <!-- Optional Custom Cloud OTA URL Configuration -->
-                             <div style="border-top:1px dashed var(--border); padding-top:0.75rem;">
-                                 <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.35rem;">
-                                     Kustomisasi URL Repositori Cloud OTA (Opsional GitHub Releases):
-                                 </label>
-                                 <div style="display:flex; gap:0.5rem; width: 100%;">
-                                     <input type="text" id="otaGithubUrl" class="input" placeholder="OTA URL (https://api.github.com/repos/.../releases/latest)" style="flex:1; font-size:0.8rem; background:var(--bg-lighter);">
-                                     <button id="btnSaSaveOta" class="btn btn-secondary" style="font-size:0.8rem; white-space:nowrap;">💾 Simpan URL</button>
-                                 </div>
-                             </div>
-                        </div>
-                    </div>
+                <div class="view-content" style="max-width:850px; padding:1.5rem;">
 
                     <div class="camera-form-section" style="margin-bottom:1.5rem;">
                         <h3 style="margin:0 0 0.5rem 0; font-size:1.1rem; display:flex; align-items:center; gap:0.5rem;">
@@ -471,6 +544,10 @@
                     <strong>ℹ️ Panduan Pembaruan:</strong> Silakan pilih perintah terminal Linux yang ingin Anda jalankan selama proses pembaruan. Sistem otomatis mencadangkan database Anda sebelum proses dimulai.
                 </div>
 
+                <div id="otaModalTargetVerBadge" style="display:none; background:rgba(16,185,129,0.15); border:1px solid #10b981; color:#a7f3d0; padding:0.6rem 0.85rem; border-radius:6px; font-size:0.85rem;">
+                    🎯 Target Versi: <strong id="otaModalTargetVerText">v9.9.8</strong> &bull; <span id="otaModalTargetReleaseTitle">Pembaruan Sistem</span>
+                </div>
+
                 <div>
                     <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; color:var(--text-main);">Daftar Perintah Terminal Linux (Checklist):</h4>
                     <div style="display:flex; flex-direction:column; gap:0.5rem;">
@@ -557,6 +634,6 @@
         </div>
     </div>
 
-    <script src="superadmin.js?v=9.9.6"></script>
+    <script src="superadmin.js?v=9.9.8"></script>
 </body>
 </html>
