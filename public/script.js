@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 9.9.6 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 10.0.8 Multi-Tenant Controller & Multi-Zone Vision Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -3953,7 +3953,13 @@ function initAIDrawCanvas() {
         return aiZones[aiActiveZoneIndex];
     }
     
+    canvas.style.cursor = isAIFullscreen ? 'crosshair' : 'default';
+    
     canvas.onmousedown = (e) => {
+        if (!isAIFullscreen) {
+            // Mode biasa: Video hanya untuk pratinjau lokasi saja, tidak bisa edit/tambah objek
+            return;
+        }
         isAIDrawing = true;
         const pos = getPointerPos(e);
         aiDragStart = pos;
@@ -3966,7 +3972,7 @@ function initAIDrawCanvas() {
     };
     
     canvas.onmousemove = (e) => {
-        if (!isAIDrawing) return;
+        if (!isAIFullscreen || !isAIDrawing) return;
         const pos = getPointerPos(e);
         const x = Math.min(aiDragStart.x, pos.x);
         const y = Math.min(aiDragStart.y, pos.y);
@@ -3982,7 +3988,7 @@ function initAIDrawCanvas() {
     };
     
     const endDrawing = () => {
-        if (!isAIDrawing) return;
+        if (!isAIFullscreen || !isAIDrawing) return;
         isAIDrawing = false;
         const curZone = getActiveZone();
         if (curZone.w < 8 || curZone.h < 8) {
@@ -4000,6 +4006,7 @@ function initAIDrawCanvas() {
     
     // Touchscreen / mobile / STB touch monitor support
     canvas.ontouchstart = (e) => {
+        if (!isAIFullscreen) return;
         e.preventDefault();
         isAIDrawing = true;
         const pos = getPointerPos(e);
@@ -4013,7 +4020,7 @@ function initAIDrawCanvas() {
     };
     
     canvas.ontouchmove = (e) => {
-        if (!isAIDrawing) return;
+        if (!isAIFullscreen || !isAIDrawing) return;
         e.preventDefault();
         const pos = getPointerPos(e);
         const x = Math.min(aiDragStart.x, pos.x);
@@ -4094,7 +4101,19 @@ function renderAIFrame() {
     ctx.moveTo(w - 8 - bSize, h - 8); ctx.lineTo(w - 8, h - 8); ctx.lineTo(w - 8, h - 8 - bSize);
     ctx.stroke();
 
-    // Active HUD badge in corner
+    // Mode Status Badge (Top-Left)
+    const modeBadgeText = isAIFullscreen ? '✏️ MODE GAMBAR OBJEK (FULLSCREEN)' : '👁️ PRATINJAU LOKASI (PREVIEW ONLY)';
+    ctx.font = 'bold 9px monospace';
+    const mbW = ctx.measureText(modeBadgeText).width + 16;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+    ctx.strokeStyle = isAIFullscreen ? 'rgba(56, 189, 248, 0.45)' : 'rgba(148, 163, 184, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(8, 8, mbW, 22);
+    ctx.strokeRect(8, 8, mbW, 22);
+    ctx.fillStyle = isAIFullscreen ? '#38bdf8' : '#94a3b8';
+    ctx.fillText(modeBadgeText, 16, 23);
+
+    // Active HUD badge in corner (Top-Right)
     const camName = (aiCurrentCam && aiCurrentCam.name) ? aiCurrentCam.name.toUpperCase() : 'KAMERA NVR';
     ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
     ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
@@ -4478,6 +4497,28 @@ async function testAIPromptCondition() {
     }
 }
 
+function toggleAISimulation() {
+    aiSimActive = !aiSimActive;
+    const btn = document.getElementById('btn-toggle-ai-sim');
+    if (btn) {
+        if (aiSimActive) {
+            btn.innerHTML = '👁️ Simulasi Output: AKTIF';
+            btn.style.background = 'rgba(16,185,129,0.15)';
+            btn.style.color = '#34d399';
+            btn.style.borderColor = 'rgba(16,185,129,0.4)';
+            appendAITelemetry('👁️ Simulasi Output Diaktifkan.', 'info');
+        } else {
+            btn.innerHTML = '👁️ Simulasi Output: MATI';
+            btn.style.background = 'rgba(148,163,184,0.15)';
+            btn.style.color = '#94a3b8';
+            btn.style.borderColor = 'rgba(148,163,184,0.3)';
+            appendAITelemetry('⏸️ Simulasi Output Dimatikan.', 'info');
+        }
+    }
+    const banner = document.getElementById('ai-live-collision-banner');
+    if (banner && !aiSimActive) banner.style.display = 'none';
+}
+
 function updateCoordStatusText() {
     const el = document.getElementById('ai-coord-status');
     const fsEl = document.getElementById('ai-fs-coord-status');
@@ -4747,6 +4788,7 @@ function toggleAIFullscreenDrawing() {
 function enterAIFullscreenDrawing() {
     const container = document.getElementById('ai-canvas-container');
     const hud = document.getElementById('ai-fullscreen-hud');
+    const watermark = document.getElementById('ai-normal-preview-watermark');
     const btn = document.getElementById('btn-open-ai-fullscreen');
     if (!container) return;
     
@@ -4754,7 +4796,9 @@ function enterAIFullscreenDrawing() {
     container.classList.add('ai-fullscreen-active');
     
     if (hud) hud.style.display = 'flex';
-    if (btn) btn.innerHTML = '🗗 Keluar Layar Penuh';
+    if (watermark) watermark.style.display = 'none';
+    if (btn) btn.innerHTML = '🗗 Keluar Layar Penuh (ESC)';
+    if (aiDrawCanvas) aiDrawCanvas.style.cursor = 'crosshair';
     
     // Trigger native browser fullscreen if permissible
     try {
@@ -4777,12 +4821,13 @@ function enterAIFullscreenDrawing() {
     
     // Keyboard ESC listener
     window.addEventListener('keydown', handleAIFullscreenKey);
-    appendAITelemetry('🖥️ Mode Layar Penuh (Fullscreen) Diaktifkan. Gambar kotak objek dengan leluasa.', 'info');
+    appendAITelemetry('🖥️ Mode Layar Penuh (Fullscreen) Diaktifkan. Silakan gambar/edit kotak objek pada video.', 'info');
 }
 
 function exitAIFullscreenDrawing() {
     const container = document.getElementById('ai-canvas-container');
     const hud = document.getElementById('ai-fullscreen-hud');
+    const watermark = document.getElementById('ai-normal-preview-watermark');
     const btn = document.getElementById('btn-open-ai-fullscreen');
     if (!container) return;
     
@@ -4790,7 +4835,9 @@ function exitAIFullscreenDrawing() {
     container.classList.remove('ai-fullscreen-active');
     
     if (hud) hud.style.display = 'none';
-    if (btn) btn.innerHTML = '⛶ Gambar Layar Penuh (Fullscreen)';
+    if (watermark) watermark.style.display = 'flex';
+    if (btn) btn.innerHTML = '<span style="font-size:1.05rem;">⛶</span> Buka Mode Layar Penuh (Edit & Gambar Objek)';
+    if (aiDrawCanvas) aiDrawCanvas.style.cursor = 'default';
     
     try {
         if (document.fullscreenElement && document.exitFullscreen) {
@@ -4810,7 +4857,7 @@ function exitAIFullscreenDrawing() {
         updateCoordStatusText();
     }, 50);
     
-    appendAITelemetry('🗗 Keluar dari Mode Layar Penuh.', 'info');
+    appendAITelemetry('🗗 Kembali ke Mode Pratinjau Saja.', 'info');
 }
 
 function handleAIFullscreenKey(e) {
@@ -6643,5 +6690,14 @@ window.setZoneColor = setZoneColor;
 window.updateActiveZoneLabel = updateActiveZoneLabel;
 window.setUniversalPreset = setUniversalPreset;
 window.updateCamAIActiveState = updateCamAIActiveState;
+window.toggleAISimulation = toggleAISimulation;
+window.enterAIFullscreenDrawing = enterAIFullscreenDrawing;
+window.exitAIFullscreenDrawing = exitAIFullscreenDrawing;
+window.toggleAIFullscreenDrawing = toggleAIFullscreenDrawing;
+window.addNewZoneSlot = addNewZoneSlot;
+window.deleteCurrentZone = deleteCurrentZone;
+window.saveCurrentZone = saveCurrentZone;
+window.updateActiveZoneTargets = updateActiveZoneTargets;
+window.selectActiveZone = selectActiveZone;
 
 

@@ -1013,96 +1013,49 @@
                                 </div>
                             </div>
 
-                            <!-- Multi-Object Zone Management Toolbar -->
-                            <div style="background:rgba(0,0,0,0.35); border:1px solid var(--border); border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:0.65rem;">
-                                <!-- Top Row: Zone Chips List & Actions -->
-                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; padding-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:0.5rem;">
-                                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                                        <span style="font-size:0.8rem; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:0.3rem;">
-                                            <span>🔲</span> Daftar Objek / Area:
-                                        </span>
-                                        <div id="ai-zones-chips-list" style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap;">
-                                            <!-- Dynamic zone chips rendered by script.js -->
-                                        </div>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="addNewZoneSlot()" style="padding:0.2rem 0.6rem; font-size:0.75rem; background:rgba(34,197,94,0.15); color:#34d399; border-color:rgba(34,197,94,0.4); font-weight:600;" title="Tambah area/objek baru (misal: Pompa BBM, Parkir, Kasir)">
-                                            ➕ Tambah Objek Baru
-                                        </button>
-                                    </div>
-                                    
-                                    <!-- Big Fullscreen Button -->
-                                    <div style="display:flex; gap:0.4rem; align-items:center;">
-                                        <button type="button" class="btn btn-sm btn-primary" onclick="toggleAIFullscreenDrawing()" id="btn-open-ai-fullscreen" style="background:linear-gradient(135deg, #2563eb, #1d4ed8); border-color:#3b82f6; font-weight:700; font-size:0.82rem; padding:0.35rem 0.85rem; display:flex; align-items:center; gap:0.4rem; box-shadow:0 0 12px rgba(37,99,235,0.4);">
-                                            <span>⛶</span> Mode Layar Penuh (Fullscreen Editor)
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-primary" onclick="saveCurrentZone()" style="background:#16a34a; border-color:#22c55e; font-weight:600; font-size:0.8rem; padding:0.3rem 0.75rem;" title="Simpan objek yang sedang aktif">
-                                            💾 Simpan Objek Ini
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteCurrentZone()" style="font-size:0.8rem; padding:0.3rem 0.6rem;" title="Hapus objek yang sedang dipilih">
-                                            🗑️ Hapus Objek
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Middle Row: Active Zone Label, Color, Target Filter -->
-                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; margin-bottom:0.45rem;">
-                                    <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
-                                        <div style="display:flex; align-items:center; gap:0.35rem;">
-                                            <span style="font-size:0.78rem; font-weight:600; color:var(--text-muted);">Nama Objek Aktif:</span>
-                                            <input type="text" id="ai-zone-label-input" value="Area Pompa BBM" class="form-control" placeholder="cth: Pompa Bensin, Area Parkir..." style="width:190px; padding:0.25rem 0.5rem; font-size:0.8rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:4px;" oninput="updateActiveZoneLabel(this.value)">
-                                        </div>
-                                        <div style="display:flex; align-items:center; gap:0.35rem;">
-                                            <span style="font-size:0.78rem; font-weight:600; color:var(--text-muted);">Warna:</span>
-                                            <div style="display:flex; gap:0.3rem; align-items:center;">
-                                                <button type="button" onclick="setZoneColor('#3b82f6', 'rgba(59,130,246,0.92)')" class="ai-zone-color-btn" data-color="#3b82f6" style="width:22px; height:22px; border-radius:4px; background:#3b82f6; border:2px solid white; cursor:pointer;" title="Biru (Pompa / Utama)"></button>
-                                                <button type="button" onclick="setZoneColor('#eab308', 'rgba(234,179,8,0.92)')" class="ai-zone-color-btn" data-color="#eab308" style="width:22px; height:22px; border-radius:4px; background:#eab308; border:1px solid #475569; cursor:pointer;" title="Kuning (Parkir / Antrean)"></button>
-                                                <button type="button" onclick="setZoneColor('#10b981', 'rgba(16,185,129,0.92)')" class="ai-zone-color-btn" data-color="#10b981" style="width:22px; height:22px; border-radius:4px; background:#10b981; border:1px solid #475569; cursor:pointer;" title="Hijau (Operator / Pejalan)"></button>
-                                                <button type="button" onclick="setZoneColor('#ef4444', 'rgba(239,68,68,0.92)')" class="ai-zone-color-btn" data-color="#ef4444" style="width:22px; height:22px; border-radius:4px; background:#ef4444; border:1px solid #475569; cursor:pointer;" title="Merah (Area Bahaya / Dilarang)"></button>
-                                                <button type="button" onclick="setZoneColor('#a855f7', 'rgba(168,85,247,0.92)')" class="ai-zone-color-btn" data-color="#a855f7" style="width:22px; height:22px; border-radius:4px; background:#a855f7; border:1px solid #475569; cursor:pointer;" title="Ungu (Kasir / Khusus)"></button>
-                                                <button type="button" onclick="setZoneColor('#f97316', 'rgba(249,115,22,0.92)')" class="ai-zone-color-btn" data-color="#f97316" style="width:22px; height:22px; border-radius:4px; background:#f97316; border:1px solid #475569; cursor:pointer;" title="Oranye (Tangki / Bongkar Muat)"></button>
+                            <!-- Mode Pratinjau Toolbar (Normal Mode - Preview Lokasi Saja, Tidak Bisa Edit/Tambah Objek) -->
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(56,189,248,0.25); border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.65rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                                    <!-- Left: Status Pratinjau & Daftar Objek Terpasang -->
+                                    <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                                            <span style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.2rem 0.55rem; border-radius:4px; background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); color:#60a5fa; font-size:0.76rem; font-weight:700; letter-spacing:0.4px;">
+                                                <span>👁️</span> MODE PRATINJAU LOKASI (PREVIEW ONLY)
+                                            </span>
+                                            <span style="font-size:0.78rem; color:#94a3b8;">Daftar Objek Terpasang:</span>
+                                            <div id="ai-zones-chips-list" style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap;">
+                                                <!-- Dynamic zone chips rendered by script.js -->
                                             </div>
                                         </div>
-                                        <div style="display:flex; align-items:center; gap:0.4rem; padding-left:0.4rem; border-left:1px solid rgba(255,255,255,0.1);">
-                                            <span style="font-size:0.75rem; color:var(--text-muted);">Target:</span>
-                                            <label style="font-size:0.75rem; display:inline-flex; align-items:center; gap:0.2rem; cursor:pointer; color:#93c5fd;">
-                                                <input type="checkbox" id="ai-target-car" checked onchange="updateActiveZoneTargets()"> 🚗 Mobil
-                                            </label>
-                                            <label style="font-size:0.75rem; display:inline-flex; align-items:center; gap:0.2rem; cursor:pointer; color:#fde047;">
-                                                <input type="checkbox" id="ai-target-motor" checked onchange="updateActiveZoneTargets()"> 🛵 Motor
-                                            </label>
-                                            <label style="font-size:0.75rem; display:inline-flex; align-items:center; gap:0.2rem; cursor:pointer; color:#86efac;">
-                                                <input type="checkbox" id="ai-target-person" checked onchange="updateActiveZoneTargets()"> 👤 Orang
-                                            </label>
+                                        <div style="font-size:0.74rem; color:#94a3b8; display:flex; align-items:center; gap:0.35rem;">
+                                            <span>ℹ️</span> Kotak video di bawah hanya untuk memantau pratinjau lokasi. Untuk menggambar/mengubah atau menambah objek deteksi, silakan klik tombol di samping.
                                         </div>
                                     </div>
-                                    <div id="ai-grid-stream-badge" style="font-size:0.75rem; padding:0.2rem 0.5rem; border-radius:4px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
-                                        📡 Menghubungkan ke Feed NVR...
-                                    </div>
-                                </div>
-
-                                <!-- Bottom Row: Fast Preset Buttons -->
-                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem; padding-top:0.45rem; border-top:1px solid rgba(255,255,255,0.06);">
-                                    <div style="display:flex; gap:0.3rem; flex-wrap:wrap; align-items:center;">
-                                        <span style="font-size:0.75rem; color:var(--text-muted); margin-right:0.2rem;">Preset Cepat:</span>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('spbu')" style="padding:0.18rem 0.5rem; font-size:0.74rem; color:#38bdf8; border-color:rgba(56,189,248,0.4);">⛽ Pompa Bensin</button>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('parking')" style="padding:0.18rem 0.5rem; font-size:0.74rem; color:#facc15; border-color:rgba(250,204,21,0.4);">🅿️ Area Parkir</button>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('cashier')" style="padding:0.18rem 0.5rem; font-size:0.74rem; color:#c084fc; border-color:rgba(192,132,252,0.4);">💵 Meja Kasir</button>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('gate')" style="padding:0.18rem 0.5rem; font-size:0.74rem; color:#ef4444; border-color:rgba(239,68,68,0.4);">🚪 Pintu Masuk</button>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('center')" style="padding:0.18rem 0.5rem; font-size:0.74rem;">🎯 Fokus Tengah</button>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('full')" style="padding:0.18rem 0.5rem; font-size:0.74rem;">🔲 Full Layar</button>
-                                    </div>
-                                    <div style="font-size:0.75rem; color:#94a3b8;">
-                                        💡 Tips: Gunakan tombol <strong>Mode Layar Penuh</strong> di atas untuk menggambar dengan sangat leluasa & presisi
+                                    
+                                    <!-- Right: Action Button to Open Fullscreen Mode -->
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <button type="button" class="btn btn-primary" onclick="enterAIFullscreenDrawing()" id="btn-open-ai-fullscreen" style="background:linear-gradient(135deg, #2563eb, #1d4ed8); border-color:#3b82f6; font-weight:700; font-size:0.85rem; padding:0.45rem 1.1rem; display:flex; align-items:center; gap:0.5rem; box-shadow:0 0 15px rgba(37,99,235,0.45); cursor:pointer;">
+                                            <span style="font-size:1.05rem;">⛶</span> Buka Mode Layar Penuh (Edit & Gambar Objek)
+                                        </button>
+                                        <div id="ai-grid-stream-badge" style="font-size:0.75rem; padding:0.3rem 0.6rem; border-radius:4px; background:rgba(59,130,246,0.12); color:#60a5fa; border:1px solid rgba(59,130,246,0.25);">
+                                            📡 Feed NVR
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- Visual Container (16:9 Surveillance Canvas HUD with Native Video Underlay) -->
                             <div id="ai-canvas-container" style="position:relative; width:100%; aspect-ratio:16/9; max-height:420px; min-height:260px; background:#070b14; border:1px solid #1e293b; border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center; user-select:none; box-shadow:inset 0 0 25px rgba(0,0,0,0.9);">
+                                <!-- Normal Preview Watermark / Click to expand hint -->
+                                <div id="ai-normal-preview-watermark" onclick="enterAIFullscreenDrawing()" style="position:absolute; top:8px; left:8px; z-index:15; pointer-events:auto; cursor:pointer; background:rgba(0,0,0,0.78); backdrop-filter:blur(4px); border:1px solid rgba(56,189,248,0.3); border-radius:4px; padding:4px 10px; font-size:0.75rem; color:#94a3b8; font-family:monospace; display:flex; align-items:center; gap:6px; transition:all 0.2s ease;" title="Klik untuk membuka mode gambar layar penuh">
+                                    <span>👁️</span> Mode Pratinjau (Preview Only) — <span style="color:#38bdf8; text-decoration:underline;">Buka Layar Penuh untuk Edit/Gambar Objek</span>
+                                </div>
+
                                 <!-- Video element running underneath canvas (Native NVR stream) -->
                                 <video id="ai-stream-preview" autoplay muted playsinline style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; z-index:1; background:#070b14;"></video>
                                 
                                 <!-- FLOATING HUD TOOLBAR FOR FULLSCREEN DRAWING MODE -->
-                                <div id="ai-fullscreen-hud" style="display:none; position:absolute; top:12px; left:16px; right:16px; z-index:20; background:rgba(15,23,42,0.92); backdrop-filter:blur(12px); border:1px solid rgba(56,189,248,0.4); border-radius:10px; padding:0.6rem 1rem; box-shadow:0 8px 32px rgba(0,0,0,0.85); flex-direction:column; gap:0.5rem;">
+                                <div id="ai-fullscreen-hud" style="display:none; position:absolute; top:12px; left:16px; right:16px; z-index:20; background:rgba(15,23,42,0.94); backdrop-filter:blur(14px); border:1px solid rgba(56,189,248,0.45); border-radius:10px; padding:0.65rem 1rem; box-shadow:0 8px 32px rgba(0,0,0,0.85); flex-direction:column; gap:0.5rem;">
                                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                                         <!-- Left: Title & Zones Chips -->
                                         <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
@@ -1113,14 +1066,14 @@
                                             <div id="ai-fs-zones-chips" style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap;">
                                                 <!-- Dynamic zone chips in fullscreen -->
                                             </div>
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="addNewZoneSlot()" style="padding:0.2rem 0.6rem; font-size:0.75rem; background:rgba(34,197,94,0.15); color:#34d399; border-color:rgba(34,197,94,0.4); font-weight:600;">
-                                                ➕ Tambah Objek
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="addNewZoneSlot()" style="padding:0.2rem 0.6rem; font-size:0.75rem; background:rgba(34,197,94,0.15); color:#34d399; border-color:rgba(34,197,94,0.4); font-weight:600;" title="Tambah objek/area baru">
+                                                ➕ Tambah Objek Baru
                                             </button>
                                         </div>
 
                                         <!-- Right: Save, Delete & Exit Fullscreen -->
                                         <div style="display:flex; align-items:center; gap:0.4rem;">
-                                            <button type="button" class="btn btn-sm btn-primary" onclick="saveCurrentZone()" style="background:#16a34a; border-color:#22c55e; font-weight:700; font-size:0.82rem; padding:0.35rem 0.9rem; display:flex; align-items:center; gap:0.35rem; box-shadow:0 0 10px rgba(34,197,94,0.4);">
+                                            <button type="button" class="btn btn-sm btn-primary" onclick="saveCurrentZone()" style="background:#16a34a; border-color:#22c55e; font-weight:700; font-size:0.82rem; padding:0.35rem 0.9rem; display:flex; align-items:center; gap:0.35rem; box-shadow:0 0 10px rgba(34,197,94,0.4);" title="Simpan objek yang sedang aktif (bisa langsung tambah objek lain tanpa keluar)">
                                                 <span>💾</span> Simpan Objek Ini
                                             </button>
                                             <button type="button" class="btn btn-sm btn-danger" onclick="deleteCurrentZone()" style="font-size:0.8rem; padding:0.35rem 0.65rem;" title="Hapus Objek Terpilih">
@@ -1132,7 +1085,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Bottom row in Fullscreen HUD: Active Object Config -->
+                                    <!-- Middle row in Fullscreen HUD: Active Object Config -->
                                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; padding-top:0.4rem; border-top:1px solid rgba(255,255,255,0.08);">
                                         <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
                                             <div style="display:flex; align-items:center; gap:0.35rem;">
@@ -1142,12 +1095,12 @@
                                             <div style="display:flex; align-items:center; gap:0.35rem;">
                                                 <span style="font-size:0.78rem; font-weight:600; color:#cbd5e1;">Warna:</span>
                                                 <div style="display:flex; gap:0.3rem; align-items:center;">
-                                                    <button type="button" onclick="setZoneColor('#3b82f6', 'rgba(59,130,246,0.92)')" class="ai-zone-color-btn" data-color="#3b82f6" style="width:22px; height:22px; border-radius:4px; background:#3b82f6; border:2px solid white; cursor:pointer;" title="Biru"></button>
-                                                    <button type="button" onclick="setZoneColor('#eab308', 'rgba(234,179,8,0.92)')" class="ai-zone-color-btn" data-color="#eab308" style="width:22px; height:22px; border-radius:4px; background:#eab308; border:1px solid #475569; cursor:pointer;" title="Kuning"></button>
-                                                    <button type="button" onclick="setZoneColor('#10b981', 'rgba(16,185,129,0.92)')" class="ai-zone-color-btn" data-color="#10b981" style="width:22px; height:22px; border-radius:4px; background:#10b981; border:1px solid #475569; cursor:pointer;" title="Hijau"></button>
-                                                    <button type="button" onclick="setZoneColor('#ef4444', 'rgba(239,68,68,0.92)')" class="ai-zone-color-btn" data-color="#ef4444" style="width:22px; height:22px; border-radius:4px; background:#ef4444; border:1px solid #475569; cursor:pointer;" title="Merah"></button>
-                                                    <button type="button" onclick="setZoneColor('#a855f7', 'rgba(168,85,247,0.92)')" class="ai-zone-color-btn" data-color="#a855f7" style="width:22px; height:22px; border-radius:4px; background:#a855f7; border:1px solid #475569; cursor:pointer;" title="Ungu"></button>
-                                                    <button type="button" onclick="setZoneColor('#f97316', 'rgba(249,115,22,0.92)')" class="ai-zone-color-btn" data-color="#f97316" style="width:22px; height:22px; border-radius:4px; background:#f97316; border:1px solid #475569; cursor:pointer;" title="Oranye"></button>
+                                                    <button type="button" onclick="setZoneColor('#3b82f6', 'rgba(59,130,246,0.92)')" class="ai-zone-color-btn" data-color="#3b82f6" style="width:22px; height:22px; border-radius:4px; background:#3b82f6; border:2px solid white; cursor:pointer;" title="Biru (Pompa / Utama)"></button>
+                                                    <button type="button" onclick="setZoneColor('#eab308', 'rgba(234,179,8,0.92)')" class="ai-zone-color-btn" data-color="#eab308" style="width:22px; height:22px; border-radius:4px; background:#eab308; border:1px solid #475569; cursor:pointer;" title="Kuning (Parkir / Antrean)"></button>
+                                                    <button type="button" onclick="setZoneColor('#10b981', 'rgba(16,185,129,0.92)')" class="ai-zone-color-btn" data-color="#10b981" style="width:22px; height:22px; border-radius:4px; background:#10b981; border:1px solid #475569; cursor:pointer;" title="Hijau (Operator / Pejalan)"></button>
+                                                    <button type="button" onclick="setZoneColor('#ef4444', 'rgba(239,68,68,0.92)')" class="ai-zone-color-btn" data-color="#ef4444" style="width:22px; height:22px; border-radius:4px; background:#ef4444; border:1px solid #475569; cursor:pointer;" title="Merah (Area Bahaya / Larangan)"></button>
+                                                    <button type="button" onclick="setZoneColor('#a855f7', 'rgba(168,85,247,0.92)')" class="ai-zone-color-btn" data-color="#a855f7" style="width:22px; height:22px; border-radius:4px; background:#a855f7; border:1px solid #475569; cursor:pointer;" title="Ungu (Kasir / Transaksi)"></button>
+                                                    <button type="button" onclick="setZoneColor('#f97316', 'rgba(249,115,22,0.92)')" class="ai-zone-color-btn" data-color="#f97316" style="width:22px; height:22px; border-radius:4px; background:#f97316; border:1px solid #475569; cursor:pointer;" title="Oranye (Tangki / Khusus)"></button>
                                                 </div>
                                             </div>
                                             <div style="display:flex; align-items:center; gap:0.4rem; padding-left:0.4rem; border-left:1px solid rgba(255,255,255,0.15);">
@@ -1165,6 +1118,22 @@
                                         </div>
                                         <div style="font-size:0.76rem; color:#38bdf8; font-family:monospace;" id="ai-fs-coord-status">
                                             🖱️ Tarik kursor di video layar penuh untuk menentukan kotak area ini
+                                        </div>
+                                    </div>
+
+                                    <!-- Bottom row in Fullscreen HUD: Quick Presets -->
+                                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem; padding-top:0.35rem; border-top:1px solid rgba(255,255,255,0.06);">
+                                        <div style="display:flex; gap:0.3rem; flex-wrap:wrap; align-items:center;">
+                                            <span style="font-size:0.74rem; color:#94a3b8; margin-right:0.2rem;">Preset Cepat:</span>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('spbu')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#38bdf8; border-color:rgba(56,189,248,0.4);">⛽ Pompa BBM</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('parking')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#facc15; border-color:rgba(250,204,21,0.4);">🅿️ Area Parkir</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('cashier')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#c084fc; border-color:rgba(192,132,252,0.4);">💵 Meja Kasir</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('gate')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#ef4444; border-color:rgba(239,68,68,0.4);">🚪 Pintu Masuk</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('center')" style="padding:0.16rem 0.45rem; font-size:0.73rem;">🎯 Fokus Tengah</button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('full')" style="padding:0.16rem 0.45rem; font-size:0.73rem;">🔲 Full Layar</button>
+                                        </div>
+                                        <div style="font-size:0.74rem; color:#cbd5e1;">
+                                            💡 Tarik mouse/sentuh layar untuk menggambar ➔ Simpan Objek ➔ Tambah Objek Baru berikutnya
                                         </div>
                                     </div>
                                 </div>
@@ -1201,7 +1170,7 @@
                                 </div>
                                 
                                 <!-- Drawing Canvas on top (100% transparent background) -->
-                                <canvas id="ai-draw-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:crosshair; z-index:3; touch-action:none;"></canvas>
+                                <canvas id="ai-draw-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; cursor:default; z-index:3; touch-action:none;"></canvas>
                             </div>
                             
                             <!-- Status Readout -->

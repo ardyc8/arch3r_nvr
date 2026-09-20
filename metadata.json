@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 9.9.8",
-  "description": "Arch3r NVR Ver. 10.0.7 - Full-Stack NVR CCTV System featuring Multi-Zone ROI Intrusion Detection, Fullscreen Drawing Canvas Mode, Iterative Save-One-by-One Zone Workflow, Custom Labels & Colors per Object, Unified Per-Camera AI Configuration, and Persistent Multi-Zone Storage for Armbian STB.",
+  "description": "Arch3r NVR Ver. 10.0.8 - Full-Stack NVR CCTV System featuring Dedicated Preview-Only Normal View, Interactive Fullscreen Multi-Zone ROI Grid Drawing Canvas, Restored toggleAISimulation, Persistent Multi-Zone Storage, and Armbian STB compatibility.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
