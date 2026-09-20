@@ -1,5 +1,19 @@
 # Changelog
 
+## [Ver 9.9.5] - 2026-09-19
+### Centralized Universal Version Synchronizer & Robust Addons Authentication
+- **Centralized Version Synchronizer Architecture:**
+  - **Single Source of Truth (`version.json` & `package.json`)**: Memusatkan nomor versi aplikasi ke `version.json` dan `package.json` (`APP_VERSION`) sehingga pengembang tidak perlu lagi mengubah penomoran versi satu per satu di setiap file halaman HTML atau script.
+  - **Dynamic Express HTML Middleware (`server.js`)**: Menginjeksi middleware cerdas pada server yang secara otomatis menyinkronkan penomoran versi di semua halaman (`/`, `index.html`, `superadmin.html`, `admin.html`) dan aset cache-busting (`?v=...`) langsung dari server sebelum disajikan ke browser klien.
+  - **Universal Client Synchronizer (`public/version_sync.js`)**: Menyediakan skrip mandiri yang disuntikkan ke dokumen klien untuk memperbarui `document.title` dan semua elemen penampil versi (`.app-version`, `badge`, teks berlabel `Ver.`) serta memvalidasi sinkronisasi langsung ke endpoint `/api/version`.
+  - **Version Endpoint (`/api/version`)**: Menyediakan endpoint REST publik `/api/version` yang mengembalikan nomor versi sistem secara real-time.
+- **Addon Marketplace Connection & Authorization Fix:**
+  - **Global Scope `authFetch` & Dual-Token Retrieval (`public/script.js`)**: Memindahkan helper `authFetch` dan `getAuthToken` ke *global scope* (`window.authFetch`) dengan dukungan pembacaan multi-kunci token (`nvr_auth_token` dan `arch3r_token`). Menyimpan kedua token secara harmonis saat proses login.
+  - **Multi-Role Addon Authorization (`server.js`)**: Memperluas validasi hak akses pada seluruh endpoint addon (`/api/addons`, `/api/addons/install`, `/api/addons/:id/toggle`, `/api/addons/:id`, `/api/addons/:id/config`) untuk mencakup `superadmin`, `administrator`, dan `admin` sehingga mencegah kesalahan *403 Forbidden* atau kegagalan otentikasi saat user administrator membuka antarmuka Addons Marketplace.
+  - **Detailed Frontend Error States**: Mengganti penanganan error ambigu ("Error koneksi ke server") dengan notifikasi status yang jelas dan deskriptif (misal: sesi kedaluwarsa atau masalah jaringan).
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 9.9.5** pada `package.json`, `version.json`, `metadata.json`, `server.js`, `public/version_sync.js`, `public/script.js`, `public/superadmin.js`, `README.md`, dan `CHANGELOG.md`.
+
 ## [Ver 9.9.4] - 2026-09-19
 ### Modular Dynamic Addons Marketplace Architecture (YOLOv8 & HDMI Kiosk Dynamic Integration)
 - **Modular Physical Addons Discovery (`server.js`):**

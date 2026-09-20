@@ -38,9 +38,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.9.4';
+        return pkg.version || '9.9.5';
     } catch {
-        return '9.9.4';
+        return '9.9.5';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -393,8 +393,8 @@ function scanAvailablePhysicalAddons() {
 }
 
 app.get('/api/addons', verifyToken, (req, res) => {
-    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
-        return res.status(403).json({ error: 'Akses Ditolak' });
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator' && req.userRole !== 'admin') {
+        return res.status(403).json({ error: 'Akses Ditolak: Memerlukan hak akses Administrator atau Superadmin' });
     }
     
     const dbData = getNvrDb();
@@ -442,7 +442,7 @@ app.get('/api/addons', verifyToken, (req, res) => {
 });
 
 app.post('/api/addons/install', verifyToken, (req, res) => {
-    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator' && req.userRole !== 'admin') {
         return res.status(403).json({ error: 'Akses Ditolak' });
     }
     
@@ -464,7 +464,7 @@ app.post('/api/addons/install', verifyToken, (req, res) => {
 });
 
 app.post('/api/addons/:id/toggle', verifyToken, (req, res) => {
-    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator' && req.userRole !== 'admin') {
         return res.status(403).json({ error: 'Akses Ditolak' });
     }
     
@@ -508,7 +508,7 @@ app.post('/api/addons/:id/toggle', verifyToken, (req, res) => {
 });
 
 app.delete('/api/addons/:id', verifyToken, (req, res) => {
-    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator' && req.userRole !== 'admin') {
         return res.status(403).json({ error: 'Akses Ditolak' });
     }
     
@@ -555,7 +555,7 @@ app.delete('/api/addons/:id', verifyToken, (req, res) => {
 });
 
 app.get('/api/addons/:id/config', verifyToken, (req, res) => {
-    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') return res.status(403).json({ error: 'Akses Ditolak' });
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator' && req.userRole !== 'admin') return res.status(403).json({ error: 'Akses Ditolak' });
     
     const dbData = getNvrDb();
     const addon = (dbData.addons || []).find(a => a.id === req.params.id);
@@ -575,7 +575,7 @@ app.get('/api/addons/:id/config', verifyToken, (req, res) => {
 });
 
 app.post('/api/addons/:id/config', verifyToken, (req, res) => {
-    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') return res.status(403).json({ error: 'Akses Ditolak' });
+    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator' && req.userRole !== 'admin') return res.status(403).json({ error: 'Akses Ditolak' });
     
     const dbData = getNvrDb();
     const addon = (dbData.addons || []).find(a => a.id === req.params.id);
@@ -858,6 +858,43 @@ app.post('/api/system/ota/apply', verifyToken, requireSuperadmin, async (req, re
     } catch(e) {
         res.status(500).json({ error: e.message });
     }
+});
+
+// ============================================================================
+// CENTRALIZED APP VERSION API & AUTOMATIC HTML VERSION SYNCHRONIZATION
+// ============================================================================
+app.get('/api/version', (req, res) => {
+    res.json({
+        success: true,
+        version: APP_VERSION,
+        name: 'Arch3r NVR',
+        title: `Arch3r NVR Ver. ${APP_VERSION}`
+    });
+});
+
+// Middleware untuk menyinkronkan penomoran versi di semua halaman HTML secara otomatis
+app.get(['/', '/index.html', '/superadmin.html', '/admin.html'], (req, res, next) => {
+    const rawPath = req.path === '/' ? 'index.html' : req.path.replace(/^\//, '');
+    const filePath = path.join(publicDir, rawPath);
+    if (fs.existsSync(filePath)) {
+        try {
+            let html = fs.readFileSync(filePath, 'utf8');
+            // Ganti semua variasi "Ver. X.Y.Z" secara dinamis dengan APP_VERSION dari package.json
+            html = html.replace(/Ver\.?\s*[0-9]+\.[0-9]+\.[0-9]+/gi, `Ver. ${APP_VERSION}`);
+            // Sinkronkan cache-busting querystring ?v=X.Y.Z
+            html = html.replace(/(\.css|\.js)\?v=[0-9]+\.[0-9]+\.[0-9]+/gi, `$1?v=${APP_VERSION}`);
+            // Pastikan version_sync.js disuntikkan jika belum ada di <head>
+            if (!html.includes('version_sync.js')) {
+                html = html.replace('</head>', `    <script src="version_sync.js?v=${APP_VERSION}"></script>\n</head>`);
+            }
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            return res.send(html);
+        } catch (syncErr) {
+            console.error('[VersionSync] Error serving synchronized HTML:', syncErr.message);
+        }
+    }
+    next();
 });
 
 app.use(express.static(publicDir));
@@ -4023,7 +4060,8 @@ app.get('/api/system/stats', (req, res) => {
             network: cachedNetStats,
             uptime: getFormattedUptime(),
             hostname: os.hostname(),
-            platform: 'Armbian Linux'
+            platform: 'Armbian Linux',
+            version: APP_VERSION
         });
     } catch(e) {
         res.status(500).json({ error: e.message });

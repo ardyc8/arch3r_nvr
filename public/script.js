@@ -1,4 +1,22 @@
-// script.js - Archer NVR Ver. 9.9.4 Multi-Tenant Controller
+// script.js - Archer NVR Ver. 9.9.5 Multi-Tenant Controller
+
+// --- Universal Token & Auth Fetch Helper (Global Scope) ---
+function getAuthToken() {
+    return localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+}
+window.getAuthToken = getAuthToken;
+
+function authFetch(url, options = {}) {
+    const opts = { ...options };
+    opts.headers = opts.headers ? { ...opts.headers } : {};
+    const token = getAuthToken();
+    if (token) {
+        opts.headers['Authorization'] = `Bearer ${token}`;
+    }
+    opts.credentials = 'include';
+    return fetch(url, opts);
+}
+window.authFetch = authFetch;
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -77,20 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mChangePasswordForm = document.getElementById('mChangePasswordForm');
 
     // --- Universal Token & Auth Fetch Helper ---
-    function getAuthToken() {
-        return localStorage.getItem('nvr_auth_token') || '';
-    }
-
-    function authFetch(url, options = {}) {
-        const opts = { ...options };
-        opts.headers = opts.headers ? { ...opts.headers } : {};
-        const token = getAuthToken();
-        if (token) {
-            opts.headers['Authorization'] = `Bearer ${token}`;
-        }
-        opts.credentials = 'include';
-        return fetch(url, opts);
-    }
+    // (Delegated to global window.getAuthToken & window.authFetch)
 
     
 
@@ -261,6 +266,7 @@ async function checkAuth() {
             if (res.ok && data.success) {
                 if (data.token) {
                     localStorage.setItem('nvr_auth_token', data.token);
+                    localStorage.setItem('arch3r_token', data.token);
                     localStorage.setItem('nvr_role', data.role);
                     localStorage.setItem('nvr_username', data.username || username);
                 }
@@ -3692,10 +3698,11 @@ async function fetchInstalledAddons() {
     const tbody = document.getElementById('installed-addons-tbody');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading addons...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">Memuat modul addons...</td></tr>';
     
     try {
-        const response = await authFetch('/api/addons');
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
+        const response = await fetchFn('/api/addons');
         if (response.ok) {
             const data = await response.json();
             
@@ -3736,11 +3743,15 @@ async function fetchInstalledAddons() {
             } else {
                 tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">Belum ada addon yang terinstal. Silakan instal melalui GitHub/URL.</td></tr>';
             }
+        } else if (response.status === 401 || response.status === 403) {
+            tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #f59e0b;">Sesi login kedaluwarsa atau memerlukan hak akses Administrator / Superadmin.</td></tr>';
         } else {
-            tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">Gagal memuat daftar addon.</td></tr>';
+            const errData = await response.json().catch(() => ({}));
+            tbody.innerHTML = `<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">Gagal memuat daftar addon: ${errData.error || 'HTTP ' + response.status}</td></tr>`;
         }
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">Error koneksi ke server.</td></tr>';
+        console.error('[Addons] Error fetching installed addons:', e);
+        tbody.innerHTML = `<tr><td colspan="5" style="padding: 2rem; text-align: center; color: #ef4444;">Error koneksi ke server: ${e.message || e}</td></tr>`;
     }
 }
 
@@ -3916,4 +3927,17 @@ async function submitInstallAddon() {
         btn.disabled = false;
     }
 }
+
+// Attach all addon methods to window for inline onclick accessibility
+window.fetchInstalledAddons = fetchInstalledAddons;
+window.toggleAddonState = toggleAddonState;
+window.deleteAddon = deleteAddon;
+window.openInstallAddonModal = openInstallAddonModal;
+window.closeInstallAddonModal = closeInstallAddonModal;
+window.openAddonConfig = openAddonConfig;
+window.renderAddonConfigForm = renderAddonConfigForm;
+window.saveAddonConfig = saveAddonConfig;
+window.closeAddonConfigModal = closeAddonConfigModal;
+window.submitInstallAddon = submitInstallAddon;
+
 

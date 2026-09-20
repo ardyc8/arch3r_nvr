@@ -64,7 +64,7 @@
     });
 
     function getAuthToken() {
-        return localStorage.getItem('nvr_auth_token') || '';
+        return localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
     }
 
     function authFetch(url, options = {}) {
@@ -136,6 +136,7 @@
             if (res.ok && data.success) {
                 if (data.token) {
                     localStorage.setItem('nvr_auth_token', data.token);
+                    localStorage.setItem('arch3r_token', data.token);
                     localStorage.setItem('nvr_role', data.role);
                 }
                 if (data.role === 'superadmin') {
@@ -698,9 +699,10 @@
             currentUpdateData = data;
 
             if (updateStatusText) {
-                const verText = data.latest_version || data.current_version || '9.6.4';
+                const sysVer = data.current_version || window.APP_VERSION || '9.9.5';
+                const verText = data.latest_version || sysVer;
                 const isNew = data.update_available || data.isUpdateAvailable;
-                updateStatusText.innerHTML = `Versi Terpasang: <span class="badge" style="background:${isNew ? '#f59e0b' : '#2563eb'}; color:#fff;">v${data.current_version || '9.6.4'}</span> ${isNew ? '<span class="badge badge-online">Ada Update: v' + verText + '</span>' : '<span class="badge" style="background:#10b981; color:#fff;">Terbaru</span>'}`;
+                updateStatusText.innerHTML = `Versi Terpasang: <span class="badge" style="background:${isNew ? '#f59e0b' : '#2563eb'}; color:#fff;">v${sysVer}</span> ${isNew ? '<span class="badge badge-online">Ada Update: v' + verText + '</span>' : '<span class="badge" style="background:#10b981; color:#fff;">Terbaru</span>'}`;
             }
 
             if (updateDescText) {
@@ -711,8 +713,9 @@
             const otaCur = document.getElementById('otaCurrentVer');
             const otaLat = document.getElementById('otaLatestVer');
             const otaBtnApply = document.getElementById('btnApplyOta');
-            if (otaCur) otaCur.textContent = `v${data.current_version || '9.6.4'}`;
-            if (otaLat) otaLat.textContent = `v${data.latest_version || data.current_version || '9.6.4'}`;
+            const defVer = data.current_version || window.APP_VERSION || '9.9.5';
+            if (otaCur) otaCur.textContent = `v${defVer}`;
+            if (otaLat) otaLat.textContent = `v${data.latest_version || defVer}`;
             if (otaBtnApply) otaBtnApply.style.display = 'inline-block';
 
             // Render changelog list
