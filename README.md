@@ -1,11 +1,13 @@
-# ⚡ Arch3r NVR (Ver. 10.1.5)
+# ⚡ Arch3r NVR (Ver. 10.1.6)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
-### 📋 Changelog Pembaruan Ver. 10.1.5:
+### 📋 Changelog Pembaruan Ver. 10.1.6:
+- **Alur Standar NVR Profesional (2-Way Discovery & On-Demand Probe)**: Menyatukan sinkronisasi Scanner Jaringan dan Auto-Probe Form sesuai workflow industri NVR Hikvision/Dahua/UniFi Protect.
+  1. **Mode Tambah Baru / Scan Jaringan**: Pemindaian subnet LAN (`/api/system/scan`) menampilkan daftar kamera terbuka, lalu tombol "➕ Terapkan ke Form" langsung mengisi IP, port, dan menjalankan auto-probe untuk mendeteksi sub-stream serta kemampuan PTZ.
+  2. **Mode Input Manual / Edit Kamera (On-Demand)**: Pengguna mengisi IP Address dan Password kamera di tab General, lalu mengklik **"🔍 Auto-Discover / Test ONVIF"** untuk mengambil ulang parameter (Main Stream, Sub Stream, Token PTZ) dari kamera tanpa menimpa data yang tidak diinginkan.
+- **Penyelarasan UI Scanner & Form Auto-Probe**: Sinkronisasi ID elemen scanner (`ipScanStart`, `ipScanEnd`, `ipScanPorts`, `ipScanResultsTable`) dan penambahan panduan instruksi interaktif yang jelas pada tab General.
 - **Pemisahan Logis Tab Konfigurasi Kamera (General, Streams, Storage, PTZ)**: Parameter kamera terorganisir rapi per tab: General (Nama, IP, Port, Kredensial, Transcode), Streams (Dual-Stream Main HD & Sub SD, Audio Switch & Codec), Storage (Lokasi partisi, durasi segmen, kuota GB, retensi hari), PTZ (ONVIF SOAP & Macrovideo V380, Port, Token).
 - **Auto-Fill Otomatis Cerdas per Tab via node-onvif & Probe (`POST /api/system/onvif-probe`)**: Hasil auto-discovery otomatis mengisi semua tab yang sesuai tanpa tumpang tindih.
-- **Advanced IP Network Scanner Terintegrasi (`POST /api/system/scan`)**: Pemindaian jaringan lokal paralel non-blocking untuk mendeteksi kamera IP di port 80, 8080, 8899, 554, 8800 dengan tombol 1-klik "➕ Terapkan ke Form".
-- **Sinkronisasi Otomatis RTSP ke Tab PTZ & General**: Pengetikan RTSP URL langsung mengekstrak IP, port, kredensial, dan konfigurasi PTZ secara otomatis.
 
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).

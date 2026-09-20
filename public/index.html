@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.1.5 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=10.1.5">
+    <title>Arch3r NVR Ver. 10.1.6 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="version_sync.js?v=10.1.5"></script>
+    <script src="version_sync.js?v=10.1.6"></script>
     <style>
         /* Fullscreen Drawing Mode for AI Vision */
         #ai-canvas-container.ai-fullscreen-active {
@@ -413,34 +413,60 @@
                         </div>
                         
                         <!-- Advanced Scanner Box -->
-                        <div id="advancedScanBox" style="display:none; background:var(--surface); padding:1rem; border:1px solid var(--border); border-radius:6px; margin-bottom:1rem;">
+                        <div id="advancedScanBox" style="display:none; background:var(--surface); padding:1rem; border:1px solid var(--border); border-radius:8px; margin-bottom:1.25rem;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                                <h4 style="margin:0; font-size:0.95rem; color:#60a5fa;">Advanced ONVIF/RTSP Scanner</h4>
-                                <button onclick="document.getElementById('advancedScanBox').style.display='none'" class="btn-sm btn-secondary" style="padding:2px 8px;">✕ Tutup</button>
+                                <div>
+                                    <h4 style="margin:0; font-size:1rem; color:#60a5fa; display:flex; align-items:center; gap:0.4rem;">
+                                        🔍 Advanced IP & ONVIF Network Scanner
+                                    </h4>
+                                    <p style="margin:0.2rem 0 0 0; font-size:0.75rem; color:var(--text-muted);">
+                                        Pindai seluruh subnet LAN lokal Anda untuk menemukan Kamera IP ONVIF, RTSP, atau Macrovideo V380 secara otomatis.
+                                    </p>
+                                </div>
+                                <button type="button" onclick="document.getElementById('advancedScanBox').style.display='none'" class="btn-sm btn-secondary" style="padding:4px 10px;">✕ Tutup</button>
                             </div>
                             
                             <div class="form-row">
                                 <div class="form-group flex-1">
-                                    <label>Start IP</label>
-                                    <input type="text" id="scanStartIp" placeholder="192.168.1.1" value="192.168.1.1">
+                                    <label>Start IP Subnet</label>
+                                    <input type="text" id="ipScanStart" placeholder="192.168.1.1" value="192.168.1.1">
                                 </div>
                                 <div class="form-group flex-1">
-                                    <label>End IP</label>
-                                    <input type="text" id="scanEndIp" placeholder="192.168.1.254" value="192.168.1.254">
+                                    <label>End IP Subnet</label>
+                                    <input type="text" id="ipScanEnd" placeholder="192.168.1.254" value="192.168.1.254">
+                                </div>
+                                <div class="form-group flex-2">
+                                    <label>Target Ports (ONVIF/RTSP/V380)</label>
+                                    <input type="text" id="ipScanPorts" placeholder="80, 8080, 8899, 554, 8800" value="80, 8080, 8899, 554, 8800">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label>Target Ports (Pisahkan dengan koma)</label>
-                                <input type="text" id="scanPorts" placeholder="80, 8080, 8899, 554" value="80, 8080, 8899, 554">
-                                <small style="color:var(--text-muted);">Tidak perlu modul khusus Armbian, NVR akan melakukan TCP Ping internal.</small>
+                            
+                            <div style="display:flex; gap:0.5rem; margin-top:0.25rem;">
+                                <button type="button" id="btnStartIpScan" class="btn btn-primary" style="flex:1; padding:0.6rem; font-weight:600;">
+                                    🚀 Jalankan Pemindaian Jaringan
+                                </button>
                             </div>
                             
-                            <button id="btnStartAdvancedScan" class="btn btn-primary w-full" style="margin-top:0.5rem;">Mulai Scanning Jaringan</button>
+                            <div id="ipScanStatus" style="display:none; font-size:0.85rem; margin-top:0.75rem; padding:0.5rem 0.75rem; background:rgba(15,23,42,0.6); border-radius:6px; border:1px solid rgba(255,255,255,0.06);"></div>
                             
-                            <div id="scanResults" style="display:none; margin-top:1rem; border-top:1px solid var(--border); padding-top:1rem;">
-                                <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem;">Hasil Scan Jaringan</h4>
-                                <div id="scanStatus" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Menunggu...</div>
-                                <ul id="scanList" style="list-style:none; padding:0; margin:0; font-size:0.85rem;"></ul>
+                            <div id="ipScanResultsWrapper" style="margin-top:0.75rem; max-height:280px; overflow-y:auto; border:1px solid #334155; border-radius:6px; background:#0f172a;">
+                                <table style="width:100%; border-collapse:collapse; font-size:0.8rem; text-align:left;">
+                                    <thead>
+                                        <tr style="background:#1e293b; color:#94a3b8; border-bottom:1px solid #334155;">
+                                            <th style="padding:8px 10px;">IP Address</th>
+                                            <th style="padding:8px 10px;">Tipe Perangkat</th>
+                                            <th style="padding:8px 10px;">Port Terbuka</th>
+                                            <th style="padding:8px 10px; text-align:right;">Aksi Cepat</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ipScanResultsTable">
+                                        <tr>
+                                            <td colspan="4" style="text-align:center; padding:15px; color:#94a3b8;">
+                                                Klik "Jalankan Pemindaian Jaringan" di atas untuk mencari kamera di jaringan lokal STB Anda.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                         <div id="modalCameraList" class="modal-camera-list"></div>
@@ -476,9 +502,14 @@
                                 </div>
 
                                 <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.85rem; margin-bottom:1rem;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
-                                        <span style="font-size:0.85rem; font-weight:600; color:#60a5fa;">🌐 Konfigurasi IP & Akun Kamera (Auto-Probe Ready)</span>
-                                        <button type="button" id="btnQuickProbe" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:3px 8px; color:#38bdf8; border-color:#0284c7;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+                                        <div>
+                                            <span style="font-size:0.85rem; font-weight:600; color:#60a5fa;">🌐 Konfigurasi IP & Akun Kamera (Auto-Probe Ready)</span>
+                                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">
+                                                Isi IP kamera & Password di bawah, lalu klik <strong>"Auto-Discover / Test ONVIF"</strong> untuk mendeteksi profil resolusi, token PTZ, dan URL stream secara otomatis.
+                                            </div>
+                                        </div>
+                                        <button type="button" id="btnQuickProbe" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#38bdf8; border-color:#0284c7; font-weight:600;">
                                             🔍 Auto-Discover / Test ONVIF
                                         </button>
                                     </div>
@@ -488,8 +519,8 @@
                                             <input type="text" id="camIpAddress" placeholder="Contoh: 192.168.1.100">
                                         </div>
                                         <div class="form-group flex-1">
-                                            <label>ONVIF Port</label>
-                                            <input type="number" id="camOnvifPort" placeholder="8899 / 80 / 2020">
+                                            <label>ONVIF Port (Opsional / Auto)</label>
+                                            <input type="number" id="camOnvifPort" placeholder="8899 / 80 / 8080 / 8800">
                                         </div>
                                         <div class="form-group flex-1">
                                             <label>RTSP Port</label>
@@ -498,11 +529,11 @@
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group flex-1">
-                                            <label>Username</label>
+                                            <label>Username Kamera</label>
                                             <input type="text" id="camUsername" placeholder="admin">
                                         </div>
                                         <div class="form-group flex-1">
-                                            <label>Password</label>
+                                            <label>Password Kamera</label>
                                             <div style="display:flex; gap:0.25rem;">
                                                 <input type="password" id="camPassword" placeholder="Password kamera" style="flex:1;">
                                                 <button type="button" class="btn btn-secondary btn-peek-pwd" data-target="camPassword" style="padding:0 0.5rem;"><span class="peek-icon">👁️</span></button>

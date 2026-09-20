@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.1.5",
-  "description": "Arch3r NVR Ver. 10.1.5 - Full-Stack NVR CCTV System featuring Categorized Tab Camera Settings, Integrated IP Scanner & Auto-Discovery, Tab-Specific Auto-Fill via node-onvif Probe, PTZ ONVIF & V380 Controls, and Dual-Stream Audio Management.",
+  "name": "Arch3r NVR Ver. 10.1.6",
+  "description": "Arch3r NVR Ver. 10.1.6 - Full-Stack NVR CCTV System featuring Standard NVR 2-Way Camera Discovery Workflow, Advanced Subnet IP Scanner, Categorized Multi-Tab Settings, and ONVIF/V380 Auto-Probe.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
