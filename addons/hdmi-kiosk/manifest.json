@@ -1,0 +1,10 @@
+{
+  "id": "hdmi-kiosk",
+  "name": "HDMI Kiosk Display (Chromium X11)",
+  "version": "1.0.2",
+  "icon": "📺",
+  "description": "Output tampilan TV Wall / Monitor HDMI langsung via X11 & Chromium Kiosk untuk Armbian STB.",
+  "main": "index.js",
+  "author": "Arch3r NVR Team",
+  "system_protected": false
+}

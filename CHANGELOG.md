@@ -1,5 +1,17 @@
 # Changelog
 
+## [Ver 9.9.4] - 2026-09-19
+### Modular Dynamic Addons Marketplace Architecture (YOLOv8 & HDMI Kiosk Dynamic Integration)
+- **Modular Physical Addons Discovery (`server.js`):**
+  - **Dynamic Directory Scanner (`scanAvailablePhysicalAddons`)**: Mengimplementasikan scanner dinamis untuk folder `/addons` yang membaca metadata (`manifest.json` dan `package.json`) dari subdirektori addon secara otomatis tanpa perlu hardcode bawaan sistem.
+  - **Non-Hardcoded Addon Status (`system_protected = false`)**: Menghilangkan status bawaan terproteksi (`system_protected: true`) pada modul AI YOLOv8 dan HDMI Kiosk sehingga kini sepenuhnya bertindak sebagai Addons modular di Marketplace yang dapat diaktifkan, dinonaktifkan, diatur konfigurasinya, maupun dihapus/di-uninstall oleh pengguna.
+  - **Addon Manifests**: Menyediakan `manifest.json` standar pada `/addons/ai-yolo/manifest.json` dan `/addons/hdmi-kiosk/manifest.json` yang memuat identitas modul, versi, icon representatif, deskripsi, dan entry point.
+- **Split-DB Addon Lifecycle & Uninstall Tracking:**
+  - **Uninstall State Persistence (`uninstalled_addons`)**: Menambahkan pelacakan array `uninstalled_addons` pada `local_db_addons.json` agar addon yang telah dihapus oleh pengguna tidak otomatis muncul kembali secara paksa saat NVR memindai direktori `/addons`.
+  - **Dynamic Process Control**: Menghubungkan tombol toggle (▶️/⏹️) dan tombol hapus (🗑️) di antarmuka pengguna langsung ke daemon PM2 (`arch3r-ai-yolo`) dan service systemd (`arch3r-kiosk`).
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 9.9.4** pada `package.json`, `metadata.json`, `server.js`, `public/script.js`, `public/index.html`, `public/superadmin.html`, `README.md`, dan `CHANGELOG.md`.
+
 ## [Ver 9.9.3] - 2026-09-19
 ### Multi-Variant Macrovideo V380 Pro PTZ Driver & Automated Protocol Auto-Select
 - **Multi-Variant Binary Packet Generator (`/lib/v380_driver.js`):**

@@ -1,0 +1,10 @@
+{
+  "id": "ai_yolo",
+  "name": "AI Human Detection (YOLOv8)",
+  "version": "1.0.0",
+  "icon": "🧠",
+  "description": "Deteksi pergerakan manusia secara real-time dan konfigurasi area intrusi (Grid).",
+  "main": "ai_yolo_service.py",
+  "author": "Arch3r NVR Team",
+  "system_protected": false
+}

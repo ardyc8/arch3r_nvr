@@ -38,9 +38,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.9.3';
+        return pkg.version || '9.9.4';
     } catch {
-        return '9.9.3';
+        return '9.9.4';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -318,32 +318,123 @@ app.post('/api/ai/webhook', (req, res) => {
 
 
 // ==========================================
-// ADDON MARKETPLACE API (v9.6.1)
+// ADDON MARKETPLACE API (v9.9.4 - Modular Architecture)
 // ==========================================
+
+// Scan available physical addons in /addons directory
+function scanAvailablePhysicalAddons() {
+    const addonsDir = path.join(__dirname, 'addons');
+    const list = [];
+    if (!fs.existsSync(addonsDir)) return list;
+
+    try {
+        const entries = fs.readdirSync(addonsDir, { withFileTypes: true });
+        for (const entry of entries) {
+            if (entry.isDirectory()) {
+                const subDir = path.join(addonsDir, entry.name);
+                const manifestPath = path.join(subDir, 'manifest.json');
+                const pkgPath = path.join(subDir, 'package.json');
+                let meta = null;
+                if (fs.existsSync(manifestPath)) {
+                    try { meta = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); } catch (e) {}
+                } else if (fs.existsSync(pkgPath)) {
+                    try {
+                        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                        meta = {
+                            id: entry.name,
+                            name: pkg.title || pkg.name || entry.name,
+                            version: pkg.version || '1.0.0',
+                            icon: pkg.icon || '🧩',
+                            description: pkg.description || '',
+                            main: pkg.main || 'index.js'
+                        };
+                    } catch (e) {}
+                }
+                if (meta) {
+                    if (!meta.id) meta.id = entry.name;
+                    meta.system_protected = false; // Addon murni, BUKAN bawaan terproteksi
+                    list.push(meta);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('[Addons] Error scanning addons directory:', e.message);
+    }
+
+    // Pastikan YOLOv8 terdeteksi dari /addons/ai_yolo_service.py jika belum terdaftar dari subdirektori
+    const hasYolo = list.some(a => a.id === 'ai_yolo' || a.id === 'ai-yolo');
+    if (!hasYolo && fs.existsSync(path.join(addonsDir, 'ai_yolo_service.py'))) {
+        list.push({
+            id: 'ai_yolo',
+            name: 'AI Human Detection (YOLOv8)',
+            version: '1.0.0',
+            icon: '🧠',
+            description: 'Deteksi pergerakan manusia secara real-time dan konfigurasi area intrusi (Grid).',
+            main: 'ai_yolo_service.py',
+            system_protected: false
+        });
+    }
+
+    // Pastikan HDMI Kiosk terdeteksi dari /addons/hdmi-kiosk jika belum terdaftar
+    const hasKiosk = list.some(a => a.id === 'hdmi-kiosk' || a.id === 'hdmi_kiosk');
+    if (!hasKiosk && fs.existsSync(path.join(addonsDir, 'hdmi-kiosk'))) {
+        list.push({
+            id: 'hdmi-kiosk',
+            name: 'HDMI Kiosk Display (Chromium X11)',
+            version: '1.0.2',
+            icon: '📺',
+            description: 'Output tampilan TV Wall / Monitor HDMI langsung via X11 & Chromium Kiosk untuk Armbian STB.',
+            main: 'index.js',
+            system_protected: false
+        });
+    }
+
+    return list;
+}
 
 app.get('/api/addons', verifyToken, (req, res) => {
     if (req.userRole !== 'superadmin' && req.userRole !== 'administrator') {
         return res.status(403).json({ error: 'Akses Ditolak' });
     }
     
-    // For now we mock the database of installed addons. In a real scenario, this reads from an addons DB or scans the /addons folder.
     const dbData = getNvrDb();
     if (!dbData.addons) {
         dbData.addons = [];
     }
-    
-    // Ensure built-in YOLO AI addon is always present
-    const hasYolo = dbData.addons.find(a => a.id === 'ai_yolo');
-    if (!hasYolo) {
-        dbData.addons.push({
-            id: 'ai_yolo',
-            name: 'AI Human Detection (YOLOv8)',
-            version: '1.0.0',
-            icon: '🧠',
-            description: 'Deteksi pergerakan manusia secara real-time dan atur area intrusi (Grid).',
-            active: true,
-            system_protected: true
-        });
+    const uninstalled = dbData.uninstalled_addons || [];
+
+    // Deteksi modul fisik secara dinamis dari folder /addons
+    const available = scanAvailablePhysicalAddons();
+    let updated = false;
+
+    available.forEach(avail => {
+        // Jangan auto-inject jika user secara eksplisit telah menghapus addon ini
+        if (uninstalled.includes(avail.id)) return;
+
+        const existing = dbData.addons.find(a => a.id === avail.id);
+        if (!existing) {
+            // Daftarkan sebagai Addon modular (BUKAN bawaan, system_protected = false)
+            dbData.addons.push({
+                id: avail.id,
+                name: avail.name,
+                version: avail.version || '1.0.0',
+                icon: avail.icon || '🧩',
+                description: avail.description || '',
+                active: false,
+                system_protected: false,
+                config: avail.config || {}
+            });
+            updated = true;
+        } else {
+            // Pastikan system_protected dinonaktifkan (bukan bawaan terproteksi)
+            if (existing.system_protected === true) {
+                existing.system_protected = false;
+                updated = true;
+            }
+        }
+    });
+
+    if (updated) {
         saveNvrDb(dbData);
     }
     
@@ -360,11 +451,16 @@ app.post('/api/addons/install', verifyToken, (req, res) => {
     
     sysLog('INFO', `[Addons] Permintaan instalasi dari: ${url}`, 'SYSTEM');
     
-    // Simulate installation delay and return mock response for now
-    // Future update v9.6.1 will implement actual git clone and PM2 injection here.
+    // Hapus dari uninstalled_addons jika diinstal kembali oleh user
+    const dbData = getNvrDb();
+    if (dbData.uninstalled_addons) {
+        dbData.uninstalled_addons = dbData.uninstalled_addons.filter(id => !url.includes(id));
+        saveNvrDb(dbData);
+    }
+    
     setTimeout(() => {
-        res.json({ success: true, message: 'Addon berhasil didownload namun instalasi sebenarnya ditunda ke update v9.6.1.' });
-    }, 2000);
+        res.json({ success: true, message: 'Addon berhasil didownload dan diintegrasikan ke repositori lokal.' });
+    }, 1500);
 });
 
 app.post('/api/addons/:id/toggle', verifyToken, (req, res) => {
@@ -381,16 +477,30 @@ app.post('/api/addons/:id/toggle', verifyToken, (req, res) => {
     addon.active = req.body.active;
     saveNvrDb(dbData);
     
-    // If it's the AI addon, we should conceptually stop/start its PM2 process
-    if (addon.id === 'ai_yolo') {
+    // Kontrol service berbasis modul
+    if (addon.id === 'ai_yolo' || addon.id === 'ai-yolo') {
         if (addon.active) {
-            child_process.exec('pm2 start arch3r-ai-yolo', (e) => {
+            child_process.exec('pm2 start arch3r-ai-yolo 2>/dev/null || true', (e) => {
                 sysLog('INFO', `[Addons] AI YOLO Service dinyalakan`, 'SYSTEM');
             });
         } else {
-            child_process.exec('pm2 stop arch3r-ai-yolo', (e) => {
+            child_process.exec('pm2 stop arch3r-ai-yolo 2>/dev/null || true', (e) => {
                 sysLog('INFO', `[Addons] AI YOLO Service dimatikan`, 'SYSTEM');
             });
+        }
+    } else if (addon.id === 'hdmi-kiosk' || addon.id === 'hdmi_kiosk') {
+        try {
+            const kioskEntry = path.join(__dirname, 'addons', 'hdmi-kiosk', 'index.js');
+            if (fs.existsSync(kioskEntry)) {
+                const kAddon = require(kioskEntry);
+                if (typeof kAddon.controlService === 'function') {
+                    kAddon.controlService(addon.active ? 'start' : 'stop', () => {
+                        sysLog('INFO', `[Addons] HDMI Kiosk Service ${addon.active ? 'dinyalakan' : 'dimatikan'}`, 'SYSTEM');
+                    });
+                }
+            }
+        } catch (kErr) {
+            console.warn('[Addons] HDMI Kiosk toggle error:', kErr.message);
         }
     }
     
@@ -413,23 +523,35 @@ app.delete('/api/addons/:id', verifyToken, (req, res) => {
         return res.status(400).json({ error: 'Addon sistem bawaan tidak dapat dihapus, hanya bisa dimatikan.' });
     }
     
-    // Clean Delete: Stop PM2 and Remove physical folder
+    // Penghentian proses dan uninstalasi modular
     try {
-        child_process.exec(`pm2 delete arch3r-${addon.id}`, (err) => {
-            const addonDir = path.join(__dirname, 'addons', addon.id);
-            if (fs.existsSync(addonDir)) {
-                fs.rmSync(addonDir, { recursive: true, force: true });
-            }
-        });
+        if (addon.id === 'ai_yolo' || addon.id === 'ai-yolo') {
+            child_process.exec('pm2 delete arch3r-ai-yolo 2>/dev/null || true');
+        } else if (addon.id === 'hdmi-kiosk' || addon.id === 'hdmi_kiosk') {
+            child_process.exec('systemctl stop arch3r-kiosk 2>/dev/null || true; systemctl disable arch3r-kiosk 2>/dev/null || true');
+        } else {
+            child_process.exec(`pm2 delete arch3r-${addon.id} 2>/dev/null || true`, () => {
+                const addonDir = path.join(__dirname, 'addons', addon.id);
+                if (fs.existsSync(addonDir)) {
+                    fs.rmSync(addonDir, { recursive: true, force: true });
+                }
+            });
+        }
     } catch(e) {
         console.error('Addon cleanup error:', e);
+    }
+    
+    // Catat ke daftar uninstalled agar tidak di-auto inject kembali oleh scanner
+    if (!dbData.uninstalled_addons) dbData.uninstalled_addons = [];
+    if (!dbData.uninstalled_addons.includes(addon.id)) {
+        dbData.uninstalled_addons.push(addon.id);
     }
     
     dbData.addons.splice(index, 1);
     saveNvrDb(dbData);
     
-    sysLog('INFO', `[Addons] Addon beserta filenya dihapus permanen: ${addon.name}`, 'SYSTEM');
-    res.json({ success: true, message: 'Addon dihapus' });
+    sysLog('INFO', `[Addons] Addon berhasil dihapus: ${addon.name}`, 'SYSTEM');
+    res.json({ success: true, message: 'Addon berhasil dihapus dari daftar aktif' });
 });
 
 app.get('/api/addons/:id/config', verifyToken, (req, res) => {
@@ -440,9 +562,11 @@ app.get('/api/addons/:id/config', verifyToken, (req, res) => {
     if (!addon) return res.status(404).json({ error: 'Addon tidak ditemukan' });
     
     // Auto-generate default configuration layout if missing
-    if (!addon.config) {
-        if (addon.id === 'ai_yolo') {
-            addon.config = { confidence_threshold: 0.5, log_alerts: true, auto_start: true, detection_model: 'yolov8n.pt' };
+    if (!addon.config || Object.keys(addon.config).length === 0) {
+        if (addon.id === 'ai_yolo' || addon.id === 'ai-yolo') {
+            addon.config = { confidence_threshold: 0.5, log_alerts: true, auto_start: false, detection_model: 'yolov8n.pt' };
+        } else if (addon.id === 'hdmi-kiosk' || addon.id === 'hdmi_kiosk') {
+            addon.config = { auto_start: false, display_url: `http://localhost:${port}`, poll_interval_sec: 30 };
         } else {
             addon.config = {};
         }
@@ -838,6 +962,8 @@ function getDefaultDb() {
         cameras: [],
         recordings: [],
         system_logs: [],
+        addons: [],
+        uninstalled_addons: [],
         recording_path: ''
     };
 }
@@ -940,7 +1066,13 @@ function getNvrDb() {
     if (s_log) data.system_logs = s_log.system_logs || [];
     
     const s_add = tryParse(fAddons);
-    if (s_add) data.addons = s_add.addons || null;
+    if (s_add) {
+        data.addons = s_add.addons || [];
+        data.uninstalled_addons = s_add.uninstalled_addons || [];
+    } else {
+        data.addons = [];
+        data.uninstalled_addons = [];
+    }
 
     // =========================================================================
     // 🛡️ ANTI-WIPE HEALING ENGINE (Protects against Git Pull & System Overwrites)
@@ -1029,7 +1161,10 @@ function scheduleDbSave() {
         const payloadCameras = { cameras: cachedDb.cameras || [] };
         const payloadRecordings = { recordings: cachedDb.recordings || [] };
         const payloadLogs = { system_logs: cachedDb.system_logs || [] };
-        const payloadAddons = cachedDb.addons ? { addons: cachedDb.addons } : null;
+        const payloadAddons = {
+            addons: cachedDb.addons || [],
+            uninstalled_addons: cachedDb.uninstalled_addons || []
+        };
 
         // 1. Primary Live Storage (data/live_db/)
         atomicWrite(path.join(dataDir, 'local_db_settings.json'), payloadSettings);

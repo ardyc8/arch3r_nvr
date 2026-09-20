@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 9.9.3",
-  "description": "NVR CCTV Backend with Node.js, Express, FFmpeg, Custom ONVIF PTZ Settings & Macrovideo V380 Multi-Variant Binary TCP Driver, Diagnostic Profile Probe, HDMI Monitor Add-on and HLS streaming for Armbian STB.",
+  "name": "Arch3r NVR Ver. 9.9.4",
+  "description": "NVR CCTV Backend with Node.js, Express, FFmpeg, Custom ONVIF PTZ Settings & Macrovideo V380 Multi-Variant Driver, Modular Addons Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), and HLS streaming for Armbian STB.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

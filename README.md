@@ -1,7 +1,7 @@
-# ⚡ Arch3r NVR (Ver. 9.9.3)
+# ⚡ Arch3r NVR (Ver. 9.9.4)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
-Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Kiosk HDMI, dan *Developer Console* (Superadmin).
+Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
 
 ---
 
@@ -99,6 +99,12 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
 ---
 
 ## 📜 Log Pembaruan (Changelog)
+- **[Ver 9.9.4]**
+  - **Modular Addons Architecture (YOLOv8 & HDMI Kiosk Dynamic Scanner)**: Mengubah status AI YOLOv8 dan HDMI Kiosk dari bawaan sistem terproteksi (`system_protected = false`) menjadi modul Addons mandiri yang dinamis.
+  - **Dynamic Directory Scanner (`scanAvailablePhysicalAddons`)**: Menambahkan pendeteksian otomatis subfolder `/addons` membaca `manifest.json` dan `package.json` tanpa hardcode.
+  - **Split-DB Lifecycle & Uninstall Tracking**: Menambahkan penanganan state uninstalasi pada `local_db_addons.json` serta manajemen kontrol daemon PM2 / service systemctl.
+  - **Unified Version Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.9.4** di seluruh antarmuka, backend, package manifest, dan metadata sistem.
+
 - **[Ver 9.9.3]**
   - **Multi-Variant Macrovideo V380 Pro PTZ Driver (`/lib/v380_driver.js`)**: Menambahkan generator paket biner varian kedua (`buildV380PtzVariant2Packet`) dengan Magic Header `0x7F 0x00 0x00 0x01` dan Opcode `0x2710` (24-byte packet) khusus untuk kamera generasi baru V380 Pro / V380 Q7/Q8.
   - **Dual-Burst Transmission (`sendV380PtzCommand`)**: Mengirimkan burst biner gabungan (*Standard 0x284A + V380 Pro 0x2710*) pada soket TCP port 8800 secara berurutan untuk menjamin kompatibilitas menyeluruh pada semua varian kamera Macrovideo.
