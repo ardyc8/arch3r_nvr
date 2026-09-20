@@ -959,12 +959,13 @@
                             <!-- Presets ROI and Status Bar -->
                             <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:6px; padding:0.45rem 0.75rem; margin-bottom:0.65rem; flex-wrap:wrap; gap:0.5rem;">
                                 <div style="display:flex; gap:0.35rem; flex-wrap:wrap; align-items:center;">
-                                    <span style="font-size:0.78rem; color:var(--text-muted); margin-right:0.25rem;">Preset ROI:</span>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('spbu')" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#f59e0b; border-color:rgba(245,158,11,0.4);">⛽ Area Pompa Bensin</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('center')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">🎯 Fokus Tengah</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('gate')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">🚪 Pintu Masuk</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('full')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">🔲 Full Frame</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="clearAIGrid()" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#ef4444; border-color:rgba(239,68,68,0.4);">🗑️ Hapus Area</button>
+                                    <span style="font-size:0.78rem; color:var(--text-muted); margin-right:0.25rem;">Target Objek & Area:</span>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('spbu')" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#f59e0b; border-color:rgba(245,158,11,0.4); font-weight:600;" title="Tandai Area Mesin Pompa Dispenser">⛽ Pompa Bensin</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('parking')" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#38bdf8; border-color:rgba(56,189,248,0.4); font-weight:600;" title="Tandai Area Parkir Antrean Kendaraan">🅿️ Area Parkir/Antrean</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('operator')" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#34d399; border-color:rgba(52,211,153,0.4); font-weight:600;" title="Tandai Zona Kerja Petugas Operator">🚶 Pos Operator</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('center')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">🎯 Tengah</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('full')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">🔲 Full Layar</button>
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="clearAIGrid()" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#ef4444; border-color:rgba(239,68,68,0.4);">🗑️ Hapus</button>
                                 </div>
                                 <div id="ai-grid-stream-badge" style="font-size:0.75rem; padding:0.2rem 0.5rem; border-radius:4px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
                                     📡 Menghubungkan ke Feed NVR...

@@ -3874,6 +3874,30 @@ function initAIDrawCanvas() {
     
     aiDrawCanvas = canvas;
     aiDrawCtx = canvas.getContext('2d');
+
+    // Attach ResizeObserver to keep canvas razor-sharp and matched to container/video size
+    if (!window.aiCanvasResizeObserver && window.ResizeObserver) {
+        window.aiCanvasResizeObserver = new ResizeObserver(() => {
+            if (!aiDrawCanvas) return;
+            const cRect = container.getBoundingClientRect();
+            const nw = Math.max(Math.round(cRect.width) || 800, 320);
+            const nh = Math.max(Math.round(cRect.height) || 450, 240);
+            if (aiDrawCanvas.width !== nw || aiDrawCanvas.height !== nh) {
+                // Scale existing rect if present
+                const oldW = aiDrawCanvas.width || 1;
+                const oldH = aiDrawCanvas.height || 1;
+                aiDrawCanvas.width = nw;
+                aiDrawCanvas.height = nh;
+                if (aiGridRect.w > 0) {
+                    aiGridRect.x = Math.round((aiGridRect.x / oldW) * nw);
+                    aiGridRect.y = Math.round((aiGridRect.y / oldH) * nh);
+                    aiGridRect.w = Math.round((aiGridRect.w / oldW) * nw);
+                    aiGridRect.h = Math.round((aiGridRect.h / oldH) * nh);
+                }
+            }
+        });
+        window.aiCanvasResizeObserver.observe(container);
+    }
     
     function getPointerPos(evt) {
         const cRect = canvas.getBoundingClientRect();
@@ -3889,7 +3913,7 @@ function initAIDrawCanvas() {
         isAIDrawing = true;
         const pos = getPointerPos(e);
         aiDragStart = pos;
-        aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0 };
+        aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0, label: 'Area Deteksi Kustom' };
     };
     
     canvas.onmousemove = (e) => {
@@ -3899,7 +3923,7 @@ function initAIDrawCanvas() {
         const y = Math.min(aiDragStart.y, pos.y);
         const w = Math.abs(pos.x - aiDragStart.x);
         const h = Math.abs(pos.y - aiDragStart.y);
-        aiGridRect = { x, y, w, h };
+        aiGridRect = { x, y, w, h, label: aiGridRect.label || 'Area Deteksi Kustom' };
         updateCoordStatusText();
     };
     
@@ -3922,7 +3946,7 @@ function initAIDrawCanvas() {
         isAIDrawing = true;
         const pos = getPointerPos(e);
         aiDragStart = pos;
-        aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0 };
+        aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0, label: 'Area Deteksi Kustom' };
     };
     
     canvas.ontouchmove = (e) => {
@@ -3933,7 +3957,7 @@ function initAIDrawCanvas() {
         const y = Math.min(aiDragStart.y, pos.y);
         const w = Math.abs(pos.x - aiDragStart.x);
         const h = Math.abs(pos.y - aiDragStart.y);
-        aiGridRect = { x, y, w, h };
+        aiGridRect = { x, y, w, h, label: aiGridRect.label || 'Area Deteksi Kustom' };
         updateCoordStatusText();
     };
     
@@ -3945,8 +3969,14 @@ function aiStartRenderLoop() {
     if (aiAnimFrameId) cancelAnimationFrame(aiAnimFrameId);
     
     function loop() {
+        // Render if either the dedicated YOLO AI view pane is active OR the modal overlay is open
+        const yoloView = document.getElementById('view-yolo-ai');
         const modal = document.getElementById('aiGridModalOverlay');
-        if (!modal || modal.style.display === 'none') {
+        const isViewActive = yoloView && yoloView.classList.contains('active');
+        const isModalActive = modal && modal.style.display !== 'none';
+        
+        if (!isViewActive && !isModalActive) {
+            aiAnimFrameId = requestAnimationFrame(loop);
             return;
         }
         
@@ -4086,6 +4116,18 @@ function renderAIFrame() {
     ctx.moveTo(8, h - 8 - bSize); ctx.lineTo(8, h - 8); ctx.lineTo(8 + bSize, h - 8);
     ctx.moveTo(w - 8 - bSize, h - 8); ctx.lineTo(w - 8, h - 8); ctx.lineTo(w - 8, h - 8 - bSize);
     ctx.stroke();
+
+    // If video is playing live, show an active HUD banner in corner
+    if (isVideoPlaying) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.fillRect(w - 185, 8, 175, 22);
+        ctx.strokeRect(w - 185, 8, 175, 22);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 9px monospace';
+        ctx.fillText('📡 YOLO VISION: MONITORING', w - 177, 23);
+    }
     
     // 2. SIMULATION & PROMPT EVALUATION LOGIC
     let targetColliding = false;
@@ -4271,16 +4313,17 @@ function renderAIFrame() {
         });
         
         // Floating Top Tag
-        ctx.fillStyle = aiPromptConditionMet ? 'rgba(239, 68, 68, 0.95)' : (targetColliding ? 'rgba(234, 179, 8, 0.95)' : 'rgba(37, 99, 235, 0.92)');
+        ctx.fillStyle = aiPromptConditionMet ? 'rgba(239, 68, 68, 0.95)' : (targetColliding ? 'rgba(234, 179, 8, 0.95)' : (aiGridRect.themeColor || 'rgba(37, 99, 235, 0.92)'));
         const tagH = 20;
-        const tagW = Math.min(rw, 230);
+        const tagW = Math.min(rw, 240);
         ctx.fillRect(x, Math.max(0, y - tagH), tagW, tagH);
         
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 9.5px monospace';
+        const defaultLabel = aiGridRect.label || '🎯 AREA GRID DETEKSI (ROI)';
         const tagLabel = aiPromptConditionMet 
             ? '🚨 ALARM: SYARAT PROMPT TERPENUHI!' 
-            : (targetColliding ? `⏳ EVALUASI: BERHENTI ${aiDwellTimer.toFixed(1)}s` : '🎯 AREA GRID DETEKSI (ROI)');
+            : (targetColliding ? `⏳ EVALUASI: BERHENTI ${aiDwellTimer.toFixed(1)}s` : defaultLabel);
         ctx.fillText(tagLabel, x + 6, Math.max(14, y - 5));
     }
 }
@@ -4643,18 +4686,43 @@ function setAIGridPreset(preset) {
             x: Math.round(cw * 0.32),
             y: Math.round(ch * 0.28),
             w: Math.round(cw * 0.46),
-            h: Math.round(ch * 0.62)
+            h: Math.round(ch * 0.62),
+            label: '⛽ AREA POMPA BBM (DISPENSER)',
+            themeColor: 'rgba(217, 119, 6, 0.95)'
         };
         appendAITelemetry('⛽ Preset ROI Pompa Bensin Diterapkan (Area Dispenser & Pengendara).', 'info');
+    } else if (preset === 'parking') {
+        // Area parkir / antrean kendaraan di samping dispenser
+        aiGridRect = {
+            x: Math.round(cw * 0.20),
+            y: Math.round(ch * 0.42),
+            w: Math.round(cw * 0.60),
+            h: Math.round(ch * 0.52),
+            label: '🅿️ AREA PARKIR & ANTREAN KENDARAAN',
+            themeColor: 'rgba(2, 132, 199, 0.95)'
+        };
+        appendAITelemetry('🅿️ Preset ROI Area Parkir & Antrean Kendaraan Diterapkan.', 'info');
+    } else if (preset === 'operator') {
+        // Zona kerja petugas operator SPBU
+        aiGridRect = {
+            x: Math.round(cw * 0.52),
+            y: Math.round(ch * 0.35),
+            w: Math.round(cw * 0.24),
+            h: Math.round(ch * 0.55),
+            label: '🚶 POS KERJA OPERATOR SPBU',
+            themeColor: 'rgba(5, 150, 105, 0.95)'
+        };
+        appendAITelemetry('🚶 Preset ROI Pos Kerja Petugas Operator Diterapkan.', 'info');
     } else if (preset === 'full') {
-        aiGridRect = { x: 4, y: 4, w: cw - 8, h: ch - 8 };
+        aiGridRect = { x: 4, y: 4, w: cw - 8, h: ch - 8, label: '🔲 FULL FRAME SCANNER' };
         appendAITelemetry('🔲 Preset Full Frame Diterapkan.', 'info');
     } else if (preset === 'center') {
         aiGridRect = {
             x: Math.round(cw * 0.18),
             y: Math.round(ch * 0.18),
             w: Math.round(cw * 0.64),
-            h: Math.round(ch * 0.64)
+            h: Math.round(ch * 0.64),
+            label: '🎯 FOKUS TENGAH (ROI)'
         };
         appendAITelemetry('🎯 Preset Fokus Tengah Diterapkan.', 'info');
     } else if (preset === 'gate') {
@@ -4662,7 +4730,8 @@ function setAIGridPreset(preset) {
             x: Math.round(cw * 0.10),
             y: Math.round(ch * 0.45),
             w: Math.round(cw * 0.80),
-            h: Math.round(ch * 0.50)
+            h: Math.round(ch * 0.50),
+            label: '🚪 PINTU MASUK / GERBANG'
         };
         appendAITelemetry('🚪 Preset Gerbang/Pintu Masuk Diterapkan.', 'info');
     }

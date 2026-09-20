@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 10.0.4)
+# ⚡ Arch3r NVR (Ver. 10.0.5)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
@@ -180,6 +180,15 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
     1. *Baris Atas (Horizontal Parallel)*: Panel **🔍 LENSA & FOKUS** (Zoom +, Focus +, Zoom -, Focus -) dan panel **🎬 KONTROL PLAYER & AUDIO** (Play/Pause, Kualitas HD/SD, Snapshot 📸, Slider Volume 🔊, Audio Mute 🔇) diletakkan sejajar secara horizontal dan adaptif/responsif.
     2. *Baris Bawah (Center)*: Dial joystick **D-Pad Sirkular** (▲, ◀, Stop ■, ▶, ▼) diletakkan di bagian tengah bawah (*bottom center*) secara simetris dan rapi.
   - **Unified Version & Metadata Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.7.8** di seluruh tampilan UI, login card, sidebar profil, mobile header, dan metadata sistem.
+
+- **[Ver 10.0.5]**
+  - **Live Canvas Render Loop Bugfix**: Memperbaiki syarat henti pada `aiStartRenderLoop` agar render loop kanvas terus berjalan tanpa henti saat berada di halaman mandiri (`view-yolo-ai`), sehingga kotak grid objek tampil seketika di atas video live.
+  - **Dynamic Video & Container Auto-Resize**: Menambahkan `ResizeObserver` pada kanvas agar bounding box dan koordinat ROI tetap presisi, proporsional, dan tidak bergeser saat ukuran video berubah atau di-resize.
+  - **Multi-Area Object Selector (SPBU Pump, Parking Bay, Operator Post)**:
+    - `⛽ Pompa Bensin`: Menandai area dispenser mesin BBM dengan aksen oranye.
+    - `🅿️ Area Parkir/Antrean`: Menandai zona parkir & antrean kendaraan dengan aksen biru langit.
+    - `🚶 Pos Operator`: Menandai zona kerja petugas operator SPBU dengan aksen hijau emerald.
+  - **HUD Surveillance Overlay**: Mengintegrasikan indikator aktif `📡 YOLO VISION: MONITORING` langsung di sudut video stream dengan tag label area dinamis dan deteksi interaktif.
 
 - **[Ver 10.0.4]**
   - **Dedicated YOLO AI Vision Page Navigation**: Integrasi navigasi mandiri ke halaman terpisah `view-yolo-ai` melalui sidebar menu dan tombol pintasan di kartu Addon/Marketplace tanpa batasan modal popup.
