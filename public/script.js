@@ -3478,7 +3478,7 @@ function switchAIGridTab(tabName) {
                 btn.style.borderBottomColor = (t === 'market') ? '#f59e0b' : ((t === 'sim') ? '#60a5fa' : '#38bdf8');
                 btn.style.background = 'rgba(255,255,255,0.04)';
             } else {
-                btn.style.color = 'var(--text-muted)';
+                btn.style.color = 'var(--text-muted, #94a3b8)';
                 btn.style.borderBottomColor = 'transparent';
                 btn.style.background = 'none';
             }
@@ -3496,6 +3496,31 @@ function switchAIGridTab(tabName) {
         }, 30);
     }
 }
+window.switchAIGridTab = switchAIGridTab;
+
+// Sub-tab switcher for Live Studio settings (zones, prompt, esp, telemetry)
+function switchAISubTab(subTabName) {
+    const subTabs = ['zones', 'prompt', 'esp', 'telemetry'];
+    subTabs.forEach(tab => {
+        const pane = document.getElementById(`ai-subtab-pane-${tab}`);
+        const btn = document.getElementById(`ai-subtab-btn-${tab}`);
+        if (pane) {
+            pane.style.display = (tab === subTabName) ? 'block' : 'none';
+        }
+        if (btn) {
+            if (tab === subTabName) {
+                btn.style.color = '#38bdf8';
+                btn.style.borderBottomColor = '#38bdf8';
+                btn.style.background = 'rgba(56,189,248,0.08)';
+            } else {
+                btn.style.color = 'var(--text-muted, #94a3b8)';
+                btn.style.borderBottomColor = 'transparent';
+                btn.style.background = 'transparent';
+            }
+        }
+    });
+}
+window.switchAISubTab = switchAISubTab;
 
 // Simulated SPBU targets (Motorcyclist & Person Refueling)
 let aiSimState = {
@@ -3911,26 +3936,22 @@ function initAIDrawCanvas() {
             const nw = Math.max(Math.round(cRect.width) || 800, 320);
             const nh = Math.max(Math.round(cRect.height) || 450, 240);
             if (aiDrawCanvas.width !== nw || aiDrawCanvas.height !== nh) {
-                // Scale existing rect if present
-                const oldW = aiDrawCanvas.width || 1;
-                const oldH = aiDrawCanvas.height || 1;
                 aiDrawCanvas.width = nw;
                 aiDrawCanvas.height = nh;
                 if (aiZones && aiZones.length > 0) {
                     aiZones.forEach(z => {
-                        if (z.w > 0) {
-                            z.x = Math.round((z.x / oldW) * nw);
-                            z.y = Math.round((z.y / oldH) * nh);
-                            z.w = Math.round((z.w / oldW) * nw);
-                            z.h = Math.round((z.h / oldH) * nh);
+                        if (typeof z.nx === 'number' && typeof z.nw === 'number' && z.nw > 0) {
+                            z.x = Math.round(z.nx * nw);
+                            z.y = Math.round(z.ny * nh);
+                            z.w = Math.round(z.nw * nw);
+                            z.h = Math.round(z.nh * nh);
+                        } else if (z.w > 0) {
+                            z.nx = z.x / (nw || 1);
+                            z.ny = z.y / (nh || 1);
+                            z.nw = z.w / (nw || 1);
+                            z.nh = z.h / (nh || 1);
                         }
                     });
-                }
-                if (aiGridRect.w > 0) {
-                    aiGridRect.x = Math.round((aiGridRect.x / oldW) * nw);
-                    aiGridRect.y = Math.round((aiGridRect.y / oldH) * nh);
-                    aiGridRect.w = Math.round((aiGridRect.w / oldW) * nw);
-                    aiGridRect.h = Math.round((aiGridRect.h / oldH) * nh);
                 }
             }
         });
@@ -3960,6 +3981,7 @@ function initAIDrawCanvas() {
                 color: aiActiveZoneColor || '#3b82f6',
                 themeColor: aiActiveZoneThemeColor || 'rgba(59,130,246,0.92)',
                 x: 0, y: 0, w: 0, h: 0,
+                nx: 0, ny: 0, nw: 0, nh: 0,
                 targets: ['car', 'motorcycle', 'person']
             }];
             aiActiveZoneIndex = 0;
@@ -3997,6 +4019,10 @@ function initAIDrawCanvas() {
         curZone.y = pos.y;
         curZone.w = 0;
         curZone.h = 0;
+        curZone.nx = pos.x / (canvas.width || 1);
+        curZone.ny = pos.y / (canvas.height || 1);
+        curZone.nw = 0;
+        curZone.nh = 0;
         aiGridRect = curZone;
     };
     
@@ -4022,6 +4048,10 @@ function initAIDrawCanvas() {
         curZone.y = y;
         curZone.w = w;
         curZone.h = h;
+        curZone.nx = x / (canvas.width || 1);
+        curZone.ny = y / (canvas.height || 1);
+        curZone.nw = w / (canvas.width || 1);
+        curZone.nh = h / (canvas.height || 1);
         aiGridRect = curZone;
         updateCoordStatusText();
     };
@@ -4038,8 +4068,14 @@ function initAIDrawCanvas() {
             isAIDrawing = false;
             const curZone = getActiveZone();
             if (curZone.w < 8 || curZone.h < 8) {
+                curZone.x = 0;
+                curZone.y = 0;
                 curZone.w = 0;
                 curZone.h = 0;
+                curZone.nx = 0;
+                curZone.ny = 0;
+                curZone.nw = 0;
+                curZone.nh = 0;
             }
             aiGridRect = curZone;
             updateCoordStatusText();
@@ -4086,6 +4122,10 @@ function initAIDrawCanvas() {
             curZone.y = pos.y;
             curZone.w = 0;
             curZone.h = 0;
+            curZone.nx = pos.x / (canvas.width || 1);
+            curZone.ny = pos.y / (canvas.height || 1);
+            curZone.nw = 0;
+            curZone.nh = 0;
             aiGridRect = curZone;
         }
     };
@@ -4126,6 +4166,10 @@ function initAIDrawCanvas() {
                 curZone.y = y;
                 curZone.w = w;
                 curZone.h = h;
+                curZone.nx = x / (canvas.width || 1);
+                curZone.ny = y / (canvas.height || 1);
+                curZone.nw = w / (canvas.width || 1);
+                curZone.nh = h / (canvas.height || 1);
                 aiGridRect = curZone;
                 updateCoordStatusText();
             }
@@ -4243,8 +4287,32 @@ function renderAIFrame() {
     // Multi-Object Intrusion Detection Zones Rendering
     const zonesToDraw = (aiZones && aiZones.length > 0) ? aiZones : (aiGridRect.w > 0 ? [aiGridRect] : []);
     zonesToDraw.forEach((zone, idx) => {
-        if (!zone || zone.w <= 0 || zone.h <= 0) return;
-        const { x, y, w: rw, h: rh } = zone;
+        if (!zone) return;
+        
+        // Compute pixel coordinates from normalized ratio (or fallback to absolute pixel if ratio not present)
+        let x = 0, y = 0, rw = 0, rh = 0;
+        if (typeof zone.nx === 'number' && typeof zone.nw === 'number' && (zone.nw > 0 || zone.nx > 0)) {
+            x = Math.round(zone.nx * w);
+            y = Math.round(zone.ny * h);
+            rw = Math.round(zone.nw * w);
+            rh = Math.round(zone.nh * h);
+            zone.x = x;
+            zone.y = y;
+            zone.w = rw;
+            zone.h = rh;
+        } else if (zone.w > 0 && zone.h > 0) {
+            x = zone.x;
+            y = zone.y;
+            rw = zone.w;
+            rh = zone.h;
+            zone.nx = x / (w || 1);
+            zone.ny = y / (h || 1);
+            zone.nw = rw / (w || 1);
+            zone.nh = rh / (h || 1);
+        }
+        
+        if (rw <= 0 || rh <= 0) return;
+        
         const isActive = (idx === aiActiveZoneIndex);
         const colorHex = zone.color || (isActive ? aiActiveZoneColor : '#3b82f6');
         const colorTheme = zone.themeColor || (isActive ? aiActiveZoneThemeColor : 'rgba(59,130,246,0.92)');
@@ -4797,6 +4865,10 @@ function addNewZoneSlot() {
         y: 0,
         w: 0,
         h: 0,
+        nx: 0,
+        ny: 0,
+        nw: 0,
+        nh: 0,
         targets: defaultTargets
     };
     
@@ -5302,48 +5374,36 @@ function setUniversalPreset(preset) {
 function setAIGridPreset(preset) {
     if (!aiDrawCanvas) initAIDrawCanvas();
     if (!aiDrawCanvas) return;
-    const cw = aiDrawCanvas.width;
-    const ch = aiDrawCanvas.height;
+    const cw = aiDrawCanvas.width || 800;
+    const ch = aiDrawCanvas.height || 450;
     
     let x = 0, y = 0, w = 0, h = 0, label = 'Area Deteksi';
+    let nx = 0, ny = 0, nw = 0, nh = 0;
     
     if (preset === 'spbu') {
-        x = Math.round(cw * 0.30);
-        y = Math.round(ch * 0.25);
-        w = Math.round(cw * 0.48);
-        h = Math.round(ch * 0.65);
+        nx = 0.30; ny = 0.25; nw = 0.48; nh = 0.65;
         label = '⛽ Area Pompa / Dispenser BBM';
     } else if (preset === 'parking') {
-        x = Math.round(cw * 0.15);
-        y = Math.round(ch * 0.35);
-        w = Math.round(cw * 0.70);
-        h = Math.round(ch * 0.60);
+        nx = 0.15; ny = 0.35; nw = 0.70; nh = 0.60;
         label = '🅿️ Area Parkir Kendaraan';
     } else if (preset === 'gate') {
-        x = Math.round(cw * 0.12);
-        y = Math.round(ch * 0.40);
-        w = Math.round(cw * 0.76);
-        h = Math.round(ch * 0.55);
+        nx = 0.12; ny = 0.40; nw = 0.76; nh = 0.55;
         label = '🚪 Pintu Masuk / Gerbang Utama';
     } else if (preset === 'cashier') {
-        x = Math.round(cw * 0.35);
-        y = Math.round(ch * 0.25);
-        w = Math.round(cw * 0.38);
-        h = Math.round(ch * 0.55);
+        nx = 0.35; ny = 0.25; nw = 0.38; nh = 0.55;
         label = '💳 Meja Kasir / Transaksi';
     } else if (preset === 'center') {
-        x = Math.round(cw * 0.20);
-        y = Math.round(ch * 0.20);
-        w = Math.round(cw * 0.60);
-        h = Math.round(ch * 0.60);
+        nx = 0.20; ny = 0.20; nw = 0.60; nh = 0.60;
         label = '🎯 Area Fokus Tengah (ROI)';
     } else if (preset === 'full') {
-        x = 6;
-        y = 6;
-        w = cw - 12;
-        h = ch - 12;
+        nx = 0.01; ny = 0.01; nw = 0.98; nh = 0.98;
         label = '🔲 Seluruh Area Pantauan (Full Frame)';
     }
+    
+    x = Math.round(nx * cw);
+    y = Math.round(ny * ch);
+    w = Math.round(nw * cw);
+    h = Math.round(nh * ch);
     
     const cur = (aiZones && aiZones[aiActiveZoneIndex]) ? aiZones[aiActiveZoneIndex] : aiGridRect;
     if (cur) {
@@ -5351,6 +5411,10 @@ function setAIGridPreset(preset) {
         cur.y = y;
         cur.w = w;
         cur.h = h;
+        cur.nx = nx;
+        cur.ny = ny;
+        cur.nw = nw;
+        cur.nh = nh;
         cur.label = label;
     }
     aiGridRect = cur;
@@ -5368,6 +5432,10 @@ function clearAIGrid() {
         cur.y = 0;
         cur.w = 0;
         cur.h = 0;
+        cur.nx = 0;
+        cur.ny = 0;
+        cur.nw = 0;
+        cur.nh = 0;
     }
     aiGridRect = cur;
     updateCoordStatusText();
@@ -5389,21 +5457,27 @@ function restoreAIGridFromData(grid) {
             let zy = Number(z.y) || 0;
             let zw = Number(z.w) || 0;
             let zh = Number(z.h) || 0;
+            
+            let nx = 0, ny = 0, nw = 0, nh = 0;
             if (zx <= 1 && zw <= 1 && (zx > 0 || zw > 0)) {
-                zx = zx * cw;
-                zy = zy * ch;
-                zw = zw * cw;
-                zh = zh * ch;
+                nx = zx; ny = zy; nw = zw; nh = zh;
+            } else if (cw > 0 && ch > 0) {
+                nx = zx / cw; ny = zy / ch; nw = zw / cw; nh = zh / ch;
             }
+            
             return {
                 id: z.id || ('zone_' + (idx + 1)),
                 label: z.label || `Objek #${idx + 1}`,
                 color: z.color || '#3b82f6',
                 themeColor: z.themeColor || 'rgba(59,130,246,0.92)',
-                x: Math.round(zx),
-                y: Math.round(zy),
-                w: Math.round(zw),
-                h: Math.round(zh),
+                x: Math.round(nx * cw),
+                y: Math.round(ny * ch),
+                w: Math.round(nw * cw),
+                h: Math.round(nh * ch),
+                nx: nx,
+                ny: ny,
+                nw: nw,
+                nh: nh,
                 targets: z.targets || ['car', 'motorcycle', 'person']
             };
         });
@@ -5415,11 +5489,11 @@ function restoreAIGridFromData(grid) {
         let w = Number(grid.w) || 0;
         let h = Number(grid.h) || 0;
         
+        let nx = 0, ny = 0, nw = 0, nh = 0;
         if (x <= 1 && w <= 1 && (x > 0 || w > 0)) {
-            x = x * cw;
-            y = y * ch;
-            w = w * cw;
-            h = h * ch;
+            nx = x; ny = y; nw = w; nh = h;
+        } else if (cw > 0 && ch > 0) {
+            nx = x / cw; ny = y / ch; nw = w / cw; nh = h / ch;
         }
         
         const zoneLabel = grid.label || '⛽ Area Pompa BBM';
@@ -5432,10 +5506,14 @@ function restoreAIGridFromData(grid) {
                 label: zoneLabel,
                 color: zoneColor,
                 themeColor: zoneTheme,
-                x: Math.round(x),
-                y: Math.round(y),
-                w: Math.round(w),
-                h: Math.round(h),
+                x: Math.round(nx * cw),
+                y: Math.round(ny * ch),
+                w: Math.round(nw * cw),
+                h: Math.round(nh * ch),
+                nx: nx,
+                ny: ny,
+                nw: nw,
+                nh: nh,
                 targets: ['car', 'motorcycle', 'person']
             }
         ];

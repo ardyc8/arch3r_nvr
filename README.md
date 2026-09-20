@@ -1,5 +1,12 @@
-# ⚡ Arch3r NVR (Ver. 10.0.9)
+# ⚡ Arch3r NVR (Ver. 10.1.0)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.1.0:
+- **Floating CCTV HUD & Multi-Mode ROI**: Mengadopsi kontrol tombol mengambang (floating buttons) yang elegan dan non-intrusif pada player video YOLO AI sehingga area video tidak tertutupi panel.
+- **Normalisasi Koordinat 100% Presisi (Preview vs Fullscreen)**: Menggunakan model *Normalized Relative Coordinates* ($nx, ny, nw, nh$) sehingga titik dan ukuran bounding box di mode pratinjau normal dan mode layar penuh (*fullscreen*) selalu konsisten dan akurat.
+- **Tampilan Multi-Objek Lengkap di Pratinjau**: Memastikan objek kedua, ketiga, dst. tetap terlihat dengan jelas di mode pratinjau dengan rendering warna transparan dan badge terpisah.
+- **Pengelompokan Tab Responsif (HP & Desktop)**: Membagi antarmuka YOLO AI yang padat menjadi sistem tab terorganisir (Area Deteksi ROI, Aturan Prompt AI, Alarm IoT ESP8266, Telemetri Visi, Lab Simulasi, Marketplace .yai) yang adaptif untuk layar ponsel (portrait & landscape) maupun monitor desktop.
+
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
 
