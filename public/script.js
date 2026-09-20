@@ -3382,8 +3382,9 @@ let allLogsCache = [];
 
 
 // =========================================================
-// AI YOLOv8 Visual Detection Grid & Tactical Surveillance HUD
-// Arch3r NVR Ver 9.9.8 (Zero-Crash & Persistent Multi-Tenant)
+// =========================================================
+// AI YOLOv8 Visual Detection Grid, Live Stream Overlay & ESP8266 IoT
+// Arch3r NVR Ver 9.9.9 (Persistent Storage, Real-Time HUD & IoT Trigger)
 // =========================================================
 let aiDrawCanvas = null;
 let aiDrawCtx = null;
@@ -3391,6 +3392,9 @@ let isAIDrawing = false;
 let aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
 let aiDragStart = { x: 0, y: 0 };
 let aiCurrentCam = null;
+let aiSimActive = true;
+let aiAnimFrameId = null;
+let aiSimTarget = { x: 80, y: 100, vx: 2.4, vy: 1.6, w: 56, h: 110, inside: false };
 
 async function openAIGridModal(defaultCamId = null) {
     const modal = document.getElementById('aiGridModalOverlay');
@@ -3449,10 +3453,13 @@ async function openAIGridModal(defaultCamId = null) {
     const container = document.getElementById('ai-canvas-container');
     if (container) container.style.display = 'flex';
     
+    // Start continuous rendering loop for real-time visualization
+    aiStartRenderLoop();
+    
     // Load feed and initialize canvas immediately
     setTimeout(() => {
         loadCamStreamForAI();
-    }, 50);
+    }, 40);
 }
 
 async function loadCamStreamForAI() {
@@ -3474,12 +3481,12 @@ async function loadCamStreamForAI() {
     
     if (video) {
         video.pause();
-        video.style.display = 'none';
+        video.style.display = 'block'; // Keep video visible under transparent canvas
         video.src = '';
     }
     
     if (badge) {
-        badge.innerHTML = '📡 Menyiapkan Canvas Grid...';
+        badge.innerHTML = '📡 Menghubungkan Feed Kamera...';
         badge.style.color = '#60a5fa';
     }
     
@@ -3489,16 +3496,16 @@ async function loadCamStreamForAI() {
     if (!cam) {
         cam = {
             id: camId || 'virtual_test',
-            name: camId === 'virtual_test' ? 'Kamera Simulasi' : 'Kamera Target',
+            name: camId === 'virtual_test' ? 'Kamera Simulasi Visual' : 'Kamera Target',
             ip: '127.0.0.1'
         };
     }
     aiCurrentCam = cam;
     
-    // Initialize canvas first so it is immediately visible (preventing black screen)
+    // Initialize canvas size and pointer event listeners
     initAIDrawCanvas();
     
-    // Fetch saved persistent grid for this camera from database
+    // Fetch saved persistent grid & ESP8266 settings from NVR database
     try {
         const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
         const res = await fetchFn('/api/ai/grid/' + encodeURIComponent(cam.id));
@@ -3509,8 +3516,16 @@ async function loadCamStreamForAI() {
             } else {
                 aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
                 updateCoordStatusText();
-                redrawAIGrid();
             }
+            
+            // Populate ESP8266 settings
+            const espCfg = data.esp_config || (cam.ai_config && cam.ai_config.esp_config);
+            const chk = document.getElementById('esp-enabled-checkbox');
+            const inp = document.getElementById('esp-target-input');
+            const mtd = document.getElementById('esp-method-select');
+            if (chk) chk.checked = !!(espCfg && espCfg.enabled);
+            if (inp && espCfg && espCfg.ip_or_url) inp.value = espCfg.ip_or_url;
+            if (mtd && espCfg && espCfg.method) mtd.value = espCfg.method;
         }
     } catch (err) {
         console.warn('[AI Grid] Info: Grid tersimpan belum ada atau default:', err);
@@ -3534,29 +3549,24 @@ async function loadCamStreamForAI() {
                     badge.innerHTML = '🟢 Live Stream Feed Aktif';
                     badge.style.color = '#34d399';
                 }
-                initAIDrawCanvas();
             };
             video.onerror = () => {
-                video.style.display = 'none';
                 if (badge) {
-                    badge.innerHTML = '⚪ Mode Grid Siaga (Matrix HUD Active)';
+                    badge.innerHTML = '⚪ Mode Simulasi Visual (Stream Standby)';
                     badge.style.color = '#94a3b8';
                 }
-                redrawAIGrid();
             };
         } catch (hlsErr) {
-            video.style.display = 'none';
             if (badge) {
-                badge.innerHTML = '⚪ Mode Grid Siaga (Matrix HUD Active)';
+                badge.innerHTML = '⚪ Mode Simulasi Visual (Stream Standby)';
                 badge.style.color = '#94a3b8';
             }
         }
     } else {
         if (badge) {
-            badge.innerHTML = '⚪ Mode Grid Siaga (Matrix HUD Active)';
+            badge.innerHTML = '⚪ Mode Simulasi Visual (1080p HUD Aktif)';
             badge.style.color = '#94a3b8';
         }
-        redrawAIGrid();
     }
 }
 
@@ -3565,7 +3575,6 @@ function initAIDrawCanvas() {
     const canvas = document.getElementById('ai-draw-canvas');
     if (!container || !canvas) return;
     
-    // Set internal resolution matching display size
     const rect = container.getBoundingClientRect();
     const width = Math.max(Math.round(rect.width) || 800, 320);
     const height = Math.max(Math.round(rect.height) || 450, 240);
@@ -3593,7 +3602,6 @@ function initAIDrawCanvas() {
         const pos = getPointerPos(e);
         aiDragStart = pos;
         aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0 };
-        redrawAIGrid();
     };
     
     canvas.onmousemove = (e) => {
@@ -3604,31 +3612,28 @@ function initAIDrawCanvas() {
         const w = Math.abs(pos.x - aiDragStart.x);
         const h = Math.abs(pos.y - aiDragStart.y);
         aiGridRect = { x, y, w, h };
-        redrawAIGrid();
         updateCoordStatusText();
     };
     
     const endDrawing = () => {
         if (!isAIDrawing) return;
         isAIDrawing = false;
-        if (aiGridRect.w < 12 || aiGridRect.h < 12) {
+        if (aiGridRect.w < 10 || aiGridRect.h < 10) {
             aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
         }
-        redrawAIGrid();
         updateCoordStatusText();
     };
     
     canvas.onmouseup = endDrawing;
     canvas.onmouseleave = endDrawing;
     
-    // Touch support for STB Android / touchscreen monitors
+    // Touchscreen / mobile / STB touch monitor support
     canvas.ontouchstart = (e) => {
         e.preventDefault();
         isAIDrawing = true;
         const pos = getPointerPos(e);
         aiDragStart = pos;
         aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0 };
-        redrawAIGrid();
     };
     
     canvas.ontouchmove = (e) => {
@@ -3640,135 +3645,257 @@ function initAIDrawCanvas() {
         const w = Math.abs(pos.x - aiDragStart.x);
         const h = Math.abs(pos.y - aiDragStart.y);
         aiGridRect = { x, y, w, h };
-        redrawAIGrid();
         updateCoordStatusText();
     };
     
     canvas.ontouchend = endDrawing;
-    
-    redrawAIGrid();
 }
 
-function redrawAIGrid() {
+// Continuous Render Loop: ensures instant visual updates, real-time video transparency & live output visualization
+function aiStartRenderLoop() {
+    if (aiAnimFrameId) cancelAnimationFrame(aiAnimFrameId);
+    
+    function loop() {
+        const modal = document.getElementById('aiGridModalOverlay');
+        if (!modal || modal.style.display === 'none') {
+            return; // Stop loop when modal is closed
+        }
+        
+        renderAIFrame();
+        aiAnimFrameId = requestAnimationFrame(loop);
+    }
+    
+    aiAnimFrameId = requestAnimationFrame(loop);
+}
+
+function aiStopRenderLoop() {
+    if (aiAnimFrameId) {
+        cancelAnimationFrame(aiAnimFrameId);
+        aiAnimFrameId = null;
+    }
+}
+
+function renderAIFrame() {
     if (!aiDrawCanvas || !aiDrawCtx) return;
     const ctx = aiDrawCtx;
     const w = aiDrawCanvas.width;
     const h = aiDrawCanvas.height;
     const video = document.getElementById('ai-stream-preview');
-    const isVideoVisible = video && video.style.display !== 'none' && video.readyState >= 2;
+    const isVideoPlaying = video && !video.paused && video.readyState >= 2 && video.videoWidth > 0;
     
     ctx.clearRect(0, 0, w, h);
     
-    // If video is not playing, render the Tactical Surveillance Matrix HUD
-    if (!isVideoVisible) {
-        // High contrast dark canvas
+    // 1. If video is NOT ready, draw the Surveillance CCTV Studio layout
+    if (!isVideoPlaying) {
+        // Dark gradient backdrop
         const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-        bgGrad.addColorStop(0, '#0a0f1d');
-        bgGrad.addColorStop(1, '#070a12');
+        bgGrad.addColorStop(0, '#0c1322');
+        bgGrad.addColorStop(1, '#060a12');
         ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, w, h);
         
-        // 10x10 Matrix Grid lines
+        // Perspective room guide lines (Floor, Entrance Door, Walls)
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        // Floor perspective
+        ctx.moveTo(0, h * 0.72); ctx.lineTo(w, h * 0.72);
+        ctx.moveTo(w * 0.2, h * 0.72); ctx.lineTo(0, h);
+        ctx.moveTo(w * 0.8, h * 0.72); ctx.lineTo(w, h);
+        ctx.moveTo(w * 0.5, h * 0.72); ctx.lineTo(w * 0.5, h);
+        
+        // Entrance door guide
+        ctx.rect(w * 0.38, h * 0.28, w * 0.24, h * 0.44);
+        ctx.stroke();
+        
+        // Subtle 10x10 Matrix Grid
         const cols = 10;
         const rows = 10;
         const cellW = w / cols;
         const cellH = h / rows;
-        
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.14)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.08)';
         ctx.beginPath();
         for (let c = 1; c < cols; c++) {
-            ctx.moveTo(c * cellW, 0);
-            ctx.lineTo(c * cellW, h);
+            ctx.moveTo(c * cellW, 0); ctx.lineTo(c * cellW, h);
         }
         for (let r = 1; r < rows; r++) {
-            ctx.moveTo(0, r * cellH);
-            ctx.lineTo(w, r * cellH);
+            ctx.moveTo(0, r * cellH); ctx.lineTo(w, r * cellH);
         }
         ctx.stroke();
         
         // Axis Coordinate markers
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.5)';
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
         ctx.font = '10px monospace';
         const colLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
         for (let c = 0; c < cols; c++) {
-            ctx.fillText(colLetters[c], c * cellW + cellW / 2 - 4, 14);
+            ctx.fillText(colLetters[c], c * cellW + cellW / 2 - 4, 13);
         }
         for (let r = 0; r < rows; r++) {
-            ctx.fillText(String(r + 1), 6, r * cellH + cellH / 2 + 4);
+            ctx.fillText(String(r + 1), 5, r * cellH + cellH / 2 + 4);
         }
         
-        // Center Crosshair indicator
+        // Center crosshair
         const cx = w / 2;
         const cy = h / 2;
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(cx - 16, cy); ctx.lineTo(cx + 16, cy);
-        ctx.moveTo(cx, cy - 16); ctx.lineTo(cx, cy + 16);
-        ctx.stroke();
-        
-        // Corner HUD brackets
-        const bSize = 16;
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.45)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(8, 8 + bSize); ctx.lineTo(8, 8); ctx.lineTo(8 + bSize, 8);
-        ctx.moveTo(w - 8 - bSize, 8); ctx.lineTo(w - 8, 8); ctx.lineTo(w - 8, 8 + bSize);
-        ctx.moveTo(8, h - 8 - bSize); ctx.lineTo(8, h - 8); ctx.lineTo(8 + bSize, h - 8);
-        ctx.moveTo(w - 8 - bSize, h - 8); ctx.lineTo(w - 8, h - 8); ctx.lineTo(w - 8, h - 8 - bSize);
-        ctx.stroke();
-        
-        // Surveillance HUD Status Bar
-        ctx.fillStyle = '#60a5fa';
-        ctx.font = '11px monospace';
-        const camLabel = aiCurrentCam ? aiCurrentCam.name : 'KAMERA NVR';
-        ctx.fillText(`● CAM: ${camLabel.toUpperCase()} | 1920x1080 @ 25FPS | YOLOv8 INTRUSION ROI`, 24, 28);
-        
-        // Center instructional prompt if no box drawn
-        if (aiGridRect.w === 0) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-            ctx.font = '13px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('🎯 Klik & Tarik untuk Menggambar Area Deteksi Intrusi (ROI)', cx, cy + 30);
-            ctx.textAlign = 'left';
-        }
-    } else {
-        // Video playing: subtle matrix lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        const cols = 6;
-        const rows = 4;
-        for (let c = 1; c < cols; c++) {
-            ctx.moveTo((c * w) / cols, 0);
-            ctx.lineTo((c * w) / cols, h);
-        }
-        for (let r = 1; r < rows; r++) {
-            ctx.moveTo(0, (r * h) / rows);
-            ctx.lineTo(w, (r * h) / rows);
-        }
+        ctx.moveTo(cx - 14, cy); ctx.lineTo(cx + 14, cy);
+        ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy + 14);
+        ctx.stroke();
+        
+        // Camera metadata banner
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '11px monospace';
+        const camLabel = aiCurrentCam ? aiCurrentCam.name : 'KAMERA NVR';
+        const dateStr = new Date().toLocaleTimeString('id-ID');
+        ctx.fillText(`● CAM: ${camLabel.toUpperCase()} | 1080p HD | LIVE REC ${dateStr}`, 24, 26);
+    } else {
+        // Video playing: draw very subtle guide overlay
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2);
+        ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h);
         ctx.stroke();
     }
     
-    // Draw Intrusion Detection Rect if active
+    // Corner brackets
+    const bSize = 14;
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(8, 8 + bSize); ctx.lineTo(8, 8); ctx.lineTo(8 + bSize, 8);
+    ctx.moveTo(w - 8 - bSize, 8); ctx.lineTo(w - 8, 8); ctx.lineTo(w - 8, 8 + bSize);
+    ctx.moveTo(8, h - 8 - bSize); ctx.lineTo(8, h - 8); ctx.lineTo(8 + bSize, h - 8);
+    ctx.moveTo(w - 8 - bSize, h - 8); ctx.lineTo(w - 8, h - 8); ctx.lineTo(w - 8, h - 8 - bSize);
+    ctx.stroke();
+    
+    // 2. Real-Time Detection Output Simulation (Answers user: "bisakah langsung memvisualisasikan langsung output waktu sedang memilih grid videonya")
+    let targetColliding = false;
+    if (aiSimActive) {
+        // Move target smoothly
+        aiSimTarget.x += aiSimTarget.vx;
+        aiSimTarget.y += aiSimTarget.vy;
+        
+        // Bounce off canvas walls
+        if (aiSimTarget.x <= 15) {
+            aiSimTarget.x = 15;
+            aiSimTarget.vx = Math.abs(aiSimTarget.vx);
+        } else if (aiSimTarget.x + aiSimTarget.w >= w - 15) {
+            aiSimTarget.x = w - 15 - aiSimTarget.w;
+            aiSimTarget.vx = -Math.abs(aiSimTarget.vx);
+        }
+        if (aiSimTarget.y <= 30) {
+            aiSimTarget.y = 30;
+            aiSimTarget.vy = Math.abs(aiSimTarget.vy);
+        } else if (aiSimTarget.y + aiSimTarget.h >= h - 20) {
+            aiSimTarget.y = h - 20 - aiSimTarget.h;
+            aiSimTarget.vy = -Math.abs(aiSimTarget.vy);
+        }
+        
+        // Collision Detection: is target center inside user drawn grid?
+        const tx = aiSimTarget.x;
+        const ty = aiSimTarget.y;
+        const tw = aiSimTarget.w;
+        const th = aiSimTarget.h;
+        const tCenterX = tx + tw / 2;
+        const tCenterY = ty + th * 0.7; // Feet / torso anchor
+        
+        if (aiGridRect.w > 10 && aiGridRect.h > 10) {
+            const gx = aiGridRect.x;
+            const gy = aiGridRect.y;
+            const gw = aiGridRect.w;
+            const gh = aiGridRect.h;
+            
+            if (tCenterX >= gx && tCenterX <= gx + gw && tCenterY >= gy && tCenterY <= gy + gh) {
+                targetColliding = true;
+            }
+        }
+        aiSimTarget.inside = targetColliding;
+        
+        // Draw Simulated Human Box
+        const pulse = Math.sin(Date.now() / 150) * 0.2 + 0.8;
+        ctx.save();
+        if (targetColliding) {
+            // Alarm Collision State: glowing red
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 15;
+            ctx.strokeStyle = `rgba(239, 68, 68, ${pulse})`;
+            ctx.lineWidth = 2.5;
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+        } else {
+            // Safe State: cyan
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 8;
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.8;
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+        }
+        
+        ctx.fillRect(tx, ty, tw, th);
+        ctx.strokeRect(tx, ty, tw, th);
+        ctx.restore();
+        
+        // Human Silhouette Representation
+        ctx.save();
+        ctx.fillStyle = targetColliding ? '#ef4444' : '#38bdf8';
+        const headRadius = tw * 0.16;
+        ctx.beginPath();
+        ctx.arc(tx + tw / 2, ty + headRadius * 2, headRadius, 0, Math.PI * 2);
+        ctx.fill();
+        // Body lines
+        ctx.strokeStyle = targetColliding ? '#ef4444' : '#38bdf8';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        // Spine
+        ctx.moveTo(tx + tw / 2, ty + headRadius * 3);
+        ctx.lineTo(tx + tw / 2, ty + th * 0.65);
+        // Arms
+        ctx.moveTo(tx + tw * 0.2, ty + th * 0.45);
+        ctx.lineTo(tx + tw * 0.8, ty + th * 0.45);
+        // Legs
+        ctx.moveTo(tx + tw / 2, ty + th * 0.65);
+        ctx.lineTo(tx + tw * 0.22, ty + th * 0.95);
+        ctx.moveTo(tx + tw / 2, ty + th * 0.65);
+        ctx.lineTo(tx + tw * 0.78, ty + th * 0.95);
+        ctx.stroke();
+        ctx.restore();
+        
+        // Target Badge Label
+        const badgeColor = targetColliding ? '#ef4444' : '#0284c7';
+        const badgeText = targetColliding ? '🚨 [MANUSIA 96%] INTRUSI!' : '🚶 [MANUSIA 96%] Aman';
+        ctx.fillStyle = badgeColor;
+        ctx.fillRect(tx, Math.max(0, ty - 18), 125, 18);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9.5px monospace';
+        ctx.fillText(badgeText, tx + 4, Math.max(12, ty - 5));
+    }
+    
+    // Update live banner
+    const banner = document.getElementById('ai-live-collision-banner');
+    if (banner) {
+        banner.style.display = targetColliding ? 'block' : 'none';
+    }
+    
+    // 3. User Drawn Intrusion Detection Grid (ROI)
     if (aiGridRect.w > 0 && aiGridRect.h > 0) {
         const { x, y, w: rw, h: rh } = aiGridRect;
         
-        // Translucent red fill
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.28)';
+        // Fill color: more intense if target is inside
+        ctx.fillStyle = targetColliding ? 'rgba(239, 68, 68, 0.42)' : 'rgba(239, 68, 68, 0.22)';
         ctx.fillRect(x, y, rw, rh);
         
-        // High contrast dashed red border
+        // Dashed Red Border
         ctx.save();
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 2.5;
-        ctx.setLineDash([6, 4]);
+        ctx.setLineDash([7, 4]);
         ctx.strokeRect(x, y, rw, rh);
         ctx.restore();
         
-        // Solid corner anchors
-        const pSize = 6;
+        // Corner anchor points
+        const pSize = 7;
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 2;
@@ -3783,15 +3910,15 @@ function redrawAIGrid() {
             ctx.strokeRect(cx - pSize/2, cy - pSize/2, pSize, pSize);
         });
         
-        // Badge Label on top of box
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+        // Floating Top Label
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.95)';
         const tagH = 20;
-        const tagW = Math.min(rw, 180);
+        const tagW = Math.min(rw, 190);
         ctx.fillRect(x, Math.max(0, y - tagH), tagW, tagH);
         
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 10px monospace';
-        ctx.fillText('🚨 AREA DETEKSI INTRUSI', x + 6, Math.max(14, y - 5));
+        ctx.fillText(targetColliding ? '🚨 ALARM: TARGET DI AREA ROI!' : '🎯 AREA DETEKSI INTRUSI', x + 6, Math.max(14, y - 5));
     }
 }
 
@@ -3799,7 +3926,7 @@ function updateCoordStatusText() {
     const el = document.getElementById('ai-coord-status');
     if (!el) return;
     if (!aiDrawCanvas || aiGridRect.w === 0 || aiGridRect.h === 0) {
-        el.innerHTML = '<span style="color:#94a3b8;">Belum ada area yang digambar.</span>';
+        el.innerHTML = '<span style="color:#94a3b8;">Belum ada area deteksi yang digambar.</span>';
         return;
     }
     const cw = aiDrawCanvas.width;
@@ -3813,6 +3940,26 @@ function updateCoordStatusText() {
         `Y: <span style="color:#60a5fa;">${py}%</span> | ` +
         `Lebar: <span style="color:#f59e0b;">${pw}%</span> | ` +
         `Tinggi: <span style="color:#f59e0b;">${ph}%</span>`;
+}
+
+function toggleAISimulation() {
+    aiSimActive = !aiSimActive;
+    const btn = document.getElementById('btn-toggle-ai-sim');
+    if (btn) {
+        if (aiSimActive) {
+            btn.innerHTML = '👁️ Simulasi Output: AKTIF';
+            btn.style.background = 'rgba(16,185,129,0.15)';
+            btn.style.color = '#34d399';
+            btn.style.borderColor = 'rgba(16,185,129,0.4)';
+        } else {
+            btn.innerHTML = '👁️ Simulasi Output: MATI';
+            btn.style.background = 'rgba(148,163,184,0.15)';
+            btn.style.color = '#94a3b8';
+            btn.style.borderColor = 'rgba(148,163,184,0.3)';
+        }
+    }
+    const banner = document.getElementById('ai-live-collision-banner');
+    if (banner && !aiSimActive) banner.style.display = 'none';
 }
 
 function setAIGridPreset(preset) {
@@ -3838,13 +3985,11 @@ function setAIGridPreset(preset) {
             h: Math.round(ch * 0.50)
         };
     }
-    redrawAIGrid();
     updateCoordStatusText();
 }
 
 function clearAIGrid() {
     aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
-    redrawAIGrid();
     updateCoordStatusText();
     const feedback = document.getElementById('ai-save-feedback');
     if (feedback) feedback.textContent = 'Area intrusi dibersihkan.';
@@ -3860,7 +4005,6 @@ function restoreAIGridFromData(grid) {
     let w = Number(grid.w) || 0;
     let h = Number(grid.h) || 0;
     
-    // If normalized float (0..1), scale to canvas width/height
     if (x <= 1 && w <= 1 && (x > 0 || w > 0)) {
         x = x * cw;
         y = y * ch;
@@ -3868,8 +4012,171 @@ function restoreAIGridFromData(grid) {
         h = h * ch;
     }
     aiGridRect = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
-    redrawAIGrid();
     updateCoordStatusText();
+}
+
+// ESP8266 IoT Section Management & Testing
+function toggleESPSection() {
+    const body = document.getElementById('espSettingsBody');
+    const chevron = document.getElementById('espChevron');
+    if (!body) return;
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        if (chevron) chevron.textContent = '▲ Sembunyikan';
+    } else {
+        body.style.display = 'none';
+        if (chevron) chevron.textContent = '▼ Buka Pengaturan';
+    }
+}
+
+async function testESP8266Trigger() {
+    const inp = document.getElementById('esp-target-input');
+    const mtd = document.getElementById('esp-method-select');
+    const statusEl = document.getElementById('esp-test-status');
+    const btn = document.getElementById('btn-test-esp');
+    
+    const target = inp ? inp.value.trim() : '';
+    const method = mtd ? mtd.value : 'GET';
+    
+    if (!target) {
+        alert('Masukkan IP atau URL ESP8266 terlebih dahulu (contoh: 192.168.1.150)!');
+        if (inp) inp.focus();
+        return;
+    }
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Menguji...';
+    }
+    if (statusEl) {
+        statusEl.textContent = 'Menghubungi ESP8266...';
+        statusEl.style.color = '#60a5fa';
+    }
+    
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
+        const res = await fetchFn('/api/ai/test_esp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target, method })
+        });
+        
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.success) {
+            if (statusEl) {
+                statusEl.textContent = `✅ ${data.message}`;
+                statusEl.style.color = '#10b981';
+            }
+            alert(`Berhasil! ESP8266 merespons sinyal alarm (${data.url}) dengan status HTTP ${data.status}.`);
+        } else {
+            throw new Error(data.error || 'HTTP ' + res.status);
+        }
+    } catch (e) {
+        console.error('[ESP8266 Test Error]', e);
+        if (statusEl) {
+            statusEl.textContent = `❌ ${e.message}`;
+            statusEl.style.color = '#ef4444';
+        }
+        alert(`Gagal menghubungi ESP8266:\n${e.message}\n\nPastikan ESP8266 dan STB NVR berada pada jaringan WiFi/LAN yang sama.`);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = '🔔 Test Trigger ESP8266';
+        }
+    }
+}
+
+function showArduinoCodeModal() {
+    const modal = document.getElementById('arduinoCodeModalOverlay');
+    const pre = document.getElementById('arduinoCodeSnippet');
+    if (pre) {
+        pre.textContent = `/*
+ * Arch3r NVR (Ver. 9.9.9) - ESP8266 IoT Alarm & Siren Receiver
+ * Board: NodeMCU 1.0 (ESP-12E Module) atau Wemos D1 Mini
+ * Output: Pin D1 (GPIO 5) terhubung ke Relay / Buzzer Aktif
+ */
+
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+
+const char* ssid = "NAMA_WIFI_ANDA";
+const char* password = "PASSWORD_WIFI_ANDA";
+
+ESP8266WebServer server(80);
+const int RELAY_PIN = D1; // GPIO5 -> Pin Relay / Buzzer
+
+unsigned long alarmOffTime = 0;
+bool isAlarmActive = false;
+
+void handleAlarm() {
+  String event = server.arg("event");
+  String cam = server.arg("cam");
+  Serial.printf("[NVR ALARM] Terpicu Kamera: %s | Event: %s\\n", cam.c_str(), event.c_str());
+
+  // Nyalakan relay / sirine selama 3 detik
+  digitalWrite(RELAY_PIN, HIGH);
+  isAlarmActive = true;
+  alarmOffTime = millis() + 3000;
+
+  server.send(200, "application/json", "{\\"status\\":\\"ok\\",\\"alarm\\":true,\\"pin\\":5}");
+}
+
+void handleRoot() {
+  server.send(200, "text/plain", "Arch3r NVR ESP8266 Alarm Receiver Siaga");
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  Serial.print("Menghubungkan ke WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\\nWiFi Terhubung!");
+  Serial.print("Alamat IP ESP8266: ");
+  Serial.println(WiFi.localIP()); // Masukkan IP ini ke Pengaturan Arch3r NVR!
+
+  server.on("/", handleRoot);
+  server.on("/alarm", handleAlarm);
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+  
+  // Matikan sirine setelah durasi berakhir secara non-blocking
+  if (isAlarmActive && millis() > alarmOffTime) {
+    digitalWrite(RELAY_PIN, LOW);
+    isAlarmActive = false;
+  }
+}`;
+    }
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeArduinoCodeModal() {
+    const modal = document.getElementById('arduinoCodeModalOverlay');
+    if (modal) modal.style.display = 'none';
+}
+
+function copyArduinoCode() {
+    const pre = document.getElementById('arduinoCodeSnippet');
+    const btn = document.getElementById('btn-copy-arduino');
+    if (!pre) return;
+    navigator.clipboard.writeText(pre.textContent).then(() => {
+        if (btn) {
+            btn.textContent = '✅ Disalin!';
+            setTimeout(() => { btn.textContent = '📋 Salin Skrip'; }, 2000);
+        }
+    }).catch(() => {
+        alert('Gagal menyalin otomatis. Silakan pilih dan salin teks secara manual.');
+    });
 }
 
 async function saveAIGrid() {
@@ -3892,6 +4199,17 @@ async function saveAIGrid() {
     const cw = (aiDrawCanvas && aiDrawCanvas.width) || 800;
     const ch = (aiDrawCanvas && aiDrawCanvas.height) || 450;
     
+    // Read ESP8266 settings
+    const espChk = document.getElementById('esp-enabled-checkbox');
+    const espInp = document.getElementById('esp-target-input');
+    const espMtd = document.getElementById('esp-method-select');
+    const espConfig = {
+        enabled: espChk ? espChk.checked : false,
+        ip_or_url: espInp ? espInp.value.trim() : '',
+        method: espMtd ? espMtd.value : 'GET',
+        cooldown_sec: 4
+    };
+    
     const payload = {
         camera_id: camId,
         x: parseFloat(((aiGridRect.x || 0) / cw).toFixed(4)),
@@ -3901,6 +4219,7 @@ async function saveAIGrid() {
         pixel_width: cw,
         pixel_height: ch,
         enabled: aiGridRect.w > 0,
+        esp_config: espConfig,
         updated_at: new Date().toISOString()
     };
     
@@ -3927,7 +4246,7 @@ async function saveAIGrid() {
                 feedback.textContent = '✅ Berhasil disimpan ke NVR database!';
                 feedback.style.color = '#10b981';
             }
-            alert('Konfigurasi Area Deteksi Visual berhasil disimpan secara persisten ke NVR!');
+            alert('Konfigurasi Area Deteksi Visual & ESP8266 berhasil disimpan secara persisten ke NVR!');
             setTimeout(() => {
                 closeAIGridModal();
             }, 600);
@@ -3944,14 +4263,19 @@ async function saveAIGrid() {
     } finally {
         if (btnSave) {
             btnSave.disabled = false;
-            btnSave.textContent = '💾 Simpan ke AI Engine';
+            btnSave.textContent = '💾 Simpan Konfigurasi AI & ESP';
         }
     }
 }
 
 function closeAIGridModal() {
+    aiStopRenderLoop();
+    
     const modal = document.getElementById('aiGridModalOverlay');
     if (modal) modal.style.display = 'none';
+    
+    const banner = document.getElementById('ai-live-collision-banner');
+    if (banner) banner.style.display = 'none';
     
     const video = document.getElementById('ai-stream-preview');
     if (video) {
@@ -3973,6 +4297,12 @@ window.setAIGridPreset = setAIGridPreset;
 window.clearAIGrid = clearAIGrid;
 window.saveAIGrid = saveAIGrid;
 window.closeAIGridModal = closeAIGridModal;
+window.toggleAISimulation = toggleAISimulation;
+window.toggleESPSection = toggleESPSection;
+window.testESP8266Trigger = testESP8266Trigger;
+window.showArduinoCodeModal = showArduinoCodeModal;
+window.closeArduinoCodeModal = closeArduinoCodeModal;
+window.copyArduinoCode = copyArduinoCode;
 
 // ADDON MARKETPLACE LOGIC
 async function fetchInstalledAddons() {

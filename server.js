@@ -38,9 +38,9 @@ const require = createRequire(import.meta.url);
 function getAppVersion() {
     try {
         const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
-        return pkg.version || '9.9.8';
+        return pkg.version || '9.9.9';
     } catch {
-        return '9.9.8';
+        return '9.9.9';
     }
 }
 const APP_VERSION = getAppVersion();
@@ -273,20 +273,23 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v9.9.8 - Persistent Storage & Zero-Crash Guard)
+// AI ADDON PROXY API (v9.9.9 - Persistent Storage, Real-Time HUD & ESP8266 IoT Trigger)
 // ==========================================
+const espTriggerCooldowns = new Map(); // camera_id -> timestamp to avoid spamming ESP8266
+
 app.get('/api/ai/grid/:camId', verifyToken, (req, res) => {
     try {
         const db = getNvrDb();
         const cam = (db.cameras || []).find(c => String(c.id) === String(req.params.camId));
         if (!cam) {
-            return res.json({ success: true, grid: null, message: 'Kamera tidak ditemukan' });
+            return res.json({ success: true, grid: null, esp_config: null, message: 'Kamera tidak ditemukan' });
         }
         res.json({
             success: true,
             camera_id: cam.id,
             camera_name: cam.name,
-            grid: (cam.ai_config && cam.ai_config.grid) || null
+            grid: (cam.ai_config && cam.ai_config.grid) || null,
+            esp_config: (cam.ai_config && cam.ai_config.esp_config) || (db.settings && db.settings.ai_esp_config) || null
         });
     } catch(e) {
         res.status(500).json({ error: 'Gagal membaca grid AI: ' + e.message });
@@ -303,12 +306,15 @@ app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
         const db = getNvrDb();
         const cam = (db.cameras || []).find(c => String(c.id) === String(payload.camera_id));
         
-        // Simpan konfig AI ke database lokal (agar persisten saat reboot STB)
+        // Simpan konfig AI & ESP8266 ke database lokal (agar persisten saat reboot STB)
         if (cam) {
             if (!cam.ai_config) cam.ai_config = {};
             cam.ai_config.grid = payload;
+            if (payload.esp_config) {
+                cam.ai_config.esp_config = payload.esp_config;
+            }
             saveNvrDb(db);
-            sysLog('INFO', `[AI Addon] Area deteksi visual (Grid) diperbarui untuk kamera ${cam.name}`, 'SYSTEM');
+            sysLog('INFO', `[AI Addon] Area deteksi visual & ESP8266 disimpan untuk kamera ${cam.name}`, 'SYSTEM');
         }
 
         // Teruskan ke daemon Python YOLO jika berjalan (port 8000)
@@ -332,9 +338,10 @@ app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
         res.json({
             success: true,
             message: pythonForwarded 
-                ? 'Area deteksi berhasil disimpan ke database NVR & disinkronkan ke YOLO Engine!' 
+                ? 'Area deteksi & konfigurasi ESP8266 berhasil disimpan serta disinkronkan ke YOLO Engine!' 
                 : 'Area deteksi berhasil disimpan ke database NVR (Siaga saat YOLO Service berjalan).',
-            grid: payload
+            grid: payload,
+            esp_config: payload.esp_config || (cam && cam.ai_config?.esp_config) || null
         });
     } catch(e) {
         console.error('[AI Save Grid Error]', e);
@@ -342,10 +349,139 @@ app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     }
 });
 
-// Endpoint yang dipanggil oleh Python saat mendeteksi manusia
-app.post('/api/ai/webhook', (req, res) => {
+// Endpoint untuk menguji coba koneksi dan trigger ke ESP8266
+app.post('/api/ai/test_esp', verifyToken, async (req, res) => {
+    try {
+        const { target, method = 'GET' } = req.body || {};
+        if (!target) {
+            return res.status(400).json({ error: 'Alamat IP atau URL ESP8266 diperlukan.' });
+        }
+        
+        let targetUrl = String(target).trim();
+        if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+            targetUrl = 'http://' + targetUrl;
+        }
+        
+        const parsedUrl = new URL(targetUrl);
+        if (!parsedUrl.pathname || parsedUrl.pathname === '/') {
+            parsedUrl.pathname = '/alarm';
+        }
+        parsedUrl.searchParams.set('test', '1');
+        parsedUrl.searchParams.set('t', String(Date.now()));
+        
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 3000);
+        
+        const reqMethod = (method || 'GET').toUpperCase() === 'POST' ? 'POST' : 'GET';
+        const fetchOpts = {
+            method: reqMethod,
+            signal: controller.signal
+        };
+        if (reqMethod === 'POST') {
+            fetchOpts.headers = { 'Content-Type': 'application/json' };
+            fetchOpts.body = JSON.stringify({ 
+                test: true, 
+                event: 'test_trigger', 
+                source: 'Arch3r NVR Ver. 9.9.9',
+                timestamp: new Date().toISOString() 
+            });
+        }
+        
+        const espResp = await fetch(parsedUrl.toString(), fetchOpts);
+        clearTimeout(timer);
+        
+        sysLog('INFO', `[ESP8266 Test] Berhasil mengirim test trigger ke ${parsedUrl.toString()} (HTTP ${espResp.status})`, 'SECURITY');
+        
+        return res.json({
+            success: true,
+            status: espResp.status,
+            statusText: espResp.statusText,
+            url: parsedUrl.toString(),
+            message: `ESP8266 berhasil merespons! (HTTP ${espResp.status} ${espResp.statusText})`
+        });
+    } catch (err) {
+        return res.status(502).json({
+            success: false,
+            error: `Gagal menghubungi ESP8266: ${err.message}`,
+            tip: 'Pastikan ESP8266 aktif dan terhubung ke jaringan/WiFi yang sama dengan STB NVR (subnet lokal).'
+        });
+    }
+});
+
+// Endpoint yang dipanggil oleh Python YOLO saat mendeteksi manusia di area aktif
+app.post('/api/ai/webhook', async (req, res) => {
     const { camera_id, event, grid_cell } = req.body || {};
     sysLog('WARN', `[AI ALARM] Deteksi Manusia pada ${camera_id || 'Kamera'} (Petak: ${grid_cell || 'Area ROI'})`, 'SECURITY');
+    
+    // Periksa apakah notifikasi ke ESP8266 diaktifkan
+    try {
+        const db = getNvrDb();
+        const cam = (db.cameras || []).find(c => String(c.id) === String(camera_id));
+        const espCfg = (cam && cam.ai_config && cam.ai_config.esp_config) || (db.settings && db.settings.ai_esp_config);
+        
+        if (espCfg && espCfg.enabled && espCfg.ip_or_url) {
+            const now = Date.now();
+            const lastTrigger = espTriggerCooldowns.get(String(camera_id)) || 0;
+            const cooldownMs = (parseInt(espCfg.cooldown_sec, 10) || 4) * 1000;
+            
+            if (now - lastTrigger >= cooldownMs) {
+                espTriggerCooldowns.set(String(camera_id), now);
+                
+                // Kirim sinyal alarm secara asinkron ke ESP8266 (non-blocking & timeout guard 2.5s)
+                (async () => {
+                    try {
+                        let targetUrl = String(espCfg.ip_or_url).trim();
+                        if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                            targetUrl = 'http://' + targetUrl;
+                        }
+                        
+                        const parsedUrl = new URL(targetUrl);
+                        if (!parsedUrl.pathname || parsedUrl.pathname === '/') {
+                            parsedUrl.pathname = '/alarm';
+                        }
+                        parsedUrl.searchParams.set('event', event || 'human_motion');
+                        parsedUrl.searchParams.set('cam', camera_id || 'cam1');
+                        parsedUrl.searchParams.set('state', '1');
+                        if (grid_cell) parsedUrl.searchParams.set('cell', String(grid_cell));
+                        
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), 2500);
+                        
+                        const method = (espCfg.method || 'GET').toUpperCase();
+                        const fetchOpts = {
+                            method,
+                            signal: controller.signal
+                        };
+                        if (method === 'POST') {
+                            fetchOpts.headers = { 'Content-Type': 'application/json' };
+                            fetchOpts.body = JSON.stringify({
+                                event: event || 'human_motion',
+                                camera_id: camera_id,
+                                camera_name: cam ? cam.name : camera_id,
+                                grid_cell: grid_cell,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
+                        
+                        const espResp = await fetch(parsedUrl.toString(), fetchOpts).catch(err => {
+                            sysLog('WARN', `[ESP8266 Alert] Gagal menghubungi ESP8266 (${targetUrl}): ${err.message}`, 'SECURITY');
+                            return null;
+                        });
+                        clearTimeout(timer);
+                        
+                        if (espResp && espResp.ok) {
+                            sysLog('INFO', `[ESP8266 Alert] Sinyal alarm berhasil dikirim ke ESP8266 (${targetUrl}) HTTP ${espResp.status}`, 'SECURITY');
+                        }
+                    } catch (espErr) {
+                        sysLog('WARN', `[ESP8266 Alert] Galat trigger ESP8266: ${espErr.message}`, 'SECURITY');
+                    }
+                })();
+            }
+        }
+    } catch (e) {
+        console.error('[AI Webhook ESP Error]', e);
+    }
+    
     res.json({ received: true });
 });
 
@@ -770,6 +906,19 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
 
     const changelogList = [
         {
+            version: '9.9.9',
+            date: '2026-09-20',
+            title: 'Live Video Feed Overlay, Visualisasi Output Deteksi Real-Time, & Integrasi Alarm ESP8266 IoT',
+            items: [
+                'Perbaikan video visual YOLO AI: Mengatasi layar gelap dengan render canvas transparan di atas video live HLS/RTSP serta fallback surveillance backdrop.',
+                'Visualisasi output deteksi real-time saat pemilihan grid: Bounding box objek dinamis dengan deteksi benturan langsung (ROI collision detection) dan alarm strobo interaktif.',
+                'Integrasi IoT ESP8266: Pengiriman sinyal alarm HTTP (GET/POST) otomatis ke ESP8266/NodeMCU/Wemos saat manusia terdeteksi di grid.',
+                'Perlindungan timeout non-blocking (2.5s) dan cooldown cerdas untuk mencegah banjir sinyal ke mikrokontroler ESP8266.',
+                'Fitur Uji Coba Cepat Koneksi ESP8266 (/api/ai/test_esp) dan generator skrip Arduino C++ siap pakai.',
+                'Penyelarasan seluruh versi aplikasi dan antarmuka ke Ver. 9.9.9.'
+            ]
+        },
+        {
             version: '9.9.8',
             date: '2026-09-19',
             title: 'Perbaikan Komunikasi Addon Server & Visual Grid Intrusion Canvas YOLOv8',
@@ -853,7 +1002,7 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
 
     // 2. Mode Simulasi / Target Versi Khusus (untuk pengujian alur update di UI)
     if (queryOpts.simulate || queryOpts.target_version) {
-        latestVersion = queryOpts.target_version || '9.9.8';
+        latestVersion = queryOpts.target_version || '9.9.9';
         releaseDate = '2026-09-20';
         releaseTitle = `Arch3r NVR Ver. ${latestVersion} - Rilis Pembaruan Stabilitas STB`;
         releaseNotes = [
