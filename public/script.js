@@ -3439,6 +3439,20 @@ let aiActiveZoneColor = '#3b82f6';
 let aiActiveZoneThemeColor = 'rgba(59,130,246,0.92)';
 let aiCustomStreamActive = false;
 
+// Multi-Zone & Fullscreen Editor State
+let aiZones = [
+    {
+        id: 'zone_1',
+        label: '⛽ Area Pompa BBM',
+        color: '#3b82f6',
+        themeColor: 'rgba(59,130,246,0.92)',
+        x: 0, y: 0, w: 0, h: 0,
+        targets: ['car', 'motorcycle', 'person']
+    }
+];
+let aiActiveZoneIndex = 0;
+let isAIFullscreen = false;
+
 // Tab switcher for AI Vision Studio Modal
 function switchAIGridTab(tabName) {
     const tabs = ['live', 'sim', 'market'];
@@ -3890,6 +3904,16 @@ function initAIDrawCanvas() {
                 const oldH = aiDrawCanvas.height || 1;
                 aiDrawCanvas.width = nw;
                 aiDrawCanvas.height = nh;
+                if (aiZones && aiZones.length > 0) {
+                    aiZones.forEach(z => {
+                        if (z.w > 0) {
+                            z.x = Math.round((z.x / oldW) * nw);
+                            z.y = Math.round((z.y / oldH) * nh);
+                            z.w = Math.round((z.w / oldW) * nw);
+                            z.h = Math.round((z.h / oldH) * nh);
+                        }
+                    });
+                }
                 if (aiGridRect.w > 0) {
                     aiGridRect.x = Math.round((aiGridRect.x / oldW) * nw);
                     aiGridRect.y = Math.round((aiGridRect.y / oldH) * nh);
@@ -3911,11 +3935,34 @@ function initAIDrawCanvas() {
         };
     }
     
+    function getActiveZone() {
+        if (!aiZones || aiZones.length === 0) {
+            aiZones = [{
+                id: 'zone_1',
+                label: 'Area Deteksi 1',
+                color: aiActiveZoneColor || '#3b82f6',
+                themeColor: aiActiveZoneThemeColor || 'rgba(59,130,246,0.92)',
+                x: 0, y: 0, w: 0, h: 0,
+                targets: ['car', 'motorcycle', 'person']
+            }];
+            aiActiveZoneIndex = 0;
+        }
+        if (aiActiveZoneIndex < 0 || aiActiveZoneIndex >= aiZones.length) {
+            aiActiveZoneIndex = 0;
+        }
+        return aiZones[aiActiveZoneIndex];
+    }
+    
     canvas.onmousedown = (e) => {
         isAIDrawing = true;
         const pos = getPointerPos(e);
         aiDragStart = pos;
-        aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0, label: 'Area Deteksi Kustom' };
+        const curZone = getActiveZone();
+        curZone.x = pos.x;
+        curZone.y = pos.y;
+        curZone.w = 0;
+        curZone.h = 0;
+        aiGridRect = curZone;
     };
     
     canvas.onmousemove = (e) => {
@@ -3925,18 +3972,27 @@ function initAIDrawCanvas() {
         const y = Math.min(aiDragStart.y, pos.y);
         const w = Math.abs(pos.x - aiDragStart.x);
         const h = Math.abs(pos.y - aiDragStart.y);
-        aiGridRect = { x, y, w, h, label: aiGridRect.label || 'Area Deteksi Kustom' };
+        const curZone = getActiveZone();
+        curZone.x = x;
+        curZone.y = y;
+        curZone.w = w;
+        curZone.h = h;
+        aiGridRect = curZone;
         updateCoordStatusText();
     };
     
     const endDrawing = () => {
         if (!isAIDrawing) return;
         isAIDrawing = false;
-        if (aiGridRect.w < 10 || aiGridRect.h < 10) {
-            aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
+        const curZone = getActiveZone();
+        if (curZone.w < 8 || curZone.h < 8) {
+            curZone.w = 0;
+            curZone.h = 0;
         }
+        aiGridRect = curZone;
         updateCoordStatusText();
-        appendAITelemetry(`📐 Area ROI diperbarui: [X:${aiGridRect.x}, Y:${aiGridRect.y}, W:${aiGridRect.w}, H:${aiGridRect.h}]`, 'info');
+        renderAIZonesChips();
+        appendAITelemetry(`📐 Kotak "${curZone.label}" diperbarui: [X:${curZone.x}, Y:${curZone.y}, W:${curZone.w}, H:${curZone.h}]`, 'info');
     };
     
     canvas.onmouseup = endDrawing;
@@ -3948,7 +4004,12 @@ function initAIDrawCanvas() {
         isAIDrawing = true;
         const pos = getPointerPos(e);
         aiDragStart = pos;
-        aiGridRect = { x: pos.x, y: pos.y, w: 0, h: 0, label: 'Area Deteksi Kustom' };
+        const curZone = getActiveZone();
+        curZone.x = pos.x;
+        curZone.y = pos.y;
+        curZone.w = 0;
+        curZone.h = 0;
+        aiGridRect = curZone;
     };
     
     canvas.ontouchmove = (e) => {
@@ -3959,7 +4020,12 @@ function initAIDrawCanvas() {
         const y = Math.min(aiDragStart.y, pos.y);
         const w = Math.abs(pos.x - aiDragStart.x);
         const h = Math.abs(pos.y - aiDragStart.y);
-        aiGridRect = { x, y, w, h, label: aiGridRect.label || 'Area Deteksi Kustom' };
+        const curZone = getActiveZone();
+        curZone.x = x;
+        curZone.y = y;
+        curZone.w = w;
+        curZone.h = h;
+        aiGridRect = curZone;
         updateCoordStatusText();
     };
     
@@ -4039,58 +4105,73 @@ function renderAIFrame() {
     ctx.font = 'bold 9px monospace';
     ctx.fillText(isVideoPlaying ? `🟢 LIVE STREAM: ${camName}` : `📡 SIAGA: ${camName}`, w - 202, 23);
     
-    // User Drawn Intrusion Detection Grid (ROI)
-    if (aiGridRect.w > 0 && aiGridRect.h > 0) {
-        const { x, y, w: rw, h: rh } = aiGridRect;
-        const colorHex = aiGridRect.color || aiActiveZoneColor || '#3b82f6';
-        const colorTheme = aiGridRect.themeColor || aiActiveZoneThemeColor || 'rgba(59,130,246,0.92)';
+    // Multi-Object Intrusion Detection Zones Rendering
+    const zonesToDraw = (aiZones && aiZones.length > 0) ? aiZones : (aiGridRect.w > 0 ? [aiGridRect] : []);
+    zonesToDraw.forEach((zone, idx) => {
+        if (!zone || zone.w <= 0 || zone.h <= 0) return;
+        const { x, y, w: rw, h: rh } = zone;
+        const isActive = (idx === aiActiveZoneIndex);
+        const colorHex = zone.color || (isActive ? aiActiveZoneColor : '#3b82f6');
+        const colorTheme = zone.themeColor || (isActive ? aiActiveZoneThemeColor : 'rgba(59,130,246,0.92)');
         
-        // Semi-transparent fill of user's chosen zone color
-        ctx.fillStyle = colorTheme.replace(/[\d\.]+\)$/, '0.22)');
+        // Semi-transparent fill of zone color (active is more visible)
+        ctx.fillStyle = colorTheme.replace(/[\d\.]+\)$/, isActive ? '0.25)' : '0.12)');
         ctx.fillRect(x, y, rw, rh);
         
-        // Fine interior cross lines for grid area
-        ctx.save();
-        ctx.strokeStyle = colorTheme.replace(/[\d\.]+\)$/, '0.15)');
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (let gx = x + 30; gx < x + rw; gx += 30) { ctx.moveTo(gx, y); ctx.lineTo(gx, y + rh); }
-        for (let gy = y + 30; gy < y + rh; gy += 30) { ctx.moveTo(x, gy); ctx.lineTo(x + rw, gy); }
-        ctx.stroke();
-        ctx.restore();
+        // Fine interior cross lines for active grid area
+        if (isActive) {
+            ctx.save();
+            ctx.strokeStyle = colorTheme.replace(/[\d\.]+\)$/, '0.18)');
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let gx = x + 30; gx < x + rw; gx += 30) { ctx.moveTo(gx, y); ctx.lineTo(gx, y + rh); }
+            for (let gy = y + 30; gy < y + rh; gy += 30) { ctx.moveTo(x, gy); ctx.lineTo(x + rw, gy); }
+            ctx.stroke();
+            ctx.restore();
+        }
         
-        // Dashed Border in chosen color
+        // Border: active zone gets dashed line with corner anchors; non-active gets clean solid border
         ctx.save();
         ctx.strokeStyle = colorHex;
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([8, 4]);
+        ctx.lineWidth = isActive ? 2.6 : 1.8;
+        if (isActive) {
+            ctx.setLineDash([8, 4]);
+        } else {
+            ctx.setLineDash([]);
+        }
         ctx.strokeRect(x, y, rw, rh);
         ctx.restore();
         
-        // Corner anchor points
-        const pSize = 7;
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = colorHex;
-        ctx.lineWidth = 2;
-        const corners = [
-            [x, y], [x + rw, y], [x, y + rh], [x + rw, y + rh]
-        ];
-        corners.forEach(([cx, cy]) => {
-            ctx.fillRect(cx - pSize/2, cy - pSize/2, pSize, pSize);
-            ctx.strokeRect(cx - pSize/2, cy - pSize/2, pSize, pSize);
-        });
+        // Corner anchor points for active zone
+        if (isActive) {
+            const pSize = 7;
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = colorHex;
+            ctx.lineWidth = 2;
+            const corners = [
+                [x, y], [x + rw, y], [x, y + rh], [x + rw, y + rh]
+            ];
+            corners.forEach(([cx, cy]) => {
+                ctx.fillRect(cx - pSize/2, cy - pSize/2, pSize, pSize);
+                ctx.strokeRect(cx - pSize/2, cy - pSize/2, pSize, pSize);
+            });
+        }
         
-        // Floating Top Tag with Area Name and Badge
-        ctx.fillStyle = colorTheme;
-        const tagH = 22;
-        const tagW = Math.min(Math.max(rw, 160), 280);
+        // Floating Top Header Tag with Object Name & Index Number
+        const tagH = isActive ? 22 : 18;
+        const rawLabel = zone.label || `Objek #${idx + 1}`;
+        const displayLabel = isActive ? `✏️ [${idx + 1}] ${rawLabel}` : `[${idx + 1}] ${rawLabel}`;
+        
+        ctx.font = isActive ? 'bold 10px monospace' : 'bold 9px monospace';
+        const textWidth = ctx.measureText(displayLabel).width;
+        const tagW = Math.min(Math.max(rw, textWidth + 14), 320);
+        
+        ctx.fillStyle = isActive ? colorTheme : colorTheme.replace(/[\d\.]+\)$/, '0.82)');
         ctx.fillRect(x, Math.max(0, y - tagH), tagW, tagH);
         
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 10px monospace';
-        const labelText = aiGridRect.label || document.getElementById('ai-zone-label-input')?.value || '🎯 AREA DETEKSI';
-        ctx.fillText(labelText, x + 6, Math.max(15, y - 6));
-    }
+        ctx.fillText(displayLabel, x + 6, Math.max(isActive ? 15 : 13, y - 5));
+    });
 }
 
 // Drawing Simulated Vehicle
@@ -4399,53 +4480,359 @@ async function testAIPromptCondition() {
 
 function updateCoordStatusText() {
     const el = document.getElementById('ai-coord-status');
-    if (!el) return;
-    if (!aiDrawCanvas || aiGridRect.w === 0 || aiGridRect.h === 0) {
-        el.innerHTML = '<span style="color:#94a3b8;">Belum ada area deteksi yang digambar.</span>';
+    const fsEl = document.getElementById('ai-fs-coord-status');
+    
+    const curZone = (aiZones && aiZones[aiActiveZoneIndex]) ? aiZones[aiActiveZoneIndex] : aiGridRect;
+    
+    if (!aiDrawCanvas || !curZone || curZone.w === 0 || curZone.h === 0) {
+        const emptyMsg = '<span style="color:#94a3b8;">Belum ada kotak yang digambar untuk objek ini. Tarik kursor di video.</span>';
+        if (el) el.innerHTML = emptyMsg;
+        if (fsEl) fsEl.innerHTML = emptyMsg;
         return;
     }
-    const cw = aiDrawCanvas.width;
-    const ch = aiDrawCanvas.height;
-    const px = ((aiGridRect.x / cw) * 100).toFixed(1);
-    const py = ((aiGridRect.y / ch) * 100).toFixed(1);
-    const pw = ((aiGridRect.w / cw) * 100).toFixed(1);
-    const ph = ((aiGridRect.h / ch) * 100).toFixed(1);
-    el.innerHTML = `<span style="color:#34d399; font-weight:600;">✓ Area ROI Aktif:</span> ` +
+    const cw = aiDrawCanvas.width || 800;
+    const ch = aiDrawCanvas.height || 450;
+    const px = ((curZone.x / cw) * 100).toFixed(1);
+    const py = ((curZone.y / ch) * 100).toFixed(1);
+    const pw = ((curZone.w / cw) * 100).toFixed(1);
+    const ph = ((curZone.h / ch) * 100).toFixed(1);
+    
+    const htmlStr = `<span style="color:#34d399; font-weight:600;">✓ Objek #${aiActiveZoneIndex + 1} (${curZone.label || 'Area'}):</span> ` +
         `X: <span style="color:#60a5fa;">${px}%</span> | ` +
         `Y: <span style="color:#60a5fa;">${py}%</span> | ` +
-        `Lebar: <span style="color:#f59e0b;">${pw}%</span> | ` +
-        `Tinggi: <span style="color:#f59e0b;">${ph}%</span>`;
+        `L: <span style="color:#f59e0b;">${pw}%</span> | ` +
+        `T: <span style="color:#f59e0b;">${ph}%</span>`;
+        
+    if (el) el.innerHTML = htmlStr;
+    if (fsEl) fsEl.innerHTML = htmlStr;
 }
 
-function toggleAISimulation() {
-    aiSimActive = !aiSimActive;
-    const btn = document.getElementById('btn-toggle-ai-sim');
-    if (btn) {
-        if (aiSimActive) {
-            btn.innerHTML = '👁️ Simulasi Output: AKTIF';
-            btn.style.background = 'rgba(16,185,129,0.15)';
-            btn.style.color = '#34d399';
-            btn.style.borderColor = 'rgba(16,185,129,0.4)';
-            appendAITelemetry('👁️ Simulasi Output Diaktifkan.', 'info');
-        } else {
-            btn.innerHTML = '👁️ Simulasi Output: MATI';
-            btn.style.background = 'rgba(148,163,184,0.15)';
-            btn.style.color = '#94a3b8';
-            btn.style.borderColor = 'rgba(148,163,184,0.3)';
-            appendAITelemetry('⏸️ Simulasi Output Dimatikan.', 'info');
-        }
+// Multi-Zone Chips List Render for normal & fullscreen HUD
+function renderAIZonesChips() {
+    const listEl = document.getElementById('ai-zones-chips-list');
+    const fsListEl = document.getElementById('ai-fs-zones-chips');
+    const fsSlotBadge = document.getElementById('ai-fs-active-slot-badge');
+    
+    if (fsSlotBadge) {
+        fsSlotBadge.textContent = `Objek ${aiActiveZoneIndex + 1} dari ${aiZones.length}`;
     }
-    const banner = document.getElementById('ai-live-collision-banner');
-    if (banner && !aiSimActive) banner.style.display = 'none';
+    
+    const buildChips = (targetEl) => {
+        if (!targetEl) return;
+        targetEl.innerHTML = '';
+        
+        if (!aiZones || aiZones.length === 0) {
+            targetEl.innerHTML = '<span style="color:#94a3b8; font-size:0.75rem;">Belum ada objek. Klik "+ Tambah Objek".</span>';
+            return;
+        }
+        
+        aiZones.forEach((zone, idx) => {
+            const isActive = (idx === aiActiveZoneIndex);
+            const chip = document.createElement('div');
+            chip.className = `ai-zone-chip ${isActive ? 'active' : ''}`;
+            chip.style.borderLeft = `3px solid ${zone.color || '#3b82f6'}`;
+            if (isActive) {
+                chip.style.background = zone.color ? `${zone.color}28` : 'rgba(59,130,246,0.3)';
+            }
+            
+            const hasBox = (zone.w > 0 && zone.h > 0);
+            const boxStatus = hasBox ? '📐' : '⚠️ (Kosong)';
+            
+            chip.innerHTML = `
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${zone.color || '#3b82f6'};"></span>
+                <span>[${idx + 1}] ${zone.label || 'Objek ' + (idx + 1)}</span>
+                <small style="color:${hasBox ? '#34d399' : '#f59e0b'}; font-size:0.68rem; margin-left:2px;">${boxStatus}</small>
+            `;
+            
+            chip.onclick = (e) => {
+                e.stopPropagation();
+                selectActiveZone(idx);
+            };
+            
+            targetEl.appendChild(chip);
+        });
+    };
+    
+    buildChips(listEl);
+    buildChips(fsListEl);
 }
 
-function setZoneColor(hex, themeRgba) {
+function selectActiveZone(idx) {
+    if (!aiZones || idx < 0 || idx >= aiZones.length) return;
+    aiActiveZoneIndex = idx;
+    syncActiveZoneUI();
+    renderAIZonesChips();
+    updateCoordStatusText();
+    appendAITelemetry(`🎯 Beralih ke Objek #${idx + 1}: "${aiZones[idx].label}"`, 'info');
+}
+
+function syncActiveZoneUI() {
+    if (!aiZones || aiZones.length === 0) return;
+    if (aiActiveZoneIndex < 0 || aiActiveZoneIndex >= aiZones.length) aiActiveZoneIndex = 0;
+    
+    const curZone = aiZones[aiActiveZoneIndex];
+    aiGridRect = curZone;
+    aiActiveZoneColor = curZone.color || '#3b82f6';
+    aiActiveZoneThemeColor = curZone.themeColor || 'rgba(59,130,246,0.92)';
+    
+    // Sync input label in normal & fullscreen HUD
+    const inp = document.getElementById('ai-zone-label-input');
+    const fsInp = document.getElementById('ai-fs-zone-label');
+    if (inp) inp.value = curZone.label || `Objek #${aiActiveZoneIndex + 1}`;
+    if (fsInp) fsInp.value = curZone.label || `Objek #${aiActiveZoneIndex + 1}`;
+    
+    // Sync target checkboxes
+    const targets = curZone.targets || ['car', 'motorcycle', 'person'];
+    const chkCar = document.getElementById('ai-target-car');
+    const chkMotor = document.getElementById('ai-target-motor');
+    const chkPerson = document.getElementById('ai-target-person');
+    const fsChkCar = document.getElementById('ai-fs-target-car');
+    const fsChkMotor = document.getElementById('ai-fs-target-motor');
+    const fsChkPerson = document.getElementById('ai-fs-target-person');
+    
+    if (chkCar) chkCar.checked = targets.includes('car');
+    if (chkMotor) chkMotor.checked = targets.includes('motorcycle');
+    if (chkPerson) chkPerson.checked = targets.includes('person');
+    if (fsChkCar) fsChkCar.checked = targets.includes('car');
+    if (fsChkMotor) fsChkMotor.checked = targets.includes('motorcycle');
+    if (fsChkPerson) fsChkPerson.checked = targets.includes('person');
+    
+    // Set color buttons active
+    setZoneColor(curZone.color || '#3b82f6', curZone.themeColor || 'rgba(59,130,246,0.92)', true);
+}
+
+function addNewZoneSlot() {
+    if (!aiZones) aiZones = [];
+    
+    const palette = [
+        { hex: '#3b82f6', theme: 'rgba(59,130,246,0.92)' },  // Biru
+        { hex: '#eab308', theme: 'rgba(234,179,8,0.92)' },   // Kuning
+        { hex: '#10b981', theme: 'rgba(16,185,129,0.92)' },  // Hijau
+        { hex: '#ef4444', theme: 'rgba(239,68,68,0.92)' },   // Merah
+        { hex: '#a855f7', theme: 'rgba(168,85,247,0.92)' },  // Ungu
+        { hex: '#f97316', theme: 'rgba(249,115,22,0.92)' },  // Oranye
+        { hex: '#06b6d4', theme: 'rgba(6,182,212,0.92)' }    // Cyan
+    ];
+    
+    const nextColor = palette[aiZones.length % palette.length];
+    const newIdx = aiZones.length + 1;
+    
+    let defaultLabel = `Objek / Area #${newIdx}`;
+    let defaultTargets = ['car', 'motorcycle', 'person'];
+    if (newIdx === 1) {
+        defaultLabel = '⛽ Area Pompa BBM';
+        defaultTargets = ['car', 'motorcycle'];
+    } else if (newIdx === 2) {
+        defaultLabel = '🅿️ Area Parkir';
+        defaultTargets = ['car', 'motorcycle'];
+    } else if (newIdx === 3) {
+        defaultLabel = '👤 Antrean / Orang Mendekat';
+        defaultTargets = ['person'];
+    }
+    
+    const newZone = {
+        id: 'zone_' + Date.now(),
+        label: defaultLabel,
+        color: nextColor.hex,
+        themeColor: nextColor.theme,
+        x: 0,
+        y: 0,
+        w: 0,
+        h: 0,
+        targets: defaultTargets
+    };
+    
+    aiZones.push(newZone);
+    aiActiveZoneIndex = aiZones.length - 1;
+    
+    syncActiveZoneUI();
+    renderAIZonesChips();
+    updateCoordStatusText();
+    
+    appendAITelemetry(`➕ Objek Baru #${newIdx} (${defaultLabel}) Ditambahkan! Silakan tarik kursor/sentuh layar untuk menggambar kotaknya.`, 'info');
+    
+    // Flash HUD hint
+    const feedback = document.getElementById('ai-save-feedback');
+    if (feedback) {
+        feedback.textContent = `Objek #${newIdx} siap digambar! Tarik kursor di atas video.`;
+        feedback.style.color = '#38bdf8';
+    }
+}
+
+function deleteCurrentZone() {
+    if (!aiZones || aiZones.length === 0) return;
+    const cur = aiZones[aiActiveZoneIndex];
+    const label = cur ? cur.label : 'Objek';
+    
+    if (aiZones.length === 1) {
+        // Just clear box instead of empty array
+        aiZones[0].x = 0;
+        aiZones[0].y = 0;
+        aiZones[0].w = 0;
+        aiZones[0].h = 0;
+        aiZones[0].label = 'Area Deteksi Utama';
+        aiGridRect = aiZones[0];
+        syncActiveZoneUI();
+        renderAIZonesChips();
+        updateCoordStatusText();
+        appendAITelemetry(`🗑️ Kotak objek utama dibersihkan.`, 'info');
+        return;
+    }
+    
+    aiZones.splice(aiActiveZoneIndex, 1);
+    if (aiActiveZoneIndex >= aiZones.length) {
+        aiActiveZoneIndex = aiZones.length - 1;
+    }
+    
+    syncActiveZoneUI();
+    renderAIZonesChips();
+    updateCoordStatusText();
+    appendAITelemetry(`🗑️ Objek "${label}" dihapus.`, 'info');
+    
+    // Auto sync deletion to backend
+    saveAIGrid(true);
+}
+
+async function saveCurrentZone(silent = false) {
+    if (!aiZones || aiZones.length === 0) {
+        alert('Belum ada objek untuk disimpan. Silakan buat objek terlebih dahulu.');
+        return;
+    }
+    
+    const curZone = aiZones[aiActiveZoneIndex];
+    if (curZone) {
+        // Read current label from input
+        const inp = document.getElementById('ai-zone-label-input');
+        const fsInp = document.getElementById('ai-fs-zone-label');
+        const activeLabel = (fsInp && isAIFullscreen) ? fsInp.value.trim() : (inp ? inp.value.trim() : '');
+        if (activeLabel) curZone.label = activeLabel;
+        
+        // Read target checkboxes
+        const targets = [];
+        const chkCar = isAIFullscreen ? document.getElementById('ai-fs-target-car') : document.getElementById('ai-target-car');
+        const chkMotor = isAIFullscreen ? document.getElementById('ai-fs-target-motor') : document.getElementById('ai-target-motor');
+        const chkPerson = isAIFullscreen ? document.getElementById('ai-fs-target-person') : document.getElementById('ai-target-person');
+        if (chkCar && chkCar.checked) targets.push('car');
+        if (chkMotor && chkMotor.checked) targets.push('motorcycle');
+        if (chkPerson && chkPerson.checked) targets.push('person');
+        curZone.targets = targets;
+        
+        aiGridRect = curZone;
+    }
+    
+    renderAIZonesChips();
+    
+    // Save to NVR backend persistently keeping the modal/fullscreen open
+    await saveAIGrid(true);
+    
+    // Flash feedback
+    const feedback = document.getElementById('ai-save-feedback');
+    const msg = `✅ Objek #${aiActiveZoneIndex + 1} "${curZone ? curZone.label : ''}" berhasil disimpan!`;
+    if (feedback) {
+        feedback.textContent = msg;
+        feedback.style.color = '#34d399';
+    }
+    appendAITelemetry(msg, 'success');
+}
+
+// Fullscreen Drawing Mode Management
+function toggleAIFullscreenDrawing() {
+    if (isAIFullscreen) {
+        exitAIFullscreenDrawing();
+    } else {
+        enterAIFullscreenDrawing();
+    }
+}
+
+function enterAIFullscreenDrawing() {
+    const container = document.getElementById('ai-canvas-container');
+    const hud = document.getElementById('ai-fullscreen-hud');
+    const btn = document.getElementById('btn-open-ai-fullscreen');
+    if (!container) return;
+    
+    isAIFullscreen = true;
+    container.classList.add('ai-fullscreen-active');
+    
+    if (hud) hud.style.display = 'flex';
+    if (btn) btn.innerHTML = '🗗 Keluar Layar Penuh';
+    
+    // Trigger native browser fullscreen if permissible
+    try {
+        if (container.requestFullscreen) {
+            container.requestFullscreen().catch(() => {});
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        }
+    } catch (e) {}
+    
+    // Sync current zone values into HUD inputs
+    syncActiveZoneUI();
+    renderAIZonesChips();
+    
+    // Re-initialize canvas to match full viewport dimensions
+    setTimeout(() => {
+        initAIDrawCanvas();
+        updateCoordStatusText();
+    }, 50);
+    
+    // Keyboard ESC listener
+    window.addEventListener('keydown', handleAIFullscreenKey);
+    appendAITelemetry('🖥️ Mode Layar Penuh (Fullscreen) Diaktifkan. Gambar kotak objek dengan leluasa.', 'info');
+}
+
+function exitAIFullscreenDrawing() {
+    const container = document.getElementById('ai-canvas-container');
+    const hud = document.getElementById('ai-fullscreen-hud');
+    const btn = document.getElementById('btn-open-ai-fullscreen');
+    if (!container) return;
+    
+    isAIFullscreen = false;
+    container.classList.remove('ai-fullscreen-active');
+    
+    if (hud) hud.style.display = 'none';
+    if (btn) btn.innerHTML = '⛶ Gambar Layar Penuh (Fullscreen)';
+    
+    try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+        } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+    } catch (e) {}
+    
+    window.removeEventListener('keydown', handleAIFullscreenKey);
+    
+    syncActiveZoneUI();
+    renderAIZonesChips();
+    
+    setTimeout(() => {
+        initAIDrawCanvas();
+        updateCoordStatusText();
+    }, 50);
+    
+    appendAITelemetry('🗗 Keluar dari Mode Layar Penuh.', 'info');
+}
+
+function handleAIFullscreenKey(e) {
+    if (e.key === 'Escape') {
+        exitAIFullscreenDrawing();
+    }
+}
+
+function setZoneColor(hex, themeRgba, skipTelemetry = false) {
     aiActiveZoneColor = hex;
     aiActiveZoneThemeColor = themeRgba;
+    
+    const cur = (aiZones && aiZones[aiActiveZoneIndex]) ? aiZones[aiActiveZoneIndex] : aiGridRect;
+    if (cur) {
+        cur.color = hex;
+        cur.themeColor = themeRgba;
+    }
     if (aiGridRect) {
         aiGridRect.color = hex;
         aiGridRect.themeColor = themeRgba;
     }
+    
     // Update active highlight border on color buttons
     document.querySelectorAll('.ai-zone-color-btn').forEach(btn => {
         if (btn.getAttribute('data-color') === hex) {
@@ -4458,12 +4845,54 @@ function setZoneColor(hex, themeRgba) {
             btn.style.transform = 'scale(1)';
         }
     });
-    appendAITelemetry(`🎨 Warna Zona ROI diubah ke: ${hex}`, 'info');
+    
+    renderAIZonesChips();
+    if (!skipTelemetry) {
+        appendAITelemetry(`🎨 Warna Objek #${aiActiveZoneIndex + 1} diubah ke: ${hex}`, 'info');
+    }
 }
 
 function updateActiveZoneLabel(text) {
-    if (!aiGridRect) return;
-    aiGridRect.label = text.trim() || '🎯 Area Deteksi';
+    const trimmed = text.trim();
+    const cur = (aiZones && aiZones[aiActiveZoneIndex]) ? aiZones[aiActiveZoneIndex] : aiGridRect;
+    if (cur) {
+        cur.label = trimmed || `Objek #${aiActiveZoneIndex + 1}`;
+    }
+    if (aiGridRect) {
+        aiGridRect.label = trimmed || `Objek #${aiActiveZoneIndex + 1}`;
+    }
+    
+    // Sync to other input if changed in one place
+    const inp = document.getElementById('ai-zone-label-input');
+    const fsInp = document.getElementById('ai-fs-zone-label');
+    if (inp && inp.value !== trimmed) inp.value = trimmed;
+    if (fsInp && fsInp.value !== trimmed) fsInp.value = trimmed;
+    
+    renderAIZonesChips();
+}
+
+function updateActiveZoneTargets(isFs = false) {
+    const cur = (aiZones && aiZones[aiActiveZoneIndex]) ? aiZones[aiActiveZoneIndex] : aiGridRect;
+    if (!cur) return;
+    
+    const targets = [];
+    const chkCar = isFs ? document.getElementById('ai-fs-target-car') : document.getElementById('ai-target-car');
+    const chkMotor = isFs ? document.getElementById('ai-fs-target-motor') : document.getElementById('ai-target-motor');
+    const chkPerson = isFs ? document.getElementById('ai-fs-target-person') : document.getElementById('ai-target-person');
+    
+    if (chkCar && chkCar.checked) targets.push('car');
+    if (chkMotor && chkMotor.checked) targets.push('motorcycle');
+    if (chkPerson && chkPerson.checked) targets.push('person');
+    
+    cur.targets = targets;
+    
+    // Cross-sync to other panel's checkboxes
+    const otherCar = isFs ? document.getElementById('ai-target-car') : document.getElementById('ai-fs-target-car');
+    const otherMotor = isFs ? document.getElementById('ai-target-motor') : document.getElementById('ai-fs-target-motor');
+    const otherPerson = isFs ? document.getElementById('ai-target-person') : document.getElementById('ai-fs-target-person');
+    if (otherCar) otherCar.checked = targets.includes('car');
+    if (otherMotor) otherMotor.checked = targets.includes('motorcycle');
+    if (otherPerson) otherPerson.checked = targets.includes('person');
 }
 
 function updateCamAIActiveState() {
@@ -4495,132 +4924,147 @@ function setAIGridPreset(preset) {
     if (!aiDrawCanvas) return;
     const cw = aiDrawCanvas.width;
     const ch = aiDrawCanvas.height;
-    const inp = document.getElementById('ai-zone-label-input');
     
-    if (preset === 'gate') {
-        aiGridRect = {
-            x: Math.round(cw * 0.12),
-            y: Math.round(ch * 0.40),
-            w: Math.round(cw * 0.76),
-            h: Math.round(ch * 0.55),
-            label: '🚪 Pintu Masuk / Gerbang Utama',
-            color: aiActiveZoneColor,
-            themeColor: aiActiveZoneThemeColor
-        };
-        if (inp) inp.value = '🚪 Pintu Masuk / Gerbang Utama';
-        appendAITelemetry('🚪 Preset Area: Pintu Masuk / Gerbang Utama Diterapkan.', 'info');
+    let x = 0, y = 0, w = 0, h = 0, label = 'Area Deteksi';
+    
+    if (preset === 'spbu') {
+        x = Math.round(cw * 0.30);
+        y = Math.round(ch * 0.25);
+        w = Math.round(cw * 0.48);
+        h = Math.round(ch * 0.65);
+        label = '⛽ Area Pompa / Dispenser BBM';
     } else if (preset === 'parking') {
-        aiGridRect = {
-            x: Math.round(cw * 0.15),
-            y: Math.round(ch * 0.35),
-            w: Math.round(cw * 0.70),
-            h: Math.round(ch * 0.60),
-            label: '🅿️ Area Parkir Kendaraan',
-            color: aiActiveZoneColor,
-            themeColor: aiActiveZoneThemeColor
-        };
-        if (inp) inp.value = '🅿️ Area Parkir Kendaraan';
-        appendAITelemetry('🅿️ Preset Area: Parkir Kendaraan Diterapkan.', 'info');
+        x = Math.round(cw * 0.15);
+        y = Math.round(ch * 0.35);
+        w = Math.round(cw * 0.70);
+        h = Math.round(ch * 0.60);
+        label = '🅿️ Area Parkir Kendaraan';
+    } else if (preset === 'gate') {
+        x = Math.round(cw * 0.12);
+        y = Math.round(ch * 0.40);
+        w = Math.round(cw * 0.76);
+        h = Math.round(ch * 0.55);
+        label = '🚪 Pintu Masuk / Gerbang Utama';
     } else if (preset === 'cashier') {
-        aiGridRect = {
-            x: Math.round(cw * 0.35),
-            y: Math.round(ch * 0.25),
-            w: Math.round(cw * 0.38),
-            h: Math.round(ch * 0.55),
-            label: '💳 Meja Kasir / Transaksi',
-            color: aiActiveZoneColor,
-            themeColor: aiActiveZoneThemeColor
-        };
-        if (inp) inp.value = '💳 Meja Kasir / Transaksi';
-        appendAITelemetry('💳 Preset Area: Meja Kasir / Transaksi Diterapkan.', 'info');
-    } else if (preset === 'spbu') {
-        aiGridRect = {
-            x: Math.round(cw * 0.30),
-            y: Math.round(ch * 0.25),
-            w: Math.round(cw * 0.48),
-            h: Math.round(ch * 0.65),
-            label: '⛽ Area Pompa / Dispenser BBM',
-            color: aiActiveZoneColor,
-            themeColor: aiActiveZoneThemeColor
-        };
-        if (inp) inp.value = '⛽ Area Pompa / Dispenser BBM';
-        appendAITelemetry('⛽ Preset Area: Pompa / Dispenser BBM Diterapkan.', 'info');
+        x = Math.round(cw * 0.35);
+        y = Math.round(ch * 0.25);
+        w = Math.round(cw * 0.38);
+        h = Math.round(ch * 0.55);
+        label = '💳 Meja Kasir / Transaksi';
     } else if (preset === 'center') {
-        aiGridRect = {
-            x: Math.round(cw * 0.20),
-            y: Math.round(ch * 0.20),
-            w: Math.round(cw * 0.60),
-            h: Math.round(ch * 0.60),
-            label: '🎯 Area Fokus Tengah (ROI)',
-            color: aiActiveZoneColor,
-            themeColor: aiActiveZoneThemeColor
-        };
-        if (inp) inp.value = '🎯 Area Fokus Tengah (ROI)';
-        appendAITelemetry('🎯 Preset Area: Fokus Tengah Diterapkan.', 'info');
+        x = Math.round(cw * 0.20);
+        y = Math.round(ch * 0.20);
+        w = Math.round(cw * 0.60);
+        h = Math.round(ch * 0.60);
+        label = '🎯 Area Fokus Tengah (ROI)';
     } else if (preset === 'full') {
-        aiGridRect = { 
-            x: 6, 
-            y: 6, 
-            w: cw - 12, 
-            h: ch - 12, 
-            label: '🔲 Seluruh Area Pantauan (Full Frame)',
-            color: aiActiveZoneColor,
-            themeColor: aiActiveZoneThemeColor
-        };
-        if (inp) inp.value = '🔲 Seluruh Area Pantauan (Full Frame)';
-        appendAITelemetry('🔲 Preset Area: Full Frame Diterapkan.', 'info');
+        x = 6;
+        y = 6;
+        w = cw - 12;
+        h = ch - 12;
+        label = '🔲 Seluruh Area Pantauan (Full Frame)';
     }
+    
+    const cur = (aiZones && aiZones[aiActiveZoneIndex]) ? aiZones[aiActiveZoneIndex] : aiGridRect;
+    if (cur) {
+        cur.x = x;
+        cur.y = y;
+        cur.w = w;
+        cur.h = h;
+        cur.label = label;
+    }
+    aiGridRect = cur;
+    
+    syncActiveZoneUI();
+    renderAIZonesChips();
     updateCoordStatusText();
+    appendAITelemetry(`📐 Preset Area "${label}" Diterapkan ke Objek #${aiActiveZoneIndex + 1}.`, 'info');
 }
 
 function clearAIGrid() {
-    aiGridRect = { x: 0, y: 0, w: 0, h: 0, label: '', color: aiActiveZoneColor, themeColor: aiActiveZoneThemeColor };
+    const cur = (aiZones && aiZones[aiActiveZoneIndex]) ? aiZones[aiActiveZoneIndex] : aiGridRect;
+    if (cur) {
+        cur.x = 0;
+        cur.y = 0;
+        cur.w = 0;
+        cur.h = 0;
+    }
+    aiGridRect = cur;
     updateCoordStatusText();
+    renderAIZonesChips();
     const feedback = document.getElementById('ai-save-feedback');
-    if (feedback) feedback.textContent = 'Area intrusi dibersihkan.';
-    appendAITelemetry('🗑️ Area ROI Intrusi dibersihkan.', 'info');
+    if (feedback) feedback.textContent = `Kotak Objek #${aiActiveZoneIndex + 1} dibersihkan.`;
+    appendAITelemetry(`🗑️ Kotak Objek #${aiActiveZoneIndex + 1} dibersihkan.`, 'info');
 }
 
 function restoreAIGridFromData(grid) {
     if (!aiDrawCanvas || !grid) return;
-    const cw = aiDrawCanvas.width;
-    const ch = aiDrawCanvas.height;
+    const cw = aiDrawCanvas.width || 800;
+    const ch = aiDrawCanvas.height || 450;
     
-    let x = Number(grid.x) || 0;
-    let y = Number(grid.y) || 0;
-    let w = Number(grid.w) || 0;
-    let h = Number(grid.h) || 0;
-    
-    if (x <= 1 && w <= 1 && (x > 0 || w > 0)) {
-        x = x * cw;
-        y = y * ch;
-        w = w * cw;
-        h = h * ch;
+    // Check if multi-zone array exists
+    if (Array.isArray(grid.zones) && grid.zones.length > 0) {
+        aiZones = grid.zones.map((z, idx) => {
+            let zx = Number(z.x) || 0;
+            let zy = Number(z.y) || 0;
+            let zw = Number(z.w) || 0;
+            let zh = Number(z.h) || 0;
+            if (zx <= 1 && zw <= 1 && (zx > 0 || zw > 0)) {
+                zx = zx * cw;
+                zy = zy * ch;
+                zw = zw * cw;
+                zh = zh * ch;
+            }
+            return {
+                id: z.id || ('zone_' + (idx + 1)),
+                label: z.label || `Objek #${idx + 1}`,
+                color: z.color || '#3b82f6',
+                themeColor: z.themeColor || 'rgba(59,130,246,0.92)',
+                x: Math.round(zx),
+                y: Math.round(zy),
+                w: Math.round(zw),
+                h: Math.round(zh),
+                targets: z.targets || ['car', 'motorcycle', 'person']
+            };
+        });
+        aiActiveZoneIndex = 0;
+    } else {
+        // Single zone fallback
+        let x = Number(grid.x) || 0;
+        let y = Number(grid.y) || 0;
+        let w = Number(grid.w) || 0;
+        let h = Number(grid.h) || 0;
+        
+        if (x <= 1 && w <= 1 && (x > 0 || w > 0)) {
+            x = x * cw;
+            y = y * ch;
+            w = w * cw;
+            h = h * ch;
+        }
+        
+        const zoneLabel = grid.label || '⛽ Area Pompa BBM';
+        const zoneColor = grid.color || '#3b82f6';
+        const zoneTheme = grid.themeColor || 'rgba(59,130,246,0.92)';
+        
+        aiZones = [
+            {
+                id: 'zone_1',
+                label: zoneLabel,
+                color: zoneColor,
+                themeColor: zoneTheme,
+                x: Math.round(x),
+                y: Math.round(y),
+                w: Math.round(w),
+                h: Math.round(h),
+                targets: ['car', 'motorcycle', 'person']
+            }
+        ];
+        aiActiveZoneIndex = 0;
     }
     
-    const zoneLabel = grid.label || 'Area Deteksi Utama';
-    const zoneColor = grid.color || '#3b82f6';
-    const zoneTheme = grid.themeColor || 'rgba(59,130,246,0.92)';
-    
-    aiActiveZoneColor = zoneColor;
-    aiActiveZoneThemeColor = zoneTheme;
-    
-    aiGridRect = { 
-        x: Math.round(x), 
-        y: Math.round(y), 
-        w: Math.round(w), 
-        h: Math.round(h),
-        label: zoneLabel,
-        color: zoneColor,
-        themeColor: zoneTheme
-    };
-    
-    // Sync to UI controls
-    const inpLabel = document.getElementById('ai-zone-label-input');
-    if (inpLabel) inpLabel.value = zoneLabel;
-    
-    // Set color button state
-    setZoneColor(zoneColor, zoneTheme);
+    syncActiveZoneUI();
+    renderAIZonesChips();
+    updateCoordStatusText();
     
     // Set AI active toggle
     const chkActive = document.getElementById('ai-cam-active-toggle');
@@ -4628,8 +5072,6 @@ function restoreAIGridFromData(grid) {
         chkActive.checked = !!grid.enabled;
         updateCamAIActiveState();
     }
-    
-    updateCoordStatusText();
 }
 
 // ESP8266 IoT Section Management & Testing
@@ -4800,8 +5242,8 @@ function copyArduinoCode() {
     });
 }
 
-// SAVE AI CONFIGURATION (GRID + PROMPT RULES + ESP8266)
-async function saveAIGrid() {
+// SAVE AI CONFIGURATION (MULTI-ZONES ROI + PROMPT RULES + ESP8266)
+async function saveAIGrid(keepOpen = false) {
     const select = document.getElementById('ai-cam-select');
     const camId = select ? select.value : null;
     const btnSave = document.getElementById('btn-save-ai-grid');
@@ -4812,14 +5254,43 @@ async function saveAIGrid() {
         return;
     }
     
-    if (aiGridRect.w === 0 || aiGridRect.h === 0) {
-        if (!confirm('Belum ada area deteksi (kotak merah) yang digambar. Apakah Anda ingin mengosongkan area ROI kamera ini?')) {
-            return;
-        }
-    }
-    
     const cw = (aiDrawCanvas && aiDrawCanvas.width) || 800;
     const ch = (aiDrawCanvas && aiDrawCanvas.height) || 450;
+    
+    // Sync current active zone inputs before saving
+    if (aiZones && aiZones[aiActiveZoneIndex]) {
+        const curZone = aiZones[aiActiveZoneIndex];
+        const inp = document.getElementById('ai-zone-label-input');
+        const fsInp = document.getElementById('ai-fs-zone-label');
+        const activeLabel = (fsInp && isAIFullscreen) ? fsInp.value.trim() : (inp ? inp.value.trim() : '');
+        if (activeLabel) curZone.label = activeLabel;
+        
+        const targets = [];
+        const chkCar = isAIFullscreen ? document.getElementById('ai-fs-target-car') : document.getElementById('ai-target-car');
+        const chkMotor = isAIFullscreen ? document.getElementById('ai-fs-target-motor') : document.getElementById('ai-target-motor');
+        const chkPerson = isAIFullscreen ? document.getElementById('ai-fs-target-person') : document.getElementById('ai-target-person');
+        if (chkCar && chkCar.checked) targets.push('car');
+        if (chkMotor && chkMotor.checked) targets.push('motorcycle');
+        if (chkPerson && chkPerson.checked) targets.push('person');
+        curZone.targets = targets;
+        
+        aiGridRect = curZone;
+    }
+    
+    // Normalize zones array for backend
+    const normalizedZones = (aiZones && aiZones.length > 0) ? aiZones.map(z => ({
+        id: z.id || ('zone_' + Math.random().toString(36).substring(2, 7)),
+        label: z.label || 'Area Deteksi',
+        color: z.color || '#3b82f6',
+        themeColor: z.themeColor || 'rgba(59,130,246,0.92)',
+        x: parseFloat(((z.x || 0) / cw).toFixed(4)),
+        y: parseFloat(((z.y || 0) / ch).toFixed(4)),
+        w: parseFloat(((z.w || 0) / cw).toFixed(4)),
+        h: parseFloat(((z.h || 0) / ch).toFixed(4)),
+        targets: z.targets || ['car', 'motorcycle', 'person']
+    })) : [];
+    
+    const curActive = (aiZones && aiZones[aiActiveZoneIndex]) ? aiZones[aiActiveZoneIndex] : aiGridRect;
     
     // Read ESP8266 settings
     const espChk = document.getElementById('esp-enabled-checkbox');
@@ -4851,24 +5322,26 @@ async function saveAIGrid() {
         confidence_min: confidenceMin
     };
     
-    const zoneLabel = aiGridRect.label || document.getElementById('ai-zone-label-input')?.value?.trim() || 'Area Deteksi Utama';
-    const zoneColor = aiGridRect.color || aiActiveZoneColor || '#3b82f6';
-    const zoneTheme = aiGridRect.themeColor || aiActiveZoneThemeColor || 'rgba(59,130,246,0.92)';
+    const zoneLabel = curActive.label || document.getElementById('ai-zone-label-input')?.value?.trim() || 'Area Deteksi Utama';
+    const zoneColor = curActive.color || aiActiveZoneColor || '#3b82f6';
+    const zoneTheme = curActive.themeColor || aiActiveZoneThemeColor || 'rgba(59,130,246,0.92)';
     const isCamAIActive = document.getElementById('ai-cam-active-toggle') ? document.getElementById('ai-cam-active-toggle').checked : true;
     
     const payload = {
         camera_id: camId,
-        x: parseFloat(((aiGridRect.x || 0) / cw).toFixed(4)),
-        y: parseFloat(((aiGridRect.y || 0) / ch).toFixed(4)),
-        w: parseFloat(((aiGridRect.w || 0) / cw).toFixed(4)),
-        h: parseFloat(((aiGridRect.h || 0) / ch).toFixed(4)),
+        x: parseFloat(((curActive.x || 0) / cw).toFixed(4)),
+        y: parseFloat(((curActive.y || 0) / ch).toFixed(4)),
+        w: parseFloat(((curActive.w || 0) / cw).toFixed(4)),
+        h: parseFloat(((curActive.h || 0) / ch).toFixed(4)),
         pixel_width: cw,
         pixel_height: ch,
-        enabled: isCamAIActive && (aiGridRect.w > 0),
+        enabled: isCamAIActive && (normalizedZones.some(z => z.w > 0 && z.h > 0)),
         ai_active: isCamAIActive,
         label: zoneLabel,
         color: zoneColor,
         themeColor: zoneTheme,
+        zones: normalizedZones,
+        active_zone_index: aiActiveZoneIndex,
         esp_config: espConfig,
         prompt_rules: promptRules,
         updated_at: new Date().toISOString()
@@ -4883,7 +5356,7 @@ async function saveAIGrid() {
         feedback.style.color = '#60a5fa';
     }
     
-    appendAITelemetry('💾 Menyimpan konfigurasi AI Grid, Prompt Rules & ESP8266 ke database NVR...', 'info');
+    appendAITelemetry(`💾 Menyimpan ${normalizedZones.length} objek ROI, Prompt Rules & ESP8266 ke NVR...`, 'info');
     
     try {
         const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
@@ -4896,14 +5369,17 @@ async function saveAIGrid() {
         const data = await res.json().catch(() => ({}));
         if (res.ok) {
             if (feedback) {
-                feedback.textContent = '✅ Berhasil disimpan ke NVR database!';
+                feedback.textContent = `✅ Berhasil disimpan (${normalizedZones.length} Objek Terdata)!`;
                 feedback.style.color = '#10b981';
             }
-            appendAITelemetry('✅ Konfigurasi AI Grid, Prompt Rules & ESP8266 berhasil disimpan!', 'success');
-            alert('Konfigurasi Area Deteksi Visual, Prompt Rules & ESP8266 berhasil disimpan secara persisten ke NVR!');
-            setTimeout(() => {
-                closeAIGridModal();
-            }, 600);
+            appendAITelemetry(`✅ Konfigurasi ${normalizedZones.length} Objek ROI, Prompt Rules & ESP8266 berhasil disimpan!`, 'success');
+            
+            if (!keepOpen) {
+                alert(`Konfigurasi ${normalizedZones.length} Area Objek Deteksi, Prompt Rules & ESP8266 berhasil disimpan secara persisten ke NVR!`);
+                setTimeout(() => {
+                    closeAIGridModal();
+                }, 600);
+            }
         } else {
             throw new Error(data.error || 'Server error ' + res.status);
         }
@@ -4913,12 +5389,12 @@ async function saveAIGrid() {
             feedback.textContent = '❌ Gagal: ' + e.message;
             feedback.style.color = '#ef4444';
         }
-        appendAITelemetry(`❌ Gagal menyimpan konfigurasi: ${e.message}`, 'alarm');
-        alert('Gagal menyimpan area deteksi: ' + (e.message || e));
+        appendAITelemetry('❌ Gagal menyimpan konfigurasi: ' + e.message, 'alarm');
+        alert('Gagal menyimpan konfigurasi: ' + e.message);
     } finally {
         if (btnSave) {
             btnSave.disabled = false;
-            btnSave.textContent = '💾 Simpan Konfigurasi AI, Prompt & ESP';
+            btnSave.textContent = '💾 Simpan Konfigurasi AI Grid';
         }
     }
 }

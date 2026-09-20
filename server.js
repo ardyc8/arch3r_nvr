@@ -457,7 +457,8 @@ app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
                 cam.ai_config.prompt_rules = payload.prompt_rules;
             }
             saveNvrDb(db);
-            sysLog('INFO', `[AI Vision Engine] Area deteksi ROI, Prompt Rules ("${(payload.prompt_rules && payload.prompt_rules.prompt_text) || 'Default'}") & ESP8266 disimpan untuk kamera ${cam.name}`, 'SYSTEM');
+            const zoneCount = (payload.zones && Array.isArray(payload.zones)) ? payload.zones.length : 1;
+            sysLog('INFO', `[AI Vision Engine] Konfigurasi ROI (${zoneCount} Objek Area), Prompt Rules ("${(payload.prompt_rules && payload.prompt_rules.prompt_text) || 'Default'}") & ESP8266 disimpan untuk kamera ${cam.name}`, 'SYSTEM');
         }
 
         // Teruskan ke daemon Python YOLO jika berjalan (port 8000)
