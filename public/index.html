@@ -931,51 +931,81 @@
                         <!-- TAB 1: LIVE KAMERA NVR & SELEKSI GRID (UTAMA)            -->
                         <!-- ======================================================== -->
                         <div id="ai-tab-pane-live" style="display:block;">
-                            <!-- Camera Selector & Config Actions Toolbar -->
-                            <div style="display:flex; gap:0.75rem; align-items:flex-end; margin-bottom:0.75rem; flex-wrap:wrap;">
-                                <div style="flex:1; min-width:220px;" id="aiCamSelectGroup">
-                                    <label style="display:block; margin-bottom:0.25rem; font-size:0.82rem; font-weight:600; color:var(--text);">Target Kamera NVR (Database Kamera Aktif):</label>
-                                    <select id="ai-cam-select" onchange="loadCamStreamForAI()" class="form-control" style="width:100%; padding:0.45rem 0.6rem; background:rgba(0,0,0,0.3); color:white; border:1px solid var(--border); border-radius:4px; font-size:0.85rem;">
-                                        <option value="">-- Memuat Kamera NVR --</option>
-                                    </select>
-                                </div>
-                                <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
-                                    <!-- Hidden File Input for .yai Config Upload -->
-                                    <input type="file" id="ai-yai-file-input" accept=".yai,.json" style="display:none;" onchange="handleUploadYaiConfig(event)">
-                                    
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="triggerUploadYaiConfig()" style="font-size:0.78rem; background:rgba(16,185,129,0.12); color:#34d399; border-color:rgba(16,185,129,0.35);" title="Unggah file konfigurasi .yai ke kamera ini">
-                                        📤 Upload .yai
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="downloadActiveYaiConfig()" style="font-size:0.78rem; background:rgba(59,130,246,0.12); color:#60a5fa; border-color:rgba(59,130,246,0.35);" title="Unduh konfigurasi grid, prompt dan ESP saat ini sebagai file .yai">
-                                        📥 Download .yai
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="switchAIGridTab('market')" style="font-size:0.78rem; background:rgba(245,158,11,0.12); color:#f59e0b; border-color:rgba(245,158,11,0.35);" title="Buka Marketplace Preset .yai">
-                                        🏪 Marketplace
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="loadCamStreamForAI()" title="Segarkan Live Video Feed">🔄 Segarkan</button>
-                                </div>
-                            </div>
-
-                            <!-- Presets ROI and Status Bar -->
-                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:6px; padding:0.45rem 0.75rem; margin-bottom:0.65rem; flex-wrap:wrap; gap:0.5rem;">
-                                <div style="display:flex; gap:0.35rem; flex-wrap:wrap; align-items:center;">
-                                    <span style="font-size:0.78rem; color:var(--text-muted); margin-right:0.25rem;">Target Objek & Area:</span>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('spbu')" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#f59e0b; border-color:rgba(245,158,11,0.4); font-weight:600;" title="Tandai Area Mesin Pompa Dispenser">⛽ Pompa Bensin</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('parking')" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#38bdf8; border-color:rgba(56,189,248,0.4); font-weight:600;" title="Tandai Area Parkir Antrean Kendaraan">🅿️ Area Parkir/Antrean</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('operator')" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#34d399; border-color:rgba(52,211,153,0.4); font-weight:600;" title="Tandai Zona Kerja Petugas Operator">🚶 Pos Operator</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('center')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">🎯 Tengah</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setAIGridPreset('full')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">🔲 Full Layar</button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="clearAIGrid()" style="padding:0.2rem 0.55rem; font-size:0.75rem; color:#ef4444; border-color:rgba(239,68,68,0.4);">🗑️ Hapus</button>
-                                </div>
-                                <div id="ai-grid-stream-badge" style="font-size:0.75rem; padding:0.2rem 0.5rem; border-radius:4px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
-                                    📡 Menghubungkan ke Feed NVR...
+                            <!-- Camera Selector & Unified AI Settings Toolbar (Per Camera) -->
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; padding:0.75rem 0.95rem; margin-bottom:0.75rem;">
+                                <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; justify-content:space-between;">
+                                    <div style="display:flex; gap:0.75rem; align-items:center; flex:1; min-width:280px; flex-wrap:wrap;">
+                                        <div style="flex:1; min-width:200px;" id="aiCamSelectGroup">
+                                            <label style="display:block; margin-bottom:0.2rem; font-size:0.78rem; font-weight:600; color:var(--text-muted);">Pilih Kamera NVR:</label>
+                                            <select id="ai-cam-select" onchange="loadCamStreamForAI()" class="form-control" style="width:100%; padding:0.4rem 0.6rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:5px; font-size:0.85rem;">
+                                                <option value="">-- Memuat Kamera NVR --</option>
+                                            </select>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:0.5rem; margin-top:1rem;">
+                                            <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.82rem; font-weight:600; color:#38bdf8; cursor:pointer;">
+                                                <input type="checkbox" id="ai-cam-enabled" checked style="accent-color:#2563eb; width:16px; height:16px;" onchange="updateCamAIActiveState()"> 
+                                                <span>Aktifkan AI di Kamera Ini</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+                                        <!-- Hidden File Input for .yai Config Upload -->
+                                        <input type="file" id="ai-yai-file-input" accept=".yai,.json" style="display:none;" onchange="handleUploadYaiConfig(event)">
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="triggerUploadYaiConfig()" style="font-size:0.78rem; background:rgba(16,185,129,0.12); color:#34d399; border-color:rgba(16,185,129,0.35);" title="Unggah file konfigurasi .yai ke kamera ini">
+                                            📤 Upload .yai
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="downloadActiveYaiConfig()" style="font-size:0.78rem; background:rgba(59,130,246,0.12); color:#60a5fa; border-color:rgba(59,130,246,0.35);" title="Unduh konfigurasi grid, prompt dan ESP saat ini sebagai file .yai">
+                                            📥 Download .yai
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="switchAIGridTab('market')" style="font-size:0.78rem; background:rgba(245,158,11,0.12); color:#f59e0b; border-color:rgba(245,158,11,0.35);" title="Buka Marketplace Preset .yai">
+                                            🏪 Marketplace
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="loadCamStreamForAI()" title="Segarkan Live Video Feed">🔄 Segarkan</button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Instructional Guide -->
-                            <div style="background:rgba(59,130,246,0.08); border-left:3px solid #3b82f6; padding:0.45rem 0.75rem; margin-bottom:0.65rem; font-size:0.78rem; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                                <div>🖱️ <strong>Klik & Tarik kursor/layar sentuh</strong> di atas video live untuk mengatur kotak area intrusi (kotak merah). Objek yang masuk/berhenti di area ini akan dievaluasi sesuai <strong>Prompt AI</strong>.</div>
-                                <span style="font-size:0.75rem; color:#38bdf8;">● Live Stream Resmi dari NVR</span>
+                            <!-- Universal Dynamic Zone Editor (Label, Color, Object Target & Presets) -->
+                            <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:0.65rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; margin-bottom:0.5rem;">
+                                    <!-- Zone Custom Label & Color Selector -->
+                                    <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                                        <div style="display:flex; align-items:center; gap:0.35rem;">
+                                            <span style="font-size:0.78rem; font-weight:600; color:var(--text-muted);">Nama/Label Area:</span>
+                                            <input type="text" id="ai-zone-label-input" value="Area Deteksi Utama" class="form-control" placeholder="cth: Pintu Gerbang, Meja Kasir..." style="width:170px; padding:0.25rem 0.5rem; font-size:0.8rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:4px;" oninput="updateActiveZoneLabel(this.value)">
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:0.35rem;">
+                                            <span style="font-size:0.78rem; font-weight:600; color:var(--text-muted);">Warna Kotak:</span>
+                                            <div style="display:flex; gap:0.3rem; align-items:center;">
+                                                <button type="button" onclick="setZoneColor('#3b82f6', 'rgba(59,130,246,0.92)')" class="zone-color-btn active" id="color-blue" style="width:20px; height:20px; border-radius:4px; background:#3b82f6; border:2px solid white; cursor:pointer;" title="Biru (Netral / Informasi)"></button>
+                                                <button type="button" onclick="setZoneColor('#eab308', 'rgba(234,179,8,0.92)')" class="zone-color-btn" id="color-yellow" style="width:20px; height:20px; border-radius:4px; background:#eab308; border:1px solid #475569; cursor:pointer;" title="Kuning (Peringatan / Antrean)"></button>
+                                                <button type="button" onclick="setZoneColor('#ef4444', 'rgba(239,68,68,0.92)')" class="zone-color-btn" id="color-red" style="width:20px; height:20px; border-radius:4px; background:#ef4444; border:1px solid #475569; cursor:pointer;" title="Merah (Bahaya / Area Terlarang)"></button>
+                                                <button type="button" onclick="setZoneColor('#10b981', 'rgba(16,185,129,0.92)')" class="zone-color-btn" id="color-green" style="width:20px; height:20px; border-radius:4px; background:#10b981; border:1px solid #475569; cursor:pointer;" title="Hijau (Aman / Jalur Pejalan)"></button>
+                                                <button type="button" onclick="setZoneColor('#a855f7', 'rgba(168,85,247,0.92)')" class="zone-color-btn" id="color-purple" style="width:20px; height:20px; border-radius:4px; background:#a855f7; border:1px solid #475569; cursor:pointer;" title="Ungu (Kasir / Khusus)"></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="ai-grid-stream-badge" style="font-size:0.75rem; padding:0.2rem 0.5rem; border-radius:4px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+                                        📡 Menghubungkan ke Feed NVR...
+                                    </div>
+                                </div>
+
+                                <!-- Fast Preset Buttons for Real World Scenarios -->
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem; padding-top:0.45rem; border-top:1px solid rgba(255,255,255,0.06);">
+                                    <div style="display:flex; gap:0.3rem; flex-wrap:wrap; align-items:center;">
+                                        <span style="font-size:0.75rem; color:var(--text-muted); margin-right:0.2rem;">Preset Cepat:</span>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('gate')" style="padding:0.18rem 0.5rem; font-size:0.74rem; color:#ef4444; border-color:rgba(239,68,68,0.4);">🚪 Pintu/Gerbang</button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('cashier')" style="padding:0.18rem 0.5rem; font-size:0.74rem; color:#c084fc; border-color:rgba(192,132,252,0.4);">💵 Meja Kasir</button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('parking')" style="padding:0.18rem 0.5rem; font-size:0.74rem; color:#facc15; border-color:rgba(250,204,21,0.4);">🅿️ Area Parkir</button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('spbu')" style="padding:0.18rem 0.5rem; font-size:0.74rem; color:#38bdf8; border-color:rgba(56,189,248,0.4);">⛽ Pompa Bensin</button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('center')" style="padding:0.18rem 0.5rem; font-size:0.74rem;">🎯 Fokus Tengah</button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('full')" style="padding:0.18rem 0.5rem; font-size:0.74rem;">🔲 Full Layar</button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="clearAIGrid()" style="padding:0.18rem 0.5rem; font-size:0.74rem; color:#ef4444; border-color:rgba(239,68,68,0.4);">🗑️ Hapus</button>
+                                    </div>
+                                    <div style="font-size:0.75rem; color:#94a3b8;">
+                                        🖱️ Tarik kursor/sentuh video untuk menggambar kotak bebas
+                                    </div>
+                                </div>
                             </div>
                             
                             <!-- Visual Container (16:9 Surveillance Canvas HUD with Native Video Underlay) -->

@@ -3426,15 +3426,17 @@ let allLogsCache = [];
 let aiDrawCanvas = null;
 let aiDrawCtx = null;
 let isAIDrawing = false;
-let aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
+let aiGridRect = { x: 0, y: 0, w: 0, h: 0, label: 'Area Deteksi Utama', color: '#3b82f6', themeColor: 'rgba(59,130,246,0.92)' };
 let aiDragStart = { x: 0, y: 0 };
 let aiCurrentCam = null;
-let aiSimActive = true;
+let aiSimActive = false; // Live tab MUST be pure surveillance video without simulated cartoons
 let aiAnimFrameId = null;
 let aiTelemetryAutoScroll = true;
 let aiLastTelemetryTick = 0;
 let aiDwellTimer = 0;
 let aiPromptConditionMet = false;
+let aiActiveZoneColor = '#3b82f6';
+let aiActiveZoneThemeColor = 'rgba(59,130,246,0.92)';
 let aiCustomStreamActive = false;
 
 // Tab switcher for AI Vision Studio Modal
@@ -4003,7 +4005,7 @@ function aiStopRenderLoop() {
     }
 }
 
-// RENDER AI SURVEILLANCE & SPBU FUELING SIMULATOR
+// RENDER AI SURVEILLANCE OVERLAY FOR LIVE CAMERA (100% TRANSPARENT BACKGROUND)
 function renderAIFrame() {
     if (!aiDrawCanvas || !aiDrawCtx) return;
     const ctx = aiDrawCtx;
@@ -4012,103 +4014,12 @@ function renderAIFrame() {
     const video = document.getElementById('ai-stream-preview');
     const isVideoPlaying = video && !video.paused && video.readyState >= 2 && video.videoWidth > 0;
     
+    // Always clear canvas for 100% transparency - video underneath will show directly!
     ctx.clearRect(0, 0, w, h);
     
-    // 1. If video is NOT ready, draw the SPBU Fueling Station Scene
-    if (!isVideoPlaying) {
-        // Dark gradient night backdrop
-        const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-        bgGrad.addColorStop(0, '#0a101d');
-        bgGrad.addColorStop(1, '#050811');
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, w, h);
-        
-        // Ground driveway / concrete lane
-        ctx.fillStyle = '#0f172a';
-        ctx.beginPath();
-        ctx.moveTo(0, h * 0.45);
-        ctx.lineTo(w, h * 0.45);
-        ctx.lineTo(w, h);
-        ctx.lineTo(0, h);
-        ctx.fill();
-        
-        // SPBU Canopy Roof line
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(0, 0, w, h * 0.18);
-        ctx.fillStyle = '#ef4444'; // Pertamina / SPBU red trim
-        ctx.fillRect(0, h * 0.18 - 6, w, 6);
-        ctx.fillStyle = '#3b82f6'; // Blue accent
-        ctx.fillRect(0, h * 0.18, w, 3);
-        
-        // SPBU Canopy Pillars
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(w * 0.18, h * 0.18, 18, h * 0.35);
-        ctx.fillRect(w * 0.82, h * 0.18, 18, h * 0.35);
-        
-        // Ground lane markings (Yellow refueling bay stripes)
-        ctx.strokeStyle = 'rgba(234, 179, 8, 0.4)';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([12, 10]);
-        ctx.beginPath();
-        ctx.moveTo(w * 0.25, h * 0.52); ctx.lineTo(w * 0.75, h * 0.52);
-        ctx.moveTo(w * 0.22, h * 0.88); ctx.lineTo(w * 0.78, h * 0.88);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        
-        // Ground Text
-        ctx.fillStyle = 'rgba(234, 179, 8, 0.35)';
-        ctx.font = 'bold 11px monospace';
-        ctx.fillText('⛽ AREA PENGISIAN BBM (PERTASHOP / SPBU)', w * 0.28, h * 0.85);
-        
-        // Fuel Dispenser Pump (Kotak Pompa Bensin Pertamina)
-        const pumpX = w * 0.58;
-        const pumpY = h * 0.38;
-        const pumpW = 54;
-        const pumpH = 105;
-        
-        // Dispenser body
-        ctx.fillStyle = '#1e293b';
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 2;
-        ctx.fillRect(pumpX, pumpY, pumpW, pumpH);
-        ctx.strokeRect(pumpX, pumpY, pumpW, pumpH);
-        
-        // Dispenser top red badge
-        ctx.fillStyle = '#dc2626';
-        ctx.fillRect(pumpX, pumpY, pumpW, 20);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 9px monospace';
-        ctx.fillText('SPBU BBM', pumpX + 6, pumpY + 14);
-        
-        // Digital price / liter counter display
-        ctx.fillStyle = '#020617';
-        ctx.fillRect(pumpX + 6, pumpY + 26, pumpW - 12, 28);
-        ctx.fillStyle = '#22c55e';
-        ctx.font = 'bold 8px monospace';
-        const liters = (aiDwellTimer * 1.8).toFixed(1);
-        ctx.fillText(`L: ${liters}`, pumpX + 9, pumpY + 38);
-        ctx.fillText(`Rp: ${Math.round(liters * 10000)}`, pumpX + 9, pumpY + 49);
-        
-        // Nozzle & Hose
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(pumpX + 4, pumpY + 60);
-        ctx.quadraticCurveTo(pumpX - 16, pumpY + 80, pumpX - 25, pumpY + 70);
-        ctx.stroke();
-        
-        // Surveillance Grid & Crosshair
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.08)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (let x = 0; x < w; x += w / 10) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
-        for (let y = 0; y < h; y += h / 8) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
-        ctx.stroke();
-    }
-    
-    // Corner surveillance brackets
+    // Corner surveillance brackets (Subtle surveillance HUD)
     const bSize = 14;
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.45)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(8, 8 + bSize); ctx.lineTo(8, 8); ctx.lineTo(8 + bSize, 8);
@@ -4117,192 +4028,49 @@ function renderAIFrame() {
     ctx.moveTo(w - 8 - bSize, h - 8); ctx.lineTo(w - 8, h - 8); ctx.lineTo(w - 8, h - 8 - bSize);
     ctx.stroke();
 
-    // If video is playing live, show an active HUD banner in corner
-    if (isVideoPlaying) {
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-        ctx.lineWidth = 1;
-        ctx.fillRect(w - 185, 8, 175, 22);
-        ctx.strokeRect(w - 185, 8, 175, 22);
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 9px monospace';
-        ctx.fillText('📡 YOLO VISION: MONITORING', w - 177, 23);
-    }
+    // Active HUD badge in corner
+    const camName = (aiCurrentCam && aiCurrentCam.name) ? aiCurrentCam.name.toUpperCase() : 'KAMERA NVR';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(w - 210, 8, 202, 22);
+    ctx.strokeRect(w - 210, 8, 202, 22);
+    ctx.fillStyle = isVideoPlaying ? '#34d399' : '#38bdf8';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText(isVideoPlaying ? `🟢 LIVE STREAM: ${camName}` : `📡 SIAGA: ${camName}`, w - 202, 23);
     
-    // 2. SIMULATION & PROMPT EVALUATION LOGIC
-    let targetColliding = false;
-    let anyStationaryInside = false;
-    
-    if (aiSimActive) {
-        const targetStopX = w * 0.44;
-        
-        // Advance SPBU Customer lifecycle
-        if (aiSimState.phase === 'approaching') {
-            aiSimState.vehicle.x += aiSimState.vehicle.vx;
-            aiSimState.person.x += aiSimState.person.vx;
-            aiSimState.vehicle.stationary = false;
-            aiSimState.person.stationary = false;
-            
-            // Decelerate and stop when reaching gas pump
-            if (aiSimState.vehicle.x >= targetStopX) {
-                aiSimState.vehicle.x = targetStopX;
-                aiSimState.person.x = targetStopX + 32;
-                aiSimState.phase = 'refueling';
-                aiSimState.vehicle.stationary = true;
-                aiSimState.person.stationary = true;
-                aiDwellTimer = 0;
-                appendAITelemetry('🛵 Objek terdeteksi TIBA di samping dispenser BBM. Kecepatan: 0 px/s (BERHENTI).', 'info');
-            }
-        } else if (aiSimState.phase === 'refueling') {
-            aiSimState.vehicle.stationary = true;
-            aiSimState.person.stationary = true;
-            aiDwellTimer += 0.016; // approx 60fps tick
-            
-            // Stay refueling for 8 seconds, then leave
-            if (aiDwellTimer > 8.0) {
-                aiSimState.phase = 'leaving';
-                aiSimState.vehicle.vx = 2.4;
-                aiSimState.person.vx = 2.4;
-                appendAITelemetry('🛵 Selesai mengisi bensin. Objek mulai BERGERAK meninggalkan pompa BBM.', 'info');
-            }
-        } else if (aiSimState.phase === 'leaving') {
-            aiSimState.vehicle.x += aiSimState.vehicle.vx;
-            aiSimState.person.x += aiSimState.person.vx;
-            aiSimState.vehicle.stationary = false;
-            aiSimState.person.stationary = false;
-            
-            if (aiSimState.vehicle.x > w + 40) {
-                // Reset loop from left
-                aiSimState.phase = 'approaching';
-                aiSimState.vehicle.x = -110;
-                aiSimState.person.x = -75;
-                aiSimState.vehicle.vx = 2.2;
-                aiSimState.person.vx = 2.2;
-                aiDwellTimer = 0;
-            }
-        }
-        
-        // Check collision against user's drawn ROI
-        const targets = [aiSimState.vehicle, aiSimState.person];
-        targets.forEach(t => {
-            const tCenterX = t.x + t.w / 2;
-            const tCenterY = t.y + t.h * 0.7;
-            
-            if (aiGridRect.w > 10 && aiGridRect.h > 10) {
-                const gx = aiGridRect.x;
-                const gy = aiGridRect.y;
-                const gw = aiGridRect.w;
-                const gh = aiGridRect.h;
-                
-                if (tCenterX >= gx && tCenterX <= gx + gw && tCenterY >= gy && tCenterY <= gy + gh) {
-                    targetColliding = true;
-                    if (t.stationary) {
-                        anyStationaryInside = true;
-                    }
-                }
-            }
-        });
-        
-        // Read prompt condition criteria
-        const dwellInput = document.getElementById('ai-dwell-seconds');
-        const minDwellRequired = dwellInput ? (parseInt(dwellInput.value, 10) || 3) : 3;
-        const motionCond = document.getElementById('ai-motion-condition')?.value || 'stationary_only';
-        
-        // Rule evaluation
-        let promptSatisfied = false;
-        if (targetColliding) {
-            if (motionCond === 'stationary_only') {
-                if (anyStationaryInside && aiDwellTimer >= minDwellRequired) {
-                    promptSatisfied = true;
-                }
-            } else {
-                promptSatisfied = true;
-            }
-        }
-        aiPromptConditionMet = promptSatisfied;
-        
-        // Update Evaluation Badge
-        const evalBadge = document.getElementById('ai-telemetry-eval-badge');
-        if (evalBadge) {
-            if (promptSatisfied) {
-                evalBadge.innerHTML = '🚨 SYARAT PROMPT TERPENUHI: ALARM AKTIF';
-                evalBadge.style.background = 'rgba(239,68,68,0.25)';
-                evalBadge.style.color = '#ef4444';
-                evalBadge.style.borderColor = 'rgba(239,68,68,0.5)';
-            } else if (targetColliding && anyStationaryInside) {
-                evalBadge.innerHTML = `⏳ PROMPT: MENUNGGU BERHENTI (${aiDwellTimer.toFixed(1)}s / ${minDwellRequired}s)`;
-                evalBadge.style.background = 'rgba(234,179,8,0.2)';
-                evalBadge.style.color = '#facc15';
-                evalBadge.style.borderColor = 'rgba(234,179,8,0.4)';
-            } else if (targetColliding) {
-                evalBadge.innerHTML = '🎯 OBJEK DI AREA GRID (EVALUASI PROMPT)';
-                evalBadge.style.background = 'rgba(59,130,246,0.2)';
-                evalBadge.style.color = '#60a5fa';
-                evalBadge.style.borderColor = 'rgba(59,130,246,0.4)';
-            } else {
-                evalBadge.innerHTML = '🎯 STATUS SYARAT: SIAGA';
-                evalBadge.style.background = 'rgba(148,163,184,0.15)';
-                evalBadge.style.color = '#94a3b8';
-                evalBadge.style.borderColor = 'rgba(148,163,184,0.3)';
-            }
-        }
-        
-        // Draw Simulated Objects
-        // 1. Vehicle (Motorcycle / Car)
-        drawSimVehicle(ctx, aiSimState.vehicle, promptSatisfied, targetColliding);
-        // 2. Person (Driver / Operator)
-        drawSimPerson(ctx, aiSimState.person, promptSatisfied, targetColliding);
-        
-        // Periodic Text Telemetry emission (Every ~800ms)
-        const now = Date.now();
-        if (now - aiLastTelemetryTick > 800) {
-            aiLastTelemetryTick = now;
-            emitLiveTelemetryTick(promptSatisfied, targetColliding, anyStationaryInside, minDwellRequired);
-        }
-    }
-    
-    // Update live banner
-    const banner = document.getElementById('ai-live-collision-banner');
-    if (banner) {
-        if (aiPromptConditionMet) {
-            banner.style.display = 'block';
-            banner.innerHTML = `🚨 SYARAT PROMPT TERPENUHI: ORANG BERHENTI MENGISI BENSIN (${aiDwellTimer.toFixed(1)}s)!`;
-            banner.style.background = 'rgba(239, 68, 68, 0.95)';
-        } else if (targetColliding) {
-            banner.style.display = 'block';
-            banner.innerHTML = `⚠️ OBJEK DI DALAM AREA: EVALUASI PROMPT AI (${aiDwellTimer.toFixed(1)}s)...`;
-            banner.style.background = 'rgba(234, 179, 8, 0.9)';
-        } else {
-            banner.style.display = 'none';
-        }
-    }
-    
-    // 3. User Drawn Intrusion Detection Grid (ROI)
+    // User Drawn Intrusion Detection Grid (ROI)
     if (aiGridRect.w > 0 && aiGridRect.h > 0) {
         const { x, y, w: rw, h: rh } = aiGridRect;
+        const colorHex = aiGridRect.color || aiActiveZoneColor || '#3b82f6';
+        const colorTheme = aiGridRect.themeColor || aiActiveZoneThemeColor || 'rgba(59,130,246,0.92)';
         
-        // Fill color: glowing red if prompt met, amber if colliding, translucent blue if idle
-        if (aiPromptConditionMet) {
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
-        } else if (targetColliding) {
-            ctx.fillStyle = 'rgba(234, 179, 8, 0.28)';
-        } else {
-            ctx.fillStyle = 'rgba(59, 130, 246, 0.22)';
-        }
+        // Semi-transparent fill of user's chosen zone color
+        ctx.fillStyle = colorTheme.replace(/[\d\.]+\)$/, '0.22)');
         ctx.fillRect(x, y, rw, rh);
         
-        // Dashed Border
+        // Fine interior cross lines for grid area
         ctx.save();
-        ctx.strokeStyle = aiPromptConditionMet ? '#ef4444' : (targetColliding ? '#eab308' : '#3b82f6');
+        ctx.strokeStyle = colorTheme.replace(/[\d\.]+\)$/, '0.15)');
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let gx = x + 30; gx < x + rw; gx += 30) { ctx.moveTo(gx, y); ctx.lineTo(gx, y + rh); }
+        for (let gy = y + 30; gy < y + rh; gy += 30) { ctx.moveTo(x, gy); ctx.lineTo(x + rw, gy); }
+        ctx.stroke();
+        ctx.restore();
+        
+        // Dashed Border in chosen color
+        ctx.save();
+        ctx.strokeStyle = colorHex;
         ctx.lineWidth = 2.5;
-        ctx.setLineDash([7, 4]);
+        ctx.setLineDash([8, 4]);
         ctx.strokeRect(x, y, rw, rh);
         ctx.restore();
         
         // Corner anchor points
         const pSize = 7;
         ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = aiPromptConditionMet ? '#ef4444' : '#3b82f6';
+        ctx.strokeStyle = colorHex;
         ctx.lineWidth = 2;
         const corners = [
             [x, y], [x + rw, y], [x, y + rh], [x + rw, y + rh]
@@ -4312,19 +4080,16 @@ function renderAIFrame() {
             ctx.strokeRect(cx - pSize/2, cy - pSize/2, pSize, pSize);
         });
         
-        // Floating Top Tag
-        ctx.fillStyle = aiPromptConditionMet ? 'rgba(239, 68, 68, 0.95)' : (targetColliding ? 'rgba(234, 179, 8, 0.95)' : (aiGridRect.themeColor || 'rgba(37, 99, 235, 0.92)'));
-        const tagH = 20;
-        const tagW = Math.min(rw, 240);
+        // Floating Top Tag with Area Name and Badge
+        ctx.fillStyle = colorTheme;
+        const tagH = 22;
+        const tagW = Math.min(Math.max(rw, 160), 280);
         ctx.fillRect(x, Math.max(0, y - tagH), tagW, tagH);
         
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 9.5px monospace';
-        const defaultLabel = aiGridRect.label || '🎯 AREA GRID DETEKSI (ROI)';
-        const tagLabel = aiPromptConditionMet 
-            ? '🚨 ALARM: SYARAT PROMPT TERPENUHI!' 
-            : (targetColliding ? `⏳ EVALUASI: BERHENTI ${aiDwellTimer.toFixed(1)}s` : defaultLabel);
-        ctx.fillText(tagLabel, x + 6, Math.max(14, y - 5));
+        ctx.font = 'bold 10px monospace';
+        const labelText = aiGridRect.label || document.getElementById('ai-zone-label-input')?.value || '🎯 AREA DETEKSI';
+        ctx.fillText(labelText, x + 6, Math.max(15, y - 6));
     }
 }
 
@@ -4674,72 +4439,142 @@ function toggleAISimulation() {
     if (banner && !aiSimActive) banner.style.display = 'none';
 }
 
+function setZoneColor(hex, themeRgba) {
+    aiActiveZoneColor = hex;
+    aiActiveZoneThemeColor = themeRgba;
+    if (aiGridRect) {
+        aiGridRect.color = hex;
+        aiGridRect.themeColor = themeRgba;
+    }
+    // Update active highlight border on color buttons
+    document.querySelectorAll('.ai-zone-color-btn').forEach(btn => {
+        if (btn.getAttribute('data-color') === hex) {
+            btn.style.borderColor = '#ffffff';
+            btn.style.boxShadow = '0 0 8px ' + hex;
+            btn.style.transform = 'scale(1.15)';
+        } else {
+            btn.style.borderColor = 'transparent';
+            btn.style.boxShadow = 'none';
+            btn.style.transform = 'scale(1)';
+        }
+    });
+    appendAITelemetry(`🎨 Warna Zona ROI diubah ke: ${hex}`, 'info');
+}
+
+function updateActiveZoneLabel(text) {
+    if (!aiGridRect) return;
+    aiGridRect.label = text.trim() || '🎯 Area Deteksi';
+}
+
+function updateCamAIActiveState() {
+    const chk = document.getElementById('ai-cam-active-toggle');
+    const badge = document.getElementById('ai-cam-active-badge');
+    const isActive = chk ? chk.checked : true;
+    if (badge) {
+        if (isActive) {
+            badge.textContent = 'AKTIF';
+            badge.style.background = 'rgba(34,197,94,0.2)';
+            badge.style.color = '#34d399';
+            badge.style.borderColor = 'rgba(34,197,94,0.4)';
+        } else {
+            badge.textContent = 'NONAKTIF';
+            badge.style.background = 'rgba(239,68,68,0.2)';
+            badge.style.color = '#ef4444';
+            badge.style.borderColor = 'rgba(239,68,68,0.4)';
+        }
+    }
+    appendAITelemetry(`⚙️ Status AI Kamera ${aiCurrentCam ? aiCurrentCam.name : ''}: ${isActive ? 'AKTIF' : 'NONAKTIF'}`, 'info');
+}
+
+function setUniversalPreset(preset) {
+    return setAIGridPreset(preset);
+}
+
 function setAIGridPreset(preset) {
     if (!aiDrawCanvas) initAIDrawCanvas();
     if (!aiDrawCanvas) return;
     const cw = aiDrawCanvas.width;
     const ch = aiDrawCanvas.height;
+    const inp = document.getElementById('ai-zone-label-input');
     
-    if (preset === 'spbu') {
-        // Area dispenser pompa bensin & posisi antrean pengisian
+    if (preset === 'gate') {
         aiGridRect = {
-            x: Math.round(cw * 0.32),
-            y: Math.round(ch * 0.28),
-            w: Math.round(cw * 0.46),
-            h: Math.round(ch * 0.62),
-            label: '⛽ AREA POMPA BBM (DISPENSER)',
-            themeColor: 'rgba(217, 119, 6, 0.95)'
-        };
-        appendAITelemetry('⛽ Preset ROI Pompa Bensin Diterapkan (Area Dispenser & Pengendara).', 'info');
-    } else if (preset === 'parking') {
-        // Area parkir / antrean kendaraan di samping dispenser
-        aiGridRect = {
-            x: Math.round(cw * 0.20),
-            y: Math.round(ch * 0.42),
-            w: Math.round(cw * 0.60),
-            h: Math.round(ch * 0.52),
-            label: '🅿️ AREA PARKIR & ANTREAN KENDARAAN',
-            themeColor: 'rgba(2, 132, 199, 0.95)'
-        };
-        appendAITelemetry('🅿️ Preset ROI Area Parkir & Antrean Kendaraan Diterapkan.', 'info');
-    } else if (preset === 'operator') {
-        // Zona kerja petugas operator SPBU
-        aiGridRect = {
-            x: Math.round(cw * 0.52),
-            y: Math.round(ch * 0.35),
-            w: Math.round(cw * 0.24),
+            x: Math.round(cw * 0.12),
+            y: Math.round(ch * 0.40),
+            w: Math.round(cw * 0.76),
             h: Math.round(ch * 0.55),
-            label: '🚶 POS KERJA OPERATOR SPBU',
-            themeColor: 'rgba(5, 150, 105, 0.95)'
+            label: '🚪 Pintu Masuk / Gerbang Utama',
+            color: aiActiveZoneColor,
+            themeColor: aiActiveZoneThemeColor
         };
-        appendAITelemetry('🚶 Preset ROI Pos Kerja Petugas Operator Diterapkan.', 'info');
-    } else if (preset === 'full') {
-        aiGridRect = { x: 4, y: 4, w: cw - 8, h: ch - 8, label: '🔲 FULL FRAME SCANNER' };
-        appendAITelemetry('🔲 Preset Full Frame Diterapkan.', 'info');
+        if (inp) inp.value = '🚪 Pintu Masuk / Gerbang Utama';
+        appendAITelemetry('🚪 Preset Area: Pintu Masuk / Gerbang Utama Diterapkan.', 'info');
+    } else if (preset === 'parking') {
+        aiGridRect = {
+            x: Math.round(cw * 0.15),
+            y: Math.round(ch * 0.35),
+            w: Math.round(cw * 0.70),
+            h: Math.round(ch * 0.60),
+            label: '🅿️ Area Parkir Kendaraan',
+            color: aiActiveZoneColor,
+            themeColor: aiActiveZoneThemeColor
+        };
+        if (inp) inp.value = '🅿️ Area Parkir Kendaraan';
+        appendAITelemetry('🅿️ Preset Area: Parkir Kendaraan Diterapkan.', 'info');
+    } else if (preset === 'cashier') {
+        aiGridRect = {
+            x: Math.round(cw * 0.35),
+            y: Math.round(ch * 0.25),
+            w: Math.round(cw * 0.38),
+            h: Math.round(ch * 0.55),
+            label: '💳 Meja Kasir / Transaksi',
+            color: aiActiveZoneColor,
+            themeColor: aiActiveZoneThemeColor
+        };
+        if (inp) inp.value = '💳 Meja Kasir / Transaksi';
+        appendAITelemetry('💳 Preset Area: Meja Kasir / Transaksi Diterapkan.', 'info');
+    } else if (preset === 'spbu') {
+        aiGridRect = {
+            x: Math.round(cw * 0.30),
+            y: Math.round(ch * 0.25),
+            w: Math.round(cw * 0.48),
+            h: Math.round(ch * 0.65),
+            label: '⛽ Area Pompa / Dispenser BBM',
+            color: aiActiveZoneColor,
+            themeColor: aiActiveZoneThemeColor
+        };
+        if (inp) inp.value = '⛽ Area Pompa / Dispenser BBM';
+        appendAITelemetry('⛽ Preset Area: Pompa / Dispenser BBM Diterapkan.', 'info');
     } else if (preset === 'center') {
         aiGridRect = {
-            x: Math.round(cw * 0.18),
-            y: Math.round(ch * 0.18),
-            w: Math.round(cw * 0.64),
-            h: Math.round(ch * 0.64),
-            label: '🎯 FOKUS TENGAH (ROI)'
+            x: Math.round(cw * 0.20),
+            y: Math.round(ch * 0.20),
+            w: Math.round(cw * 0.60),
+            h: Math.round(ch * 0.60),
+            label: '🎯 Area Fokus Tengah (ROI)',
+            color: aiActiveZoneColor,
+            themeColor: aiActiveZoneThemeColor
         };
-        appendAITelemetry('🎯 Preset Fokus Tengah Diterapkan.', 'info');
-    } else if (preset === 'gate') {
-        aiGridRect = {
-            x: Math.round(cw * 0.10),
-            y: Math.round(ch * 0.45),
-            w: Math.round(cw * 0.80),
-            h: Math.round(ch * 0.50),
-            label: '🚪 PINTU MASUK / GERBANG'
+        if (inp) inp.value = '🎯 Area Fokus Tengah (ROI)';
+        appendAITelemetry('🎯 Preset Area: Fokus Tengah Diterapkan.', 'info');
+    } else if (preset === 'full') {
+        aiGridRect = { 
+            x: 6, 
+            y: 6, 
+            w: cw - 12, 
+            h: ch - 12, 
+            label: '🔲 Seluruh Area Pantauan (Full Frame)',
+            color: aiActiveZoneColor,
+            themeColor: aiActiveZoneThemeColor
         };
-        appendAITelemetry('🚪 Preset Gerbang/Pintu Masuk Diterapkan.', 'info');
+        if (inp) inp.value = '🔲 Seluruh Area Pantauan (Full Frame)';
+        appendAITelemetry('🔲 Preset Area: Full Frame Diterapkan.', 'info');
     }
     updateCoordStatusText();
 }
 
 function clearAIGrid() {
-    aiGridRect = { x: 0, y: 0, w: 0, h: 0 };
+    aiGridRect = { x: 0, y: 0, w: 0, h: 0, label: '', color: aiActiveZoneColor, themeColor: aiActiveZoneThemeColor };
     updateCoordStatusText();
     const feedback = document.getElementById('ai-save-feedback');
     if (feedback) feedback.textContent = 'Area intrusi dibersihkan.';
@@ -4762,7 +4597,38 @@ function restoreAIGridFromData(grid) {
         w = w * cw;
         h = h * ch;
     }
-    aiGridRect = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
+    
+    const zoneLabel = grid.label || 'Area Deteksi Utama';
+    const zoneColor = grid.color || '#3b82f6';
+    const zoneTheme = grid.themeColor || 'rgba(59,130,246,0.92)';
+    
+    aiActiveZoneColor = zoneColor;
+    aiActiveZoneThemeColor = zoneTheme;
+    
+    aiGridRect = { 
+        x: Math.round(x), 
+        y: Math.round(y), 
+        w: Math.round(w), 
+        h: Math.round(h),
+        label: zoneLabel,
+        color: zoneColor,
+        themeColor: zoneTheme
+    };
+    
+    // Sync to UI controls
+    const inpLabel = document.getElementById('ai-zone-label-input');
+    if (inpLabel) inpLabel.value = zoneLabel;
+    
+    // Set color button state
+    setZoneColor(zoneColor, zoneTheme);
+    
+    // Set AI active toggle
+    const chkActive = document.getElementById('ai-cam-active-toggle');
+    if (chkActive && typeof grid.enabled !== 'undefined') {
+        chkActive.checked = !!grid.enabled;
+        updateCamAIActiveState();
+    }
+    
     updateCoordStatusText();
 }
 
@@ -4978,12 +4844,17 @@ async function saveAIGrid() {
     
     const promptRules = {
         prompt_text: promptText,
-        preset_id: 'spbu_refuel',
+        preset_id: 'custom_zone',
         target_classes: targetClasses,
         require_stationary: requireStationary,
         min_dwell_sec: minDwellSec,
         confidence_min: confidenceMin
     };
+    
+    const zoneLabel = aiGridRect.label || document.getElementById('ai-zone-label-input')?.value?.trim() || 'Area Deteksi Utama';
+    const zoneColor = aiGridRect.color || aiActiveZoneColor || '#3b82f6';
+    const zoneTheme = aiGridRect.themeColor || aiActiveZoneThemeColor || 'rgba(59,130,246,0.92)';
+    const isCamAIActive = document.getElementById('ai-cam-active-toggle') ? document.getElementById('ai-cam-active-toggle').checked : true;
     
     const payload = {
         camera_id: camId,
@@ -4993,7 +4864,11 @@ async function saveAIGrid() {
         h: parseFloat(((aiGridRect.h || 0) / ch).toFixed(4)),
         pixel_width: cw,
         pixel_height: ch,
-        enabled: aiGridRect.w > 0,
+        enabled: isCamAIActive && (aiGridRect.w > 0),
+        ai_active: isCamAIActive,
+        label: zoneLabel,
+        color: zoneColor,
+        themeColor: zoneTheme,
         esp_config: espConfig,
         prompt_rules: promptRules,
         updated_at: new Date().toISOString()
@@ -5735,9 +5610,14 @@ async function fetchInstalledAddons() {
                             </span>
                         </td>
                         <td style="padding: 1rem 1.5rem; text-align:right;">
-                            <div style="display:flex; justify-content:flex-end; gap:0.5rem; flex-wrap:wrap;">
-                                <button class="btn-sm btn-primary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan">⚙️</button>
-                                ${(addon.id === 'ai_yolo' || addon.id === 'ai-yolo') ? `<button class="btn-sm btn-primary" onclick="openYoloAiPage()" title="Buka Halaman YOLO AI Vision" style="background:#2563eb; border-color:#2563eb; font-weight:600;">🎯 Buka Panel AI</button>` : ''}
+                            <div style="display:flex; justify-content:flex-end; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                                ${(addon.id === 'ai_yolo' || addon.id === 'ai-yolo') ? `
+                                    <button class="btn-sm btn-primary" onclick="openYoloAiPage()" title="Kelola & Konfigurasi AI Kamera" style="background:#2563eb; border-color:#2563eb; font-weight:600; display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem;">
+                                        <span>🎯</span> Kelola AI Kamera
+                                    </button>
+                                ` : `
+                                    <button class="btn-sm btn-primary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan">⚙️</button>
+                                `}
                                 <button class="btn-sm btn-secondary" onclick="toggleAddonState('${addon.id}', ${!addon.active})" title="${addon.active ? 'Matikan' : 'Nyalakan'}">
                                     ${addon.active ? '⏹️' : '▶️'}
                                 </button>
@@ -6283,5 +6163,9 @@ window.renderAddonConfigForm = renderAddonConfigForm;
 window.saveAddonConfig = saveAddonConfig;
 window.closeAddonConfigModal = closeAddonConfigModal;
 window.submitInstallAddon = submitInstallAddon;
+window.setZoneColor = setZoneColor;
+window.updateActiveZoneLabel = updateActiveZoneLabel;
+window.setUniversalPreset = setUniversalPreset;
+window.updateCamAIActiveState = updateCamAIActiveState;
 
 

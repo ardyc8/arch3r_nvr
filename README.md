@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 10.0.5)
+# ⚡ Arch3r NVR (Ver. 10.0.6)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
@@ -180,6 +180,16 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
     1. *Baris Atas (Horizontal Parallel)*: Panel **🔍 LENSA & FOKUS** (Zoom +, Focus +, Zoom -, Focus -) dan panel **🎬 KONTROL PLAYER & AUDIO** (Play/Pause, Kualitas HD/SD, Snapshot 📸, Slider Volume 🔊, Audio Mute 🔇) diletakkan sejajar secara horizontal dan adaptif/responsif.
     2. *Baris Bawah (Center)*: Dial joystick **D-Pad Sirkular** (▲, ◀, Stop ■, ▶, ▼) diletakkan di bagian tengah bawah (*bottom center*) secara simetris dan rapi.
   - **Unified Version & Metadata Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.7.8** di seluruh tampilan UI, login card, sidebar profil, mobile header, dan metadata sistem.
+
+- **[Ver 10.0.6]**
+  - **Live Video Pure Transparency Canvas (Zero-Animation Interference)**: Memisahkan secara total kanvas video live dengan kanvas simulasi. Kanvas overlay pada kamera nyata dibuat 100% transparan (`clearRect`) tanpa latar simulasi kanopi/dispenser SPBU, sehingga siaran video kamera asli dari NVR tampil jernih, tajam, dan tidak lagi tertutup animasi kartun.
+  - **Universal Custom ROI Editor (Bebas Kustomisasi & Fleksibel)**: 
+    - Pengguna bebas memberi nama label zona pantauan (misal: *Pintu Gerbang, Meja Kasir, Pompa Bensin, Area Parkir, Kasir SPBU, Ruang Brankas*).
+    - Memilih palet warna zona kustom (Biru, Kuning, Merah, Hijau, Ungu) yang otomatis diterapkan pada garis putus-putus (*dashed border*), isi semi-transparan, corner anchor, dan tag floating header di atas kotak area.
+    - Tombol Preset Universal sekali klik: *🚪 Pintu Masuk / Gerbang*, *🅿️ Area Parkir Kendaraan*, *💳 Meja Kasir / Transaksi*, *⛽ Pompa Bensin*, *🎯 Fokus Tengah*, dan *🔲 Full Frame*.
+  - **Unified Per-Camera AI Control**: Setiap kamera NVR memiliki konfigurasi mandiri: toggle aktif/nonaktif AI per kamera, tingkat sensitivitas (*confidence*), filter target objek, zona deteksi, dan webhook IoT ESP8266 tersimpan langsung ke database kamera masing-masing.
+  - **Unified Marketplace Addons Action Button**: Menyatukan tombol pengaturan gerigi (⚙️) dan tombol buka panel AI (🎯) di tabel Addon Marketplace menjadi satu tombol terpadu *"🎯 Kelola AI Kamera"*, menyederhanakan alur kerja pengguna.
+  - **Isolated AI Simulation Sandbox**: Seluruh animasi dan pengujian teks pembacaan objek diisolasi secara eksklusif di tab Lab Simulasi (`ai-tab-pane-sim`) tanpa mencemari pemantauan kamera riil.
 
 - **[Ver 10.0.5]**
   - **Live Canvas Render Loop Bugfix**: Memperbaiki syarat henti pada `aiStartRenderLoop` agar render loop kanvas terus berjalan tanpa henti saat berada di halaman mandiri (`view-yolo-ai`), sehingga kotak grid objek tampil seketika di atas video live.
