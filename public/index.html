@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.1.0 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
-    <link rel="stylesheet" href="style.css?v=10.1.0">
+    <title>Arch3r NVR Ver. 10.1.4 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <link rel="stylesheet" href="style.css?v=10.1.4">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="version_sync.js?v=10.1.0"></script>
+    <script src="version_sync.js?v=10.1.4"></script>
     <style>
         /* Fullscreen Drawing Mode for AI Vision */
         #ai-canvas-container.ai-fullscreen-active {
@@ -110,7 +110,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 10.0.3</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 10.1.3</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -186,7 +186,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.0.3</h3>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.1.2</h3>
                 <div style="display:flex; align-items:center; margin-left:auto;">
                     <img src="Archer.ico?v=2" alt="Arch3r" style="height:26px; width:26px; object-fit:contain; border-radius:4px;">
                 </div>
@@ -464,26 +464,87 @@
                                     <input type="checkbox" id="camEnabled" checked>
                                     <label for="camEnabled" style="font-weight:600;">Aktifkan Kamera Ini</label>
                                 </div>
-                                <div class="form-group">
-                                    <label>Custom ID (Opsional, alfanumerik tanpa spasi)</label>
-                                    <input type="text" id="camCustomId" placeholder="Contoh: cam_garasi_1">
+                                <div class="form-row">
+                                    <div class="form-group flex-1">
+                                        <label>Nama Kamera (cameraName)</label>
+                                        <input type="text" id="camName" placeholder="Contoh: Kamera Depan / Kasir" required>
+                                    </div>
+                                    <div class="form-group flex-1">
+                                        <label>Custom ID (Opsional)</label>
+                                        <input type="text" id="camCustomId" placeholder="Contoh: cam_garasi_1">
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>Nama Kamera</label>
-                                    <input type="text" id="camName" placeholder="Contoh: Kamera Garasi / Kasir" required>
+
+                                <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.85rem; margin-bottom:1rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                                        <span style="font-size:0.85rem; font-weight:600; color:#60a5fa;">🌐 Konfigurasi IP & Akun Kamera (Auto-Probe Ready)</span>
+                                        <button type="button" id="btnQuickProbe" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:3px 8px; color:#38bdf8; border-color:#0284c7;">
+                                            🔍 Auto-Discover / Test ONVIF
+                                        </button>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group flex-2">
+                                            <label>IP Address Kamera</label>
+                                            <input type="text" id="camIpAddress" placeholder="Contoh: 192.168.1.100">
+                                        </div>
+                                        <div class="form-group flex-1">
+                                            <label>ONVIF Port</label>
+                                            <input type="number" id="camOnvifPort" placeholder="8899 / 80 / 2020">
+                                        </div>
+                                        <div class="form-group flex-1">
+                                            <label>RTSP Port</label>
+                                            <input type="number" id="camRtspPort" placeholder="554">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group flex-1">
+                                            <label>Username</label>
+                                            <input type="text" id="camUsername" placeholder="admin">
+                                        </div>
+                                        <div class="form-group flex-1">
+                                            <label>Password</label>
+                                            <div style="display:flex; gap:0.25rem;">
+                                                <input type="password" id="camPassword" placeholder="Password kamera" style="flex:1;">
+                                                <button type="button" class="btn btn-secondary btn-peek-pwd" data-target="camPassword" style="padding:0 0.5rem;"><span class="peek-icon">👁️</span></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="quickProbeStatus" style="font-size:0.8rem; margin-top:0.35rem; display:none;"></div>
                                 </div>
                             </div>
                             <div id="ctab-streams" class="ctab-pane">
                                 <div class="form-group">
-                                    <label>Main Stream RTSP URL (HD / 1080p)</label>
+                                    <label>Main Stream RTSP URL (HD / 1080p - Rekaman & Single-View)</label>
                                     <input type="text" id="camMainUrl" placeholder="rtsp://user:pass@192.168.1.100:554/stream1" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Sub Stream RTSP URL (SD / 360p - Opsional untuk Multi-Grid Ringan)</label>
+                                    <label>Sub Stream RTSP URL (SD / 360p - Multi-Grid Ringan & Hemat Bandwidth)</label>
                                     <input type="text" id="camSubUrl" placeholder="rtsp://user:pass@192.168.1.100:554/stream2">
                                 </div>
+                                
+                                <div class="form-row" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:0.75rem; margin-bottom:1rem;">
+                                    <div class="form-group flex-1" style="margin-bottom:0;">
+                                        <div class="row-check" style="display:flex; align-items:center; gap:0.5rem;">
+                                            <input type="checkbox" id="camAudioEnabled" checked>
+                                            <label for="camAudioEnabled" style="font-weight:600; cursor:pointer;">🔊 Aktifkan RTSP Audio Ingest</label>
+                                        </div>
+                                        <small style="color:var(--text-muted); display:block; margin-top:0.25rem;">
+                                            Sertakan track audio dari kamera untuk live streaming & rekaman file MP4.
+                                        </small>
+                                    </div>
+                                    <div class="form-group flex-1" style="margin-bottom:0;">
+                                        <label>Audio Codec / Transcoding</label>
+                                        <select id="camAudioCodec" class="form-control">
+                                            <option value="aac">AAC 128k (Rekomendasi Standar Web/Browser)</option>
+                                            <option value="copy">Direct Copy (-c:a copy / Passthrough)</option>
+                                            <option value="opus">Opus (WebRTC Ultra-Low Latency)</option>
+                                            <option value="none">Mute / Tanpa Audio (-an)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <div class="form-group">
-                                    <label>Mode Transcode</label>
+                                    <label>Mode Transcode Video</label>
                                     <select id="camTranscode" class="form-control">
                                         <option value="auto">Auto-Detect Passthrough (Rekomendasi Hemat CPU STB)</option>
                                         <option value="copy">Direct Copy (-c:v copy)</option>
@@ -559,6 +620,14 @@
                                             <label>Password ONVIF</label>
                                             <input type="password" id="camPtzPass" placeholder="Password kamera">
                                         </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>ONVIF ProfileToken (Opsional)</label>
+                                        <input type="text" id="camOnvifProfileToken" placeholder="Contoh: Profile_1 / profile0 / MediaProfile000 (Kosong = Auto-Detect)">
+                                        <small style="color:var(--text-muted);">
+                                            Biarkan kosong untuk otomatis dideteksi saat handshake ONVIF SOAP.
+                                        </small>
                                     </div>
 
                                     <div style="margin-top:0.75rem; display:flex; gap:0.5rem; align-items:center;">
@@ -1252,10 +1321,10 @@
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
                                             <div>
                                                 <strong style="font-size:0.88rem; color:#38bdf8; display:flex; align-items:center; gap:0.4rem;">
-                                                    <span>🎯</span> Pengaturan Objek & Kotak Deteksi ROI
+                                                    <span>🎯</span> Pengaturan Objek & Kotak Deteksi ROI (Multi-Objek)
                                                 </strong>
                                                 <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:2px;">
-                                                    Pilih objek untuk diedit warnanya, targetnya, atau klik "+ Tambah Objek" untuk membuat area baru.
+                                                    Pilih objek untuk diedit warnanya/targetnya, atau klik "+ Tambah Objek" untuk membuat area baru.
                                                 </span>
                                             </div>
                                             <div style="display:flex; gap:0.4rem; align-items:center;">
@@ -1272,7 +1341,7 @@
                                         <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:6px; padding:0.75rem 0.9rem; margin-bottom:0.75rem;">
                                             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; align-items:center;">
                                                 <div>
-                                                    <label style="display:block; margin-bottom:0.25rem; font-size:0.76rem; font-weight:600; color:#cbd5e1;">Nama Objek:</label>
+                                                    <label style="display:block; margin-bottom:0.25rem; font-size:0.76rem; font-weight:600; color:#cbd5e1;">Nama Objek Aktif:</label>
                                                     <input type="text" id="ai-zone-label-input" value="Area Pompa BBM" class="form-control" style="width:100%; padding:0.35rem 0.6rem; font-size:0.82rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:4px;" oninput="updateActiveZoneLabel(this.value)">
                                                 </div>
                                                 <div>
@@ -1301,9 +1370,31 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            
+                                            <!-- Quick Shape Presets -->
+                                            <div style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap; margin-top:0.6rem; padding-top:0.5rem; border-top:1px solid rgba(255,255,255,0.06);">
+                                                <span style="font-size:0.74rem; color:var(--text-muted); font-weight:600;">Preset Bentuk:</span>
+                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('spbu')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#38bdf8; border-color:rgba(56,189,248,0.4);">⛽ Pompa BBM</button>
+                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('parking')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#facc15; border-color:rgba(250,204,21,0.4);">🅿️ Area Parkir</button>
+                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('cashier')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#c084fc; border-color:rgba(192,132,252,0.4);">💵 Meja Kasir</button>
+                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('gate')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#ef4444; border-color:rgba(239,68,68,0.4);">🚪 Pintu Masuk</button>
+                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('center')" style="padding:0.16rem 0.45rem; font-size:0.73rem;">🎯 Fokus Tengah</button>
+                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('full')" style="padding:0.16rem 0.45rem; font-size:0.73rem;">🔲 Full Layar</button>
+                                            </div>
                                         </div>
 
-                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                                        <!-- Multi-Object Detailed Cards List (Shows Object 1, Object 2, etc. with dimensions and quick actions) -->
+                                        <div style="margin-bottom:0.75rem;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                                                <span style="font-size:0.78rem; font-weight:700; color:#cbd5e1;">📋 Daftar Semua Objek Terdata:</span>
+                                                <span id="ai-zones-count-badge" style="font-size:0.72rem; color:#38bdf8; font-family:monospace; background:rgba(56,189,248,0.12); padding:1px 6px; border-radius:3px; border:1px solid rgba(56,189,248,0.3);">1 Objek Aktif</span>
+                                            </div>
+                                            <div id="ai-zones-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.5rem; max-height:180px; overflow-y:auto; padding-right:2px;">
+                                                <!-- Rendered dynamically by script.js -->
+                                            </div>
+                                        </div>
+
+                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding-top:0.4rem; border-top:1px solid var(--border);">
                                             <div id="ai-coord-status" style="color:#eab308; font-size:0.78rem; font-family:monospace;">
                                                 Belum ada area yang digambar.
                                             </div>

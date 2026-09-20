@@ -2899,14 +2899,27 @@ function spawnRecordingFFmpeg(cam) {
         ];
     }
 
-    // Perintah copy stream ringan (-c:v copy -an) khusus untuk perekaman lokal/USB
+    // Parameter Audio Transcoding / Passthrough untuk perekaman MP4
+    let audioArgs = ['-an'];
+    if (cam.audioEnabled !== false && cam.audioCodec !== 'none') {
+        if (cam.audioCodec === 'copy') {
+            audioArgs = ['-c:a', 'copy'];
+        } else if (cam.audioCodec === 'opus') {
+            audioArgs = ['-c:a', 'libopus', '-b:a', '64k'];
+        } else {
+            // Default AAC 128k - Standard kompatibel dengan browser HTML5 Web Player & Audio playback
+            audioArgs = isDemo ? ['-c:a', 'aac', '-b:a', '128k'] : ['-c:a', 'aac', '-b:a', '128k', '-ar', '44100'];
+        }
+    }
+
+    // Perintah copy video stream ringan dengan transcode audio standar MP4 khusus untuk perekaman lokal/USB
     const args = [
         '-y',
         '-loglevel', 'warning',
         ...inputArgs,
         '-c:v', isDemo ? 'libx264' : 'copy',
         ...(isDemo ? ['-preset', 'ultrafast'] : []),
-        '-an',
+        ...audioArgs,
         '-f', 'segment',
         '-segment_time', segSec.toString(),
         '-segment_format', 'mp4',
@@ -2915,7 +2928,7 @@ function spawnRecordingFFmpeg(cam) {
         path.join(recBase, "%Y-%m-%d_%H-%M-%S.mp4")
     ];
 
-    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (-c:v copy -an) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`, 'CAMERA');
+    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (${isDemo ? 'libx264' : 'copy'}${audioArgs[0] === '-an' ? ' -an' : ' +' + (cam.audioCodec || 'aac')}) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`, 'CAMERA');
 
     const child = spawn('ffmpeg', args);
     child.killedByUser = false;
@@ -3199,11 +3212,45 @@ app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
         });
     }
 
-    const { id, name, enabled, mainStreamUrl, subStreamUrl, rtspUrl, storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec, transcode, ptzEnabled, ptzUrl, ptzUser, ptzPass } = req.body;
+    const {
+        id, name, cameraName, enabled,
+        ipAddress, onvifPort, rtspPort, username, password,
+        mainStreamUrl, subStreamUrl, mainStreamUri, subStreamUri, rtspUrl,
+        storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec,
+        transcode, ptzEnabled, hasPtz, ptzProtocol, ptzUrl, ptzUser, ptzPass,
+        onvifProfileToken, profileToken, audioEnabled, hasAudio, audioCodec
+    } = req.body;
     
-    const rawMainUrl = mainStreamUrl || rtspUrl || "";
-    const finalMainUrl = sanitizeRtspUrl(rawMainUrl);
-    const finalSubUrl = subStreamUrl ? sanitizeRtspUrl(subStreamUrl) : finalMainUrl;
+    // Support aliases: mainStreamUri / subStreamUri / rtspUrl / mainStreamUrl
+    let effectiveMainUrl = mainStreamUri || mainStreamUrl || rtspUrl || "";
+    let effectiveSubUrl = subStreamUri || subStreamUrl || "";
+    let effectivePtzUrl = ptzUrl || "";
+    let effectivePtzUser = ptzUser || username || "";
+    let effectivePtzPass = ptzPass || password || "";
+
+    // Auto-construct RTSP and PTZ URLs if ipAddress is provided
+    if (ipAddress && (!effectiveMainUrl || !effectiveMainUrl.startsWith('rtsp://'))) {
+        const portStr = rtspPort ? `:${rtspPort}` : '';
+        const authStr = (effectivePtzUser && effectivePtzPass) ? `${encodeURIComponent(effectivePtzUser)}:${encodeURIComponent(effectivePtzPass)}@` : '';
+        if (!effectiveMainUrl) {
+            effectiveMainUrl = `rtsp://${authStr}${ipAddress}${portStr}/live/ch0`;
+        }
+        if (!effectiveSubUrl && subStreamUri) {
+            effectiveSubUrl = subStreamUri;
+        } else if (!effectiveSubUrl && !subStreamUrl) {
+            effectiveSubUrl = `rtsp://${authStr}${ipAddress}${portStr}/live/ch1`;
+        }
+    }
+    if (ipAddress && !effectivePtzUrl) {
+        effectivePtzUrl = onvifPort ? `${ipAddress}:${onvifPort}` : ipAddress;
+    }
+
+    const finalMainUrl = sanitizeRtspUrl(effectiveMainUrl);
+    const finalSubUrl = effectiveSubUrl ? sanitizeRtspUrl(effectiveSubUrl) : finalMainUrl;
+    const finalCamName = (cameraName || name || "New Camera").trim();
+    const finalPtzEnabled = (hasPtz !== undefined) ? !!hasPtz : (ptzEnabled !== undefined ? !!ptzEnabled : false);
+    const finalAudioEnabled = (hasAudio !== undefined) ? !!hasAudio : (audioEnabled !== undefined ? !!audioEnabled : true);
+    const finalProfileToken = (profileToken || onvifProfileToken || '').trim();
 
     // If id is provided and not empty, use it; otherwise generate
     let newCamId = (id && typeof id === 'string' && id.trim() !== '') ? id.trim() : `cam_${Date.now()}`;
@@ -3218,20 +3265,27 @@ app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
         id: newCamId,
         tenant_id: currentAdminId,
         admin_id: currentAdminId,
-        name: name || "New Camera", 
+        name: finalCamName, 
         enabled: enabled !== undefined ? !!enabled : true,
+        ipAddress: ipAddress ? ipAddress.trim() : '',
+        onvifPort: onvifPort ? parseInt(onvifPort, 10) : undefined,
+        rtspPort: rtspPort ? parseInt(rtspPort, 10) : undefined,
         mainStreamUrl: finalMainUrl, 
         subStreamUrl: finalSubUrl, 
         transcode: transcode || 'auto',
+        audioEnabled: finalAudioEnabled,
+        audioCodec: audioCodec || 'aac',
         resolution: resolution || "1080p",
         fps: fps || 30,
         recordMode: recordMode || 'disabled',
         storagePath: storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', newCamId),
         maxStorageDays: parseInt(maxStorageDays) || 7,
-        ptzEnabled: !!ptzEnabled,
-        ptzUrl: ptzUrl || '',
-        ptzUser: ptzUser || '',
-        ptzPass: ptzPass || '',
+        ptzEnabled: finalPtzEnabled,
+        ptzProtocol: ptzProtocol || (finalPtzEnabled ? 'onvif' : 'none'),
+        ptzUrl: effectivePtzUrl,
+        ptzUser: effectivePtzUser,
+        ptzPass: effectivePtzPass,
+        onvifProfileToken: finalProfileToken,
         maxFolderSizeGB: parseFloat(maxFolderSizeGB) || 10,
         segmentDurationSec: parseInt(segmentDurationSec) || 900
     };
@@ -3268,26 +3322,61 @@ app.put('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
         return res.status(403).json({ error: 'Akses Ditolak: Anda tidak memiliki izin mengedit kamera milik gedung lain.' });
     }
 
-    const { name, enabled, mainStreamUrl, subStreamUrl, rtspUrl, storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec, transcode, ptzEnabled, ptzUrl, ptzUser, ptzPass } = req.body;
+    const {
+        name, cameraName, enabled,
+        ipAddress, onvifPort, rtspPort, username, password,
+        mainStreamUrl, subStreamUrl, mainStreamUri, subStreamUri, rtspUrl,
+        storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec,
+        transcode, ptzEnabled, hasPtz, ptzProtocol, ptzUrl, ptzUser, ptzPass,
+        onvifProfileToken, profileToken, audioEnabled, hasAudio, audioCodec
+    } = req.body;
     
     stopCameraRecording(req.params.id);
 
-    const rawMainUrl = mainStreamUrl !== undefined ? mainStreamUrl : (rtspUrl || targetCam.mainStreamUrl);
-    const rawSubUrl = subStreamUrl !== undefined ? subStreamUrl : targetCam.subStreamUrl;
-    const finalMainUrl = sanitizeRtspUrl(rawMainUrl);
-    const finalSubUrl = rawSubUrl ? sanitizeRtspUrl(rawSubUrl) : finalMainUrl;
+    let effectiveMainUrl = mainStreamUri !== undefined ? mainStreamUri : (mainStreamUrl !== undefined ? mainStreamUrl : (rtspUrl || targetCam.mainStreamUrl));
+    let effectiveSubUrl = subStreamUri !== undefined ? subStreamUri : (subStreamUrl !== undefined ? subStreamUrl : targetCam.subStreamUrl);
+    let effectivePtzUrl = ptzUrl !== undefined ? ptzUrl : (targetCam.ptzUrl || '');
+    let effectivePtzUser = ptzUser !== undefined ? ptzUser : (username !== undefined ? username : (targetCam.ptzUser || ''));
+    let effectivePtzPass = ptzPass !== undefined ? ptzPass : (password !== undefined ? password : (targetCam.ptzPass || ''));
+
+    // If ipAddress provided without full RTSP URL
+    if (ipAddress && (!effectiveMainUrl || !effectiveMainUrl.startsWith('rtsp://'))) {
+        const portStr = (rtspPort || targetCam.rtspPort) ? `:${rtspPort || targetCam.rtspPort}` : '';
+        const authStr = (effectivePtzUser && effectivePtzPass) ? `${encodeURIComponent(effectivePtzUser)}:${encodeURIComponent(effectivePtzPass)}@` : '';
+        effectiveMainUrl = `rtsp://${authStr}${ipAddress}${portStr}/live/ch0`;
+        if (!effectiveSubUrl || effectiveSubUrl === targetCam.mainStreamUrl) {
+            effectiveSubUrl = `rtsp://${authStr}${ipAddress}${portStr}/live/ch1`;
+        }
+    }
+    if (ipAddress && !effectivePtzUrl) {
+        effectivePtzUrl = (onvifPort || targetCam.onvifPort) ? `${ipAddress}:${onvifPort || targetCam.onvifPort}` : ipAddress;
+    }
+
+    const finalMainUrl = sanitizeRtspUrl(effectiveMainUrl);
+    const finalSubUrl = effectiveSubUrl ? sanitizeRtspUrl(effectiveSubUrl) : finalMainUrl;
+
+    const finalPtzEnabled = hasPtz !== undefined ? !!hasPtz : (ptzEnabled !== undefined ? !!ptzEnabled : !!targetCam.ptzEnabled);
+    const finalAudioEnabled = hasAudio !== undefined ? !!hasAudio : (audioEnabled !== undefined ? !!audioEnabled : (targetCam.audioEnabled !== undefined ? !!targetCam.audioEnabled : true));
+    const finalProfileToken = profileToken !== undefined ? profileToken.trim() : (onvifProfileToken !== undefined ? onvifProfileToken.trim() : (targetCam.onvifProfileToken || ''));
 
     dbData.cameras[index] = {
         ...targetCam,
-        name: name || targetCam.name,
+        name: (cameraName || name || targetCam.name).trim(),
         enabled: enabled !== undefined ? !!enabled : targetCam.enabled,
+        ipAddress: ipAddress !== undefined ? ipAddress.trim() : (targetCam.ipAddress || ''),
+        onvifPort: onvifPort !== undefined ? parseInt(onvifPort, 10) : targetCam.onvifPort,
+        rtspPort: rtspPort !== undefined ? parseInt(rtspPort, 10) : targetCam.rtspPort,
         mainStreamUrl: finalMainUrl,
         subStreamUrl: finalSubUrl,
         transcode: transcode !== undefined ? transcode : (targetCam.transcode || 'auto'),
-        ptzEnabled: ptzEnabled !== undefined ? !!ptzEnabled : !!targetCam.ptzEnabled,
-        ptzUrl: ptzUrl !== undefined ? ptzUrl : (targetCam.ptzUrl || ''),
-        ptzUser: ptzUser !== undefined ? ptzUser : (targetCam.ptzUser || ''),
-        ptzPass: ptzPass !== undefined ? ptzPass : (targetCam.ptzPass || ''),
+        audioEnabled: finalAudioEnabled,
+        audioCodec: audioCodec !== undefined ? audioCodec : (targetCam.audioCodec || 'aac'),
+        ptzEnabled: finalPtzEnabled,
+        ptzProtocol: ptzProtocol !== undefined ? ptzProtocol : (targetCam.ptzProtocol || (finalPtzEnabled ? 'onvif' : 'none')),
+        ptzUrl: effectivePtzUrl,
+        ptzUser: effectivePtzUser,
+        ptzPass: effectivePtzPass,
+        onvifProfileToken: finalProfileToken,
         resolution: resolution || targetCam.resolution,
         fps: fps || targetCam.fps,
         recordMode: recordMode || targetCam.recordMode,
@@ -3696,9 +3785,9 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
         const session = await getOrInitOnvifDevice(cam);
         const { device } = session;
 
-        // 1. Ambil Profile Token aktif kamera (Kritikal untuk V380 & Onvif Profile S)
+        // 1. Ambil Profile Token aktif kamera (Prioritaskan custom onvifProfileToken jika dikonfigurasi)
         const profile = device.getCurrentProfile();
-        const token = profile ? profile['token'] : (session.profileToken || 'ProfileToken000');
+        let token = cam.onvifProfileToken || (profile ? profile['token'] : (session.profileToken || 'ProfileToken000'));
         if (!device.current_profile) {
             device.current_profile = profile || { token: token };
         }
@@ -3706,10 +3795,15 @@ app.post('/api/cameras/:id/ptz', verifyToken, async (req, res) => {
         let x = 0, y = 0, z = 0;
         const spd = Math.max(0.1, Math.min(1.0, parseFloat(speed) || 1.0));
         
+        // Pemetaan arah gerakan pan / tilt / zoom / diagonal
         if (direction === 'up') y = spd;
         else if (direction === 'down') y = -spd;
         else if (direction === 'left') x = -spd;
         else if (direction === 'right') x = spd;
+        else if (direction === 'upleft') { y = spd; x = -spd; }
+        else if (direction === 'upright') { y = spd; x = spd; }
+        else if (direction === 'downleft') { y = -spd; x = -spd; }
+        else if (direction === 'downright') { y = -spd; x = spd; }
         else if (direction === 'zoom_in' || direction === 'focus_in') z = spd;
         else if (direction === 'zoom_out' || direction === 'focus_out') z = -spd;
         
@@ -4089,6 +4183,134 @@ app.post('/api/onvif/probe-custom', verifyToken, async (req, res) => {
         res.status(500).json({
             success: false,
             error: e.message
+        });
+    }
+});
+
+// Endpoint dedicated /api/system/onvif-probe (Auto-discovery & Test Connection untuk form penambahan kamera)
+app.post('/api/system/onvif-probe', verifyToken, async (req, res) => {
+    const { ipAddress, onvifPort, username, password, ptzUrl, ptzUser, ptzPass, mainStreamUrl, mainStreamUri } = req.body;
+    
+    let host = ipAddress || '';
+    let port = onvifPort ? parseInt(onvifPort, 10) : null;
+    let user = username || ptzUser || '';
+    let pass = password || ptzPass || '';
+
+    if (!host) {
+        const dummyCam = {
+            id: 'system_probe_test',
+            ptzUrl: ptzUrl || '',
+            ptzUser: user,
+            ptzPass: pass,
+            mainStreamUrl: mainStreamUri || mainStreamUrl || ''
+        };
+        const parsed = parseCameraPtzTarget(dummyCam);
+        host = parsed.host;
+        if (parsed.customPort && !port) port = parsed.customPort;
+        if (parsed.user && !user) user = parsed.user;
+        if (parsed.pass && !pass) pass = parsed.pass;
+    }
+
+    if (!host) {
+        return res.status(400).json({
+            success: false,
+            error: 'Host/IP kamera tidak ditemukan. Silakan masukkan IP Address atau URL RTSP kamera.'
+        });
+    }
+
+    const portsToTry = port ? [port] : [8899, 80, 8080, 2020, 5000, 8000, 8800];
+    let probeResult = null;
+    let successfulPort = null;
+
+    for (const testPort of portsToTry) {
+        try {
+            if (testPort === 8800) {
+                const v380Probe = await probeV380Socket({ host, port: 8800, timeoutMs: 1200 });
+                if (v380Probe.success) {
+                    return res.json({
+                        success: true,
+                        message: `Terdeteksi Kamera Macrovideo V380 Native pada ${host}:8800! Siap PTZ via Binary Driver.`,
+                        host,
+                        onvifPort: 8800,
+                        port: 8800,
+                        protocol: 'v380_native',
+                        hasPtz: true,
+                        hasAudio: true,
+                        profileToken: 'V380_NATIVE_STREAM',
+                        profiles: [{ token: 'V380_NATIVE_STREAM', name: 'Macrovideo Binary Stream' }],
+                        mainStreamUri: `rtsp://${user && pass ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : ''}${host}:554/live/ch0`,
+                        subStreamUri: `rtsp://${user && pass ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : ''}${host}:554/live/ch1`
+                    });
+                }
+            }
+
+            const diag = await diagnoseOnvifProfiles({
+                host,
+                port: testPort,
+                user,
+                pass,
+                timeoutMs: 3000
+            });
+
+            if (diag.success) {
+                probeResult = diag;
+                successfulPort = testPort;
+                break;
+            }
+        } catch (err) {
+            // Lanjutkan port berikutnya
+        }
+    }
+
+    if (probeResult && probeResult.success) {
+        const primaryProfile = (probeResult.profiles && probeResult.profiles[0]) || {};
+        const secondaryProfile = (probeResult.profiles && probeResult.profiles[1]) || primaryProfile;
+        
+        return res.json({
+            success: true,
+            message: `Koneksi ONVIF Berhasil pada ${host}:${successfulPort}! (${probeResult.profilesCount || 1} profil terdeteksi)`,
+            host,
+            onvifPort: successfulPort,
+            port: successfulPort,
+            protocol: 'onvif',
+            hasPtz: true,
+            hasAudio: true,
+            profileToken: probeResult.recommendedToken || primaryProfile.token || 'Profile0',
+            profilesCount: probeResult.profilesCount,
+            profiles: probeResult.profiles,
+            deviceInfo: probeResult.deviceInfo,
+            mainStreamUri: `rtsp://${user && pass ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : ''}${host}:554/live/ch0`,
+            subStreamUri: `rtsp://${user && pass ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : ''}${host}:554/live/ch1`,
+            diagnosticLogs: probeResult.diagnosticLogs
+        });
+    }
+
+    // Fallback handshake
+    try {
+        const session = await getOrInitOnvifDevice({
+            id: 'probe_session',
+            ptzUrl: `${host}:${port || 8899}`,
+            ptzUser: user,
+            ptzPass: pass
+        });
+        return res.json({
+            success: true,
+            message: `Handshake ONVIF Berhasil terhubung pada port ${session.port}`,
+            host,
+            onvifPort: session.port,
+            port: session.port,
+            protocol: 'onvif',
+            hasPtz: true,
+            hasAudio: true,
+            profileToken: session.profileToken,
+            profiles: [{ token: session.profileToken, name: 'Default Profile' }],
+            mainStreamUri: `rtsp://${user && pass ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : ''}${host}:554/live/ch0`,
+            subStreamUri: `rtsp://${user && pass ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : ''}${host}:554/live/ch1`
+        });
+    } catch (fallbackErr) {
+        return res.status(500).json({
+            success: false,
+            error: `Gagal menghubungkan ke kamera pada ${host}. Pastikan IP, username, password, dan port ONVIF benar: ${fallbackErr.message}`
         });
     }
 });

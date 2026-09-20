@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.1.0",
-  "description": "Arch3r NVR Ver. 10.1.0 - Full-Stack NVR CCTV System featuring Floating Surveillance HUD, Tabbed YOLO AI Workspace, Responsive Mobile/Desktop Canvas, Synchronized Video & Canvas Zoom/Pan/Scroll, and Multi-Zone ROI Support.",
+  "name": "Arch3r NVR Ver. 10.1.4",
+  "description": "Arch3r NVR Ver. 10.1.4 - Full-Stack NVR CCTV System featuring Complete Camera Parameter Input, Auto-Discovery & Test Connection Probe, Robust ONVIF SOAP & PTZ Continuous Move/Stop Handler, Dual-Stream Management, and RTSP Audio Ingest Transcoding.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

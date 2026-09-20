@@ -792,30 +792,145 @@ async function updateHardwareStats() {
         const ptzUserEl = document.getElementById('camPtzUser');
         const ptzPassEl = document.getElementById('camPtzPass');
         const ptzSelectEl = document.getElementById('camPtzSelect');
+        const ipEl = document.getElementById('camIpAddress');
+        const userEl = document.getElementById('camUsername');
+        const passEl = document.getElementById('camPassword');
+        const rtspPortEl = document.getElementById('camRtspPort');
 
         if (!mainUrl) return;
         const creds = extractRtspCredentials(mainUrl);
 
-        if (force || !ptzUrlEl.value) {
-            if (creds.host) ptzUrlEl.value = creds.host;
+        if (force || (ptzUrlEl && !ptzUrlEl.value)) {
+            if (creds.host && ptzUrlEl) ptzUrlEl.value = creds.host;
         }
-        if (force || !ptzUserEl.value) {
-            if (creds.user) ptzUserEl.value = creds.user;
+        if (force || (ptzUserEl && !ptzUserEl.value)) {
+            if (creds.user && ptzUserEl) ptzUserEl.value = creds.user;
         }
-        if (force || !ptzPassEl.value) {
-            if (creds.pass) ptzPassEl.value = creds.pass;
+        if (force || (ptzPassEl && !ptzPassEl.value)) {
+            if (creds.pass && ptzPassEl) ptzPassEl.value = creds.pass;
+        }
+        if (creds.host && ipEl && (force || !ipEl.value)) {
+            ipEl.value = creds.host;
+        }
+        if (creds.user && userEl && (force || !userEl.value)) {
+            userEl.value = creds.user;
+        }
+        if (creds.pass && passEl && (force || !passEl.value)) {
+            passEl.value = creds.pass;
+        }
+        if (creds.port && rtspPortEl && (force || !rtspPortEl.value)) {
+            rtspPortEl.value = creds.port;
         }
         if (force && ptzSelectEl && ptzSelectEl.value === 'no') {
             ptzSelectEl.value = 'yes';
         }
     }
 
-    // Auto extract saat input RTSP berubah (hanya jika mode tambah baru atau form belum diisi)
+    // Auto-probe logic from General tab (btnQuickProbe) or PTZ tab (btnTestOnvifProbe)
+    async function runOnvifProbeTest(callerType = 'general') {
+        const ipAddress = document.getElementById('camIpAddress') ? document.getElementById('camIpAddress').value.trim() : '';
+        const onvifPort = document.getElementById('camOnvifPort') ? document.getElementById('camOnvifPort').value.trim() : '';
+        const rtspPort = document.getElementById('camRtspPort') ? document.getElementById('camRtspPort').value.trim() : '';
+        const username = document.getElementById('camUsername') ? document.getElementById('camUsername').value.trim() : '';
+        const password = document.getElementById('camPassword') ? document.getElementById('camPassword').value : '';
+        const ptzUrl = document.getElementById('camPtzUrl') ? document.getElementById('camPtzUrl').value.trim() : '';
+        const ptzUser = document.getElementById('camPtzUser') ? document.getElementById('camPtzUser').value.trim() : '';
+        const ptzPass = document.getElementById('camPtzPass') ? document.getElementById('camPtzPass').value : '';
+        const mainStreamUrl = document.getElementById('camMainUrl') ? document.getElementById('camMainUrl').value.trim() : '';
+        
+        const statusEl = callerType === 'general' ? document.getElementById('quickProbeStatus') : document.getElementById('ptzProbeStatus');
+        const triggerBtn = callerType === 'general' ? document.getElementById('btnQuickProbe') : document.getElementById('btnTestOnvifProbe');
+
+        if (!ipAddress && !ptzUrl && !mainStreamUrl) {
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.innerHTML = '<span style="color:#ef4444;">⚠️ Masukkan IP Address Kamera atau RTSP URL terlebih dahulu</span>';
+            }
+            return;
+        }
+
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.innerHTML = '<span style="color:#60a5fa;">⏳ Sedang melakukan Auto-Discovery ONVIF Probe...</span>';
+        }
+        if (triggerBtn) triggerBtn.disabled = true;
+
+        try {
+            const probePayload = {
+                ipAddress: ipAddress || ptzUrl || '',
+                onvifPort: onvifPort || undefined,
+                rtspPort: rtspPort || undefined,
+                username: username || ptzUser || '',
+                password: password || ptzPass || '',
+                ptzUrl: ptzUrl || ipAddress || '',
+                ptzUser: ptzUser || username || '',
+                ptzPass: ptzPass || password || '',
+                mainStreamUrl: mainStreamUrl || ''
+            };
+
+            const res = await authFetch('/api/system/onvif-probe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(probePayload)
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                let detailHtml = `<div style="color:#22c55e; font-weight:600; margin-bottom:2px;">✅ ${data.message}</div>`;
+                
+                // Auto-fill form fields
+                if (data.onvifPort) {
+                    const opEl = document.getElementById('camOnvifPort');
+                    if (opEl && !opEl.value) opEl.value = data.onvifPort;
+                }
+                if (data.profileToken) {
+                    const profEl = document.getElementById('camOnvifProfileToken');
+                    if (profEl) profEl.value = data.profileToken;
+                }
+                if (data.protocol === 'v380_native') {
+                    const ptzSelectEl = document.getElementById('camPtzSelect');
+                    if (ptzSelectEl) ptzSelectEl.value = 'v380_native';
+                } else if (data.hasPtz) {
+                    const ptzSelectEl = document.getElementById('camPtzSelect');
+                    if (ptzSelectEl && ptzSelectEl.value === 'no') ptzSelectEl.value = 'yes';
+                }
+
+                // Auto-fill RTSP stream URLs if empty
+                const mainUrlEl = document.getElementById('camMainUrl');
+                const subUrlEl = document.getElementById('camSubUrl');
+                if (data.mainStreamUri && mainUrlEl && !mainUrlEl.value) {
+                    mainUrlEl.value = data.mainStreamUri;
+                }
+                if (data.subStreamUri && subUrlEl && !subUrlEl.value) {
+                    subUrlEl.value = data.subStreamUri;
+                }
+
+                if (data.profiles && data.profiles.length > 0) {
+                    const profTags = data.profiles.map(p => {
+                        const resText = p.resolution && p.resolution !== 'Unknown' ? ` (${p.resolution})` : '';
+                        return `<span style="background:rgba(59,130,246,0.18); color:#93c5fd; padding:1px 6px; border-radius:3px; font-family:monospace; font-size:0.75rem; border:1px solid rgba(59,130,246,0.3);">${p.token}${resText}</span>`;
+                    }).join(' ');
+                    detailHtml += `<div style="font-size:0.75rem; color:#cbd5e1; margin-top:3px;">📋 Profil Terdeteksi (${data.profiles.length}): ${profTags}</div>`;
+                } else if (data.profileToken) {
+                    detailHtml += `<div style="font-size:0.75rem; color:#cbd5e1; margin-top:3px;">🔑 Token Aktif: <code style="color:#93c5fd;">${data.profileToken}</code></div>`;
+                }
+                
+                if (statusEl) statusEl.innerHTML = detailHtml;
+            } else {
+                if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444; font-weight:600;">❌ Gagal: ${data.error || 'Kamera tidak merespon handshake ONVIF'}</span>`;
+            }
+        } catch(e) {
+            if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444;">❌ Kesalahan: ${e.message}</span>`;
+        } finally {
+            if (triggerBtn) triggerBtn.disabled = false;
+        }
+    }
+
+    // Auto extract saat input RTSP berubah
     const camMainUrlInput = document.getElementById('camMainUrl');
     if (camMainUrlInput) {
         camMainUrlInput.addEventListener('blur', () => {
             const currentEditingId = document.getElementById('camId') ? document.getElementById('camId').value : '';
-            // Jangan timpa otomatis jika sedang dalam mode edit kamera lama
             if (!currentEditingId) {
                 autoFillPtzFromRtsp(false);
             }
@@ -834,55 +949,14 @@ async function updateHardwareStats() {
         });
     }
 
+    const btnQuickProbe = document.getElementById('btnQuickProbe');
+    if (btnQuickProbe) {
+        btnQuickProbe.addEventListener('click', () => runOnvifProbeTest('general'));
+    }
+
     const btnTestOnvifProbe = document.getElementById('btnTestOnvifProbe');
     if (btnTestOnvifProbe) {
-        btnTestOnvifProbe.addEventListener('click', async () => {
-            const ptzUrl = document.getElementById('camPtzUrl') ? document.getElementById('camPtzUrl').value.trim() : '';
-            const ptzUser = document.getElementById('camPtzUser') ? document.getElementById('camPtzUser').value.trim() : '';
-            const ptzPass = document.getElementById('camPtzPass') ? document.getElementById('camPtzPass').value : '';
-            const mainStreamUrl = document.getElementById('camMainUrl') ? document.getElementById('camMainUrl').value.trim() : '';
-            const statusEl = document.getElementById('ptzProbeStatus');
-
-            if (!ptzUrl && !mainStreamUrl) {
-                if (statusEl) statusEl.innerHTML = '<span style="color:#ef4444;">⚠️ Isi IP Kamera atau RTSP terlebih dahulu</span>';
-                return;
-            }
-
-            if (statusEl) statusEl.innerHTML = '<span style="color:#60a5fa;">⏳ Sedang menguji & mendiagnosa profil ONVIF (Port 8899)...</span>';
-            btnTestOnvifProbe.disabled = true;
-
-            try {
-                const res = await authFetch('/api/onvif/probe-custom', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ptzUrl, ptzUser, ptzPass, mainStreamUrl })
-                });
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    let detailHtml = `<div style="color:#22c55e; font-weight:600; margin-bottom:2px;">✅ ${data.message}</div>`;
-                    if (data.protocol === 'v380_native') {
-                        const ptzSelectEl = document.getElementById('camPtzSelect');
-                        if (ptzSelectEl) ptzSelectEl.value = 'v380_native';
-                    }
-                    if (data.profiles && data.profiles.length > 0) {
-                        const profTags = data.profiles.map(p => {
-                            const resText = p.resolution && p.resolution !== 'Unknown' ? ` (${p.resolution})` : '';
-                            return `<span style="background:rgba(59,130,246,0.18); color:#93c5fd; padding:1px 6px; border-radius:3px; font-family:monospace; font-size:0.75rem; border:1px solid rgba(59,130,246,0.3);">${p.token}${resText}</span>`;
-                        }).join(' ');
-                        detailHtml += `<div style="font-size:0.75rem; color:#cbd5e1; margin-top:3px;">📋 Profil Terdeteksi (${data.profiles.length}): ${profTags}</div>`;
-                    } else if (data.profileToken) {
-                        detailHtml += `<div style="font-size:0.75rem; color:#cbd5e1; margin-top:3px;">🔑 Token Aktif: <code style="color:#93c5fd;">${data.profileToken}</code></div>`;
-                    }
-                    if (statusEl) statusEl.innerHTML = detailHtml;
-                } else {
-                    if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444; font-weight:600;">❌ Gagal: ${data.error || 'Kamera tidak merespon protokol ONVIF'}</span>`;
-                }
-            } catch(e) {
-                if (statusEl) statusEl.innerHTML = `<span style="color:#ef4444;">❌ Kesalahan: ${e.message}</span>`;
-            } finally {
-                btnTestOnvifProbe.disabled = false;
-            }
-        });
+        btnTestOnvifProbe.addEventListener('click', () => runOnvifProbeTest('ptz'));
     }
 
     window.editCamera = function(id) {
@@ -894,6 +968,17 @@ async function updateHardwareStats() {
         const camCustomIdEl = document.getElementById('camCustomId');
         if (camCustomIdEl) camCustomIdEl.value = cam.id;
         
+        const ipEl = document.getElementById('camIpAddress');
+        if (ipEl) ipEl.value = cam.ipAddress || '';
+        const opEl = document.getElementById('camOnvifPort');
+        if (opEl) opEl.value = cam.onvifPort || '';
+        const rpEl = document.getElementById('camRtspPort');
+        if (rpEl) rpEl.value = cam.rtspPort || '';
+        const uEl = document.getElementById('camUsername');
+        if (uEl) uEl.value = cam.ptzUser || '';
+        const pEl = document.getElementById('camPassword');
+        if (pEl) pEl.value = cam.ptzPass || '';
+
         const camPtzSelectEl = document.getElementById('camPtzSelect');
         if (camPtzSelectEl) {
             if (cam.ptzProtocol === 'v380_native') {
@@ -912,8 +997,19 @@ async function updateHardwareStats() {
         const camPtzPassEl = document.getElementById('camPtzPass');
         if (camPtzPassEl) camPtzPassEl.value = cam.ptzPass || '';
 
+        const camOnvifProfEl = document.getElementById('camOnvifProfileToken');
+        if (camOnvifProfEl) camOnvifProfEl.value = cam.onvifProfileToken || '';
+
+        const camAudioEnabledEl = document.getElementById('camAudioEnabled');
+        if (camAudioEnabledEl) camAudioEnabledEl.checked = cam.audioEnabled !== false;
+
+        const camAudioCodecEl = document.getElementById('camAudioCodec');
+        if (camAudioCodecEl) camAudioCodecEl.value = cam.audioCodec || 'aac';
+
         const statusEl = document.getElementById('ptzProbeStatus');
         if (statusEl) statusEl.innerHTML = '';
+        const qStatusEl = document.getElementById('quickProbeStatus');
+        if (qStatusEl) { qStatusEl.style.display = 'none'; qStatusEl.innerHTML = ''; }
 
         document.getElementById('camMainUrl').value = cam.mainStreamUrl || '';
         document.getElementById('camSubUrl').value = cam.subStreamUrl || '';
@@ -943,9 +1039,9 @@ async function updateHardwareStats() {
         const btnCancelEdit = document.getElementById('btnCancelEdit');
         if(btnCancelEdit) btnCancelEdit.style.display = 'inline-block';
         
-        // Kembalikan form ke tab utama (Stream) secara default saat buka edit
+        // Kembalikan form ke tab utama (General) secara default saat buka edit
         if (typeof switchCameraTab === 'function') {
-            switchCameraTab('ctab-stream');
+            switchCameraTab('ctab-general');
         }
 
         const cForm = document.getElementById('cameraForm');
@@ -972,6 +1068,17 @@ async function updateHardwareStats() {
         const customIdInput = document.getElementById('camCustomId');
         if (customIdInput) customIdInput.value = '';
         
+        const ipEl = document.getElementById('camIpAddress');
+        if (ipEl) ipEl.value = '';
+        const opEl = document.getElementById('camOnvifPort');
+        if (opEl) opEl.value = '';
+        const rpEl = document.getElementById('camRtspPort');
+        if (rpEl) rpEl.value = '';
+        const uEl = document.getElementById('camUsername');
+        if (uEl) uEl.value = '';
+        const pEl = document.getElementById('camPassword');
+        if (pEl) pEl.value = '';
+
         const ptzSelect = document.getElementById('camPtzSelect');
         if (ptzSelect) ptzSelect.value = 'no';
         const ptzUrl = document.getElementById('camPtzUrl');
@@ -980,11 +1087,19 @@ async function updateHardwareStats() {
         if (ptzUser) ptzUser.value = '';
         const ptzPass = document.getElementById('camPtzPass');
         if (ptzPass) ptzPass.value = '';
+        const camOnvifProfEl = document.getElementById('camOnvifProfileToken');
+        if (camOnvifProfEl) camOnvifProfEl.value = '';
+        const camAudioEnabledEl = document.getElementById('camAudioEnabled');
+        if (camAudioEnabledEl) camAudioEnabledEl.checked = true;
+        const camAudioCodecEl = document.getElementById('camAudioCodec');
+        if (camAudioCodecEl) camAudioCodecEl.value = 'aac';
         const statusEl = document.getElementById('ptzProbeStatus');
         if (statusEl) statusEl.innerHTML = '';
+        const qStatusEl = document.getElementById('quickProbeStatus');
+        if (qStatusEl) { qStatusEl.style.display = 'none'; qStatusEl.innerHTML = ''; }
 
         if (typeof switchCameraTab === 'function') {
-            switchCameraTab('ctab-stream');
+            switchCameraTab('ctab-general');
         }
 
         const formTitle = document.getElementById('formTitle');
@@ -1003,10 +1118,9 @@ async function updateHardwareStats() {
         }
     }, 1000);
 
-
-    /* second cameraForm removed */
+    /* cameraForm submit */
     if (cameraForm) {
-        if (cameraForm) cameraForm.addEventListener('submit', async (e) => {
+        cameraForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('camId').value;
             const ptzSelect = document.getElementById('camPtzSelect');
@@ -1014,16 +1128,36 @@ async function updateHardwareStats() {
             const isPtz = ptzVal === 'yes' || ptzVal === 'v380_native';
             const ptzProtocol = ptzVal === 'v380_native' ? 'v380_native' : (isPtz ? 'onvif' : 'none');
 
+            const ipAddress = document.getElementById('camIpAddress') ? document.getElementById('camIpAddress').value.trim() : '';
+            const onvifPort = document.getElementById('camOnvifPort') ? document.getElementById('camOnvifPort').value.trim() : '';
+            const rtspPort = document.getElementById('camRtspPort') ? document.getElementById('camRtspPort').value.trim() : '';
+            const username = document.getElementById('camUsername') ? document.getElementById('camUsername').value.trim() : '';
+            const password = document.getElementById('camPassword') ? document.getElementById('camPassword').value : '';
+
             const payload = {
                 id: document.getElementById('camCustomId') ? document.getElementById('camCustomId').value.trim() : undefined,
                 name: document.getElementById('camName').value,
+                cameraName: document.getElementById('camName').value,
+                ipAddress: ipAddress,
+                onvifPort: onvifPort ? parseInt(onvifPort, 10) : undefined,
+                rtspPort: rtspPort ? parseInt(rtspPort, 10) : undefined,
+                username: username,
+                password: password,
                 ptzEnabled: isPtz,
+                hasPtz: isPtz,
                 ptzProtocol: ptzProtocol,
-                ptzUrl: document.getElementById('camPtzUrl') ? document.getElementById('camPtzUrl').value.trim() : '',
-                ptzUser: document.getElementById('camPtzUser') ? document.getElementById('camPtzUser').value.trim() : '',
-                ptzPass: document.getElementById('camPtzPass') ? document.getElementById('camPtzPass').value : '',
+                ptzUrl: document.getElementById('camPtzUrl') ? document.getElementById('camPtzUrl').value.trim() : (ipAddress ? `${ipAddress}${onvifPort ? `:${onvifPort}` : ''}` : ''),
+                ptzUser: document.getElementById('camPtzUser') ? document.getElementById('camPtzUser').value.trim() : username,
+                ptzPass: document.getElementById('camPtzPass') ? document.getElementById('camPtzPass').value : password,
+                onvifProfileToken: document.getElementById('camOnvifProfileToken') ? document.getElementById('camOnvifProfileToken').value.trim() : '',
+                profileToken: document.getElementById('camOnvifProfileToken') ? document.getElementById('camOnvifProfileToken').value.trim() : '',
+                audioEnabled: document.getElementById('camAudioEnabled') ? document.getElementById('camAudioEnabled').checked : true,
+                hasAudio: document.getElementById('camAudioEnabled') ? document.getElementById('camAudioEnabled').checked : true,
+                audioCodec: document.getElementById('camAudioCodec') ? document.getElementById('camAudioCodec').value : 'aac',
                 mainStreamUrl: document.getElementById('camMainUrl').value,
+                mainStreamUri: document.getElementById('camMainUrl').value,
                 subStreamUrl: document.getElementById('camSubUrl').value,
+                subStreamUri: document.getElementById('camSubUrl').value,
                 enabled: document.getElementById('camEnabled').checked,
                 recordMode: document.getElementById('camRecordMode') ? document.getElementById('camRecordMode').value : 'disabled',
                 maxStorageDays: document.getElementById('camMaxDays') ? parseInt(document.getElementById('camMaxDays').value) : 7,
@@ -1052,11 +1186,7 @@ async function updateHardwareStats() {
                 if (!res.ok) throw new Error(await res.text());
                 alert('Kamera berhasil disimpan!');
                 
-                cameraForm.reset();
-                document.getElementById('camId').value = '';
-                const btnCancelEdit = document.getElementById('btnCancelEdit');
-                if (btnCancelEdit) btnCancelEdit.style.display = 'none';
-                
+                resetCameraForm();
                 fetchCameras();
             } catch (err) {
                 alert('Gagal menyimpan kamera: ' + err.message);
@@ -2071,7 +2201,10 @@ async function fetchCameras() {
                     cell.id = "cell_" + cam.id;
                     cell.onclick = () => window.selectCellForPtz(cam.id);
                     
-                    const curQuality = (window.camStreamQualities && window.camStreamQualities[cam.id]) || 'HD';
+                    // Dual Stream Auto Switch: SD for multi-grid if subStream exists, HD for single-view
+                    const userQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
+                    const defaultQuality = (count > 1 && cam.subStreamUrl && cam.subStreamUrl.trim() !== '') ? 'SD' : 'HD';
+                    const curQuality = userQuality || defaultQuality;
                     let hlsUrl = '';
                     if (curQuality === 'SD') {
                         if (cam.subStreamUrl && cam.subStreamUrl.startsWith('http')) {
@@ -2120,7 +2253,9 @@ async function fetchCameras() {
                     mCell.id = "m_cell_" + cam.id;
                     mCell.onclick = () => window.selectCellForPtz(cam.id);
                     
-                    const curQuality = (window.camStreamQualities && window.camStreamQualities[cam.id]) || 'HD';
+                    const userQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
+                    const defaultQuality = (count > 1 && cam.subStreamUrl && cam.subStreamUrl.trim() !== '') ? 'SD' : 'HD';
+                    const curQuality = userQuality || defaultQuality;
                     let hlsUrl = '';
                     if (curQuality === 'SD') {
                         if (cam.subStreamUrl && cam.subStreamUrl.startsWith('http')) {
@@ -3995,11 +4130,6 @@ function initAIDrawCanvas() {
     updateAICursor();
     
     canvas.onmousedown = (e) => {
-        if (!isAIFullscreen) {
-            // Mode biasa: Video hanya untuk pratinjau lokasi saja, tidak bisa edit/tambah objek
-            return;
-        }
-        
         // Pan condition: middle mouse (1), right click (2), space key held, or tool is 'pan'
         if (e.button === 1 || e.button === 2 || isSpacePressed || aiInteractionMode === 'pan') {
             e.preventDefault();
@@ -4027,8 +4157,6 @@ function initAIDrawCanvas() {
     };
     
     canvas.onmousemove = (e) => {
-        if (!isAIFullscreen) return;
-        
         if (isAIPanning) {
             aiPanX = e.clientX - aiPanStart.x;
             aiPanY = e.clientY - aiPanStart.y;
@@ -4057,8 +4185,6 @@ function initAIDrawCanvas() {
     };
     
     const handleMouseUpOrLeave = () => {
-        if (!isAIFullscreen) return;
-        
         if (isAIPanning) {
             isAIPanning = false;
             updateAICursor();
@@ -4068,32 +4194,35 @@ function initAIDrawCanvas() {
             isAIDrawing = false;
             const curZone = getActiveZone();
             if (curZone.w < 8 || curZone.h < 8) {
-                curZone.x = 0;
-                curZone.y = 0;
-                curZone.w = 0;
-                curZone.h = 0;
-                curZone.nx = 0;
-                curZone.ny = 0;
-                curZone.nw = 0;
-                curZone.nh = 0;
+                // If clicked without drag, keep existing or set minimum size
+                if (curZone.nw <= 0) {
+                    curZone.x = 0;
+                    curZone.y = 0;
+                    curZone.w = 0;
+                    curZone.h = 0;
+                    curZone.nx = 0;
+                    curZone.ny = 0;
+                    curZone.nw = 0;
+                    curZone.nh = 0;
+                }
             }
             aiGridRect = curZone;
             updateCoordStatusText();
             renderAIZonesChips();
-            appendAITelemetry(`📐 Kotak "${curZone.label}" diperbarui: [X:${curZone.x}, Y:${curZone.y}, W:${curZone.w}, H:${curZone.h}]`, 'info');
+            if (curZone.w > 0) {
+                appendAITelemetry(`📐 Kotak "${curZone.label}" diperbarui: [X:${curZone.x}, Y:${curZone.y}, W:${curZone.w}, H:${curZone.h}]`, 'info');
+            }
         }
     };
     
     canvas.onmouseup = handleMouseUpOrLeave;
     canvas.onmouseleave = handleMouseUpOrLeave;
     canvas.oncontextmenu = (e) => {
-        if (isAIFullscreen) e.preventDefault(); // Prevent browser context menu during right-drag pan
+        e.preventDefault(); // Prevent browser context menu during right-drag pan
     };
     
     // Touchscreen / mobile / STB touch monitor support
     canvas.ontouchstart = (e) => {
-        if (!isAIFullscreen) return;
-        
         // Multi-touch pinch zoom
         if (e.touches.length === 2) {
             isAIDrawing = false;
@@ -4131,8 +4260,6 @@ function initAIDrawCanvas() {
     };
     
     canvas.ontouchmove = (e) => {
-        if (!isAIFullscreen) return;
-        
         if (e.touches.length === 2 && aiTouchPinchStartDist > 0) {
             e.preventDefault();
             const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -4177,7 +4304,6 @@ function initAIDrawCanvas() {
     };
     
     canvas.ontouchend = (e) => {
-        if (!isAIFullscreen) return;
         if (e.touches.length < 2) {
             aiTouchPinchStartDist = 0;
         }
@@ -4188,7 +4314,6 @@ function initAIDrawCanvas() {
     if (!container._hasAIWheelListener) {
         container._hasAIWheelListener = true;
         container.addEventListener('wheel', (e) => {
-            if (!isAIFullscreen) return;
             e.preventDefault();
             if (e.deltaY < 0) {
                 zoomInAI(0.15);
@@ -4732,14 +4857,19 @@ function updateCoordStatusText() {
     if (fsEl) fsEl.innerHTML = htmlStr;
 }
 
-// Multi-Zone Chips List Render for normal & fullscreen HUD
+// Multi-Zone Chips & Detailed Cards List Render for normal, subtab & fullscreen HUD
 function renderAIZonesChips() {
     const listEl = document.getElementById('ai-zones-chips-list');
     const fsListEl = document.getElementById('ai-fs-zones-chips');
     const fsSlotBadge = document.getElementById('ai-fs-active-slot-badge');
+    const countBadge = document.getElementById('ai-zones-count-badge');
+    const cardsGrid = document.getElementById('ai-zones-cards-grid');
     
     if (fsSlotBadge) {
         fsSlotBadge.textContent = `Objek ${aiActiveZoneIndex + 1} dari ${aiZones.length}`;
+    }
+    if (countBadge) {
+        countBadge.textContent = `${aiZones.length} Objek Terdata (${aiActiveZoneIndex + 1} Aktif)`;
     }
     
     const buildChips = (targetEl) => {
@@ -4760,7 +4890,7 @@ function renderAIZonesChips() {
                 chip.style.background = zone.color ? `${zone.color}28` : 'rgba(59,130,246,0.3)';
             }
             
-            const hasBox = (zone.w > 0 && zone.h > 0);
+            const hasBox = (zone.w > 0 && zone.h > 0) || (zone.nw > 0 && zone.nh > 0);
             const boxStatus = hasBox ? '📐' : '⚠️ (Kosong)';
             
             chip.innerHTML = `
@@ -4780,6 +4910,64 @@ function renderAIZonesChips() {
     
     buildChips(listEl);
     buildChips(fsListEl);
+
+    // Build Detailed Cards List for Subpane 1
+    if (cardsGrid) {
+        cardsGrid.innerHTML = '';
+        if (!aiZones || aiZones.length === 0) {
+            cardsGrid.innerHTML = '<div style="grid-column:1/-1; color:#94a3b8; font-size:0.78rem; text-align:center; padding:0.5rem;">Belum ada objek yang dibuat.</div>';
+            return;
+        }
+
+        aiZones.forEach((zone, idx) => {
+            const isActive = (idx === aiActiveZoneIndex);
+            const card = document.createElement('div');
+            card.style.background = isActive ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.75)';
+            card.style.border = isActive ? `2px solid ${zone.color || '#3b82f6'}` : '1px solid rgba(255,255,255,0.1)';
+            card.style.borderRadius = '6px';
+            card.style.padding = '0.5rem 0.65rem';
+            card.style.cursor = 'pointer';
+            card.style.transition = 'all 0.15s ease';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.gap = '0.35rem';
+            
+            const hasBox = (zone.w > 0 && zone.h > 0) || (zone.nw > 0 && zone.nh > 0);
+            const targetsStr = (zone.targets && zone.targets.length > 0) ? zone.targets.join(', ') : 'Semua';
+            const dimStr = hasBox ? `X:${Math.round((zone.nx || 0)*100)}% Y:${Math.round((zone.ny || 0)*100)}% W:${Math.round((zone.nw || 0)*100)}% H:${Math.round((zone.nh || 0)*100)}%` : '⚠️ Belum digambar';
+
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:0.35rem;">
+                        <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${zone.color || '#3b82f6'};"></span>
+                        <strong style="font-size:0.8rem; color:${isActive ? '#38bdf8' : '#f8fafc'};">[${idx + 1}] ${zone.label || 'Objek #' + (idx + 1)}</strong>
+                    </div>
+                    <span style="font-size:0.68rem; padding:1px 5px; border-radius:3px; font-weight:bold; background:${isActive ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.06)'}; color:${isActive ? '#38bdf8' : '#94a3b8'};">
+                        ${isActive ? '● AKTIF' : 'PILIH'}
+                    </span>
+                </div>
+                <div style="font-size:0.72rem; color:var(--text-muted); font-family:monospace;">
+                    ${dimStr}
+                </div>
+                <div style="font-size:0.7rem; color:#cbd5e1; display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.06); padding-top:0.3rem; margin-top:0.1rem;">
+                    <span>Target: <b>${targetsStr}</b></span>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteZoneByIndex(${idx})" style="padding:0 5px; font-size:0.68rem; line-height:1.4;" title="Hapus objek ini">🗑️</button>
+                </div>
+            `;
+
+            card.onclick = () => {
+                selectActiveZone(idx);
+            };
+
+            cardsGrid.appendChild(card);
+        });
+    }
+}
+
+function deleteZoneByIndex(idx) {
+    if (!aiZones || idx < 0 || idx >= aiZones.length) return;
+    selectActiveZone(idx);
+    deleteCurrentZone();
 }
 
 function selectActiveZone(idx) {
@@ -4856,19 +5044,28 @@ function addNewZoneSlot() {
         defaultTargets = ['person'];
     }
     
+    // Provide clean visible offset default coordinates so second object is immediately visible in preview & fullscreen
+    const cw = (aiDrawCanvas && aiDrawCanvas.width) ? aiDrawCanvas.width : 800;
+    const ch = (aiDrawCanvas && aiDrawCanvas.height) ? aiDrawCanvas.height : 450;
+    const offsetFactor = (newIdx - 1) * 0.08;
+    const defNx = Math.min(0.55, 0.15 + offsetFactor);
+    const defNy = Math.min(0.50, 0.20 + (offsetFactor * 0.7));
+    const defNw = 0.35;
+    const defNh = 0.40;
+
     const newZone = {
         id: 'zone_' + Date.now(),
         label: defaultLabel,
         color: nextColor.hex,
         themeColor: nextColor.theme,
-        x: 0,
-        y: 0,
-        w: 0,
-        h: 0,
-        nx: 0,
-        ny: 0,
-        nw: 0,
-        nh: 0,
+        x: Math.round(defNx * cw),
+        y: Math.round(defNy * ch),
+        w: Math.round(defNw * cw),
+        h: Math.round(defNh * ch),
+        nx: defNx,
+        ny: defNy,
+        nw: defNw,
+        nh: defNh,
         targets: defaultTargets
     };
     
@@ -4879,12 +5076,12 @@ function addNewZoneSlot() {
     renderAIZonesChips();
     updateCoordStatusText();
     
-    appendAITelemetry(`➕ Objek Baru #${newIdx} (${defaultLabel}) Ditambahkan! Silakan tarik kursor/sentuh layar untuk menggambar kotaknya.`, 'info');
+    appendAITelemetry(`➕ Objek #${newIdx} ("${defaultLabel}") Ditambahkan! Kotak langsung terlihat di pratinjau. Anda dapat mengubah ukuran atau menggambarnya kembali.`, 'info');
     
     // Flash HUD hint
     const feedback = document.getElementById('ai-save-feedback');
     if (feedback) {
-        feedback.textContent = `Objek #${newIdx} siap digambar! Tarik kursor di atas video.`;
+        feedback.textContent = `Objek #${newIdx} dibuat & aktif! Silakan atur atau simpan.`;
         feedback.style.color = '#38bdf8';
     }
 }

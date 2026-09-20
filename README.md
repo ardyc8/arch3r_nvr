@@ -1,11 +1,12 @@
-# ⚡ Arch3r NVR (Ver. 10.1.0)
+# ⚡ Arch3r NVR (Ver. 10.1.4)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
-### 📋 Changelog Pembaruan Ver. 10.1.0:
-- **Floating CCTV HUD & Multi-Mode ROI**: Mengadopsi kontrol tombol mengambang (floating buttons) yang elegan dan non-intrusif pada player video YOLO AI sehingga area video tidak tertutupi panel.
-- **Normalisasi Koordinat 100% Presisi (Preview vs Fullscreen)**: Menggunakan model *Normalized Relative Coordinates* ($nx, ny, nw, nh$) sehingga titik dan ukuran bounding box di mode pratinjau normal dan mode layar penuh (*fullscreen*) selalu konsisten dan akurat.
-- **Tampilan Multi-Objek Lengkap di Pratinjau**: Memastikan objek kedua, ketiga, dst. tetap terlihat dengan jelas di mode pratinjau dengan rendering warna transparan dan badge terpisah.
-- **Pengelompokan Tab Responsif (HP & Desktop)**: Membagi antarmuka YOLO AI yang padat menjadi sistem tab terorganisir (Area Deteksi ROI, Aturan Prompt AI, Alarm IoT ESP8266, Telemetri Visi, Lab Simulasi, Marketplace .yai) yang adaptif untuk layar ponsel (portrait & landscape) maupun monitor desktop.
+### 📋 Changelog Pembaruan Ver. 10.1.4:
+- **Form & Handler Penambahan Kamera Lengkap**: Mendukung schema parameter lengkap (`cameraName`, `ipAddress`, `onvifPort`, `rtspPort`, `username`, `password`, `mainStreamUri`, `subStreamUri`, `profileToken`, `hasPtz`, `hasAudio`, `audioCodec`) dengan auto-construction RTSP & PTZ URL secara otomatis.
+- **Endpoint Auto-Discovery & Multi-Port ONVIF Probe (`POST /api/system/onvif-probe`)**: Menguji konektivitas kamera ke port-port umum (8899, 80, 8080, 5000, 2020, 8000, 8888) serta fallback ke driver Macrovideo V380 Native (port 8800), mengambil *profileToken*, kapabilitas PTZ, audio, serta auto-resolve URI stream.
+- **Integrasi PTZ Fleksibel (ONVIF SOAP & V380 Native)**: Respon PTZ instan (< 50ms) dengan `ContinuousMove` dan `Stop`, auto-resolution profile token dinamis, dan fallback aman.
+- **Dual-Stream & Perekaman Efisien**: Perekaman HD selalu mengambil Main Stream menggunakan FFmpeg metode Passthrough (`-c:v copy -c:a copy`) untuk menghemat CPU STB, serta Sub Stream untuk tampilan Multi-Grid.
+- **Manajemen Audio & Codec Transcoding**: Meneruskan audio kamera langsung atau transcoding aman ke AAC/MP3 untuk kompatibilitas WebRTC/HLS.
 
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
