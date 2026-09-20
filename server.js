@@ -273,9 +273,138 @@ app.use(cookieParser());
 // Serve static assets from the public directory
 
 // ==========================================
-// AI ADDON PROXY API (v10.0.0 - RTSP Live Feed, Vision Telemetry, AI Prompt Rules & ESP8266 IoT)
+// AI ADDON PROXY API (v10.0.1 - NVR Live Feed, .yai Presets Marketplace, AI Prompt Rules & ESP8266 IoT)
 // ==========================================
 const espTriggerCooldowns = new Map(); // camera_id -> timestamp to avoid spamming ESP8266
+
+// Preset templates with .yai format (Arch3r AI Config)
+const DEFAULT_YAI_PRESETS = [
+    {
+        id: 'kios_bensin',
+        filename: 'kios_bensin.yai',
+        name: 'Kios Bensin (SPBU Refuel Trigger)',
+        category: 'SPBU & Retail',
+        description: 'Mendeteksi orang/kendaraan yang datang dan berhenti mengisi bensin di dispenser minimal 3 detik untuk memicu alarm/notifikasi ESP.',
+        data: {
+            format: 'arch3r_yai',
+            version: '10.0.1',
+            preset_name: 'kios_bensin',
+            title: 'Kios Bensin - Deteksi Pengisian BBM',
+            prompt_rules: {
+                prompt_text: 'Deteksi orang/pengendara yang datang ke area pompa bensin, berhenti lebih dari 3 detik, dan sedang menunggu atau mengisi bensin.',
+                preset_id: 'spbu_refuel',
+                target_classes: ['person', 'motorcycle', 'car'],
+                require_stationary: true,
+                min_dwell_sec: 3,
+                confidence_min: 75
+            },
+            grid_rect_percent: { x: 25, y: 25, w: 50, h: 50 },
+            esp_config: { enabled: true, ip_or_url: '192.168.1.150', method: 'GET' }
+        }
+    },
+    {
+        id: 'antrean_spbu',
+        filename: 'antrean_spbu.yai',
+        name: 'Antrean Pompa Bensin (Dwell >= 5s)',
+        category: 'SPBU & Retail',
+        description: 'Mendeteksi penumpukan antrean atau kendaraan yang berhenti lama di jalur dispenser BBM.',
+        data: {
+            format: 'arch3r_yai',
+            version: '10.0.1',
+            preset_name: 'antrean_spbu',
+            title: 'Antrean Pompa Bensin',
+            prompt_rules: {
+                prompt_text: 'Deteksi kendaraan atau orang yang berhenti lama mengantre lebih dari 5 detik di area dispenser.',
+                preset_id: 'waiting_queue',
+                target_classes: ['motorcycle', 'car', 'person'],
+                require_stationary: true,
+                min_dwell_sec: 5,
+                confidence_min: 70
+            },
+            grid_rect_percent: { x: 20, y: 30, w: 60, h: 45 },
+            esp_config: { enabled: true, ip_or_url: '192.168.1.150', method: 'GET' }
+        }
+    },
+    {
+        id: 'kendaraan_dispenser',
+        filename: 'kendaraan_dispenser.yai',
+        name: 'Kendaraan Masuk Dispenser (Dwell >= 2s)',
+        category: 'SPBU & Retail',
+        description: 'Mendeteksi kedatangan mobil atau motor tepat saat memasuki area pengisian BBM.',
+        data: {
+            format: 'arch3r_yai',
+            version: '10.0.1',
+            preset_name: 'kendaraan_dispenser',
+            title: 'Kendaraan Tiba di Dispenser',
+            prompt_rules: {
+                prompt_text: 'Deteksi mobil atau sepeda motor yang baru masuk dan berhenti di area dispenser BBM.',
+                preset_id: 'vehicle_entry',
+                target_classes: ['motorcycle', 'car'],
+                require_stationary: true,
+                min_dwell_sec: 2,
+                confidence_min: 70
+            },
+            grid_rect_percent: { x: 15, y: 20, w: 70, h: 60 },
+            esp_config: { enabled: true, ip_or_url: '192.168.1.150', method: 'GET' }
+        }
+    },
+    {
+        id: 'intrusi_gerbang',
+        filename: 'intrusi_gerbang.yai',
+        name: 'Intrusi Gerbang Masuk (Barrier Gate)',
+        category: 'Keamanan & Akses',
+        description: 'Mendeteksi pergerakan orang atau kendaraan yang melintasi area gerbang masuk.',
+        data: {
+            format: 'arch3r_yai',
+            version: '10.0.1',
+            preset_name: 'intrusi_gerbang',
+            title: 'Intrusi Gerbang Masuk',
+            prompt_rules: {
+                prompt_text: 'Deteksi setiap orang atau kendaraan yang melintasi area gerbang masuk.',
+                preset_id: 'instant_intrusion',
+                target_classes: ['person', 'motorcycle', 'car'],
+                require_stationary: false,
+                min_dwell_sec: 1,
+                confidence_min: 65
+            },
+            grid_rect_percent: { x: 30, y: 15, w: 40, h: 70 },
+            esp_config: { enabled: true, ip_or_url: '192.168.1.150', method: 'GET' }
+        }
+    }
+];
+
+app.get('/api/ai/presets', verifyToken, (req, res) => {
+    try {
+        const db = getNvrDb();
+        const customPresets = (db.settings && db.settings.ai_custom_presets) || [];
+        res.json({
+            success: true,
+            presets: [...DEFAULT_YAI_PRESETS, ...customPresets],
+            default_repository_url: 'https://market.arch3r.local/api/v1/presets'
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/ai/presets/download/:id', (req, res) => {
+    try {
+        const presetId = req.params.id;
+        const db = getNvrDb();
+        const customPresets = (db.settings && db.settings.ai_custom_presets) || [];
+        const all = [...DEFAULT_YAI_PRESETS, ...customPresets];
+        const found = all.find(p => p.id === presetId || p.filename === presetId || p.filename === `${presetId}.yai`);
+        if (!found) {
+            return res.status(404).send('Preset tidak ditemukan');
+        }
+        const filename = found.filename.endsWith('.yai') ? found.filename : `${found.filename}.yai`;
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(JSON.stringify(found.data, null, 2));
+    } catch(e) {
+        res.status(500).send(e.message);
+    }
+});
 
 app.get('/api/ai/grid/:camId', verifyToken, (req, res) => {
     try {
@@ -465,7 +594,7 @@ app.post('/api/ai/test_esp', verifyToken, async (req, res) => {
             fetchOpts.body = JSON.stringify({ 
                 test: true, 
                 event: 'test_trigger', 
-                source: 'Arch3r NVR Ver. 10.0.0',
+                source: 'Arch3r NVR Ver. 10.0.1',
                 timestamp: new Date().toISOString() 
             });
         }
@@ -988,6 +1117,18 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
     }
 
     const changelogList = [
+        {
+            version: '10.0.1',
+            date: '2026-09-20',
+            title: '.yai Preset Marketplace, Native NVR Live Video Feed & Dedicated Simulation Lab',
+            items: [
+                'Ekstensi Konfigurasi .yai: Dukungan ekspor/unduh dan impor/unggah file konfigurasi berformat .yai (contoh: kios_bensin.yai) untuk kemudahan migrasi antar-STB.',
+                'Preset & Database Hosting Marketplace: Katalog preset .yai bawaan (kios_bensin, antrean_spbu, kendaraan_dispenser, intrusi_gerbang) serta dukungan repository database hosting kustom.',
+                'Native NVR Live Video: Kotak seleksi grid kini memutar langsung stream video live kamera yang aktif di NVR tanpa background animasi buatan.',
+                'NO VIDEO SIGNAL Indikator: Menampilkan status layar hitam standar CCTV "NO VIDEO SIGNAL" saat kamera offline atau belum ditambahkan ke NVR.',
+                'Tab Terpisah untuk Lab Simulasi: Simulasi pengisian bensin dan evaluasi teks AI kini diisolasi pada tab terpisah agar tidak mengganggu operasional kamera nyata.'
+            ]
+        },
         {
             version: '10.0.0',
             date: '2026-09-20',

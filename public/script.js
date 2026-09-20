@@ -3399,6 +3399,38 @@ let aiDwellTimer = 0;
 let aiPromptConditionMet = false;
 let aiCustomStreamActive = false;
 
+// Tab switcher for AI Vision Studio Modal
+function switchAIGridTab(tabName) {
+    const tabs = ['live', 'sim', 'market'];
+    tabs.forEach(t => {
+        const pane = document.getElementById(`ai-tab-pane-${t}`);
+        const btn = document.getElementById(`ai-tab-btn-${t}`);
+        if (pane) pane.style.display = (t === tabName) ? 'block' : 'none';
+        if (btn) {
+            if (t === tabName) {
+                btn.style.color = (t === 'market') ? '#f59e0b' : ((t === 'sim') ? '#60a5fa' : '#38bdf8');
+                btn.style.borderBottomColor = (t === 'market') ? '#f59e0b' : ((t === 'sim') ? '#60a5fa' : '#38bdf8');
+                btn.style.background = 'rgba(255,255,255,0.04)';
+            } else {
+                btn.style.color = 'var(--text-muted)';
+                btn.style.borderBottomColor = 'transparent';
+                btn.style.background = 'none';
+            }
+        }
+    });
+
+    if (tabName === 'sim') {
+        initSimSandbox();
+    } else if (tabName === 'market') {
+        fetchMarketplacePresets();
+    } else if (tabName === 'live') {
+        setTimeout(() => {
+            initAIDrawCanvas();
+            loadCamStreamForAI();
+        }, 30);
+    }
+}
+
 // Simulated SPBU targets (Motorcyclist & Person Refueling)
 let aiSimState = {
     phase: 'approaching', // 'approaching', 'refueling', 'leaving'
@@ -3413,6 +3445,9 @@ async function openAIGridModal(defaultCamId = null) {
     if (!modal) return;
     modal.style.display = 'flex';
     
+    // Switch to live tab by default when opened
+    switchAIGridTab('live');
+    
     // Ensure cameras list is fetched and available
     const camList = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
     if ((!camList || camList.length === 0) && (typeof window.fetchCameras === 'function' || typeof fetchCameras === 'function')) {
@@ -3420,7 +3455,8 @@ async function openAIGridModal(defaultCamId = null) {
         try { await fetcher(); } catch (e) {}
     }
     
-    const activeCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+    // Filter real cameras only from NVR database (no virtual_test in live feed list)
+    const activeCams = (window.cameras || (typeof cameras !== 'undefined' ? cameras : [])).filter(c => c && c.id && c.id !== 'virtual_test');
     
     // Populate camera selector
     const select = document.getElementById('ai-cam-select');
@@ -3433,23 +3469,23 @@ async function openAIGridModal(defaultCamId = null) {
                 opt.textContent = `${cam.name || 'Kamera ' + (idx + 1)} (${cam.ip || 'Stream ' + (idx + 1)})`;
                 select.appendChild(opt);
             });
-        }
-        
-        // Add virtual simulation option for testing anytime
-        const optSim = document.createElement('option');
-        optSim.value = 'virtual_test';
-        optSim.textContent = '⛽ Kamera Simulasi SPBU (Pengisian Bensin)';
-        select.appendChild(optSim);
-        
-        if (defaultCamId) {
-            const hasOpt = Array.from(select.options).some(o => o.value === defaultCamId);
-            if (hasOpt) {
-                select.value = defaultCamId;
-            } else if (select.options.length > 0) {
+            if (defaultCamId) {
+                const hasOpt = Array.from(select.options).some(o => o.value === defaultCamId);
+                if (hasOpt) {
+                    select.value = defaultCamId;
+                } else {
+                    select.selectedIndex = 0;
+                }
+            } else {
                 select.selectedIndex = 0;
             }
-        } else if (select.options.length > 0) {
-            select.selectedIndex = 0;
+        } else {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '-- Tidak Ada Kamera Terhubung di NVR --';
+            opt.disabled = true;
+            opt.selected = true;
+            select.appendChild(opt);
         }
         
         const group = document.getElementById('aiCamSelectGroup') || select.parentElement;
@@ -3465,8 +3501,8 @@ async function openAIGridModal(defaultCamId = null) {
     
     // Clear & seed initial telemetry log
     clearAITelemetryLog();
-    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.0.0...', 'system');
-    appendAITelemetry('📋 Memuat aturan prompt AI: Menunggu syarat pemicu pengisian bensin.', 'system');
+    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.0.2...', 'system');
+    appendAITelemetry('📋 Memuat konfigurasi kamera nyata NVR & Engine Prompt SPBU.', 'system');
     
     // Start continuous rendering loop
     aiStartRenderLoop();
@@ -3576,6 +3612,7 @@ async function loadCamStreamForAI() {
     const video = document.getElementById('ai-stream-preview');
     const badge = document.getElementById('ai-grid-stream-badge');
     const metaBadge = document.getElementById('ai-video-meta-badge');
+    const noVideoOverlay = document.getElementById('ai-no-video-overlay');
     
     if (!container) return;
     container.style.display = 'flex';
@@ -3589,32 +3626,37 @@ async function loadCamStreamForAI() {
     
     if (video) {
         video.pause();
-        video.style.display = 'block';
         video.src = '';
     }
-    
-    if (badge) {
-        badge.innerHTML = '📡 Menghubungkan Feed Kamera...';
-        badge.style.color = '#60a5fa';
-    }
-    
-    // Identify camera record
-    const activeCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+
+    // Filter real cameras from NVR database
+    const activeCams = (window.cameras || (typeof cameras !== 'undefined' ? cameras : [])).filter(c => c && c.id && c.id !== 'virtual_test');
     let cam = (activeCams || []).find(c => String(c.id) === String(camId));
-    if (!cam) {
-        cam = {
-            id: camId || 'virtual_test',
-            name: camId === 'virtual_test' ? 'Kamera Simulasi SPBU' : 'Kamera Target',
-            ip: '127.0.0.1'
-        };
+    
+    if (!cam && activeCams.length > 0 && !camId) {
+        cam = activeCams[0];
+        if (select) select.value = cam.id;
     }
+
+    // If no real camera available in NVR database
+    if (!cam) {
+        if (noVideoOverlay) noVideoOverlay.style.display = 'flex';
+        if (video) video.style.display = 'none';
+        if (badge) {
+            badge.innerHTML = '🔴 Tidak Ada Video Kamera';
+            badge.style.color = '#ef4444';
+        }
+        if (metaBadge) metaBadge.textContent = 'NO VIDEO SIGNAL';
+        appendAITelemetry('⚠️ Tidak ada kamera terhubung di NVR. Menampilkan sinyal "NO VIDEO SIGNAL".', 'alarm');
+        initAIDrawCanvas();
+        return;
+    }
+
+    // Real camera is identified
     aiCurrentCam = cam;
-    
-    // Initialize canvas size and pointer event listeners
     initAIDrawCanvas();
-    
-    appendAITelemetry(`📹 Target Kamera dipilih: ${cam.name} (${cam.ip || 'Local/RTSP'})`, 'info');
-    
+    appendAITelemetry(`📹 Target Kamera NVR: ${cam.name} (${cam.ip || 'Stream RTSP'})`, 'info');
+
     // Fetch saved persistent grid, prompt rules & ESP8266 settings from NVR database
     try {
         const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
@@ -3624,7 +3666,6 @@ async function loadCamStreamForAI() {
             if (data.grid) {
                 restoreAIGridFromData(data.grid);
             } else {
-                // Default to SPBU preset if nothing set
                 setAIGridPreset('spbu');
             }
             
@@ -3670,52 +3711,65 @@ async function loadCamStreamForAI() {
                 if (confInp && promptRules.confidence_min) {
                     confInp.value = Math.round(promptRules.confidence_min * 100);
                 }
-                appendAITelemetry(`🧠 Prompt Rules dimuat: "${promptRules.prompt_text || 'SPBU Deteksi'}"`, 'info');
             }
         }
     } catch (err) {
         console.warn('[AI Grid] Info: Grid tersimpan belum ada atau default:', err);
     }
-    
-    // If real camera with stream URL, attempt HLS preview safely
+
+    // Connect to real NVR video feed via HLS
     const hlsFn = window.initHlsPlayer || (typeof initHlsPlayer === 'function' ? initHlsPlayer : null);
     const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('nvr_auth_token') || '');
-    
-    if (cam && (cam.mainStreamUrl || cam.mediaMtxPath) && cam.id !== 'virtual_test' && hlsFn && video) {
+
+    if (cam && (cam.mainStreamUrl || cam.mediaMtxPath || cam.id) && hlsFn && video) {
         const hlsPath = cam.mediaMtxPath || cam.id;
         const hlsUrl = (cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http')) 
             ? cam.mainStreamUrl 
             : ('/stream/' + hlsPath + '/index.m3u8?token=' + encodeURIComponent(token));
         
+        if (badge) {
+            badge.innerHTML = '📡 Menghubungkan Live Stream Kamera...';
+            badge.style.color = '#60a5fa';
+        }
+
         try {
+            video.style.display = 'block';
             hlsFn('ai-stream-preview', hlsUrl);
+            
             video.onplaying = () => {
+                if (noVideoOverlay) noVideoOverlay.style.display = 'none';
                 video.style.display = 'block';
                 if (badge) {
-                    badge.innerHTML = '🟢 Live Stream Feed Aktif';
+                    badge.innerHTML = '🟢 Live NVR Stream Aktif';
                     badge.style.color = '#34d399';
                 }
                 if (metaBadge) metaBadge.textContent = 'LIVE RTSP • 25 FPS';
-                appendAITelemetry(`🟢 Stream video terhubung: ${hlsUrl}`, 'success');
+                appendAITelemetry(`🟢 Stream video kamera "${cam.name}" terhubung: ${hlsUrl}`, 'success');
             };
+            
             video.onerror = () => {
+                if (noVideoOverlay) noVideoOverlay.style.display = 'flex';
                 if (badge) {
-                    badge.innerHTML = '⚪ Mode Simulasi Visual (Stream Standby)';
-                    badge.style.color = '#94a3b8';
+                    badge.innerHTML = '🔴 Kamera Offline / Stream Terputus';
+                    badge.style.color = '#ef4444';
                 }
+                if (metaBadge) metaBadge.textContent = 'SIGNAL LOSS';
+                appendAITelemetry(`⚠️ Sinyal video kamera "${cam.name}" terputus atau offline di NVR.`, 'alarm');
             };
         } catch (hlsErr) {
+            if (noVideoOverlay) noVideoOverlay.style.display = 'flex';
             if (badge) {
-                badge.innerHTML = '⚪ Mode Simulasi Visual (Stream Standby)';
-                badge.style.color = '#94a3b8';
+                badge.innerHTML = '🔴 Gagal Menghubungkan Stream';
+                badge.style.color = '#ef4444';
             }
         }
     } else {
+        if (noVideoOverlay) noVideoOverlay.style.display = 'flex';
         if (badge) {
-            badge.innerHTML = '⚪ Mode Simulasi SPBU (Visual Studio Aktif)';
-            badge.style.color = '#94a3b8';
+            badge.innerHTML = '🔴 Tidak Ada Stream';
+            badge.style.color = '#ef4444';
         }
-        if (metaBadge) metaBadge.textContent = 'SIMULASI SPBU • 25 FPS';
+        if (metaBadge) metaBadge.textContent = 'NO SIGNAL';
     }
 }
 
@@ -3811,7 +3865,16 @@ function aiStartRenderLoop() {
             return;
         }
         
-        renderAIFrame();
+        const livePane = document.getElementById('ai-tab-pane-live');
+        if (livePane && livePane.style.display !== 'none') {
+            renderAIFrame();
+        }
+
+        const simPane = document.getElementById('ai-tab-pane-sim');
+        if (simPane && simPane.style.display !== 'none') {
+            renderSimSandboxFrame();
+        }
+        
         aiAnimFrameId = requestAnimationFrame(loop);
     }
     
@@ -4853,8 +4916,616 @@ function closeAIGridModal() {
     }
 }
 
-// Bind to window for global invocation
+// ============================================================================
+// SIMULATION LAB SANDBOX (ISOLATED VISUAL TESTING FOR AI LOGIC & SPBU SCENARIO)
+// ============================================================================
+let simSandboxCanvas = null;
+let simSandboxCtx = null;
+let simCurrentScenario = 'refuel'; // 'refuel', 'queue', 'walkby'
+let simPlaybackPaused = false;
+let simScenarioTimer = 0;
+let simDwellTimer = 0;
+let simLastTelemetryTick = 0;
+
+let simObjects = {
+    vehicle: { id: 201, type: 'motorcycle', label: '🛵 Sepeda Motor', x: 20, y: 190, vx: 2.5, vy: 0, w: 90, h: 60, stationary: false, conf: 0.95 },
+    person: { id: 101, type: 'person', label: '👤 Pengendara/Pelanggan', x: 55, y: 165, vx: 2.5, vy: 0, w: 45, h: 95, stationary: false, conf: 0.97 },
+    car: { id: 301, type: 'car', label: '🚗 Mobil Antre', x: -140, y: 200, vx: 2.0, vy: 0, w: 120, h: 65, stationary: false, conf: 0.92 }
+};
+
+function initSimSandbox() {
+    const canvas = document.getElementById('ai-sim-sandbox-canvas');
+    if (!canvas) return;
+    simSandboxCanvas = canvas;
+    simSandboxCtx = canvas.getContext('2d');
+    
+    const container = canvas.parentElement;
+    if (container) {
+        const rect = container.getBoundingClientRect();
+        canvas.width = Math.max(Math.round(rect.width) || 750, 480);
+        canvas.height = Math.max(Math.round(rect.height) || 380, 260);
+    }
+}
+
+function setSimScenario(scen) {
+    simCurrentScenario = scen;
+    simScenarioTimer = 0;
+    simDwellTimer = 0;
+    
+    const btns = {
+        'refuel': document.getElementById('sim-btn-refuel'),
+        'queue': document.getElementById('sim-btn-queue'),
+        'walkby': document.getElementById('sim-btn-walkby')
+    };
+    
+    Object.keys(btns).forEach(k => {
+        const b = btns[k];
+        if (b) {
+            if (k === scen) {
+                b.style.color = '#f59e0b';
+                b.style.borderColor = 'rgba(245,158,11,0.5)';
+                b.style.background = 'rgba(245,158,11,0.15)';
+            } else {
+                b.style.color = 'var(--text)';
+                b.style.borderColor = 'var(--border)';
+                b.style.background = 'none';
+            }
+        }
+    });
+
+    restartSimScenario();
+}
+
+function toggleSimPlayback() {
+    simPlaybackPaused = !simPlaybackPaused;
+    const btn = document.getElementById('btn-sim-playpause');
+    if (btn) {
+        btn.innerHTML = simPlaybackPaused ? '▶️ Lanjutkan' : '⏸️ Jeda';
+        btn.style.color = simPlaybackPaused ? '#34d399' : 'var(--text)';
+    }
+}
+
+function restartSimScenario() {
+    simScenarioTimer = 0;
+    simDwellTimer = 0;
+    
+    if (simCurrentScenario === 'refuel') {
+        simObjects.vehicle = { id: 201, type: 'motorcycle', label: '🛵 Sepeda Motor', x: -80, y: 190, vx: 2.2, vy: 0, w: 90, h: 60, stationary: false, conf: 0.95 };
+        simObjects.person = { id: 101, type: 'person', label: '👤 Pengendara', x: -45, y: 165, vx: 2.2, vy: 0, w: 45, h: 95, stationary: false, conf: 0.97 };
+    } else if (simCurrentScenario === 'queue') {
+        simObjects.vehicle = { id: 201, type: 'motorcycle', label: '🛵 Motor Sedang Mengisi', x: 380, y: 190, vx: 0, vy: 0, w: 90, h: 60, stationary: true, conf: 0.95 };
+        simObjects.person = { id: 101, type: 'person', label: '👤 Operator SPBU', x: 415, y: 165, vx: 0, vy: 0, w: 45, h: 95, stationary: true, conf: 0.98 };
+        simObjects.car = { id: 301, type: 'car', label: '🚗 Mobil Mengantre', x: -120, y: 200, vx: 2.4, vy: 0, w: 125, h: 65, stationary: false, conf: 0.93 };
+    } else if (simCurrentScenario === 'walkby') {
+        simObjects.person = { id: 108, type: 'person', label: '🚶 Pejalan Cepat', x: -50, y: 180, vx: 3.8, vy: 0, w: 45, h: 95, stationary: false, conf: 0.91 };
+    }
+    
+    const banner = document.getElementById('ai-sim-alarm-banner');
+    if (banner) banner.style.display = 'none';
+}
+
+function renderSimSandboxFrame() {
+    if (!simSandboxCanvas || !simSandboxCtx) return;
+    const ctx = simSandboxCtx;
+    const w = simSandboxCanvas.width;
+    const h = simSandboxCanvas.height;
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    // Background night station driveway
+    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+    bgGrad.addColorStop(0, '#0a101d');
+    bgGrad.addColorStop(1, '#030712');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+    
+    // Driveway ground
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, h * 0.44, w, h * 0.56);
+    
+    // Canopy roof line
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, w, h * 0.16);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(0, h * 0.16 - 5, w, 5);
+    ctx.fillStyle = '#3b82f6';
+    ctx.fillRect(0, h * 0.16, w, 3);
+    
+    // Canopy pillars
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(w * 0.15, h * 0.16, 16, h * 0.35);
+    ctx.fillRect(w * 0.85, h * 0.16, 16, h * 0.35);
+    
+    // SPBU Gas Pump Dispenser Body
+    const pumpX = w * 0.56;
+    const pumpY = h * 0.36;
+    const pumpW = 54;
+    const pumpH = 105;
+    
+    ctx.fillStyle = '#1e293b';
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2;
+    ctx.fillRect(pumpX, pumpY, pumpW, pumpH);
+    ctx.strokeRect(pumpX, pumpY, pumpW, pumpH);
+    
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(pumpX, pumpY, pumpW, 18);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8.5px monospace';
+    ctx.fillText('SPBU BBM', pumpX + 6, pumpY + 13);
+    
+    // Digital Meter
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(pumpX + 6, pumpY + 24, pumpW - 12, 26);
+    ctx.fillStyle = '#22c55e';
+    ctx.font = 'bold 8px monospace';
+    const liters = (simDwellTimer * 1.5).toFixed(1);
+    ctx.fillText(`L: ${liters}`, pumpX + 8, pumpY + 35);
+    ctx.fillText(`Rp: ${Math.round(liters * 10000)}`, pumpX + 8, pumpY + 45);
+    
+    // Dispenser Hose
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(pumpX + 4, pumpY + 56);
+    ctx.quadraticCurveTo(pumpX - 18, pumpY + 75, pumpX - 22, pumpY + 68);
+    ctx.stroke();
+    
+    // Ground markings (Yellow bay)
+    ctx.strokeStyle = 'rgba(234, 179, 8, 0.4)';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    ctx.moveTo(w * 0.28, h * 0.50); ctx.lineTo(w * 0.72, h * 0.50);
+    ctx.moveTo(w * 0.24, h * 0.88); ctx.lineTo(w * 0.76, h * 0.88);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Define Simulation ROI Area (Fueling Zone)
+    const roiX = w * 0.30;
+    const roiY = h * 0.30;
+    const roiW = w * 0.45;
+    const roiH = h * 0.60;
+    
+    let targetColliding = false;
+    let stationaryInside = false;
+    let currentTargets = [];
+    
+    // Advance physics if not paused
+    if (!simPlaybackPaused) {
+        simScenarioTimer += 0.04;
+        
+        if (simCurrentScenario === 'refuel') {
+            const v = simObjects.vehicle;
+            const p = simObjects.person;
+            currentTargets = [v, p];
+            
+            if (v.x < pumpX - 70) {
+                // Moving into pump
+                v.x += v.vx;
+                p.x += p.vx;
+                v.stationary = false;
+                p.stationary = false;
+            } else if (simDwellTimer < 7.5) {
+                // Stopped at pump (Refueling)
+                v.stationary = true;
+                p.stationary = true;
+                p.x = pumpX - 20;
+                p.y = pumpY + 15;
+                simDwellTimer += 0.04;
+            } else {
+                // Refueling finished, leaving
+                v.x += 2.6;
+                p.x += 2.6;
+                v.stationary = false;
+                p.stationary = false;
+                if (v.x > w + 60) {
+                    restartSimScenario();
+                }
+            }
+        } else if (simCurrentScenario === 'queue') {
+            const v = simObjects.vehicle;
+            const p = simObjects.person;
+            const c = simObjects.car;
+            currentTargets = [v, p, c];
+            
+            if (c.x < w * 0.18) {
+                c.x += c.vx;
+                c.stationary = false;
+            } else {
+                c.stationary = true; // Stopped in line
+                simDwellTimer += 0.04;
+                if (simDwellTimer > 9.0) {
+                    restartSimScenario();
+                }
+            }
+        } else if (simCurrentScenario === 'walkby') {
+            const p = simObjects.person;
+            currentTargets = [p];
+            p.x += p.vx;
+            p.stationary = false;
+            if (p.x > w + 60) {
+                restartSimScenario();
+            }
+        }
+    }
+    
+    // Evaluate collision with ROI
+    currentTargets.forEach(t => {
+        const cx = t.x + t.w / 2;
+        const cy = t.y + t.h * 0.7;
+        if (cx >= roiX && cx <= roiX + roiW && cy >= roiY && cy <= roiY + roiH) {
+            targetColliding = true;
+            if (t.stationary) stationaryInside = true;
+        }
+    });
+    
+    // Rule evaluation: requires stationary and dwell >= 3s
+    const promptSatisfied = targetColliding && stationaryInside && (simDwellTimer >= 3.0);
+    
+    // Draw ROI Box
+    ctx.fillStyle = promptSatisfied ? 'rgba(239, 68, 68, 0.28)' : (targetColliding ? 'rgba(234, 179, 8, 0.2)' : 'rgba(59, 130, 246, 0.15)');
+    ctx.fillRect(roiX, roiY, roiW, roiH);
+    ctx.strokeStyle = promptSatisfied ? '#ef4444' : (targetColliding ? '#eab308' : '#3b82f6');
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 5]);
+    ctx.strokeRect(roiX, roiY, roiW, roiH);
+    ctx.setLineDash([]);
+    
+    // Floating ROI label
+    ctx.fillStyle = promptSatisfied ? 'rgba(239, 68, 68, 0.95)' : (targetColliding ? 'rgba(234, 179, 8, 0.95)' : 'rgba(37, 99, 235, 0.9)');
+    ctx.fillRect(roiX, roiY - 18, Math.min(roiW, 210), 18);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px monospace';
+    const tag = promptSatisfied ? `🚨 ALARM SPBU (BERHENTI ${simDwellTimer.toFixed(1)}s)` : (targetColliding ? `⏳ DWELL: ${simDwellTimer.toFixed(1)}s / 3.0s` : '🎯 AREA GRID ROI (DISPENSER BBM)');
+    ctx.fillText(tag, roiX + 5, roiY - 5);
+    
+    // Draw Simulated Objects
+    currentTargets.forEach(t => {
+        if (t.type === 'motorcycle' || t.type === 'car') {
+            drawSimVehicle(ctx, t, promptSatisfied, targetColliding);
+        } else if (t.type === 'person') {
+            drawSimPerson(ctx, t, promptSatisfied, targetColliding);
+        }
+    });
+    
+    // Sim Alarm Banner
+    const alarmBanner = document.getElementById('ai-sim-alarm-banner');
+    if (alarmBanner) {
+        if (promptSatisfied) {
+            alarmBanner.style.display = 'block';
+            alarmBanner.innerHTML = `⛽ SYARAT PROMPT TERPENUHI: ORANG BERHENTI MENGISI BENSIN (${simDwellTimer.toFixed(1)}s)!`;
+        } else {
+            alarmBanner.style.display = 'none';
+        }
+    }
+    
+    // Update Telemetry log in Sim tab (~1 sec tick)
+    const now = Date.now();
+    if (now - simLastTelemetryTick > 900) {
+        simLastTelemetryTick = now;
+        updateSimTelemetryUI(currentTargets, promptSatisfied, targetColliding, stationaryInside);
+    }
+}
+
+function updateSimTelemetryUI(targets, promptMet, colliding, stationary) {
+    const logContainer = document.getElementById('sim-telemetry-text-log');
+    const jsonPreview = document.getElementById('sim-json-payload-preview');
+    const countBadge = document.getElementById('sim-target-count');
+    const dispatchBadge = document.getElementById('sim-esp-dispatch-badge');
+    
+    if (countBadge) {
+        countBadge.textContent = `${targets.length} Target Terdeteksi`;
+    }
+    
+    if (logContainer) {
+        const time = new Date().toTimeString().split(' ')[0];
+        targets.forEach(t => {
+            const row = document.createElement('div');
+            const stateStr = t.stationary ? 'BERHENTI (DWELL)' : 'BERGERAK';
+            const icon = t.type === 'person' ? '👤' : (t.type === 'motorcycle' ? '🛵' : '🚗');
+            row.textContent = `[${time}] ${icon} ${t.type} #${t.id} x:${Math.round(t.x)} y:${Math.round(t.y)} | ${stateStr} (${Math.round(t.conf * 100)}%)`;
+            if (promptMet && t.stationary) {
+                row.style.color = '#ef4444';
+                row.style.fontWeight = 'bold';
+            } else if (t.stationary) {
+                row.style.color = '#f59e0b';
+            } else {
+                row.style.color = '#38bdf8';
+            }
+            logContainer.appendChild(row);
+        });
+        
+        while (logContainer.childNodes.length > 30) {
+            logContainer.removeChild(logContainer.firstChild);
+        }
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    
+    if (jsonPreview) {
+        const payload = {
+            timestamp: new Date().toISOString(),
+            event: promptMet ? "ai_prompt_match" : (colliding ? "roi_object_dwell" : "monitoring_idle"),
+            rule_id: "spbu_refuel",
+            condition_met: promptMet,
+            prompt_requirement: "Orang berhenti sedang mengisi bensin >= 3s",
+            dwell_seconds: parseFloat(simDwellTimer.toFixed(1)),
+            detected_objects: targets.map(t => ({
+                id: t.id,
+                class: t.type,
+                confidence: t.conf,
+                status: t.stationary ? "stationary" : "moving"
+            })),
+            esp8266_trigger: promptMet,
+            esp_target_url: promptMet ? "http://192.168.1.150/alarm?event=spbu_refuel" : null
+        };
+        jsonPreview.textContent = JSON.stringify(payload, null, 2);
+    }
+    
+    if (dispatchBadge) {
+        if (promptMet) {
+            dispatchBadge.textContent = '🚨 TRIGGER SENT';
+            dispatchBadge.style.color = '#ef4444';
+        } else {
+            dispatchBadge.textContent = '● READY';
+            dispatchBadge.style.color = '#34d399';
+        }
+    }
+}
+
+// ============================================================================
+// .YAI CONFIGURATION IMPORT / EXPORT & MARKETPLACE LOGIC
+// ============================================================================
+
+// Download currently active AI Grid & Prompt configuration as <name>.yai
+function downloadCustomYaiConfig() {
+    const nameInp = document.getElementById('ai-export-name-input');
+    let rawName = (nameInp ? nameInp.value.trim() : '') || 'kios_bensin';
+    const cleanName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    
+    const cw = (aiDrawCanvas && aiDrawCanvas.width) || 800;
+    const ch = (aiDrawCanvas && aiDrawCanvas.height) || 450;
+    
+    // Normalize grid to percentage
+    const gridPercent = {
+        x: parseFloat(((aiGridRect.x / cw) * 100).toFixed(2)),
+        y: parseFloat(((aiGridRect.y / ch) * 100).toFixed(2)),
+        w: parseFloat(((aiGridRect.w / cw) * 100).toFixed(2)),
+        h: parseFloat(((aiGridRect.h / ch) * 100).toFixed(2))
+    };
+    
+    const targetClasses = [];
+    if (document.getElementById('ai-filter-person')?.checked) targetClasses.push('person');
+    if (document.getElementById('ai-filter-motorcycle')?.checked) targetClasses.push('motorcycle');
+    if (document.getElementById('ai-filter-car')?.checked) targetClasses.push('car');
+    
+    const promptText = document.getElementById('ai-prompt-input')?.value.trim() || 'Deteksi orang berhenti mengisi bensin';
+    const requireStationary = (document.getElementById('ai-motion-condition')?.value === 'stationary_only');
+    const minDwellSec = parseInt(document.getElementById('ai-dwell-seconds')?.value, 10) || 3;
+    const confidenceMin = (parseInt(document.getElementById('ai-confidence-min')?.value, 10) || 75) / 100;
+    
+    const espChk = document.getElementById('esp-enabled-checkbox');
+    const espInp = document.getElementById('esp-target-input');
+    const espMtd = document.getElementById('esp-method-select');
+    
+    const yaiData = {
+        format: "arch3r_yai",
+        version: "1.0",
+        preset_name: cleanName,
+        display_title: cleanName.replace(/_/g, ' ').toUpperCase(),
+        description: "Preset konfigurasi Visi AI Arch3r NVR untuk deteksi area dan notifikasi IoT",
+        created_at: new Date().toISOString(),
+        grid_rect_percent: gridPercent,
+        prompt_rules: {
+            prompt_text: promptText,
+            target_classes: targetClasses,
+            require_stationary: requireStationary,
+            min_dwell_sec: minDwellSec,
+            confidence_min: confidenceMin
+        },
+        esp_config: {
+            enabled: espChk ? espChk.checked : false,
+            ip_or_url: espInp ? espInp.value.trim() : '192.168.1.150',
+            method: espMtd ? espMtd.value : 'GET',
+            cooldown_sec: 4
+        }
+    };
+    
+    const jsonStr = JSON.stringify(yaiData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${cleanName}.yai`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    appendAITelemetry(`📥 File konfigurasi "${cleanName}.yai" berhasil diunduh ke komputer Anda.`, 'success');
+    alert(`File konfigurasi berhasil diunduh:\n${cleanName}.yai\n\nSimpan file ini untuk backup atau bagikan ke perangkat STB lain!`);
+}
+
+function triggerUploadYaiConfig() {
+    const fileInp = document.getElementById('ai-upload-yai-file');
+    if (fileInp) {
+        fileInp.value = '';
+        fileInp.click();
+    }
+}
+
+function handleUploadYaiConfig(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            applyYaiDataToActiveEditor(data);
+            appendAITelemetry(`📤 File "${file.name}" berhasil diunggah dan diterapkan ke editor.`, 'success');
+            alert(`Konfigurasi .yai "${data.preset_name || file.name}" berhasil diimpor!\n\nPreset telah diterapkan pada kamera aktif.`);
+            switchAIGridTab('live');
+        } catch (err) {
+            console.error('[YAI Import Error]', err);
+            alert('Gagal membaca file .yai! Pastikan format file valid JSON / .yai.');
+            appendAITelemetry(`❌ Gagal membaca file .yai: ${err.message}`, 'alarm');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function applyYaiDataToActiveEditor(data) {
+    if (!data) return;
+    
+    // 1. Grid coordinates
+    const grid = data.grid_rect_percent || data.grid;
+    if (grid && aiDrawCanvas) {
+        const cw = aiDrawCanvas.width || 800;
+        const ch = aiDrawCanvas.height || 450;
+        const x = (grid.x <= 1 && grid.w <= 1) ? (grid.x * cw) : (grid.x > 1 ? (grid.x / 100 * cw) : 0);
+        const y = (grid.y <= 1 && grid.h <= 1) ? (grid.y * ch) : (grid.y > 1 ? (grid.y / 100 * ch) : 0);
+        const w = (grid.w <= 1) ? (grid.w * cw) : (grid.w / 100 * cw);
+        const h = (grid.h <= 1) ? (grid.h * ch) : (grid.h / 100 * ch);
+        aiGridRect = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
+        updateCoordStatusText();
+    }
+    
+    // 2. Prompt rules
+    const pr = data.prompt_rules;
+    if (pr) {
+        const promptInp = document.getElementById('ai-prompt-input');
+        if (promptInp && pr.prompt_text) promptInp.value = pr.prompt_text;
+        
+        const chkPerson = document.getElementById('ai-filter-person');
+        const chkMotor = document.getElementById('ai-filter-motorcycle');
+        const chkCar = document.getElementById('ai-filter-car');
+        if (chkPerson && Array.isArray(pr.target_classes)) chkPerson.checked = pr.target_classes.includes('person');
+        if (chkMotor && Array.isArray(pr.target_classes)) chkMotor.checked = pr.target_classes.includes('motorcycle');
+        if (chkCar && Array.isArray(pr.target_classes)) chkCar.checked = pr.target_classes.includes('car');
+        
+        const motionSel = document.getElementById('ai-motion-condition');
+        if (motionSel) motionSel.value = pr.require_stationary ? 'stationary_only' : 'moving_or_stationary';
+        
+        const dwellInp = document.getElementById('ai-dwell-seconds');
+        if (dwellInp && pr.min_dwell_sec) dwellInp.value = pr.min_dwell_sec;
+        
+        const confInp = document.getElementById('ai-confidence-min');
+        if (confInp && pr.confidence_min) confInp.value = Math.round(pr.confidence_min * 100);
+    }
+    
+    // 3. ESP8266 config
+    const esp = data.esp_config;
+    if (esp) {
+        const chk = document.getElementById('esp-enabled-checkbox');
+        const inp = document.getElementById('esp-target-input');
+        const mtd = document.getElementById('esp-method-select');
+        if (chk) chk.checked = !!esp.enabled;
+        if (inp && esp.ip_or_url) inp.value = esp.ip_or_url;
+        if (mtd && esp.method) mtd.value = esp.method || 'GET';
+    }
+    
+    // 4. Update export name input
+    const exportNameInp = document.getElementById('ai-export-name-input');
+    if (exportNameInp && data.preset_name) {
+        exportNameInp.value = data.preset_name;
+    }
+}
+
+// Fetch and render presets catalog from backend API or Marketplace Hosting Database
+async function fetchMarketplacePresets() {
+    const container = document.getElementById('ai-market-cards-container');
+    if (!container) return;
+    
+    container.innerHTML = '<div style="color:var(--text-muted); font-size:0.82rem; padding:1rem; grid-column:1/-1; text-align:center;">⏳ Memuat katalog preset dari database hosting...</div>';
+    
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
+        const res = await fetchFn('/api/ai/presets');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const presets = await res.json();
+        
+        if (!Array.isArray(presets) || presets.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-muted); font-size:0.82rem; padding:1rem; grid-column:1/-1; text-align:center;">Belum ada preset terdaftar.</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        presets.forEach(p => {
+            const card = document.createElement('div');
+            card.style.background = 'rgba(2, 6, 23, 0.75)';
+            card.style.border = '1px solid #1e293b';
+            card.style.borderRadius = '6px';
+            card.style.padding = '0.85rem';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.justifyContent = 'space-between';
+            card.style.transition = 'transform 0.15s, border-color 0.15s';
+            
+            const classesHtml = (p.prompt_rules?.target_classes || []).map(c => 
+                `<span style="background:rgba(59,130,246,0.15); color:#60a5fa; padding:1px 6px; border-radius:3px; font-size:0.68rem; font-family:monospace;">${c}</span>`
+            ).join(' ');
+            
+            card.innerHTML = `
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.4rem;">
+                        <strong style="font-size:0.88rem; color:#f8fafc;">${p.display_title || p.preset_name}</strong>
+                        <span style="background:#f59e0b; color:#020617; font-weight:bold; font-size:0.68rem; padding:1px 6px; border-radius:4px; font-family:monospace;">.yai</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:#94a3b8; line-height:1.4; margin-bottom:0.6rem;">
+                        ${p.description || 'Preset konfigurasi deteksi AI SPBU.'}
+                    </div>
+                    <div style="display:flex; gap:0.3rem; flex-wrap:wrap; margin-bottom:0.6rem;">
+                        ${classesHtml}
+                        <span style="background:rgba(245,158,11,0.12); color:#f59e0b; padding:1px 6px; border-radius:3px; font-size:0.68rem; font-family:monospace;">⏳ ${p.prompt_rules?.min_dwell_sec || 3}s</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.4rem; margin-top:0.5rem; pt:0.5rem; border-top:1px solid #1e293b;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick='applyMarketPresetById("${p.id}")' style="flex:1; font-size:0.75rem; background:#2563eb; border-color:#2563eb; padding:0.3rem 0.5rem;">
+                        📥 Pasang ke Kamera
+                    </button>
+                    <a href="/api/ai/presets/download/${encodeURIComponent(p.id)}" download="${p.preset_name || 'preset'}.yai" class="btn btn-sm btn-secondary" style="font-size:0.75rem; color:#f59e0b; border-color:rgba(245,158,11,0.4); text-decoration:none; display:flex; align-items:center; padding:0.3rem 0.5rem;">
+                        💾 .yai
+                    </a>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        
+        appendAITelemetry(`🏪 Katalog marketplace dimuat: ${presets.length} preset .yai siap digunakan.`, 'system');
+    } catch (err) {
+        console.error('[Marketplace Error]', err);
+        container.innerHTML = `<div style="color:#ef4444; font-size:0.8rem; padding:1rem; grid-column:1/-1;">❌ Gagal memuat database marketplace: ${err.message}</div>`;
+    }
+}
+
+async function applyMarketPresetById(presetId) {
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
+        const res = await fetchFn('/api/ai/presets');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const presets = await res.json();
+        const found = presets.find(p => p.id === presetId);
+        if (!found) throw new Error('Preset tidak ditemukan');
+        
+        applyYaiDataToActiveEditor(found);
+        appendAITelemetry(`📥 Preset Marketplace "${found.display_title || found.preset_name}" berhasil dipasang ke editor.`, 'success');
+        alert(`Preset "${found.display_title || found.preset_name}" berhasil dipasang ke editor kamera aktif!`);
+        switchAIGridTab('live');
+    } catch (e) {
+        alert('Gagal memasang preset: ' + e.message);
+    }
+}
 window.openAIGridModal = openAIGridModal;
+window.switchAIGridTab = switchAIGridTab;
+window.setSimScenario = setSimScenario;
+window.toggleSimPlayback = toggleSimPlayback;
+window.restartSimScenario = restartSimScenario;
+window.downloadCustomYaiConfig = downloadCustomYaiConfig;
+window.triggerUploadYaiConfig = triggerUploadYaiConfig;
+window.handleUploadYaiConfig = handleUploadYaiConfig;
+window.fetchMarketplacePresets = fetchMarketplacePresets;
+window.applyMarketPresetById = applyMarketPresetById;
 window.loadCamStreamForAI = loadCamStreamForAI;
 window.setAIGridPreset = setAIGridPreset;
 window.clearAIGrid = clearAIGrid;

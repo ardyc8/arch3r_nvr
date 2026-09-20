@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 9.9.7)
+# ⚡ Arch3r NVR (Ver. 10.0.2)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
@@ -147,6 +147,13 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
   - **Continuous Move & Explicit Stop Routing**: Menerapkan routing `/api/cameras/:id/ptz` dan endpoint dedicated `/api/cameras/:id/ptz-stop` dengan passing `profileToken`, koordinat kecepatan x/y/z, serta eksekusi stop (`device.ptzStop({ profileToken: token })` dan SOAP fallback).
   - **Auto-assigned Device Profile**: Memastikan properti internal `device.current_profile` selalu terinisialisasi pada instance `OnvifDevice` untuk mencegah penolakan perintah dari driver internal.
   - **Unified Version Alignment**: Memperbarui nomor versi aplikasi ke **Ver. 9.9.0** di seluruh antarmuka, backend, package manifest, dan metadata sistem.
+
+- **[Ver 10.0.2]**
+  - **Tab Terpisah Modal AI Visi**: Memisahkan modal AI menjadi 3 tab mandiri (`Tab 1: Kamera Live RTSP Asli`, `Tab 2: Laboratorium Simulasi Logika SPBU`, dan `Tab 3: Marketplace & File Preset .yai`).
+  - **Source Video Asli & State 'No Video'**: Video pada tab Live hanya bersumber dari kamera nyata yang terdaftar pada database NVR / live stream MediaMTX. Jika kamera offline atau belum ada kamera, tampil overlay fallback "No Video Signal" yang ramah.
+  - **Format File Konfigurasi .yai**: Menambahkan fitur ekspor dan impor konfigurasi ROI Grid, Syarat Prompt AI, dan pemicu IoT ESP8266 dengan format ekstensi `namapreset.yai` (misal `kios_bensin.yai`).
+  - **Marketplace Preset Database Hosting**: Mengintegrasikan API backend `/api/ai/presets` dan `/api/ai/presets/download/:id` untuk mendistribusikan preset siap pakai (Pengisian BBM SPBU, Antrean Kendaraan, Intrusi Gerbang, Pemantauan Tangki) langsung ke editor atau unduhan lokal.
+  - **Laboratorium Simulasi Terisolasi**: Skenario SPBU, kendaraan datang, pengisian bensin, dwell timer, log telemetri, dan JSON payload preview terisolasi rapi di Tab Simulasi sehingga tidak menimpa feed video asli.
 
 - **[Ver 9.8.9]**
   - **Fixed ONVIF PTZ Internal Port Mismatch (V380 / Xiongmai Firmware Fix)**: Mengatasi masalah error koneksi port internal (misal `192.168.1.5:8080`) saat menggerakkan PTZ dpad. Sebagian firmware kamera (seperti V380 / XM) mengembalikan port web internal `8080` di dalam XML response `GetCapabilities` alih-alih port ONVIF aktif `8899`. Backend kini otomatis menormalisasi dan menulis ulang endpoint layanan PTZ (`service-ptz`) ke host dan port koneksi ONVIF yang aktif secara dinamis.
