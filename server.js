@@ -4,6 +4,7 @@ import child_process, { spawn, exec, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import net from 'net';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -4349,6 +4350,123 @@ app.post('/api/onvif/diagnose-profiles', verifyToken, async (req, res) => {
             timeoutMs: 4500
         });
         res.json(result);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Helper function to test TCP port with timeout
+function checkPortOpen(host, port, timeoutMs = 750) {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let status = 'closed';
+        socket.setTimeout(timeoutMs);
+
+        socket.on('connect', () => {
+            status = 'open';
+            socket.destroy();
+            resolve(true);
+        });
+
+        socket.on('timeout', () => {
+            socket.destroy();
+            resolve(false);
+        });
+
+        socket.on('error', () => {
+            socket.destroy();
+            resolve(false);
+        });
+
+        try {
+            socket.connect(port, host);
+        } catch (e) {
+            resolve(false);
+        }
+    });
+}
+
+// Endpoint Advanced IP Network Scanner
+app.post('/api/system/scan', verifyToken, requireAdmin, async (req, res) => {
+    try {
+        const { startIp = '192.168.1.1', endIp = '192.168.1.254', ports = [80, 8080, 8899, 554, 8800] } = req.body;
+
+        const ipToLong = (ip) => {
+            return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+        };
+
+        const longToIp = (long) => {
+            return [(long >>> 24) & 255, (long >>> 16) & 255, (long >>> 8) & 255, long & 255].join('.');
+        };
+
+        const startLong = ipToLong(startIp.trim());
+        const endLong = ipToLong(endIp.trim());
+
+        if (isNaN(startLong) || isNaN(endLong) || startLong > endLong) {
+            return res.status(400).json({ success: false, error: 'Rentang IP tidak valid' });
+        }
+
+        const totalIps = endLong - startLong + 1;
+        if (totalIps > 256) {
+            return res.status(400).json({ success: false, error: 'Maksimum rentang scan adalah 256 IP per sesi.' });
+        }
+
+        const portList = Array.isArray(ports)
+            ? ports.map(p => parseInt(p, 10)).filter(p => !isNaN(p) && p > 0 && p <= 65535)
+            : String(ports).split(',').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p) && p > 0 && p <= 65535);
+
+        const targetPorts = portList.length > 0 ? portList : [80, 8080, 8899, 554, 8800];
+
+        const ipList = [];
+        for (let l = startLong; l <= endLong; l++) {
+            ipList.push(longToIp(l));
+        }
+
+        const discoveredDevices = [];
+        const concurrency = 20;
+
+        for (let i = 0; i < ipList.length; i += concurrency) {
+            const chunk = ipList.slice(i, i + concurrency);
+            await Promise.all(chunk.map(async (ip) => {
+                const openPorts = [];
+                for (const p of targetPorts) {
+                    const isOpen = await checkPortOpen(ip, p, 650);
+                    if (isOpen) openPorts.push(p);
+                }
+
+                if (openPorts.length > 0) {
+                    const isRtsp = openPorts.includes(554);
+                    const isOnvif = openPorts.some(p => [8899, 80, 8080, 2020, 5000, 8000].includes(p));
+                    const isV380 = openPorts.includes(8800);
+                    
+                    let deviceType = 'Network Device';
+                    if (isV380) deviceType = 'V380 / Macrovideo IP Cam';
+                    else if (isOnvif && isRtsp) deviceType = 'ONVIF + RTSP Camera';
+                    else if (isOnvif) deviceType = 'ONVIF Camera';
+                    else if (isRtsp) deviceType = 'RTSP Camera / NVR';
+
+                    const primaryOnvifPort = openPorts.find(p => [8899, 8080, 80, 2020, 8000, 5000].includes(p)) || (isV380 ? 8800 : null);
+                    const primaryRtspPort = openPorts.includes(554) ? 554 : null;
+
+                    discoveredDevices.push({
+                        ip,
+                        openPorts,
+                        deviceType,
+                        onvifPort: primaryOnvifPort,
+                        rtspPort: primaryRtspPort,
+                        suggestedMainUrl: isRtsp ? `rtsp://${ip}:554/live/ch0` : '',
+                        suggestedSubUrl: isRtsp ? `rtsp://${ip}:554/live/ch1` : ''
+                    });
+                }
+            }));
+        }
+
+        res.json({
+            success: true,
+            totalScanned: ipList.length,
+            discoveredCount: discoveredDevices.length,
+            devices: discoveredDevices
+        });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }

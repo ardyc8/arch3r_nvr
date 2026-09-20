@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.0.9 Multi-Tenant Controller & Multi-Zone Vision Engine
+// script.js - Archer NVR Ver. 10.1.5 Multi-Tenant Controller & Multi-Zone Vision Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -878,11 +878,40 @@ async function updateHardwareStats() {
             if (res.ok && data.success) {
                 let detailHtml = `<div style="color:#22c55e; font-weight:600; margin-bottom:2px;">✅ ${data.message}</div>`;
                 
-                // Auto-fill form fields
+                // 1. [Tab General] Auto-fill IP, Port, Username & Password
+                if (data.host) {
+                    const ipEl = document.getElementById('camIpAddress');
+                    if (ipEl && !ipEl.value) ipEl.value = data.host;
+                }
                 if (data.onvifPort) {
                     const opEl = document.getElementById('camOnvifPort');
-                    if (opEl && !opEl.value) opEl.value = data.onvifPort;
+                    if (opEl) opEl.value = data.onvifPort;
                 }
+                const rpEl = document.getElementById('camRtspPort');
+                if (rpEl && !rpEl.value) rpEl.value = '554';
+                if (username) {
+                    const uEl = document.getElementById('camUsername');
+                    if (uEl && !uEl.value) uEl.value = username;
+                }
+                if (password) {
+                    const pEl = document.getElementById('camPassword');
+                    if (pEl && !pEl.value) pEl.value = password;
+                }
+
+                // 2. [Tab PTZ] Auto-fill PTZ Switch, Host, User, Pass & Token
+                const ptzUrlEl = document.getElementById('camPtzUrl');
+                if (ptzUrlEl && (!ptzUrlEl.value || ptzUrlEl.value === '')) {
+                    ptzUrlEl.value = data.host || ipAddress;
+                }
+                const ptzUserEl = document.getElementById('camPtzUser');
+                if (ptzUserEl && (!ptzUserEl.value || ptzUserEl.value === '')) {
+                    ptzUserEl.value = username || ptzUser || 'admin';
+                }
+                const ptzPassEl = document.getElementById('camPtzPass');
+                if (ptzPassEl && (!ptzPassEl.value || ptzPassEl.value === '')) {
+                    ptzPassEl.value = password || ptzPass || '';
+                }
+
                 if (data.profileToken) {
                     const profEl = document.getElementById('camOnvifProfileToken');
                     if (profEl) profEl.value = data.profileToken;
@@ -895,7 +924,7 @@ async function updateHardwareStats() {
                     if (ptzSelectEl && ptzSelectEl.value === 'no') ptzSelectEl.value = 'yes';
                 }
 
-                // Auto-fill RTSP stream URLs if empty
+                // 3. [Tab Streams] Auto-fill RTSP stream URLs & Audio
                 const mainUrlEl = document.getElementById('camMainUrl');
                 const subUrlEl = document.getElementById('camSubUrl');
                 if (data.mainStreamUri && mainUrlEl && !mainUrlEl.value) {
@@ -903,6 +932,10 @@ async function updateHardwareStats() {
                 }
                 if (data.subStreamUri && subUrlEl && !subUrlEl.value) {
                     subUrlEl.value = data.subStreamUri;
+                }
+                if (data.hasAudio !== undefined) {
+                    const audioEl = document.getElementById('camAudioEnabled');
+                    if (audioEl) audioEl.checked = !!data.hasAudio;
                 }
 
                 if (data.profiles && data.profiles.length > 0) {
@@ -1337,6 +1370,123 @@ async function loadStorageDevices() {
         loadStorageDevices();
     }
 
+    // --- Advanced IP Network Scanner Handler ---
+    const btnStartIpScan = document.getElementById('btnStartIpScan');
+    const ipScanStatus = document.getElementById('ipScanStatus');
+    const ipScanResultsTable = document.getElementById('ipScanResultsTable');
+
+    if (btnStartIpScan) {
+        btnStartIpScan.addEventListener('click', async () => {
+            const startIp = document.getElementById('ipScanStart') ? document.getElementById('ipScanStart').value.trim() : '192.168.1.1';
+            const endIp = document.getElementById('ipScanEnd') ? document.getElementById('ipScanEnd').value.trim() : '192.168.1.254';
+            const portsStr = document.getElementById('ipScanPorts') ? document.getElementById('ipScanPorts').value.trim() : '80, 8080, 8899, 554, 8800';
+
+            btnStartIpScan.disabled = true;
+            if (ipScanStatus) {
+                ipScanStatus.style.display = 'block';
+                ipScanStatus.innerHTML = '<span style="color:#60a5fa;">⏳ Sedang memindai jaringan lokal (Scanning port ONVIF & RTSP)...</span>';
+            }
+            if (ipScanResultsTable) {
+                ipScanResultsTable.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#94a3b8;">Sedang memindai rentang IP...</td></tr>';
+            }
+
+            try {
+                const portsArr = portsStr.split(',').map(p => parseInt(p.trim(), 10)).filter(p => !isNaN(p));
+                const res = await authFetch('/api/system/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ startIp, endIp, ports: portsArr })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    if (ipScanStatus) {
+                        ipScanStatus.innerHTML = `<span style="color:#22c55e; font-weight:600;">✅ Pemindaian selesai: Terdeteksi ${data.discoveredCount} perangkat dari total ${data.totalScanned} IP.</span>`;
+                    }
+
+                    if (!data.devices || data.devices.length === 0) {
+                        if (ipScanResultsTable) {
+                            ipScanResultsTable.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:15px; color:#94a3b8;">Tidak ada kamera atau perangkat dengan port terbuka yang ditemukan pada rentang ini.</td></tr>';
+                        }
+                    } else {
+                        let rowsHtml = '';
+                        data.devices.forEach((dev) => {
+                            const openPortBadges = dev.openPorts.map(p => `<span style="background:rgba(59,130,246,0.18); color:#93c5fd; padding:1px 5px; border-radius:3px; font-family:monospace; font-size:0.75rem; border:1px solid rgba(59,130,246,0.3);">${p}</span>`).join(' ');
+                            
+                            rowsHtml += `
+                                <tr style="border-bottom:1px solid #334155;">
+                                    <td style="padding:8px 10px; font-weight:600; color:#f8fafc; font-family:monospace;">${dev.ip}</td>
+                                    <td style="padding:8px 10px; color:#cbd5e1;">${dev.deviceType || 'Network Device'}</td>
+                                    <td style="padding:8px 10px;">${openPortBadges}</td>
+                                    <td style="padding:8px 10px; text-align:right;">
+                                        <button type="button" class="btn-scan-use" data-ip="${dev.ip}" data-onvif="${dev.onvifPort || ''}" data-rtsp="${dev.rtspPort || '554'}" data-mainurl="${dev.suggestedMainUrl || ''}" data-suburl="${dev.suggestedSubUrl || ''}" style="background:#2563eb; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:0.75rem; cursor:pointer; font-weight:600;">
+                                            ➕ Terapkan ke Form
+                                        </button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+
+                        if (ipScanResultsTable) {
+                            ipScanResultsTable.innerHTML = rowsHtml;
+
+                            // Pasang handler tombol "Terapkan ke Form"
+                            ipScanResultsTable.querySelectorAll('.btn-scan-use').forEach(btn => {
+                                btn.addEventListener('click', () => {
+                                    const ip = btn.getAttribute('data-ip');
+                                    const onvifPort = btn.getAttribute('data-onvif');
+                                    const rtspPort = btn.getAttribute('data-rtsp');
+                                    const mainUrl = btn.getAttribute('data-mainurl');
+                                    const subUrl = btn.getAttribute('data-suburl');
+
+                                    // Tab General
+                                    const ipEl = document.getElementById('camIpAddress');
+                                    if (ipEl) ipEl.value = ip;
+                                    const opEl = document.getElementById('camOnvifPort');
+                                    if (opEl && onvifPort) opEl.value = onvifPort;
+                                    const rpEl = document.getElementById('camRtspPort');
+                                    if (rpEl && rtspPort) rpEl.value = rtspPort;
+
+                                    // Tab PTZ
+                                    const ptzUrlEl = document.getElementById('camPtzUrl');
+                                    if (ptzUrlEl) ptzUrlEl.value = ip;
+                                    const ptzSelectEl = document.getElementById('camPtzSelect');
+                                    if (ptzSelectEl && onvifPort) {
+                                        if (onvifPort === '8800') ptzSelectEl.value = 'v380_native';
+                                        else if (ptzSelectEl.value === 'no') ptzSelectEl.value = 'yes';
+                                    }
+
+                                    // Tab Streams
+                                    const mainUrlEl = document.getElementById('camMainUrl');
+                                    if (mainUrlEl && mainUrl && !mainUrlEl.value) mainUrlEl.value = mainUrl;
+                                    const subUrlEl = document.getElementById('camSubUrl');
+                                    if (subUrlEl && subUrl && !subUrlEl.value) subUrlEl.value = subUrl;
+
+                                    // Auto probe untuk mendeteksi profil lebih detail
+                                    if (typeof runOnvifProbeTest === 'function') {
+                                        runOnvifProbeTest('general');
+                                    }
+
+                                    const cForm = document.getElementById('cameraForm');
+                                    if (cForm) cForm.scrollIntoView({ behavior: 'smooth' });
+                                });
+                            });
+                        }
+                    }
+                } else {
+                    if (ipScanStatus) {
+                        ipScanStatus.innerHTML = `<span style="color:#ef4444; font-weight:600;">❌ Pemindaian gagal: ${data.error || 'Terjadi kesalahan sistem'}</span>`;
+                    }
+                }
+            } catch (err) {
+                if (ipScanStatus) {
+                    ipScanStatus.innerHTML = `<span style="color:#ef4444; font-weight:600;">❌ Terjadi kesalahan: ${err.message}</span>`;
+                }
+            } finally {
+                btnStartIpScan.disabled = false;
+            }
+        });
+    }
 
     // --- Camera Fetch & Grid Rendering ---
 async function fetchCameras() {

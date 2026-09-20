@@ -1,12 +1,11 @@
-# ⚡ Arch3r NVR (Ver. 10.1.4)
+# ⚡ Arch3r NVR (Ver. 10.1.5)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
-### 📋 Changelog Pembaruan Ver. 10.1.4:
-- **Form & Handler Penambahan Kamera Lengkap**: Mendukung schema parameter lengkap (`cameraName`, `ipAddress`, `onvifPort`, `rtspPort`, `username`, `password`, `mainStreamUri`, `subStreamUri`, `profileToken`, `hasPtz`, `hasAudio`, `audioCodec`) dengan auto-construction RTSP & PTZ URL secara otomatis.
-- **Endpoint Auto-Discovery & Multi-Port ONVIF Probe (`POST /api/system/onvif-probe`)**: Menguji konektivitas kamera ke port-port umum (8899, 80, 8080, 5000, 2020, 8000, 8888) serta fallback ke driver Macrovideo V380 Native (port 8800), mengambil *profileToken*, kapabilitas PTZ, audio, serta auto-resolve URI stream.
-- **Integrasi PTZ Fleksibel (ONVIF SOAP & V380 Native)**: Respon PTZ instan (< 50ms) dengan `ContinuousMove` dan `Stop`, auto-resolution profile token dinamis, dan fallback aman.
-- **Dual-Stream & Perekaman Efisien**: Perekaman HD selalu mengambil Main Stream menggunakan FFmpeg metode Passthrough (`-c:v copy -c:a copy`) untuk menghemat CPU STB, serta Sub Stream untuk tampilan Multi-Grid.
-- **Manajemen Audio & Codec Transcoding**: Meneruskan audio kamera langsung atau transcoding aman ke AAC/MP3 untuk kompatibilitas WebRTC/HLS.
+### 📋 Changelog Pembaruan Ver. 10.1.5:
+- **Pemisahan Logis Tab Konfigurasi Kamera (General, Streams, Storage, PTZ)**: Parameter kamera terorganisir rapi per tab: General (Nama, IP, Port, Kredensial, Transcode), Streams (Dual-Stream Main HD & Sub SD, Audio Switch & Codec), Storage (Lokasi partisi, durasi segmen, kuota GB, retensi hari), PTZ (ONVIF SOAP & Macrovideo V380, Port, Token).
+- **Auto-Fill Otomatis Cerdas per Tab via node-onvif & Probe (`POST /api/system/onvif-probe`)**: Hasil auto-discovery otomatis mengisi semua tab yang sesuai tanpa tumpang tindih.
+- **Advanced IP Network Scanner Terintegrasi (`POST /api/system/scan`)**: Pemindaian jaringan lokal paralel non-blocking untuk mendeteksi kamera IP di port 80, 8080, 8899, 554, 8800 dengan tombol 1-klik "➕ Terapkan ke Form".
+- **Sinkronisasi Otomatis RTSP ke Tab PTZ & General**: Pengetikan RTSP URL langsung mengekstrak IP, port, kredensial, dan konfigurasi PTZ secara otomatis.
 
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
