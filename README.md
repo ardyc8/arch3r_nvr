@@ -1,4 +1,4 @@
-# ⚡ Arch3r NVR (Ver. 10.0.6)
+# ⚡ Arch3r NVR (Ver. 10.0.9)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
 Arch3r NVR adalah sistem manajemen kamera pengawas (CCTV/IP Camera) kelas profesional yang dirancang khusus agar dapat berjalan mulus di atas perangkat Set Top Box (STB) Android yang telah di-flash menjadi Linux Armbian. Sistem ini menggunakan arsitektur *WebRTC* dan *HLS* berlatensi sangat rendah, dilengkapi dengan manajemen partisi USB/HDD, kontrol ONVIF & Macrovideo V380 Binary TCP PTZ fleksibel (toggle Ya/Tidak/V380 Native, auto-ekstrak RTSP, custom URL/port, dan tes probe real-time), arsitektur Add-on Modular Marketplace (YOLOv8 & HDMI Kiosk Dynamic Scanner), dan *Developer Console* (Superadmin).
@@ -190,6 +190,16 @@ Sistem NVR ini dijaga agar tetap hidup (24/7) di belakang layar (background) ole
   - **Unified Per-Camera AI Control**: Setiap kamera NVR memiliki konfigurasi mandiri: toggle aktif/nonaktif AI per kamera, tingkat sensitivitas (*confidence*), filter target objek, zona deteksi, dan webhook IoT ESP8266 tersimpan langsung ke database kamera masing-masing.
   - **Unified Marketplace Addons Action Button**: Menyatukan tombol pengaturan gerigi (⚙️) dan tombol buka panel AI (🎯) di tabel Addon Marketplace menjadi satu tombol terpadu *"🎯 Kelola AI Kamera"*, menyederhanakan alur kerja pengguna.
   - **Isolated AI Simulation Sandbox**: Seluruh animasi dan pengujian teks pembacaan objek diisolasi secara eksklusif di tab Lab Simulasi (`ai-tab-pane-sim`) tanpa mencemari pemantauan kamera riil.
+
+- **[Ver 10.0.9]**
+  - **Floating Collapsible HUD & Mini-Toolbar**: Panel kontrol dan navigasi objek pada mode layar penuh kini dapat diminimalkan menjadi tombol mengambang ringkas (`▲ Sembunyikan Panel` / `▼ Buka Panel`) sehingga 100% tampilan video bebas dari halangan tombol atau panel. Mini-toolbar mengambang tetap menyajikan nama objek aktif, tombol mode Gambar/Geser, persentase zoom, dan tombol cepat simpan.
+  - **Synchronized Video & Canvas Zoom, Pan, and Scroll**: Mengintegrasikan wrapper `#ai-viewport-stage` dengan penanganan CSS transform terpadu untuk video dan kanvas secara bersamaan. Dilengkapi tombol `Zoom In (+)`, `Zoom Out (-)`, `Reset (100%)`, serta dukungan scroll mouse wheel dan gesture multi-touch pinch-to-zoom pada layar sentuh STB Armbian.
+  - **Dynamic Pan & View Navigation**: Pengguna dapat menggeser sudut pandang video yang sedang di-zoom secara leluasa (drag mouse / drag sentuh) melalui mode `✋ Geser Video (Pan)` atau dengan menahan tombol Spasi / tombol tengah mouse tanpa merusak kotak ROI.
+  - **Unscaled True-Video Coordinate Mapping**: Koordinat bounding box pada kanvas secara cerdas dipetakan kembali ke resolusi asli video terlepas dari tingkat perbesaran (zoom) dan pergeseran (pan), sehingga gambar area deteksi tetap 100% presisi dan terkunci pada objek fisik (mesin pompa, antrean, dll).
+
+- **[Ver 10.0.8]**
+  - **Dedicated Preview-Only Normal View**: Mode tampilan normal kini murni berfungsi sebagai pratinjau lokasi video (read-only/preview-only) dengan watermark informasi, mencegah modifikasi tidak sengaja.
+  - **Full-Screen Multi-Zone Object Editor**: Menambahkan mode layar penuh interaktif untuk menggambar, menambah, memilih, dan menyimpan objek deteksi satu per satu tanpa harus keluar masuk mode layar penuh.
 
 - **[Ver 10.0.5]**
   - **Live Canvas Render Loop Bugfix**: Memperbaiki syarat henti pada `aiStartRenderLoop` agar render loop kanvas terus berjalan tanpa henti saat berada di halaman mandiri (`view-yolo-ai`), sehingga kotak grid objek tampil seketika di atas video live.

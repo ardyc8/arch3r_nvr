@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.0.8 Multi-Tenant Controller & Multi-Zone Vision Engine
+// script.js - Archer NVR Ver. 10.0.9 Multi-Tenant Controller & Multi-Zone Vision Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -3439,6 +3439,18 @@ let aiActiveZoneColor = '#3b82f6';
 let aiActiveZoneThemeColor = 'rgba(59,130,246,0.92)';
 let aiCustomStreamActive = false;
 
+// Zoom, Pan & Collapsible HUD State for AI Vision Fullscreen Mode
+let aiZoomScale = 1.0;
+let aiPanX = 0;
+let aiPanY = 0;
+let aiInteractionMode = 'draw'; // 'draw' or 'pan'
+let isAIPanning = false;
+let aiPanStart = { x: 0, y: 0 };
+let isSpacePressed = false;
+let isAIHudCollapsed = false;
+let aiTouchPinchStartDist = 0;
+let aiTouchStartScale = 1.0;
+
 // Multi-Zone & Fullscreen Editor State
 let aiZones = [
     {
@@ -3926,12 +3938,17 @@ function initAIDrawCanvas() {
     }
     
     function getPointerPos(evt) {
+        if (!canvas) return { x: 0, y: 0 };
         const cRect = canvas.getBoundingClientRect();
         const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
         const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+        const scaleX = (cRect.width > 0) ? (canvas.width / cRect.width) : 1;
+        const scaleY = (cRect.height > 0) ? (canvas.height / cRect.height) : 1;
+        const unscaledX = (clientX - cRect.left) * scaleX;
+        const unscaledY = (clientY - cRect.top) * scaleY;
         return {
-            x: Math.max(0, Math.min(canvas.width, clientX - cRect.left)),
-            y: Math.max(0, Math.min(canvas.height, clientY - cRect.top))
+            x: Math.max(0, Math.min(canvas.width, Math.round(unscaledX))),
+            y: Math.max(0, Math.min(canvas.height, Math.round(unscaledY)))
         };
     }
     
@@ -3953,13 +3970,25 @@ function initAIDrawCanvas() {
         return aiZones[aiActiveZoneIndex];
     }
     
-    canvas.style.cursor = isAIFullscreen ? 'crosshair' : 'default';
+    updateAICursor();
     
     canvas.onmousedown = (e) => {
         if (!isAIFullscreen) {
             // Mode biasa: Video hanya untuk pratinjau lokasi saja, tidak bisa edit/tambah objek
             return;
         }
+        
+        // Pan condition: middle mouse (1), right click (2), space key held, or tool is 'pan'
+        if (e.button === 1 || e.button === 2 || isSpacePressed || aiInteractionMode === 'pan') {
+            e.preventDefault();
+            isAIPanning = true;
+            aiPanStart = { x: e.clientX - aiPanX, y: e.clientY - aiPanY };
+            canvas.style.cursor = 'grabbing';
+            return;
+        }
+        
+        if (e.button !== 0) return; // Left click only for drawing
+        
         isAIDrawing = true;
         const pos = getPointerPos(e);
         aiDragStart = pos;
@@ -3972,7 +4001,17 @@ function initAIDrawCanvas() {
     };
     
     canvas.onmousemove = (e) => {
-        if (!isAIFullscreen || !isAIDrawing) return;
+        if (!isAIFullscreen) return;
+        
+        if (isAIPanning) {
+            aiPanX = e.clientX - aiPanStart.x;
+            aiPanY = e.clientY - aiPanStart.y;
+            clampAIPan();
+            updateAIViewportTransform();
+            return;
+        }
+        
+        if (!isAIDrawing) return;
         const pos = getPointerPos(e);
         const x = Math.min(aiDragStart.x, pos.x);
         const y = Math.min(aiDragStart.y, pos.y);
@@ -3987,56 +4026,133 @@ function initAIDrawCanvas() {
         updateCoordStatusText();
     };
     
-    const endDrawing = () => {
-        if (!isAIFullscreen || !isAIDrawing) return;
-        isAIDrawing = false;
-        const curZone = getActiveZone();
-        if (curZone.w < 8 || curZone.h < 8) {
-            curZone.w = 0;
-            curZone.h = 0;
+    const handleMouseUpOrLeave = () => {
+        if (!isAIFullscreen) return;
+        
+        if (isAIPanning) {
+            isAIPanning = false;
+            updateAICursor();
         }
-        aiGridRect = curZone;
-        updateCoordStatusText();
-        renderAIZonesChips();
-        appendAITelemetry(`📐 Kotak "${curZone.label}" diperbarui: [X:${curZone.x}, Y:${curZone.y}, W:${curZone.w}, H:${curZone.h}]`, 'info');
+        
+        if (isAIDrawing) {
+            isAIDrawing = false;
+            const curZone = getActiveZone();
+            if (curZone.w < 8 || curZone.h < 8) {
+                curZone.w = 0;
+                curZone.h = 0;
+            }
+            aiGridRect = curZone;
+            updateCoordStatusText();
+            renderAIZonesChips();
+            appendAITelemetry(`📐 Kotak "${curZone.label}" diperbarui: [X:${curZone.x}, Y:${curZone.y}, W:${curZone.w}, H:${curZone.h}]`, 'info');
+        }
     };
     
-    canvas.onmouseup = endDrawing;
-    canvas.onmouseleave = endDrawing;
+    canvas.onmouseup = handleMouseUpOrLeave;
+    canvas.onmouseleave = handleMouseUpOrLeave;
+    canvas.oncontextmenu = (e) => {
+        if (isAIFullscreen) e.preventDefault(); // Prevent browser context menu during right-drag pan
+    };
     
     // Touchscreen / mobile / STB touch monitor support
     canvas.ontouchstart = (e) => {
         if (!isAIFullscreen) return;
-        e.preventDefault();
-        isAIDrawing = true;
-        const pos = getPointerPos(e);
-        aiDragStart = pos;
-        const curZone = getActiveZone();
-        curZone.x = pos.x;
-        curZone.y = pos.y;
-        curZone.w = 0;
-        curZone.h = 0;
-        aiGridRect = curZone;
+        
+        // Multi-touch pinch zoom
+        if (e.touches.length === 2) {
+            isAIDrawing = false;
+            isAIPanning = false;
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            aiTouchPinchStartDist = Math.hypot(dx, dy);
+            aiTouchStartScale = aiZoomScale;
+            return;
+        }
+        
+        if (e.touches.length === 1) {
+            if (aiInteractionMode === 'pan') {
+                isAIPanning = true;
+                aiPanStart = { x: e.touches[0].clientX - aiPanX, y: e.touches[0].clientY - aiPanY };
+                return;
+            }
+            
+            // Draw mode
+            e.preventDefault();
+            isAIDrawing = true;
+            const pos = getPointerPos(e);
+            aiDragStart = pos;
+            const curZone = getActiveZone();
+            curZone.x = pos.x;
+            curZone.y = pos.y;
+            curZone.w = 0;
+            curZone.h = 0;
+            aiGridRect = curZone;
+        }
     };
     
     canvas.ontouchmove = (e) => {
-        if (!isAIFullscreen || !isAIDrawing) return;
-        e.preventDefault();
-        const pos = getPointerPos(e);
-        const x = Math.min(aiDragStart.x, pos.x);
-        const y = Math.min(aiDragStart.y, pos.y);
-        const w = Math.abs(pos.x - aiDragStart.x);
-        const h = Math.abs(pos.y - aiDragStart.y);
-        const curZone = getActiveZone();
-        curZone.x = x;
-        curZone.y = y;
-        curZone.w = w;
-        curZone.h = h;
-        aiGridRect = curZone;
-        updateCoordStatusText();
+        if (!isAIFullscreen) return;
+        
+        if (e.touches.length === 2 && aiTouchPinchStartDist > 0) {
+            e.preventDefault();
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const newDist = Math.hypot(dx, dy);
+            const scaleFactor = newDist / aiTouchPinchStartDist;
+            aiZoomScale = Math.max(0.75, Math.min(4.0, Math.round(aiTouchStartScale * scaleFactor * 100) / 100));
+            updateAIViewportTransform();
+            return;
+        }
+        
+        if (e.touches.length === 1) {
+            if (isAIPanning) {
+                e.preventDefault();
+                aiPanX = e.touches[0].clientX - aiPanStart.x;
+                aiPanY = e.touches[0].clientY - aiPanStart.y;
+                clampAIPan();
+                updateAIViewportTransform();
+                return;
+            }
+            
+            if (isAIDrawing) {
+                e.preventDefault();
+                const pos = getPointerPos(e);
+                const x = Math.min(aiDragStart.x, pos.x);
+                const y = Math.min(aiDragStart.y, pos.y);
+                const w = Math.abs(pos.x - aiDragStart.x);
+                const h = Math.abs(pos.y - aiDragStart.y);
+                const curZone = getActiveZone();
+                curZone.x = x;
+                curZone.y = y;
+                curZone.w = w;
+                curZone.h = h;
+                aiGridRect = curZone;
+                updateCoordStatusText();
+            }
+        }
     };
     
-    canvas.ontouchend = endDrawing;
+    canvas.ontouchend = (e) => {
+        if (!isAIFullscreen) return;
+        if (e.touches.length < 2) {
+            aiTouchPinchStartDist = 0;
+        }
+        handleMouseUpOrLeave();
+    };
+
+    // Attach wheel listener to container for zoom in/out with mouse scroll
+    if (!container._hasAIWheelListener) {
+        container._hasAIWheelListener = true;
+        container.addEventListener('wheel', (e) => {
+            if (!isAIFullscreen) return;
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoomInAI(0.15);
+            } else {
+                zoomOutAI(0.15);
+            }
+        }, { passive: false });
+    }
 }
 
 // Continuous Render Loop: ensures instant visual updates, real-time video transparency & live output visualization
@@ -4640,6 +4756,7 @@ function syncActiveZoneUI() {
     
     // Set color buttons active
     setZoneColor(curZone.color || '#3b82f6', curZone.themeColor || 'rgba(59,130,246,0.92)', true);
+    syncMiniHudUI();
 }
 
 function addNewZoneSlot() {
@@ -4795,10 +4912,22 @@ function enterAIFullscreenDrawing() {
     isAIFullscreen = true;
     container.classList.add('ai-fullscreen-active');
     
+    // Reset zoom and pan whenever entering fullscreen
+    aiZoomScale = 1.0;
+    aiPanX = 0;
+    aiPanY = 0;
+    aiInteractionMode = 'draw';
+    isAIPanning = false;
+    isSpacePressed = false;
+    isAIHudCollapsed = false;
+    container.classList.remove('hud-collapsed');
+    updateAIViewportTransform();
+    
     if (hud) hud.style.display = 'flex';
     if (watermark) watermark.style.display = 'none';
     if (btn) btn.innerHTML = '🗗 Keluar Layar Penuh (ESC)';
-    if (aiDrawCanvas) aiDrawCanvas.style.cursor = 'crosshair';
+    
+    updateAICursor();
     
     // Trigger native browser fullscreen if permissible
     try {
@@ -4812,6 +4941,7 @@ function enterAIFullscreenDrawing() {
     // Sync current zone values into HUD inputs
     syncActiveZoneUI();
     renderAIZonesChips();
+    syncMiniHudUI();
     
     // Re-initialize canvas to match full viewport dimensions
     setTimeout(() => {
@@ -4819,22 +4949,35 @@ function enterAIFullscreenDrawing() {
         updateCoordStatusText();
     }, 50);
     
-    // Keyboard ESC listener
+    // Keyboard listeners
     window.addEventListener('keydown', handleAIFullscreenKey);
-    appendAITelemetry('🖥️ Mode Layar Penuh (Fullscreen) Diaktifkan. Silakan gambar/edit kotak objek pada video.', 'info');
+    window.addEventListener('keyup', handleAIFullscreenKeyUp);
+    appendAITelemetry('🖥️ Mode Layar Penuh (Fullscreen) Diaktifkan. Tarik kotak pada video. Panel dapat diminimalkan lewat tombol [▲ Sembunyikan Panel].', 'info');
 }
 
 function exitAIFullscreenDrawing() {
     const container = document.getElementById('ai-canvas-container');
     const hud = document.getElementById('ai-fullscreen-hud');
+    const miniHud = document.getElementById('ai-fullscreen-mini-hud');
     const watermark = document.getElementById('ai-normal-preview-watermark');
     const btn = document.getElementById('btn-open-ai-fullscreen');
     if (!container) return;
     
     isAIFullscreen = false;
     container.classList.remove('ai-fullscreen-active');
+    container.classList.remove('hud-collapsed');
+    
+    // Reset zoom and pan
+    aiZoomScale = 1.0;
+    aiPanX = 0;
+    aiPanY = 0;
+    isAIPanning = false;
+    isSpacePressed = false;
+    isAIHudCollapsed = false;
+    updateAIViewportTransform();
     
     if (hud) hud.style.display = 'none';
+    if (miniHud) miniHud.style.display = 'none';
     if (watermark) watermark.style.display = 'flex';
     if (btn) btn.innerHTML = '<span style="font-size:1.05rem;">⛶</span> Buka Mode Layar Penuh (Edit & Gambar Objek)';
     if (aiDrawCanvas) aiDrawCanvas.style.cursor = 'default';
@@ -4848,6 +4991,7 @@ function exitAIFullscreenDrawing() {
     } catch (e) {}
     
     window.removeEventListener('keydown', handleAIFullscreenKey);
+    window.removeEventListener('keyup', handleAIFullscreenKeyUp);
     
     syncActiveZoneUI();
     renderAIZonesChips();
@@ -4861,10 +5005,198 @@ function exitAIFullscreenDrawing() {
 }
 
 function handleAIFullscreenKey(e) {
+    if (!isAIFullscreen) return;
+    
     if (e.key === 'Escape') {
         exitAIFullscreenDrawing();
+        return;
+    }
+    
+    // Don't intercept single-letter shortcuts if typing into an input
+    const activeEl = document.activeElement;
+    const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+    if (isTyping) return;
+    
+    if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        toggleAIHudCollapse();
+    } else if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        setAIInteractionMode('draw');
+    } else if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        setAIInteractionMode('pan');
+    } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        zoomInAI();
+    } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        zoomOutAI();
+    } else if (e.key === '0') {
+        e.preventDefault();
+        resetAIZoom();
+    } else if (e.key === ' ' && !isSpacePressed) {
+        e.preventDefault();
+        isSpacePressed = true;
+        updateAICursor();
     }
 }
+
+function handleAIFullscreenKeyUp(e) {
+    if (!isAIFullscreen) return;
+    if (e.key === ' ') {
+        isSpacePressed = false;
+        updateAICursor();
+    }
+}
+
+function updateAIViewportTransform() {
+    const stage = document.getElementById('ai-viewport-stage');
+    if (stage) {
+        stage.style.transform = `translate(${aiPanX}px, ${aiPanY}px) scale(${aiZoomScale})`;
+    }
+    
+    const zoomPct = Math.round(aiZoomScale * 100) + '%';
+    const fsZoomLabel = document.getElementById('ai-fs-zoom-level');
+    const miniZoomLabel = document.getElementById('ai-mini-zoom-level');
+    if (fsZoomLabel) fsZoomLabel.textContent = zoomPct;
+    if (miniZoomLabel) miniZoomLabel.textContent = zoomPct;
+}
+
+function clampAIPan() {
+    const container = document.getElementById('ai-canvas-container');
+    if (!container) return;
+    const w = container.clientWidth || 800;
+    const h = container.clientHeight || 450;
+    
+    const boundX = Math.max(w * (aiZoomScale - 1), 0) + (w * 0.45);
+    const boundY = Math.max(h * (aiZoomScale - 1), 0) + (h * 0.45);
+    
+    if (aiZoomScale <= 1.0) {
+        aiPanX = Math.max(-w * 0.35, Math.min(w * 0.35, aiPanX));
+        aiPanY = Math.max(-h * 0.35, Math.min(h * 0.35, aiPanY));
+    } else {
+        aiPanX = Math.max(-boundX, Math.min(boundX, aiPanX));
+        aiPanY = Math.max(-boundY, Math.min(boundY, aiPanY));
+    }
+}
+
+function resetAIZoom() {
+    aiZoomScale = 1.0;
+    aiPanX = 0;
+    aiPanY = 0;
+    updateAIViewportTransform();
+    appendAITelemetry('🔄 Zoom & Posisi Layar Direset ke 100%', 'info');
+}
+
+function zoomInAI(step = 0.25) {
+    aiZoomScale = Math.min(4.0, Math.round((aiZoomScale + step) * 100) / 100);
+    clampAIPan();
+    updateAIViewportTransform();
+    appendAITelemetry(`🔍 Zoom In: ${Math.round(aiZoomScale * 100)}%`, 'info');
+}
+
+function zoomOutAI(step = 0.25) {
+    aiZoomScale = Math.max(0.75, Math.round((aiZoomScale - step) * 100) / 100);
+    if (aiZoomScale <= 1.0 && Math.abs(aiPanX) < 25 && Math.abs(aiPanY) < 25) {
+        aiPanX = 0;
+        aiPanY = 0;
+    }
+    clampAIPan();
+    updateAIViewportTransform();
+    appendAITelemetry(`🔍 Zoom Out: ${Math.round(aiZoomScale * 100)}%`, 'info');
+}
+
+function toggleAIHudCollapse(forceState = null) {
+    const container = document.getElementById('ai-canvas-container');
+    if (!container) return;
+    
+    if (forceState !== null) {
+        isAIHudCollapsed = forceState;
+    } else {
+        isAIHudCollapsed = !isAIHudCollapsed;
+    }
+    
+    if (isAIHudCollapsed) {
+        container.classList.add('hud-collapsed');
+        appendAITelemetry('▲ Panel Layar Penuh diminimalkan. Tampilan video 100% bebas hambatan.', 'info');
+    } else {
+        container.classList.remove('hud-collapsed');
+        appendAITelemetry('▼ Panel Layar Penuh dibuka kembali.', 'info');
+    }
+    syncMiniHudUI();
+}
+
+function syncMiniHudUI() {
+    const curZone = (aiZones && aiZones[aiActiveZoneIndex]) ? aiZones[aiActiveZoneIndex] : null;
+    const miniName = document.getElementById('ai-mini-zone-name');
+    const miniDot = document.getElementById('ai-mini-zone-dot');
+    const miniBadge = document.getElementById('ai-mini-zone-badge');
+    
+    if (curZone) {
+        if (miniName) miniName.textContent = curZone.label || `Objek #${aiActiveZoneIndex + 1}`;
+        if (miniDot) miniDot.style.background = curZone.color || '#3b82f6';
+        if (miniBadge) miniBadge.style.borderColor = curZone.color || '#3b82f6';
+    }
+    
+    const isPan = (aiInteractionMode === 'pan');
+    const toolDrawBtn = document.getElementById('ai-tool-draw-btn');
+    const toolPanBtn = document.getElementById('ai-tool-pan-btn');
+    const miniDrawBtn = document.getElementById('ai-mini-tool-draw');
+    const miniPanBtn = document.getElementById('ai-mini-tool-pan');
+    
+    if (toolDrawBtn) {
+        toolDrawBtn.style.background = !isPan ? '#2563eb' : 'transparent';
+        toolDrawBtn.style.color = !isPan ? 'white' : '#94a3b8';
+        toolDrawBtn.style.borderColor = !isPan ? '#60a5fa' : 'transparent';
+    }
+    if (toolPanBtn) {
+        toolPanBtn.style.background = isPan ? '#2563eb' : 'transparent';
+        toolPanBtn.style.color = isPan ? 'white' : '#94a3b8';
+        toolPanBtn.style.borderColor = isPan ? '#60a5fa' : 'transparent';
+    }
+    if (miniDrawBtn) {
+        miniDrawBtn.style.background = !isPan ? '#2563eb' : 'transparent';
+        miniDrawBtn.style.color = !isPan ? 'white' : '#94a3b8';
+    }
+    if (miniPanBtn) {
+        miniPanBtn.style.background = isPan ? '#2563eb' : 'transparent';
+        miniPanBtn.style.color = isPan ? 'white' : '#94a3b8';
+    }
+    
+    updateAICursor();
+}
+
+function setAIInteractionMode(mode) {
+    aiInteractionMode = mode;
+    syncMiniHudUI();
+    if (mode === 'pan') {
+        appendAITelemetry('✋ Mode Geser Video (Pan) aktif. Seret mouse atau layar untuk menggeser video.', 'info');
+    } else {
+        appendAITelemetry('✏️ Mode Gambar Objek aktif. Tarik kursor untuk membuat kotak area deteksi.', 'info');
+    }
+}
+
+function updateAICursor() {
+    if (!aiDrawCanvas) return;
+    if (!isAIFullscreen) {
+        aiDrawCanvas.style.cursor = 'default';
+        return;
+    }
+    if (isAIPanning) {
+        aiDrawCanvas.style.cursor = 'grabbing';
+    } else if (aiInteractionMode === 'pan' || isSpacePressed) {
+        aiDrawCanvas.style.cursor = 'grab';
+    } else {
+        aiDrawCanvas.style.cursor = 'crosshair';
+    }
+}
+
+window.toggleAIHudCollapse = toggleAIHudCollapse;
+window.setAIInteractionMode = setAIInteractionMode;
+window.zoomInAI = zoomInAI;
+window.zoomOutAI = zoomOutAI;
+window.resetAIZoom = resetAIZoom;
 
 function setZoneColor(hex, themeRgba, skipTelemetry = false) {
     aiActiveZoneColor = hex;
@@ -4916,6 +5248,7 @@ function updateActiveZoneLabel(text) {
     if (fsInp && fsInp.value !== trimmed) fsInp.value = trimmed;
     
     renderAIZonesChips();
+    syncMiniHudUI();
 }
 
 function updateActiveZoneTargets(isFs = false) {
