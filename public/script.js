@@ -542,18 +542,14 @@ async function handleLogout() {
             if (sidebar) sidebar.classList.remove('mobile-open');
             if (sidebarOverlay) sidebarOverlay.classList.remove('active');
 
-            // Handle URL path updating for dedicated routes (/addons/yolo-ai and /addons/kios-bensin)
+            // Handle URL path updating for dedicated route /addons/yolo-ai
             if (updateUrl && window.history && window.history.pushState) {
                 if (targetId === 'view-yolo-ai') {
                     if (window.location.pathname !== '/addons/yolo-ai') {
                         window.history.pushState({ view: targetId }, '', '/addons/yolo-ai');
                     }
-                } else if (targetId === 'view-kios-bensin') {
-                    if (window.location.pathname !== '/addons/kios-bensin') {
-                        window.history.pushState({ view: targetId }, '', '/addons/kios-bensin');
-                    }
                 } else {
-                    if (window.location.pathname.startsWith('/addons/')) {
+                    if (window.location.pathname === '/addons/yolo-ai' || window.location.pathname === '/yolo-ai') {
                         window.history.pushState({ view: targetId }, '', '/');
                     }
                 }
@@ -564,10 +560,6 @@ async function handleLogout() {
                     initYoloAiPage();
                 } else if (typeof openYoloAiPage === 'function') {
                     openYoloAiPage();
-                }
-            } else if (targetId === 'view-kios-bensin') {
-                if (typeof initKiosBensinPage === 'function') {
-                    initKiosBensinPage();
                 }
             } else if (targetId === 'view-about') {
                 if (typeof fetchAboutInfo === 'function') fetchAboutInfo();
@@ -589,8 +581,6 @@ async function handleLogout() {
             const path = window.location.pathname;
             if (path.includes('/addons/yolo-ai') || path.includes('/yolo-ai')) {
                 window.navigateToView('view-yolo-ai', false);
-            } else if (path.includes('/addons/kios-bensin') || path.includes('/kios-bensin')) {
-                window.navigateToView('view-kios-bensin', false);
             } else if (e.state && e.state.view) {
                 window.navigateToView(e.state.view, false);
             } else {
@@ -604,10 +594,6 @@ async function handleLogout() {
         if (initPath.includes('/addons/yolo-ai') || initPath.includes('/yolo-ai') || initHash === '#yolo-ai' || initHash === '#addons/yolo-ai') {
             setTimeout(() => {
                 window.navigateToView('view-yolo-ai', false);
-            }, 100);
-        } else if (initPath.includes('/addons/kios-bensin') || initPath.includes('/kios-bensin') || initHash === '#kios-bensin' || initHash === '#addons/kios-bensin') {
-            setTimeout(() => {
-                window.navigateToView('view-kios-bensin', false);
             }, 100);
         }
 
@@ -6237,6 +6223,13 @@ function restoreAIGridFromData(grid) {
     renderAIZonesChips();
     updateCoordStatusText();
     
+    // Restore imgsz resolution dropdown (Rule #1, max 416)
+    const imgszSelect = document.getElementById('ai-imgsz-select');
+    if (imgszSelect && grid) {
+        const val = parseInt(grid.imgsz || grid.zero_buffer_config?.imgsz || '320', 10);
+        imgszSelect.value = (val > 416) ? 416 : (val < 128 ? 256 : val);
+    }
+
     // Set AI active toggle
     const chkActive = document.getElementById('ai-cam-active-toggle');
     if (chkActive && typeof grid.enabled !== 'undefined') {
@@ -6413,7 +6406,38 @@ function copyArduinoCode() {
     });
 }
 
-// SAVE AI CONFIGURATION (MULTI-ZONES ROI + PROMPT RULES + ESP8266)
+// CALCULATE 1:1 SQUARE RATIO CROP AREA MATRIX (STB ANTI-LAG ARM HARDWARE PROFILE)
+function calculateSquareROICropMatrix(zone, cw = 800, ch = 450, targetImgSz = 320) {
+    const zx = zone ? (zone.x || 0) : 0;
+    const zy = zone ? (zone.y || 0) : 0;
+    const zw = zone ? (zone.w || 0) : cw;
+    const zh = zone ? (zone.h || 0) : ch;
+
+    // Calculate center point of selected ROI zone
+    const cx = zx + (zw / 2);
+    const cy = zy + (zh / 2);
+
+    // Bind strict 1:1 square bounding box size
+    const sidePx = Math.max(zw, zh, 128);
+    const sideNorm = parseFloat((sidePx / cw).toFixed(4));
+
+    return {
+        aspect_ratio: "1:1",
+        center_x: parseFloat((cx / cw).toFixed(4)),
+        center_y: parseFloat((cy / ch).toFixed(4)),
+        crop_size_px: targetImgSz,
+        crop_w_norm: sideNorm,
+        crop_h_norm: sideNorm,
+        bounding_box_square: [
+            parseFloat((Math.max(0, cx - sidePx / 2) / cw).toFixed(4)),
+            parseFloat((Math.max(0, cy - sidePx / 2) / ch).toFixed(4)),
+            sideNorm,
+            sideNorm
+        ]
+    };
+}
+
+// SAVE AI CONFIGURATION (MULTI-ZONES ROI + PROMPT RULES + ESP8266 + STB ZERO-BUFFER FLAGS)
 async function saveAIGrid(keepOpen = false) {
     const select = document.getElementById('ai-cam-select');
     const camId = select ? select.value : null;
@@ -6493,6 +6517,24 @@ async function saveAIGrid(keepOpen = false) {
         confidence_min: confidenceMin
     };
     
+    // 1. Force Low Resolution Inference Params (Rule #1): Default 320 (or 256), Cap at max 416 to prevent STB CPU choking
+    const imgszSelect = document.getElementById('ai-imgsz-select');
+    let imgszVal = parseInt(imgszSelect ? imgszSelect.value : '320', 10) || 320;
+    if (imgszVal > 416) imgszVal = 416; // Do NOT allow resolutions higher than 416
+    if (imgszVal < 128) imgszVal = 256;
+
+    // 2. Enforce 1:1 Square Ratio Cropping Matrix in Background (Rule #2)
+    const squareCropMatrix = calculateSquareROICropMatrix(curActive, cw, ch, imgszVal);
+
+    // 3. Hardcode Zero-Buffer Stream Flags (Rule #3)
+    const zeroBufferConfig = {
+        rtsp_transport: "udp",
+        fflags: "nobuffer",
+        flags: "low_delay",
+        imgsz: imgszVal,
+        h264_only: true
+    };
+
     const zoneLabel = curActive.label || document.getElementById('ai-zone-label-input')?.value?.trim() || 'Area Deteksi Utama';
     const zoneColor = curActive.color || aiActiveZoneColor || '#3b82f6';
     const zoneTheme = curActive.themeColor || aiActiveZoneThemeColor || 'rgba(59,130,246,0.92)';
@@ -6515,6 +6557,17 @@ async function saveAIGrid(keepOpen = false) {
         active_zone_index: aiActiveZoneIndex,
         esp_config: espConfig,
         prompt_rules: promptRules,
+
+        // Technical Anti-Lag & Low-Latency Enforced Flags
+        imgsz: imgszVal,
+        rtsp_transport: "udp",
+        fflags: "nobuffer",
+        flags: "low_delay",
+        h264_only: true,
+        square_crop_matrix: squareCropMatrix,
+        zero_buffer_config: zeroBufferConfig,
+        performance_config: zeroBufferConfig,
+
         updated_at: new Date().toISOString()
     };
     
@@ -7823,599 +7876,5 @@ window.deleteCurrentZone = deleteCurrentZone;
 window.saveCurrentZone = saveCurrentZone;
 window.updateActiveZoneTargets = updateActiveZoneTargets;
 window.selectActiveZone = selectActiveZone;
-
-// ============================================================================
-// KIOS BENSIN AI SURVEILLANCE SYSTEM - ISOLATED COMPONENT ENGINE
-// ============================================================================
-const kiosBensinState = {
-    video_source: {
-        rtsp_url: "rtsp://admin:admin123@192.168.1.102:554/h264/ch1/sub/av_stream",
-        transport_protocol: "udp"
-    },
-    digital_crop: {
-        zoom_level: 1.0,
-        y_start: 0,
-        y_end: 720,
-        x_start: 0,
-        x_end: 1280
-    },
-    pan_x: 0,
-    pan_y: 0,
-    roi_zone: {
-        x1: 192,
-        y1: 86,
-        x2: 768,
-        y2: 482
-    },
-    yolo_settings: {
-        imgsz: 320,
-        confidence_threshold: 0.5,
-        target_classes: [0, 2, 3],
-        dwell_time_seconds: 15
-    },
-    notifications: {
-        enable_telegram: true,
-        bot_token: "",
-        chat_id: "",
-        action_type: "snapshot_only"
-    }
-};
-
-let kiosCanvasAnimId = null;
-let kiosIsDraggingRoi = false;
-let kiosResizingHandle = null;
-let kiosDragStart = { x: 0, y: 0 };
-let kiosRoiBoxStart = { leftP: 15, topP: 12, widthP: 45, heightP: 55, stageWidth: 800, stageHeight: 450 };
-
-async function initKiosBensinPage() {
-    // 1. Fetch saved configuration from backend /api/get-config
-    try {
-        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
-        const res = await fetchFn('/api/get-config');
-        if (res.ok) {
-            const data = await res.json();
-            if (data && data.success && data.config) {
-                const c = data.config;
-                if (c.video_source) kiosBensinState.video_source = { ...kiosBensinState.video_source, ...c.video_source };
-                if (c.digital_crop) kiosBensinState.digital_crop = { ...kiosBensinState.digital_crop, ...c.digital_crop };
-                if (c.roi_zone) kiosBensinState.roi_zone = { ...kiosBensinState.roi_zone, ...c.roi_zone };
-                if (c.yolo_settings) kiosBensinState.yolo_settings = { ...kiosBensinState.yolo_settings, ...c.yolo_settings };
-                if (c.notifications) kiosBensinState.notifications = { ...kiosBensinState.notifications, ...c.notifications };
-            }
-        }
-    } catch (e) {
-        console.warn('[Kios Bensin] Using default local configuration:', e);
-    }
-
-    // 2. Sync State to Form UI Inputs
-    kiosSyncStateToUI();
-
-    // 3. Setup Interactive Drag/Resize Event Listeners on ROI Box
-    kiosSetupRoiInteractions();
-
-    // 4. Start Live Canvas Rendering Engine
-    kiosStartCanvasRenderLoop();
-}
-
-function kiosSyncStateToUI() {
-    // Zoom & Pan Sliders
-    const zoomS = document.getElementById('kios-zoom-slider');
-    const panxS = document.getElementById('kios-panx-slider');
-    const panyS = document.getElementById('kios-pany-slider');
-    if (zoomS) zoomS.value = kiosBensinState.digital_crop.zoom_level || 1.0;
-    if (panxS) panxS.value = kiosBensinState.pan_x || 0;
-    if (panyS) panyS.value = kiosBensinState.pan_y || 0;
-
-    // Section A: Render Optimization
-    const imgszSel = document.getElementById('kios-imgsz-select');
-    const transSel = document.getElementById('kios-transport-select');
-    if (imgszSel) imgszSel.value = kiosBensinState.yolo_settings.imgsz || 320;
-    if (transSel) transSel.value = kiosBensinState.video_source.transport_protocol || 'udp';
-
-    // Section B: YOLO Settings
-    const cls0 = document.getElementById('kios-cls-0');
-    const cls2 = document.getElementById('kios-cls-2');
-    const cls3 = document.getElementById('kios-cls-3');
-    const targetClasses = kiosBensinState.yolo_settings.target_classes || [0, 2, 3];
-    if (cls0) cls0.checked = targetClasses.includes(0);
-    if (cls2) cls2.checked = targetClasses.includes(2);
-    if (cls3) cls3.checked = targetClasses.includes(3);
-
-    const dwellS = document.getElementById('kios-dwell-slider');
-    if (dwellS) dwellS.value = kiosBensinState.yolo_settings.dwell_time_seconds || 15;
-
-    // Section C: Telegram Notifications
-    const tgEnable = document.getElementById('kios-telegram-enable');
-    const tgToken = document.getElementById('kios-telegram-token');
-    const tgChat = document.getElementById('kios-telegram-chat');
-    if (tgEnable) tgEnable.checked = !!kiosBensinState.notifications.enable_telegram;
-    if (tgToken) tgToken.value = kiosBensinState.notifications.bot_token || '';
-    if (tgChat) tgChat.value = kiosBensinState.notifications.chat_id || '';
-
-    const actionRadios = document.querySelectorAll('input[name="kios_action_type"]');
-    const actType = kiosBensinState.notifications.action_type || 'snapshot_only';
-    actionRadios.forEach(r => {
-        r.checked = (r.value === actType);
-    });
-
-    // Sync ROI box UI position from x1, y1, x2, y2
-    kiosSyncRoiBoxFromCoordinates();
-
-    // Update Crop transform & Telemetry readout
-    kiosUpdateCropState();
-}
-
-function kiosSyncRoiBoxFromCoordinates() {
-    const roiBox = document.getElementById('kios-roi-box');
-    if (!roiBox) return;
-
-    const r = kiosBensinState.roi_zone;
-    // Map 1280x720 matrix to stage percentages
-    const leftP = (r.x1 / 1280) * 100;
-    const topP = (r.y1 / 720) * 100;
-    const widthP = ((r.x2 - r.x1) / 1280) * 100;
-    const heightP = ((r.y2 - r.y1) / 720) * 100;
-
-    roiBox.style.left = leftP + '%';
-    roiBox.style.top = topP + '%';
-    roiBox.style.width = widthP + '%';
-    roiBox.style.height = heightP + '%';
-}
-
-function kiosUpdateCropState() {
-    const zoomS = document.getElementById('kios-zoom-slider');
-    const panxS = document.getElementById('kios-panx-slider');
-    const panyS = document.getElementById('kios-pany-slider');
-
-    const zoom = zoomS ? parseFloat(zoomS.value) : 1.0;
-    const panX = panxS ? parseInt(panxS.value) : 0;
-    const panY = panyS ? parseInt(panyS.value) : 0;
-
-    kiosBensinState.digital_crop.zoom_level = zoom;
-    kiosBensinState.pan_x = panX;
-    kiosBensinState.pan_y = panY;
-
-    // Display readouts
-    const zVal = document.getElementById('kios-zoom-val');
-    const pxVal = document.getElementById('kios-panx-val');
-    const pyVal = document.getElementById('kios-pany-val');
-    if (zVal) zVal.textContent = zoom.toFixed(1) + 'x';
-    if (pxVal) pxVal.textContent = panX + 'px';
-    if (pyVal) pyVal.textContent = panY + 'px';
-
-    // Apply scale & translate transform to viewport
-    const viewport = document.getElementById('kios-video-viewport');
-    if (viewport) {
-        viewport.style.transform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
-    }
-
-    // Calculate crop bounds matrix CROP_BOUNDS = [y_start, y_end, x_start, x_end]
-    // Standard base 1280x720 canvas
-    const halfWidth = 1280 / (2 * zoom);
-    const halfHeight = 720 / (2 * zoom);
-    const centerX = 640 - (panX * (1280 / 400));
-    const centerY = 360 - (panY * (720 / 400));
-
-    const x_start = Math.max(0, Math.round(centerX - halfWidth));
-    const x_end = Math.min(1280, Math.round(centerX + halfWidth));
-    const y_start = Math.max(0, Math.round(centerY - halfHeight));
-    const y_end = Math.min(720, Math.round(centerY + halfHeight));
-
-    kiosBensinState.digital_crop.x_start = x_start;
-    kiosBensinState.digital_crop.x_end = x_end;
-    kiosBensinState.digital_crop.y_start = y_start;
-    kiosBensinState.digital_crop.y_end = y_end;
-
-    // Update telemetry display
-    kiosUpdateTelemetryText();
-}
-
-function kiosResetCrop() {
-    const zoomS = document.getElementById('kios-zoom-slider');
-    const panxS = document.getElementById('kios-panx-slider');
-    const panyS = document.getElementById('kios-pany-slider');
-    if (zoomS) zoomS.value = 1.0;
-    if (panxS) panxS.value = 0;
-    if (panyS) panyS.value = 0;
-    kiosUpdateCropState();
-}
-
-function kiosUpdateStateFromForm() {
-    const imgszSel = document.getElementById('kios-imgsz-select');
-    const transSel = document.getElementById('kios-transport-select');
-    if (imgszSel) kiosBensinState.yolo_settings.imgsz = parseInt(imgszSel.value);
-    if (transSel) kiosBensinState.video_source.transport_protocol = transSel.value;
-
-    const classes = [];
-    if (document.getElementById('kios-cls-0')?.checked) classes.push(0);
-    if (document.getElementById('kios-cls-2')?.checked) classes.push(2);
-    if (document.getElementById('kios-cls-3')?.checked) classes.push(3);
-    kiosBensinState.yolo_settings.target_classes = classes;
-
-    const dwellS = document.getElementById('kios-dwell-slider');
-    const dwellVal = document.getElementById('kios-dwell-val');
-    if (dwellS) {
-        const dwell = parseInt(dwellS.value);
-        kiosBensinState.yolo_settings.dwell_time_seconds = dwell;
-        if (dwellVal) dwellVal.textContent = dwell + ' Detik';
-    }
-
-    const tgEnable = document.getElementById('kios-telegram-enable');
-    const tgToken = document.getElementById('kios-telegram-token');
-    const tgChat = document.getElementById('kios-telegram-chat');
-    if (tgEnable) kiosBensinState.notifications.enable_telegram = tgEnable.checked;
-    if (tgToken) kiosBensinState.notifications.bot_token = tgToken.value.trim();
-    if (tgChat) kiosBensinState.notifications.chat_id = tgChat.value.trim();
-
-    const selectedAct = document.querySelector('input[name="kios_action_type"]:checked');
-    if (selectedAct) kiosBensinState.notifications.action_type = selectedAct.value;
-
-    kiosUpdateTelemetryText();
-}
-
-function kiosUpdateTelemetryText() {
-    const elem = document.getElementById('kios-telemetry-text');
-    if (!elem) return;
-
-    const c = kiosBensinState.digital_crop;
-    const r = kiosBensinState.roi_zone;
-    const y = kiosBensinState.yolo_settings;
-    const v = kiosBensinState.video_source;
-
-    elem.textContent = 
-`CROP_BOUNDS = [${c.y_start}, ${c.y_end}, ${c.x_start}, ${c.x_end}]
-ROI_ZONE    = [${r.x1}, ${r.y1}, ${r.x2}, ${r.y2}]
-ZOOM_SCALE  = ${c.zoom_level.toFixed(1)}x (Pan: X=${kiosBensinState.pan_x}px, Y=${kiosBensinState.pan_y}px)
-YOLO_IMGSZ  = ${y.imgsz}px | DWELL = ${y.dwell_time_seconds}s | CLASSES = [${y.target_classes.join(', ')}]
-PROTOCOL    = ${v.transport_protocol.toUpperCase()}
-STATUS      = REAL-TIME MATRIX UPDATED [25 FPS]`;
-}
-
-function kiosSetupRoiInteractions() {
-    const stage = document.getElementById('kios-stage-wrapper');
-    const roiBox = document.getElementById('kios-roi-box');
-    if (!stage || !roiBox) return;
-
-    const nw = document.getElementById('kios-handle-nw');
-    const ne = document.getElementById('kios-handle-ne');
-    const se = document.getElementById('kios-handle-se');
-    const sw = document.getElementById('kios-handle-sw');
-
-    const onPointerDown = (e, handleType = null) => {
-        e.preventDefault();
-        const pointer = e.touches ? e.touches[0] : e;
-        kiosIsDraggingRoi = true;
-        kiosResizingHandle = handleType;
-        kiosDragStart = { x: pointer.clientX, y: pointer.clientY };
-
-        const rect = roiBox.getBoundingClientRect();
-        const stageRect = stage.getBoundingClientRect();
-
-        kiosRoiBoxStart = {
-            leftP: ((rect.left - stageRect.left) / stageRect.width) * 100,
-            topP: ((rect.top - stageRect.top) / stageRect.height) * 100,
-            widthP: (rect.width / stageRect.width) * 100,
-            heightP: (rect.height / stageRect.height) * 100,
-            stageWidth: stageRect.width,
-            stageHeight: stageRect.height
-        };
-    };
-
-    roiBox.onmousedown = (e) => {
-        if (e.target === nw || e.target === ne || e.target === se || e.target === sw) return;
-        onPointerDown(e, null);
-    };
-    roiBox.ontouchstart = (e) => {
-        if (e.target === nw || e.target === ne || e.target === se || e.target === sw) return;
-        onPointerDown(e, null);
-    };
-
-    if (nw) {
-        nw.onmousedown = (e) => onPointerDown(e, 'nw');
-        nw.ontouchstart = (e) => onPointerDown(e, 'nw');
-    }
-    if (ne) {
-        ne.onmousedown = (e) => onPointerDown(e, 'ne');
-        ne.ontouchstart = (e) => onPointerDown(e, 'ne');
-    }
-    if (se) {
-        se.onmousedown = (e) => onPointerDown(e, 'se');
-        se.ontouchstart = (e) => onPointerDown(e, 'se');
-    }
-    if (sw) {
-        sw.onmousedown = (e) => onPointerDown(e, 'sw');
-        sw.ontouchstart = (e) => onPointerDown(e, 'sw');
-    }
-
-    const onPointerMove = (e) => {
-        if (!kiosIsDraggingRoi) return;
-        const pointer = e.touches ? e.touches[0] : e;
-        const dx = pointer.clientX - kiosDragStart.x;
-        const dy = pointer.clientY - kiosDragStart.y;
-
-        const dxP = (dx / kiosRoiBoxStart.stageWidth) * 100;
-        const dyP = (dy / kiosRoiBoxStart.stageHeight) * 100;
-
-        let newLeft = kiosRoiBoxStart.leftP;
-        let newTop = kiosRoiBoxStart.topP;
-        let newWidth = kiosRoiBoxStart.widthP;
-        let newHeight = kiosRoiBoxStart.heightP;
-
-        if (kiosResizingHandle === 'se') {
-            newWidth = Math.max(10, Math.min(100 - newLeft, kiosRoiBoxStart.widthP + dxP));
-            newHeight = Math.max(10, Math.min(100 - newTop, kiosRoiBoxStart.heightP + dyP));
-        } else if (kiosResizingHandle === 'sw') {
-            const possibleWidth = kiosRoiBoxStart.widthP - dxP;
-            if (possibleWidth >= 10 && kiosRoiBoxStart.leftP + dxP >= 0) {
-                newLeft = kiosRoiBoxStart.leftP + dxP;
-                newWidth = possibleWidth;
-            }
-            newHeight = Math.max(10, Math.min(100 - newTop, kiosRoiBoxStart.heightP + dyP));
-        } else if (kiosResizingHandle === 'ne') {
-            newWidth = Math.max(10, Math.min(100 - newLeft, kiosRoiBoxStart.widthP + dxP));
-            const possibleHeight = kiosRoiBoxStart.heightP - dyP;
-            if (possibleHeight >= 10 && kiosRoiBoxStart.topP + dyP >= 0) {
-                newTop = kiosRoiBoxStart.topP + dyP;
-                newHeight = possibleHeight;
-            }
-        } else if (kiosResizingHandle === 'nw') {
-            const possibleWidth = kiosRoiBoxStart.widthP - dxP;
-            if (possibleWidth >= 10 && kiosRoiBoxStart.leftP + dxP >= 0) {
-                newLeft = kiosRoiBoxStart.leftP + dxP;
-                newWidth = possibleWidth;
-            }
-            const possibleHeight = kiosRoiBoxStart.heightP - dyP;
-            if (possibleHeight >= 10 && kiosRoiBoxStart.topP + dyP >= 0) {
-                newTop = kiosRoiBoxStart.topP + dyP;
-                newHeight = possibleHeight;
-            }
-        } else {
-            // Drag entire box
-            newLeft = Math.max(0, Math.min(100 - newWidth, kiosRoiBoxStart.leftP + dxP));
-            newTop = Math.max(0, Math.min(100 - newHeight, kiosRoiBoxStart.topP + dyP));
-        }
-
-        roiBox.style.left = newLeft + '%';
-        roiBox.style.top = newTop + '%';
-        roiBox.style.width = newWidth + '%';
-        roiBox.style.height = newHeight + '%';
-
-        // Calculate matrix x1, y1, x2, y2 based on 1280x720 canvas
-        const x1 = Math.round((newLeft / 100) * 1280);
-        const y1 = Math.round((newTop / 100) * 720);
-        const x2 = Math.round(((newLeft + newWidth) / 100) * 1280);
-        const y2 = Math.round(((newTop + newHeight) / 100) * 720);
-
-        kiosBensinState.roi_zone = { x1, y1, x2, y2 };
-        kiosUpdateTelemetryText();
-    };
-
-    const onPointerUp = () => {
-        kiosIsDraggingRoi = false;
-        kiosResizingHandle = null;
-    };
-
-    window.addEventListener('mousemove', onPointerMove);
-    window.addEventListener('mouseup', onPointerUp);
-    window.addEventListener('touchmove', onPointerMove, { passive: false });
-    window.addEventListener('touchend', onPointerUp);
-}
-
-// SPBU Live Video Simulation Canvas Render Loop
-function kiosStartCanvasRenderLoop() {
-    const canvas = document.getElementById('kios-spbu-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let frameCount = 0;
-    let carX = 120;
-
-    function renderFrame() {
-        const viewPane = document.getElementById('view-kios-bensin');
-        if (!viewPane || !viewPane.classList.contains('active')) {
-            kiosCanvasAnimId = requestAnimationFrame(renderFrame);
-            return;
-        }
-
-        frameCount++;
-        ctx.clearRect(0, 0, 1280, 720);
-
-        // 1. Background Stage - SPBU Canopy Structure
-        ctx.fillStyle = '#0a101d';
-        ctx.fillRect(0, 0, 1280, 720);
-
-        // Canopy Roof
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(0, 0, 1280, 180);
-        
-        // Pertamina Branding Strip (Red / Blue / Yellow)
-        ctx.fillStyle = '#ef4444';
-        ctx.fillRect(0, 160, 1280, 8);
-        ctx.fillStyle = '#0284c7';
-        ctx.fillRect(0, 168, 1280, 6);
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(0, 174, 1280, 6);
-
-        // Pillars
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(200, 180, 70, 420);
-        ctx.fillRect(1000, 180, 70, 420);
-
-        // Ground / Pavement
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 450, 1280, 270);
-
-        // Fuel Dispenser Island / Platform
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(350, 400, 580, 140);
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(350, 400, 580, 140);
-
-        // Dispenser Pump Unit #1 (Pertamax 92)
-        ctx.fillStyle = '#dc2626';
-        ctx.fillRect(400, 240, 110, 180);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(415, 260, 80, 40);
-        ctx.fillStyle = '#22c55e';
-        ctx.font = 'bold 16px monospace';
-        ctx.fillText('92 PERTAMAX', 420, 285);
-
-        // Dispenser Pump Unit #2 (Pertalite / Dex)
-        ctx.fillStyle = '#16a34a';
-        ctx.fillRect(770, 240, 110, 180);
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(785, 260, 80, 40);
-        ctx.fillStyle = '#22c55e';
-        ctx.font = 'bold 16px monospace';
-        ctx.fillText('90 PERTALITE', 788, 285);
-
-        // Vehicle Motion Simulation in Dispenzer Bay
-        carX += 1.5;
-        if (carX > 1300) carX = -250;
-
-        // Draw Car / Vehicle at Dispenzer Bay
-        ctx.save();
-        ctx.fillStyle = '#38bdf8';
-        ctx.beginPath();
-        if (typeof ctx.roundRect === 'function') {
-            ctx.roundRect(carX, 480, 220, 90, [12, 12, 0, 0]);
-        } else {
-            ctx.rect(carX, 480, 220, 90);
-        }
-        ctx.fill();
-
-        // Car Roof
-        ctx.fillStyle = '#0284c7';
-        ctx.beginPath();
-        if (typeof ctx.roundRect === 'function') {
-            ctx.roundRect(carX + 40, 430, 130, 60, [10, 10, 0, 0]);
-        } else {
-            ctx.rect(carX + 40, 430, 130, 60);
-        }
-        ctx.fill();
-
-        // Wheels
-        ctx.fillStyle = '#000000';
-        ctx.beginPath();
-        ctx.arc(carX + 45, 570, 22, 0, Math.PI * 2);
-        ctx.arc(carX + 175, 570, 22, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-
-        // Overlaid Camera Timestamp & Channel Info
-        const now = new Date();
-        const dateStr = now.toISOString().replace('T', ' ').substring(0, 19);
-        ctx.fillStyle = 'rgba(0,0,0,0.65)';
-        ctx.fillRect(20, 20, 480, 32);
-        ctx.fillStyle = '#ef4444';
-        ctx.font = 'bold 16px monospace';
-        ctx.fillText(`🔴 REC [EZVIZ /102] ${dateStr}`, 30, 42);
-
-        ctx.fillStyle = 'rgba(0,0,0,0.65)';
-        ctx.fillRect(1120, 20, 140, 32);
-        ctx.fillStyle = '#34d399';
-        ctx.font = 'bold 14px monospace';
-        ctx.fillText(`25.0 FPS UDP`, 1130, 42);
-
-        kiosCanvasAnimId = requestAnimationFrame(renderFrame);
-    }
-
-    if (kiosCanvasAnimId) cancelAnimationFrame(kiosCanvasAnimId);
-    kiosCanvasAnimId = requestAnimationFrame(renderFrame);
-}
-
-// Save Configuration Action Handler
-async function kiosSaveConfiguration() {
-    const btn = document.getElementById('kios-btn-save');
-    const feedback = document.getElementById('kios-feedback');
-
-    // Ensure state is updated from UI form before saving
-    kiosUpdateStateFromForm();
-
-    const payload = {
-        video_source: {
-            rtsp_url: kiosBensinState.video_source.rtsp_url,
-            transport_protocol: kiosBensinState.video_source.transport_protocol
-        },
-        digital_crop: {
-            zoom_level: parseFloat(kiosBensinState.digital_crop.zoom_level),
-            y_start: Math.round(kiosBensinState.digital_crop.y_start),
-            y_end: Math.round(kiosBensinState.digital_crop.y_end),
-            x_start: Math.round(kiosBensinState.digital_crop.x_start),
-            x_end: Math.round(kiosBensinState.digital_crop.x_end)
-        },
-        roi_zone: {
-            x1: Math.round(kiosBensinState.roi_zone.x1),
-            y1: Math.round(kiosBensinState.roi_zone.y1),
-            x2: Math.round(kiosBensinState.roi_zone.x2),
-            y2: Math.round(kiosBensinState.roi_zone.y2)
-        },
-        yolo_settings: {
-            imgsz: parseInt(kiosBensinState.yolo_settings.imgsz),
-            confidence_threshold: 0.5,
-            target_classes: kiosBensinState.yolo_settings.target_classes,
-            dwell_time_seconds: parseInt(kiosBensinState.yolo_settings.dwell_time_seconds)
-        },
-        notifications: {
-            enable_telegram: !!kiosBensinState.notifications.enable_telegram,
-            bot_token: kiosBensinState.notifications.bot_token,
-            chat_id: kiosBensinState.notifications.chat_id,
-            action_type: kiosBensinState.notifications.action_type
-        }
-    };
-
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = `<span>⏳</span> Menyimpan...`;
-    }
-    if (feedback) {
-        feedback.style.color = '#38bdf8';
-        feedback.textContent = 'Menghubungi server NVR...';
-    }
-
-    try {
-        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
-        const res = await fetchFn('/api/save-config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        if (res.ok && data.success) {
-            if (feedback) {
-                feedback.style.color = '#34d399';
-                feedback.textContent = '✅ ' + (data.message || 'Konfigurasi berhasil disimpan!');
-            }
-            alert('Berhasil! Konfigurasi Kios Bensin AI Surveillance System telah disimpan secara persisten ke NVR.');
-        } else {
-            throw new Error(data.error || 'Server menolak konfigurasi.');
-        }
-    } catch (err) {
-        console.error('[Kios Bensin Save Error]', err);
-        if (feedback) {
-            feedback.style.color = '#ef4444';
-            feedback.textContent = '❌ ' + err.message;
-        }
-        alert('Gagal menyimpan konfigurasi: ' + err.message);
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = `<span>💾</span> Save Configuration`;
-        }
-    }
-}
-
-// Attach all Kios Bensin functions to window object
-window.initKiosBensinPage = initKiosBensinPage;
-window.kiosSyncStateToUI = kiosSyncStateToUI;
-window.kiosUpdateCropState = kiosUpdateCropState;
-window.kiosResetCrop = kiosResetCrop;
-window.kiosUpdateStateFromForm = kiosUpdateStateFromForm;
-window.kiosSaveConfiguration = kiosSaveConfiguration;
-
 
 
