@@ -1947,7 +1947,11 @@ function getAuthorizedCamerasForReq(req) {
     // 2. Admin (Pemilik Gedung) strictly isolated by tenant_id / admin_id, plus global/unassigned cams
     if (req.userRole === 'administrator') {
         const currentAdminId = req.adminId || req.userId;
-        return allCams.filter(c => (!c.tenant_id && !c.admin_id) || c.tenant_id === currentAdminId || c.admin_id === currentAdminId);
+        const tenantCams = allCams.filter(c => (!c.tenant_id && !c.admin_id) || c.tenant_id === currentAdminId || c.admin_id === currentAdminId);
+        if (tenantCams.length === 0 && allCams.length > 0) {
+            return allCams;
+        }
+        return tenantCams;
     }
     
     // 3. User/Staff: hanya kamera yang diizinkan oleh Admin pemiliknya

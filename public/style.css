@@ -41,8 +41,10 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 .btn-secondary:hover { background: #334155; }
 .w-full { width: 100%; }
 .mt-3 { margin-top: 1rem; }
-.password-wrapper { position: relative; }
-.btn-peek-pwd { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text-muted); cursor: pointer; }
+.password-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
+.password-wrapper input { width: 100%; padding-right: 2.5rem !important; }
+.btn-peek-pwd { position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem 0.5rem; z-index: 2; font-size: 1rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.btn-peek-pwd:hover { opacity: 0.8; }
 
 /* LAYOUT */
 .app-layout { display: flex; width: 100vw; height: 100vh; }

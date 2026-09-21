@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.1.6 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <title>Arch3r NVR Ver. 10.1.7 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
     <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -534,9 +534,9 @@
                                         </div>
                                         <div class="form-group flex-1">
                                             <label>Password Kamera</label>
-                                            <div style="display:flex; gap:0.25rem;">
-                                                <input type="password" id="camPassword" placeholder="Password kamera" style="flex:1;">
-                                                <button type="button" class="btn btn-secondary btn-peek-pwd" data-target="camPassword" style="padding:0 0.5rem;"><span class="peek-icon">👁️</span></button>
+                                            <div class="password-wrapper">
+                                                <input type="password" id="camPassword" placeholder="Password kamera">
+                                                <button type="button" class="btn-peek-pwd" data-target="camPassword" title="Lihat Password"><span class="peek-icon">👁️</span></button>
                                             </div>
                                         </div>
                                     </div>
@@ -649,7 +649,10 @@
                                         </div>
                                         <div class="form-group flex-1">
                                             <label>Password ONVIF</label>
-                                            <input type="password" id="camPtzPass" placeholder="Password kamera">
+                                            <div class="password-wrapper">
+                                                <input type="password" id="camPtzPass" placeholder="Password kamera">
+                                                <button type="button" class="btn-peek-pwd" data-target="camPtzPass" title="Lihat Password"><span class="peek-icon">👁️</span></button>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -769,7 +772,10 @@
                             <div class="form-row">
                                 <div class="form-group flex-1">
                                     <label>Password</label>
-                                    <input type="password" id="newUserPassword" placeholder="Minimal 4 karakter" required>
+                                    <div class="password-wrapper">
+                                        <input type="password" id="newUserPassword" placeholder="Minimal 4 karakter" required>
+                                        <button type="button" class="btn-peek-pwd" data-target="newUserPassword" title="Lihat Password"><span class="peek-icon">👁️</span></button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="form-group" style="margin-top:0.5rem;">
@@ -803,7 +809,10 @@
                                 </div>
                                 <div class="form-group" style="margin-bottom:0.75rem;">
                                     <label>Reset Password (Opsional)</label>
-                                    <input type="password" id="editUserPassword" placeholder="Biarkan kosong jika tidak diubah">
+                                    <div class="password-wrapper">
+                                        <input type="password" id="editUserPassword" placeholder="Biarkan kosong jika tidak diubah">
+                                        <button type="button" class="btn-peek-pwd" data-target="editUserPassword" title="Lihat Password"><span class="peek-icon">👁️</span></button>
+                                    </div>
                                 </div>
                                 <div class="form-group" style="margin-bottom:1.25rem;">
                                     <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
