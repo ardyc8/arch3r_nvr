@@ -1099,7 +1099,7 @@
                                 <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
                                     <span>🤖</span> YOLOv8 AI Vision Engine & Presets
                                 </h2>
-                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.3</span>
+                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.4</span>
                             </div>
                             <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
                                 Addon Analitik Cerdas untuk NVR: Deteksi Area ROI Live RTSP, Engine Aturan Prompt SPBU, Notifikasi Alarm ESP8266 IoT, Notifikasi Telegram, dan Manajemen File Preset .yai.
@@ -1196,7 +1196,14 @@
                                 </div>
                             </div>
                             
-                            <!-- Visual Surveillance Container with FLOATING HUD CONTROLS -->
+                            <!-- ======================================================== -->
+                            <!-- WORKSTATION 2-COLUMN LAYOUT (LEFT: VIDEO & LOG, RIGHT: CONFIG) -->
+                            <!-- ======================================================== -->
+                            <div class="ai-workstation-grid" style="display:grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1rem; align-items: start;">
+                                
+                                <!-- LEFT COLUMN: LIVE VIDEO PREVIEW & TELEMETRY LOG -->
+                                <div class="ai-left-column" style="display:flex; flex-direction:column;">
+                                    <!-- Visual Surveillance Container with FLOATING HUD CONTROLS -->
                             <div id="ai-canvas-container" style="position:relative; width:100%; aspect-ratio:16/9; max-height:460px; min-height:280px; background:#070b14; border:1px solid #1e293b; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; user-select:none; box-shadow:inset 0 0 30px rgba(0,0,0,0.95); margin-bottom:0.85rem;">
                                 
                                 <!-- Floating Top Information Bar (Non-intrusive HUD) -->
@@ -1420,9 +1427,12 @@
                                     <div style="color:#64748b;">[00:00:00.000] ℹ️ Terminal Deteksi Visi AI Real-time Aktif... Siap membaca feed video kamera.</div>
                                 </div>
                             </div>
-                            
-                            <!-- SUB-TAB CONTROLS FOR LIVE CAMERA CONFIGURATION -->
-                            <div class="ai-config-tab-container" style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                                </div> <!-- END LEFT COLUMN -->
+
+                                <!-- RIGHT COLUMN: CONFIGURATION PANEL & SUBPANES -->
+                                <div class="ai-right-column" style="display:flex; flex-direction:column;">
+                                    <!-- SUB-TAB CONTROLS FOR LIVE CAMERA CONFIGURATION -->
+                                    <div class="ai-config-tab-container" style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
                                 <!-- Sub-tabs bar -->
                                 <div style="display:flex; border-bottom:1px solid var(--border); background:rgba(10,15,28,0.85); overflow-x:auto; padding:0 0.5rem; align-items:center;">
                                     <button type="button" id="ai-subtab-btn-zones" onclick="switchAISubTab('zones')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:#38bdf8; border-bottom:2px solid #38bdf8; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
@@ -1655,7 +1665,8 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                                </div> <!-- END RIGHT COLUMN -->
+                            </div> <!-- END WORKSTATION GRID -->
                         </div>
 
                         <!-- ======================================================== -->
