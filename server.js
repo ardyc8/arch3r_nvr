@@ -5400,6 +5400,35 @@ app.post('/api/ai/grid', verifyToken, async (req, res) => {
     }
 });
 
+app.post('/api/ai/test-telegram', verifyToken, async (req, res) => {
+    try {
+        const { botToken, chatId, message } = req.body;
+        const dbSettings = getSettings();
+        const token = botToken || dbSettings.telegramBotToken;
+        const chat = chatId || dbSettings.telegramChatId;
+        if (!token || !chat) {
+            return res.status(400).json({ error: "Token Bot Telegram dan Chat ID wajib diisi di form atau Pengaturan Sistem." });
+        }
+        const url = `https://api.telegram.org/bot${token}/sendMessage`;
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: chat,
+                text: `🤖 [Arch3r NVR YOLO AI Vision Alert]\n${message || 'Tes notifikasi alarm YOLO Visi AI berhasil dikirim ke Telegram!'}\n⏱️ Waktu: ${new Date().toLocaleString('id-ID')}`
+            })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+            res.json({ success: true, message: "Notifikasi Telegram berhasil terkirim!" });
+        } else {
+            res.status(400).json({ error: `Telegram Error: ${data.description || 'Response Error'}` });
+        }
+    } catch(e) {
+        res.status(500).json({ error: "Gagal mengirim notifikasi Telegram: " + e.message });
+    }
+});
+
 app.listen(port, "0.0.0.0", () => {
         sysLog('INFO', `NVR Backend berjalan di port ${port}`);
     });

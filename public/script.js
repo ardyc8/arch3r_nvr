@@ -3980,11 +3980,11 @@ function switchAIGridTab(tabName) {
 }
 window.switchAIGridTab = switchAIGridTab;
 
-// Sub-tab switcher for Live Studio settings (zones, prompt, esp, telemetry)
+// Sub-tab switcher for Live Studio settings (zones, prompt, esp, telemetry, telegram)
 function switchAISubTab(subTabName) {
-    const subTabs = ['zones', 'prompt', 'esp', 'telemetry'];
+    const subTabs = ['zones', 'prompt', 'esp', 'telemetry', 'telegram'];
     subTabs.forEach(tab => {
-        const pane = document.getElementById(`ai-subtab-pane-${tab}`);
+        const pane = document.getElementById(`ai-subpane-${tab}`) || document.getElementById(`ai-subtab-pane-${tab}`);
         const btn = document.getElementById(`ai-subtab-btn-${tab}`);
         if (pane) {
             pane.style.display = (tab === subTabName) ? 'block' : 'none';
@@ -3993,7 +3993,7 @@ function switchAISubTab(subTabName) {
             if (tab === subTabName) {
                 btn.style.color = '#38bdf8';
                 btn.style.borderBottomColor = '#38bdf8';
-                btn.style.background = 'rgba(56,189,248,0.08)';
+                btn.style.background = 'rgba(56,189,248,0.12)';
             } else {
                 btn.style.color = 'var(--text-muted, #94a3b8)';
                 btn.style.borderBottomColor = 'transparent';
@@ -4003,6 +4003,127 @@ function switchAISubTab(subTabName) {
     });
 }
 window.switchAISubTab = switchAISubTab;
+
+// Render Daftar Kamera AI NVR Overview Grid
+function renderAiCameraOverviewGrid() {
+    const grid = document.getElementById('ai-cameras-overview-grid');
+    const badge = document.getElementById('ai-cam-count-badge');
+    if (!grid) return;
+
+    const camList = (window.cameras || (typeof cameras !== 'undefined' ? cameras : [])).filter(c => c && c.id && c.id !== 'virtual_test');
+    if (badge) badge.textContent = `${camList.length} Kamera NVR`;
+
+    if (camList.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column:1/-1; padding:1.2rem; text-align:center; color:var(--text-muted); background:rgba(0,0,0,0.25); border-radius:8px; font-size:0.85rem; border:1px dashed var(--border);">
+                ⚠️ Belum ada kamera terhubung di NVR. Silakan tambahkan kamera baru di menu Pengaturan Kamera.
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = camList.map((cam, idx) => {
+        const isSelected = (typeof aiCurrentCam !== 'undefined' && aiCurrentCam && String(aiCurrentCam.id) === String(cam.id));
+        const aiEnabled = (cam.ai_config && cam.ai_config.enabled !== false);
+        const presetName = (cam.ai_config && cam.ai_config.preset_name) ? cam.ai_config.preset_name : 'Standard ROI';
+        const roiCount = (cam.ai_config && cam.ai_config.grid && Array.isArray(cam.ai_config.grid.zones)) ? cam.ai_config.grid.zones.length : 1;
+        
+        return `
+            <div style="background:rgba(15,23,42,0.85); border:1px solid ${isSelected ? '#38bdf8' : 'var(--border)'}; border-radius:8px; padding:0.85rem; box-shadow:${isSelected ? '0 0 12px rgba(56,189,248,0.25)' : 'none'}; transition:all 0.2s ease;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+                    <div>
+                        <div style="font-weight:700; font-size:0.88rem; color:#f8fafc; display:flex; align-items:center; gap:0.4rem;">
+                            <span>📹</span> ${cam.name || ('Kamera ' + (idx + 1))}
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-family:monospace; margin-top:2px;">
+                            ${cam.ip || 'RTSP Local'}
+                        </div>
+                    </div>
+                    <span style="font-size:0.7rem; padding:2px 7px; border-radius:4px; font-weight:700; ${aiEnabled ? 'background:rgba(34,197,94,0.15); color:#34d399; border:1px solid rgba(34,197,94,0.3);' : 'background:rgba(148,163,184,0.15); color:#94a3b8; border:1px solid rgba(148,163,184,0.3);'}">
+                        ${aiEnabled ? '🟢 AI Aktif' : '⚪ AI Non-Aktif'}
+                    </span>
+                </div>
+                <div style="font-size:0.75rem; color:#93c5fd; margin-bottom:0.65rem; display:flex; justify-content:space-between; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;">
+                    <span>Preset: <strong>${presetName}</strong></span>
+                    <span><strong>${roiCount}</strong> Objek ROI</span>
+                </div>
+                <button type="button" class="btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}" onclick="selectCamForAIWorkstation('${cam.id}')" style="width:100%; font-size:0.78rem; padding:0.3rem 0.5rem; justify-content:center; display:flex; align-items:center; gap:0.35rem; ${isSelected ? 'background:#0284c7; border-color:#38bdf8;' : ''}">
+                    <span>${isSelected ? '🎯 Sedang Dikelola' : '👉 Pilih Kamera Ini'}</span>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+window.renderAiCameraOverviewGrid = renderAiCameraOverviewGrid;
+
+function selectCamForAIWorkstation(camId) {
+    const select = document.getElementById('ai-cam-select');
+    if (select) {
+        select.value = camId;
+        loadCamStreamForAI();
+    }
+    renderAiCameraOverviewGrid();
+    const studio = document.querySelector('.ai-workstation-card');
+    if (studio) studio.scrollIntoView({ behavior: 'smooth' });
+}
+window.selectCamForAIWorkstation = selectCamForAIWorkstation;
+
+function applyQuickPresetYai(presetVal) {
+    if (!presetVal) return;
+    if (presetVal === 'kios_bensin') {
+        if (typeof applyAIPromptPreset === 'function') applyAIPromptPreset('spbu_refuel');
+        if (typeof setUniversalPreset === 'function') setUniversalPreset('spbu');
+        appendAITelemetry('⛽ Preset .yai "Kios Bensin SPBU" berhasil diterapkan ke kamera!', 'success');
+    } else if (presetVal === 'gerbang_masuk') {
+        if (typeof applyAIPromptPreset === 'function') applyAIPromptPreset('vehicle_entry');
+        if (typeof setUniversalPreset === 'function') setUniversalPreset('gate');
+        appendAITelemetry('🚪 Preset .yai "Keamanan Gerbang Masuk" berhasil diterapkan!', 'success');
+    } else if (presetVal === 'area_parkir') {
+        if (typeof applyAIPromptPreset === 'function') applyAIPromptPreset('waiting_queue');
+        if (typeof setUniversalPreset === 'function') setUniversalPreset('parking');
+        appendAITelemetry('🅿️ Preset .yai "Area Parkir & Antrean" berhasil diterapkan!', 'success');
+    } else if (presetVal === 'kasir_transaksi') {
+        if (typeof applyAIPromptPreset === 'function') applyAIPromptPreset('spbu_refuel');
+        if (typeof setUniversalPreset === 'function') setUniversalPreset('cashier');
+        appendAITelemetry('💳 Preset .yai "Meja Kasir & Transaksi" berhasil diterapkan!', 'success');
+    }
+}
+window.applyQuickPresetYai = applyQuickPresetYai;
+
+async function testAITelegramAlert() {
+    const botInp = document.getElementById('ai-telegram-bot-token');
+    const chatInp = document.getElementById('ai-telegram-chat-id');
+    const msgInp = document.getElementById('ai-telegram-test-msg');
+    const statusDiv = document.getElementById('ai-telegram-test-status');
+
+    const botToken = botInp ? botInp.value.trim() : '';
+    const chatId = chatInp ? chatInp.value.trim() : '';
+    const message = msgInp ? msgInp.value.trim() : 'Tes notifikasi alarm YOLO Visi AI NVR';
+
+    if (statusDiv) {
+        statusDiv.innerHTML = '<span style="color:#60a5fa;">⏳ Mengirim notifikasi tes Telegram...</span>';
+    }
+
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
+        const res = await fetchFn('/api/ai/test-telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ botToken, chatId, message })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (statusDiv) statusDiv.innerHTML = `<span style="color:#34d399;">✅ ${data.message}</span>`;
+            appendAITelemetry('✈️ Notifikasi Telegram berhasil terkirim!', 'success');
+        } else {
+            if (statusDiv) statusDiv.innerHTML = `<span style="color:#f87171;">❌ ${data.error || 'Gagal mengirim Telegram'}</span>`;
+            appendAITelemetry(`❌ Gagal Telegram: ${data.error}`, 'alarm');
+        }
+    } catch (e) {
+        if (statusDiv) statusDiv.innerHTML = `<span style="color:#f87171;">❌ Error: ${e.message}</span>`;
+    }
+}
+window.testAITelegramAlert = testAITelegramAlert;
 
 // Simulated SPBU targets (Motorcyclist & Person Refueling)
 let aiSimState = {
@@ -4077,9 +4198,12 @@ async function initYoloAiPage(defaultCamId = null) {
     
     // Clear & seed initial telemetry log
     clearAITelemetryLog();
-    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.1.9...', 'system');
+    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.2.0...', 'system');
     appendAITelemetry('📋 Memuat konfigurasi kamera nyata NVR & Engine Prompt SPBU.', 'system');
     
+    // Render camera overview grid
+    renderAiCameraOverviewGrid();
+
     // Start continuous rendering loop
     aiStartRenderLoop();
 
@@ -4246,6 +4370,7 @@ async function loadCamStreamForAI() {
 
     // Real camera is identified
     aiCurrentCam = cam;
+    if (typeof renderAiCameraOverviewGrid === 'function') renderAiCameraOverviewGrid();
     initAIDrawCanvas();
     appendAITelemetry(`📹 Target Kamera NVR: ${cam.name} (${cam.ip || 'Stream RTSP'})`, 'info');
 
