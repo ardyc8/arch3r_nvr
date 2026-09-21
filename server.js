@@ -5429,6 +5429,95 @@ app.post('/api/ai/test-telegram', verifyToken, async (req, res) => {
     }
 });
 
+// ==========================================
+// Isolated Kios Bensin AI Surveillance Config API
+// ==========================================
+app.post('/api/save-config', verifyToken, async (req, res) => {
+    try {
+        const payload = req.body;
+        if (!payload || typeof payload !== 'object') {
+            return res.status(400).json({ error: 'Payload JSON tidak valid.' });
+        }
+
+        const db = getNvrDb();
+        db.kios_bensin_config = {
+            ...payload,
+            updated_at: new Date().toISOString()
+        };
+        saveNvrDb(db);
+
+        // Passively notify local python service on port 8000 without crashing/restarting
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1200);
+            await fetch('http://127.0.0.1:8000/api/kios-bensin/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            }).catch(() => null);
+            clearTimeout(timeoutId);
+        } catch (e) {
+            // Passive catch, do not fail
+        }
+
+        sysLog('INFO', '[Kios Bensin AI] Configuration updated successfully', 'SURVEILLANCE');
+        return res.json({
+            success: true,
+            message: 'Konfigurasi Kios Bensin AI Surveillance System berhasil disimpan secara persisten!',
+            config: db.kios_bensin_config
+        });
+    } catch (e) {
+        console.error('[Kios Bensin Save Config Error]', e);
+        return res.status(500).json({ error: 'Gagal menyimpan konfigurasi: ' + e.message });
+    }
+});
+
+app.get('/api/get-config', verifyToken, (req, res) => {
+    try {
+        const db = getNvrDb();
+        const defaultConfig = {
+            video_source: {
+                rtsp_url: "rtsp://admin:admin123@192.168.1.102:554/h264/ch1/sub/av_stream",
+                transport_protocol: "udp"
+            },
+            digital_crop: {
+                zoom_level: 1.0,
+                y_start: 0,
+                y_end: 720,
+                x_start: 0,
+                x_end: 1280
+            },
+            roi_zone: {
+                x1: 150,
+                y1: 100,
+                x2: 550,
+                y2: 420
+            },
+            yolo_settings: {
+                imgsz: 320,
+                confidence_threshold: 0.5,
+                target_classes: [0, 2, 3],
+                dwell_time_seconds: 15
+            },
+            notifications: {
+                enable_telegram: true,
+                bot_token: "",
+                chat_id: "",
+                action_type: "snapshot_only"
+            }
+        };
+
+        const config = db.kios_bensin_config || defaultConfig;
+        return res.json({
+            success: true,
+            config: config
+        });
+    } catch (e) {
+        return res.status(500).json({ error: 'Gagal membaca konfigurasi: ' + e.message });
+    }
+});
+
 app.listen(port, "0.0.0.0", () => {
         sysLog('INFO', `NVR Backend berjalan di port ${port}`);
     });
