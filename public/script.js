@@ -6661,6 +6661,31 @@ function closeAIGridModal() {
     }
 }
 
+function openAISettingsModal() {
+    const modal = document.getElementById('modal-ai-settings');
+    if (modal) {
+        modal.style.display = 'flex';
+        appendAITelemetry('⚙️ Membuka Modal Pengaturan AI, IoT Alarm & Presets...', 'info');
+    }
+}
+
+function closeAISettingsModal() {
+    const modal = document.getElementById('modal-ai-settings');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Global Keydown Handler for Settings Modal ESC support
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+        const settingsModal = document.getElementById('modal-ai-settings');
+        if (settingsModal && settingsModal.style.display !== 'none' && settingsModal.style.display !== '') {
+            closeAISettingsModal();
+        }
+    }
+});
+
 // ============================================================================
 // SIMULATION LAB SANDBOX (ISOLATED VISUAL TESTING FOR AI LOGIC & SPBU SCENARIO)
 // ============================================================================

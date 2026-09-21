@@ -1099,7 +1099,7 @@
                                 <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
                                     <span>🤖</span> YOLOv8 AI Vision Engine & Presets
                                 </h2>
-                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.4</span>
+                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.5</span>
                             </div>
                             <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
                                 Addon Analitik Cerdas untuk NVR: Deteksi Area ROI Live RTSP, Engine Aturan Prompt SPBU, Notifikasi Alarm ESP8266 IoT, Notifikasi Telegram, dan Manajemen File Preset .yai.
@@ -1179,8 +1179,12 @@
                                         </div>
                                     </div>
                                     <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
+                                        <!-- Pengaturan AI & Alarm Modal Button -->
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="openAISettingsModal()" style="background:#2563eb; border-color:#3b82f6; font-size:0.8rem; padding:0.4rem 0.85rem; font-weight:700; display:flex; align-items:center; gap:0.35rem; box-shadow:0 0 10px rgba(37,99,235,0.4);" title="Buka Modal Pengaturan AI & Alarm">
+                                            <span>⚙️</span> Pengaturan AI & Alarm
+                                        </button>
                                         <!-- Draw AI ( Panel Full Screen ) -->
-                                        <button type="button" class="btn btn-sm btn-primary" onclick="enterAIFullscreenDrawing()" style="background:linear-gradient(135deg, #2563eb, #1d4ed8); border-color:#3b82f6; font-size:0.8rem; padding:0.4rem 0.85rem; font-weight:700; display:flex; align-items:center; gap:0.35rem; box-shadow:0 0 10px rgba(37,99,235,0.4);" title="Buka Panel Editor ROI Full Screen">
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="enterAIFullscreenDrawing()" style="background:rgba(59,130,246,0.18); color:#60a5fa; border-color:rgba(59,130,246,0.4); font-size:0.8rem; padding:0.4rem 0.85rem; font-weight:700; display:flex; align-items:center; gap:0.35rem;" title="Buka Panel Editor ROI Full Screen">
                                             <span>⛶</span> Draw AI (Panel Full Screen)
                                         </button>
                                         <!-- Hidden File Input for .yai Config Upload -->
@@ -1197,13 +1201,10 @@
                             </div>
                             
                             <!-- ======================================================== -->
-                            <!-- WORKSTATION 2-COLUMN LAYOUT (LEFT: VIDEO & LOG, RIGHT: CONFIG) -->
+                            <!-- STUDIO MONITOR VIEW (CLEAN 1-COLUMN MONITOR FOR OPTION B)  -->
                             <!-- ======================================================== -->
-                            <div class="ai-workstation-grid" style="display:grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1rem; align-items: start;">
-                                
-                                <!-- LEFT COLUMN: LIVE VIDEO PREVIEW & TELEMETRY LOG -->
-                                <div class="ai-left-column" style="display:flex; flex-direction:column;">
-                                    <!-- Visual Surveillance Container with FLOATING HUD CONTROLS -->
+                            <div class="ai-studio-monitor-view" style="display:flex; flex-direction:column; width:100%;">
+                                <!-- Visual Surveillance Container with FLOATING HUD CONTROLS -->
                             <div id="ai-canvas-container" style="position:relative; width:100%; aspect-ratio:16/9; max-height:460px; min-height:280px; background:#070b14; border:1px solid #1e293b; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; user-select:none; box-shadow:inset 0 0 30px rgba(0,0,0,0.95); margin-bottom:0.85rem;">
                                 
                                 <!-- Floating Top Information Bar (Non-intrusive HUD) -->
@@ -1427,12 +1428,32 @@
                                     <div style="color:#64748b;">[00:00:00.000] ℹ️ Terminal Deteksi Visi AI Real-time Aktif... Siap membaca feed video kamera.</div>
                                 </div>
                             </div>
-                                </div> <!-- END LEFT COLUMN -->
+                            </div> <!-- END STUDIO MONITOR VIEW -->
 
-                                <!-- RIGHT COLUMN: CONFIGURATION PANEL & SUBPANES -->
-                                <div class="ai-right-column" style="display:flex; flex-direction:column;">
-                                    <!-- SUB-TAB CONTROLS FOR LIVE CAMERA CONFIGURATION -->
-                                    <div class="ai-config-tab-container" style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                            <!-- ======================================================== -->
+                            <!-- MODAL POP-UP: PENGATURAN AI VISION, IOT ALARM & PRESETS   -->
+                            <!-- ======================================================== -->
+                            <div id="modal-ai-settings" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(3,7,18,0.85); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
+                                <div style="background:#0f172a; border:1px solid #1e293b; border-radius:12px; width:100%; max-width:880px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 20px 50px rgba(0,0,0,0.8); overflow:hidden;">
+                                    
+                                    <!-- Modal Header -->
+                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.85rem 1.25rem; background:rgba(15,23,42,0.95); border-bottom:1px solid #1e293b;">
+                                        <div style="display:flex; align-items:center; gap:0.6rem;">
+                                            <span style="font-size:1.3rem;">⚙️</span>
+                                            <div>
+                                                <h3 style="margin:0; font-size:1.05rem; color:#f8fafc; font-weight:700;">Pengaturan AI Vision Engine, IoT Alarm & Presets</h3>
+                                                <div style="font-size:0.75rem; color:var(--text-muted);">Konfigurasi Target Objek, Sensitivitas, IP ESP8266 & Telegram Bot</div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="closeAISettingsModal()" style="font-size:0.9rem; padding:0.2rem 0.6rem; border-radius:6px; background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.3);" title="Tutup Modal (ESC)">
+                                            ✖
+                                        </button>
+                                    </div>
+
+                                    <!-- Modal Content Body -->
+                                    <div style="padding:1rem 1.25rem; overflow-y:auto; flex:1;">
+                                        <!-- SUB-TAB CONTROLS FOR LIVE CAMERA CONFIGURATION -->
+                                        <div class="ai-config-tab-container" style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
                                 <!-- Sub-tabs bar -->
                                 <div style="display:flex; border-bottom:1px solid var(--border); background:rgba(10,15,28,0.85); overflow-x:auto; padding:0 0.5rem; align-items:center;">
                                     <button type="button" id="ai-subtab-btn-zones" onclick="switchAISubTab('zones')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:#38bdf8; border-bottom:2px solid #38bdf8; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
@@ -1663,11 +1684,26 @@
                                         <div id="ai-text-telemetry-log" style="height:130px; overflow-y:auto; padding:0.5rem 0.75rem; font-family:'Courier New', Courier, monospace; font-size:0.75rem; line-height:1.45; color:#38bdf8; background:#040711; border:1px solid #1e293b; border-radius:4px; user-select:text;">
                                             <div style="color:#64748b;">[00:00:00.000] ℹ️ Inisialisasi Terminal Visi AI Arch3r NVR... Menghubungkan ke stream kamera.</div>
                                         </div>
+                                    </div> <!-- END ai-config-tab-container -->
+                                </div> <!-- END Modal Content Body -->
+
+                                <!-- Modal Footer -->
+                                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1.25rem; background:rgba(15,23,42,0.95); border-top:1px solid #1e293b;">
+                                    <div style="font-size:0.78rem; color:#38bdf8; font-family:monospace;">
+                                        ℹ️ Perubahan akan langsung diterapkan ke memori server NVR.
+                                    </div>
+                                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="closeAISettingsModal()" style="font-size:0.82rem; padding:0.4rem 0.9rem;">
+                                            Batal
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="saveAIGrid(); closeAISettingsModal();" style="background:#16a34a; border-color:#22c55e; font-weight:700; font-size:0.82rem; padding:0.4rem 1.1rem; box-shadow:0 0 10px rgba(34,197,94,0.4);">
+                                            💾 Simpan & Terapkan Konfigurasi
+                                        </button>
                                     </div>
                                 </div>
-                                </div> <!-- END RIGHT COLUMN -->
-                            </div> <!-- END WORKSTATION GRID -->
-                        </div>
+                            </div>
+                        </div> <!-- END MODAL AI SETTINGS -->
+                    </div> <!-- END AI TAB PANE LIVE -->
 
                         <!-- ======================================================== -->
                         <!-- TAB 2: LAB SIMULASI & PEMBACAAN TEKS AI (TERISOLASI)     -->
