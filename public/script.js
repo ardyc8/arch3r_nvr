@@ -4602,6 +4602,14 @@ function initAIDrawCanvas() {
     updateAICursor();
     
     canvas.onmousedown = (e) => {
+        // Enforce Read-Only Preview on Main Live Page: ROI editing is ONLY allowed in Fullscreen Drawing Mode
+        if (!isAIFullscreen) {
+            e.preventDefault();
+            appendAITelemetry('🔒 Mode Pratinjau Saja (Read-Only). Mengalihkan ke Mode Editor Fullscreen...', 'info');
+            enterAIFullscreenDrawing();
+            return;
+        }
+
         // Pan condition: middle mouse (1), right click (2), space key held, or tool is 'pan'
         if (e.button === 1 || e.button === 2 || isSpacePressed || aiInteractionMode === 'pan') {
             e.preventDefault();
@@ -4695,6 +4703,14 @@ function initAIDrawCanvas() {
     
     // Touchscreen / mobile / STB touch monitor support
     canvas.ontouchstart = (e) => {
+        // Enforce Read-Only Preview on Main Live Page for touch devices
+        if (!isAIFullscreen) {
+            e.preventDefault();
+            appendAITelemetry('🔒 Mode Pratinjau Saja (Read-Only). Mengalihkan ke Mode Editor Fullscreen...', 'info');
+            enterAIFullscreenDrawing();
+            return;
+        }
+
         // Multi-touch pinch zoom
         if (e.touches.length === 2) {
             isAIDrawing = false;

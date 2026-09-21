@@ -1099,7 +1099,7 @@
                                 <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
                                     <span>🤖</span> YOLOv8 AI Vision Engine & Presets
                                 </h2>
-                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.2</span>
+                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.3</span>
                             </div>
                             <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
                                 Addon Analitik Cerdas untuk NVR: Deteksi Area ROI Live RTSP, Engine Aturan Prompt SPBU, Notifikasi Alarm ESP8266 IoT, Notifikasi Telegram, dan Manajemen File Preset .yai.
@@ -1206,6 +1206,9 @@
                                             <span style="width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; box-shadow:0 0 6px #22c55e;"></span>
                                             LIVE SURVEILLANCE
                                         </div>
+                                        <div style="background:rgba(234,179,8,0.2); color:#fde047; border:1px solid rgba(234,179,8,0.4); padding:3px 9px; border-radius:12px; font-size:0.72rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                                            🔒 PRATINJAU ROI (Read-Only)
+                                        </div>
                                         <div id="ai-zones-chips-list" style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap;">
                                             <!-- Dynamic zone chips rendered by script.js -->
                                         </div>
@@ -1213,19 +1216,17 @@
                                     
                                     <!-- Floating Right Action Buttons -->
                                     <div style="display:flex; align-items:center; gap:0.4rem; pointer-events:auto;">
-                                        <button type="button" class="btn btn-sm btn-primary" onclick="enterAIFullscreenDrawing()" style="background:linear-gradient(135deg, #2563eb, #1d4ed8); border-color:#3b82f6; font-weight:700; font-size:0.78rem; padding:0.35rem 0.8rem; border-radius:20px; display:flex; align-items:center; gap:0.35rem; box-shadow:0 4px 12px rgba(0,0,0,0.5);" title="Buka Layar Penuh">
-                                            <span>⛶</span> Layar Penuh
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="enterAIFullscreenDrawing()" style="background:linear-gradient(135deg, #2563eb, #1d4ed8); border-color:#3b82f6; font-weight:700; font-size:0.78rem; padding:0.35rem 0.85rem; border-radius:20px; display:flex; align-items:center; gap:0.35rem; box-shadow:0 4px 12px rgba(0,0,0,0.5);" title="Buka Editor ROI Layar Penuh">
+                                            <span>✏️</span> Draw AI (Panel Full Screen)
                                         </button>
                                     </div>
                                 </div>
 
-                                <!-- Floating Bottom Quick Navigation Controls (Zoom, Pan, Draw, Reset) -->
+                                <!-- Floating Bottom Quick Navigation Controls (Read-Only Preview Bar) -->
                                 <div class="ai-floating-bottom-bar" style="position:absolute; bottom:12px; left:50%; transform:translateX(-50%); z-index:20; background:rgba(15,23,42,0.88); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.15); border-radius:30px; padding:4px 12px; display:flex; align-items:center; gap:0.5rem; box-shadow:0 6px 20px rgba(0,0,0,0.7); user-select:none; white-space:nowrap; max-width:94vw; overflow-x:auto;">
-                                    <!-- Mode Switcher -->
-                                    <div style="display:inline-flex; gap:2px; background:rgba(0,0,0,0.4); border-radius:16px; padding:2px; border:1px solid rgba(255,255,255,0.1);">
-                                        <button type="button" id="ai-tool-draw-btn-normal" onclick="setAIInteractionMode('draw')" style="background:#2563eb; color:white; border:none; border-radius:14px; font-size:0.73rem; font-weight:700; padding:3px 10px; cursor:pointer;" title="Mode Gambar Objek">✏️ Gambar</button>
-                                        <button type="button" id="ai-tool-pan-btn-normal" onclick="setAIInteractionMode('pan')" style="background:transparent; color:#94a3b8; border:none; border-radius:14px; font-size:0.73rem; font-weight:700; padding:3px 10px; cursor:pointer;" title="Mode Geser Layar">✋ Geser</button>
-                                    </div>
+                                    <button type="button" onclick="enterAIFullscreenDrawing()" style="background:linear-gradient(135deg, #2563eb, #1d4ed8); border:1px solid #3b82f6; color:white; font-size:0.75rem; font-weight:700; padding:4px 14px; border-radius:16px; cursor:pointer; display:flex; align-items:center; gap:0.35rem; box-shadow:0 0 12px rgba(37,99,235,0.5);">
+                                        <span>✏️</span> Edit Area ROI di Layar Penuh (Draw AI)
+                                    </button>
                                     <!-- Zoom Controls -->
                                     <div style="display:inline-flex; align-items:center; gap:2px; background:rgba(0,0,0,0.4); border-radius:16px; padding:2px 6px; border:1px solid rgba(255,255,255,0.1);">
                                         <button type="button" onclick="zoomOutAI()" style="background:transparent; color:#cbd5e1; border:none; font-size:0.75rem; cursor:pointer; padding:0 3px;" title="Zoom Out">🔍-</button>
@@ -1233,11 +1234,7 @@
                                         <button type="button" onclick="zoomInAI()" style="background:transparent; color:#cbd5e1; border:none; font-size:0.75rem; cursor:pointer; padding:0 3px;" title="Zoom In">🔍+</button>
                                         <button type="button" onclick="resetAIZoom()" style="background:transparent; color:#94a3b8; border:none; font-size:0.72rem; cursor:pointer; padding:0 3px;" title="Reset Zoom">🔄</button>
                                     </div>
-                                    <!-- Quick Object Add -->
-                                    <button type="button" onclick="addNewZoneSlot()" style="background:rgba(34,197,94,0.2); border:1px solid rgba(34,197,94,0.4); color:#34d399; font-size:0.74rem; font-weight:700; padding:3px 9px; border-radius:14px; cursor:pointer;" title="Tambah Objek Baru">
-                                        ➕ Objek
-                                    </button>
-                                    <button type="button" onclick="saveCurrentZone()" style="background:#16a34a; border:1px solid #22c55e; color:white; font-size:0.74rem; font-weight:700; padding:3px 10px; border-radius:14px; cursor:pointer;" title="Simpan Objek Aktif">
+                                    <button type="button" onclick="saveCurrentZone()" style="background:#16a34a; border:1px solid #22c55e; color:white; font-size:0.74rem; font-weight:700; padding:3px 10px; border-radius:14px; cursor:pointer;" title="Simpan Konfigurasi Saat Ini">
                                         💾 Simpan
                                     </button>
                                 </div>
