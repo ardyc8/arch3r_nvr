@@ -4835,6 +4835,8 @@ function aiStopRenderLoop() {
     }
 }
 
+let aiLiveFrameCounter = 0;
+
 // RENDER AI SURVEILLANCE OVERLAY FOR LIVE CAMERA (100% TRANSPARENT BACKGROUND)
 function renderAIFrame() {
     if (!aiDrawCanvas || !aiDrawCtx) return;
@@ -4843,6 +4845,34 @@ function renderAIFrame() {
     const h = aiDrawCanvas.height;
     const video = document.getElementById('ai-stream-preview');
     const isVideoPlaying = video && !video.paused && video.readyState >= 2 && video.videoWidth > 0;
+    
+    // Live Telemetry Scanning Ticks (Runs continuously while live tab is open)
+    aiLiveFrameCounter++;
+    if (aiLiveFrameCounter % 150 === 0) {
+        const camNameStr = (aiCurrentCam && aiCurrentCam.name) ? aiCurrentCam.name : 'Kamera NVR';
+        const evalBadge = document.getElementById('ai-telemetry-eval-badge');
+        const activeZonesCount = (aiZones && aiZones.length > 0) ? aiZones.length : (aiGridRect.w > 0 ? 1 : 0);
+        const curLabel = (aiZones && aiZones[aiActiveZoneIndex]) ? (aiZones[aiActiveZoneIndex].label || `Objek #${aiActiveZoneIndex + 1}`) : 'Area ROI Utama';
+        
+        if (isVideoPlaying) {
+            if (evalBadge) {
+                evalBadge.innerHTML = '🟢 STATUS: LIVE SCANNING & PEMBACAAN VISI';
+                evalBadge.style.background = 'rgba(34,197,94,0.15)';
+                evalBadge.style.color = '#34d399';
+                evalBadge.style.borderColor = 'rgba(34,197,94,0.3)';
+            }
+            appendAITelemetry(`👁️ SCAN LIVE [25 FPS]: ${camNameStr} | Objek Aktif: "${curLabel}" (${activeZonesCount} Total ROI)`, 'scan');
+            appendAITelemetry(`📊 ANALISIS FRAME: Feed RTSP Aktif • Scanning Aturan ROI & Evaluasi Dwell...`, 'eval');
+        } else {
+            if (evalBadge) {
+                evalBadge.innerHTML = '🎯 STATUS: MENUNGGU VIDEO STREAM';
+                evalBadge.style.background = 'rgba(234,179,8,0.15)';
+                evalBadge.style.color = '#facc15';
+                evalBadge.style.borderColor = 'rgba(234,179,8,0.3)';
+            }
+            appendAITelemetry(`⌛ MENUNGGU STREAM: ${camNameStr} • Siaga membaca feed video...`, 'system');
+        }
+    }
     
     // Always clear canvas for 100% transparency - video underneath will show directly!
     ctx.clearRect(0, 0, w, h);

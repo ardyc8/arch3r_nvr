@@ -1099,7 +1099,7 @@
                                 <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
                                     <span>🤖</span> YOLOv8 AI Vision Engine & Presets
                                 </h2>
-                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.0</span>
+                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.1</span>
                             </div>
                             <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
                                 Addon Analitik Cerdas untuk NVR: Deteksi Area ROI Live RTSP, Engine Aturan Prompt SPBU, Notifikasi Alarm ESP8266 IoT, Notifikasi Telegram, dan Manajemen File Preset .yai.
@@ -1401,27 +1401,43 @@
                                     🚨 INTRUSI TERDETEKSI: TARGET DI DALAM AREA GRID!
                                 </div>
                             </div>
+
+                            <!-- REAL-TIME TELEMETRY LOG TERMINAL (DIRECTLY BELOW VIDEO PREVIEW CANVAS) -->
+                            <div id="ai-live-telemetry-card" style="background:rgba(10,15,28,0.92); border:1px solid var(--border); border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:0.85rem;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem;">
+                                    <div style="display:flex; align-items:center; gap:0.45rem;">
+                                        <strong style="font-size:0.82rem; color:#38bdf8; display:flex; align-items:center; gap:0.35rem;">
+                                            <span>📟</span> Telemetri Output Deteksi Visi AI Real-time
+                                        </strong>
+                                        <span style="font-size:0.7rem; padding:1px 6px; border-radius:3px; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.4); font-weight:600;">● SCANNING 25 FPS</span>
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:0.35rem;">
+                                        <span id="ai-telemetry-eval-badge" style="font-size:0.72rem; padding:1px 6px; border-radius:3px; background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3); font-weight:600;">
+                                            🎯 STATUS: MENUNGGU OBJEK
+                                        </span>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="copyAITelemetryLog()" style="padding:0.15rem 0.45rem; font-size:0.72rem;">📋 Salin Log</button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="clearAITelemetryLog()" style="padding:0.15rem 0.45rem; font-size:0.72rem; color:#ef4444;">🗑️ Bersihkan</button>
+                                    </div>
+                                </div>
+                                <div id="ai-text-telemetry-log" style="height:110px; overflow-y:auto; padding:0.5rem 0.75rem; font-family:'Courier New', Courier, monospace; font-size:0.75rem; line-height:1.45; color:#38bdf8; background:#040711; border:1px solid #1e293b; border-radius:4px; user-select:text;">
+                                    <div style="color:#64748b;">[00:00:00.000] ℹ️ Terminal Deteksi Visi AI Real-time Aktif... Siap membaca feed video kamera.</div>
+                                </div>
+                            </div>
                             
-                            <!-- SUB-TAB CONTROLS FOR LIVE CAMERA (GROUPED INTO DETAIL & OUTPUT) -->
+                            <!-- SUB-TAB CONTROLS FOR LIVE CAMERA CONFIGURATION -->
                             <div class="ai-config-tab-container" style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
                                 <!-- Sub-tabs bar -->
                                 <div style="display:flex; border-bottom:1px solid var(--border); background:rgba(10,15,28,0.85); overflow-x:auto; padding:0 0.5rem; align-items:center;">
-                                    <span style="font-size:0.75rem; font-weight:800; color:#38bdf8; padding:0 0.5rem; font-family:monospace; white-space:nowrap;">• DETAIL:</span>
-                                    <button type="button" id="ai-subtab-btn-zones" onclick="switchAISubTab('zones')" style="padding:0.6rem 0.85rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:#38bdf8; border-bottom:2px solid #38bdf8; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        🎯 Daftar Objek & ROI
+                                    <button type="button" id="ai-subtab-btn-zones" onclick="switchAISubTab('zones')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:#38bdf8; border-bottom:2px solid #38bdf8; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
+                                        🎯 Area Deteksi (Multi-Objek)
                                     </button>
-                                    <button type="button" id="ai-subtab-btn-prompt" onclick="switchAISubTab('prompt')" style="padding:0.6rem 0.85rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        🧠 Prompt & Kondisi
+                                    <button type="button" id="ai-subtab-btn-prompt" onclick="switchAISubTab('prompt')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
+                                        🧠 Aturan Prompt AI & Kondisi
                                     </button>
-                                    
-                                    <span style="font-size:0.75rem; font-weight:800; color:#f59e0b; padding:0 0.5rem 0 0.8rem; border-left:1px solid rgba(255,255,255,0.1); font-family:monospace; white-space:nowrap;">• OUTPUT:</span>
-                                    <button type="button" id="ai-subtab-btn-telemetry" onclick="switchAISubTab('telemetry')" style="padding:0.6rem 0.85rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        📟 Telemetri Teks (Log)
-                                    </button>
-                                    <button type="button" id="ai-subtab-btn-esp" onclick="switchAISubTab('esp')" style="padding:0.6rem 0.85rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
+                                    <button type="button" id="ai-subtab-btn-esp" onclick="switchAISubTab('esp')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
                                         📡 Alarm IoT ESP8266 & ESP32 / Relai
                                     </button>
-                                    <button type="button" id="ai-subtab-btn-telegram" onclick="switchAISubTab('telegram')" style="padding:0.6rem 0.85rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
+                                    <button type="button" id="ai-subtab-btn-telegram" onclick="switchAISubTab('telegram')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
                                         ✈️ Telegram & Webhook Notifikasi
                                     </button>
                                 </div>
