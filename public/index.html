@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.2.8 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <title>Arch3r NVR Ver. 10.2.9 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
     <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -76,7 +76,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 10.0.3</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 10.2.9</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -110,7 +110,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 10.1.3</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 10.2.9</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -186,7 +186,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.2.8</h3>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.2.9</h3>
                 <div style="display:flex; align-items:center; margin-left:auto;">
                     <img src="Archer.ico?v=2" alt="Arch3r" style="height:26px; width:26px; object-fit:contain; border-radius:4px;">
                 </div>
@@ -1099,7 +1099,7 @@
                                 <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
                                     <span>🤖</span> YOLOv8 AI Vision Engine & Presets
                                 </h2>
-                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.5</span>
+                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.2.9</span>
                             </div>
                             <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
                                 Addon Analitik Cerdas untuk NVR: Deteksi Area ROI Live RTSP, Engine Aturan Prompt SPBU, Notifikasi Alarm ESP8266 IoT, Notifikasi Telegram, dan Manajemen File Preset .yai.
@@ -1226,520 +1226,10 @@
                     
                     <!-- Hidden Modal AI Settings (Restored to Clean Default State) -->
                     <div id="modal-ai-settings" style="display:none;"></div>
-                     style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(3,7,18,0.85); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
-                                <div style="background:#0f172a; border:1px solid #1e293b; border-radius:12px; width:100%; max-width:880px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 20px 50px rgba(0,0,0,0.8); overflow:hidden;">
-                                    
-                                    <!-- Modal Header -->
-                                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.85rem 1.25rem; background:rgba(15,23,42,0.95); border-bottom:1px solid #1e293b;">
-                                        <div style="display:flex; align-items:center; gap:0.6rem;">
-                                            <span style="font-size:1.3rem;">⚙️</span>
-                                            <div>
-                                                <h3 style="margin:0; font-size:1.05rem; color:#f8fafc; font-weight:700;">Pengaturan AI Vision Engine, IoT Alarm & Presets</h3>
-                                                <div style="font-size:0.75rem; color:var(--text-muted);">Konfigurasi Target Objek, Sensitivitas, IP ESP8266 & Telegram Bot</div>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="closeAISettingsModal()" style="font-size:0.9rem; padding:0.2rem 0.6rem; border-radius:6px; background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.3);" title="Tutup Modal (ESC)">
-                                            ✖
-                                        </button>
-                                    </div>
-
-                                    <!-- Modal Content Body -->
-                                    <div style="padding:1rem 1.25rem; overflow-y:auto; flex:1;">
-                                        <!-- SUB-TAB CONTROLS FOR LIVE CAMERA CONFIGURATION -->
-                                        <div class="ai-config-tab-container" style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-                                <!-- Sub-tabs bar (3-Step Workflow + Tools) -->
-                                <div style="display:flex; border-bottom:1px solid var(--border); background:rgba(10,15,28,0.85); overflow-x:auto; padding:0 0.5rem; align-items:center;">
-                                    <button type="button" id="ai-subtab-btn-step1_cam" onclick="switchAISubTab('step1_cam')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:#38bdf8; border-bottom:2px solid #38bdf8; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        📹 Tahap 1: Kamera & Digital Zoom
-                                    </button>
-                                    <button type="button" id="ai-subtab-btn-zones" onclick="switchAISubTab('zones')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        🎯 Tahap 2: Gambar ROI & Layer
-                                    </button>
-                                    <button type="button" id="ai-subtab-btn-prompt" onclick="switchAISubTab('prompt')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        🧠 Tahap 3: Output Prompt & Alarm
-                                    </button>
-                                    <button type="button" id="ai-subtab-btn-esp" onclick="switchAISubTab('esp')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        📡 Alarm ESP8266 IoT
-                                    </button>
-                                    <button type="button" id="ai-subtab-btn-telegram" onclick="switchAISubTab('telegram')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        ✈️ Telegram Bot
-                                    </button>
-                                    <button type="button" id="ai-subtab-btn-sim" onclick="switchAISubTab('sim')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        🧪 Lab Simulasi
-                                    </button>
-                                    <button type="button" id="ai-subtab-btn-market" onclick="switchAISubTab('market')" style="padding:0.6rem 0.95rem; font-size:0.82rem; font-weight:700; border:none; background:none; color:var(--text-muted); border-bottom:2px solid transparent; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
-                                        🏪 Preset Market .yai
-                                    </button>
-                                </div>
-
-                                <div style="padding:0.85rem 1rem;">
-                                    <!-- SUB-PANE 1: ZONES & OBJECTS CONFIGURATION -->
-                                    
-                                    <!-- SUB-PANE STEP 1: CAMERA SELECT, RESOLUTION & DIGITAL ZOOM FOKUS -->
-                                    <div id="ai-subpane-step1_cam" style="display:block;">
-                                        <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:8px; padding:0.85rem 1rem; margin-bottom:0.85rem;">
-                                            <strong style="font-size:0.9rem; color:#38bdf8; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.6rem;">
-                                                <span>📹</span> Tahap 1: Pilih Kamera, Ukuran Resolusi Inferensi & Digital Zoom Fokus
-                                            </strong>
-                                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem; align-items:center;">
-                                                <div>
-                                                    <label style="display:block; margin-bottom:0.25rem; font-size:0.78rem; font-weight:600; color:#cbd5e1;">Pilih Kamera NVR:</label>
-                                                    <select id="ai-step1-cam-select" onchange="syncCamSelectStep1(this.value)" class="form-control" style="width:100%; padding:0.4rem 0.6rem; background:rgba(0,0,0,0.5); color:white; border:1px solid var(--border); border-radius:5px; font-size:0.85rem;">
-                                                        <option value="">-- Memuat Kamera NVR --</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style="display:block; margin-bottom:0.25rem; font-size:0.78rem; font-weight:600; color:#cbd5e1;">Ukuran Resolusi Inferensi (imgsz):</label>
-                                                    <select id="ai-step1-imgsz-select" onchange="syncImgSzStep1(this.value)" class="form-control" style="width:100%; padding:0.4rem 0.6rem; background:rgba(0,0,0,0.5); color:#38bdf8; border:1px solid #38bdf8; border-radius:5px; font-size:0.85rem; font-weight:700;">
-                                                        <option value="256">256x256 px (Ultra-Low / Super Hemat ARM CPU)</option>
-                                                        <option value="320" selected>320x320 px (Standar STB Armbian Anti-Lag)</option>
-                                                        <option value="416">416x416 px (Maksimal Armbian STB)</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style="display:block; margin-bottom:0.25rem; font-size:0.78rem; font-weight:600; color:#cbd5e1;">Digital Zoom & Pan Fokus:</label>
-                                                    <div style="display:flex; gap:0.4rem; align-items:center;">
-                                                        <button type="button" class="btn btn-sm btn-secondary" onclick="adjustDigitalZoom(-0.25)" style="font-size:0.78rem; font-weight:700;">🔍- Zoom Out</button>
-                                                        <span id="ai-zoom-level-badge" style="font-size:0.82rem; font-weight:700; color:#60a5fa; min-width:48px; text-align:center;">100%</span>
-                                                        <button type="button" class="btn btn-sm btn-secondary" onclick="adjustDigitalZoom(0.25)" style="font-size:0.78rem; font-weight:700;">🔍+ Zoom In</button>
-                                                        <button type="button" class="btn btn-sm btn-secondary" onclick="resetDigitalZoom()" style="font-size:0.75rem; color:#f87171;">🔄 Reset</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <!-- Pan Controls Bar -->
-                                            <div style="display:flex; gap:0.5rem; align-items:center; margin-top:0.65rem; padding-top:0.6rem; border-top:1px solid rgba(255,255,255,0.06); flex-wrap:wrap;">
-                                                <span style="font-size:0.76rem; color:var(--text-muted); font-weight:600;">Posisi Geser Fokus (Pan):</span>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="panDigitalZoom('left')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">⬅️ Kiri</button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="panDigitalZoom('right')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">➡️ Kanan</button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="panDigitalZoom('up')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">⬆️ Atas</button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="panDigitalZoom('down')" style="padding:0.2rem 0.55rem; font-size:0.75rem;">⬇️ Bawah</button>
-                                                <span style="font-size:0.72rem; color:#34d399; margin-left:auto;">✓ Zoom & Pan akan diterapkan ke Editor ROI Tahap 2</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--border);">
-                                            <span style="font-size:0.78rem; color:#94a3b8;">Langkah 1 Selesai. Klik tombol untuk mulai menggambar kotak ROI di area fokus.</span>
-                                            <button type="button" class="btn btn-sm btn-primary" onclick="switchAISubTab('zones')" style="background:#2563eb; font-weight:700; padding:0.4rem 1rem;">
-                                                Lanjut Ke Tahap 2: Gambar ROI ➡️
-                                            </button>
-                                        </div>
-                                    </div>
-
-<div id="ai-subpane-zones" style="display:none;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
-                                            <div>
-                                                <strong style="font-size:0.88rem; color:#38bdf8; display:flex; align-items:center; gap:0.4rem;">
-                                                    <span>🎯</span> Pengaturan Objek & Kotak Deteksi ROI (Multi-Objek)
-                                                </strong>
-                                                <span style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:2px;">
-                                                    Pilih objek untuk diedit warnanya/targetnya, atau klik "+ Tambah Objek" untuk membuat area baru.
-                                                </span>
-                                            </div>
-                                            <div style="display:flex; gap:0.4rem; align-items:center;">
-                                                <button type="button" class="btn btn-sm btn-primary" onclick="addNewZoneSlot()" style="font-size:0.78rem; background:#16a34a; border-color:#22c55e;">
-                                                    ➕ Tambah Objek Baru
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-danger" onclick="deleteCurrentZone()" style="font-size:0.78rem;">
-                                                    🗑️ Hapus Objek Aktif
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <!-- Active Zone Properties Card -->
-                                        <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:6px; padding:0.75rem 0.9rem; margin-bottom:0.75rem;">
-                                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; align-items:center;">
-                                                <div>
-                                                    <label style="display:block; margin-bottom:0.25rem; font-size:0.76rem; font-weight:600; color:#cbd5e1;">Nama Objek Aktif:</label>
-                                                    <input type="text" id="ai-zone-label-input" value="Area Pompa BBM" class="form-control" style="width:100%; padding:0.35rem 0.6rem; font-size:0.82rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:4px;" oninput="updateActiveZoneLabel(this.value)">
-                                                </div>
-                                                <div>
-                                                    <label style="display:block; margin-bottom:0.25rem; font-size:0.76rem; font-weight:600; color:#cbd5e1;">Warna Kotak:</label>
-                                                    <div style="display:flex; gap:0.35rem; align-items:center;">
-                                                        <button type="button" onclick="setZoneColor('#3b82f6', 'rgba(59,130,246,0.92)')" class="ai-zone-color-btn" data-color="#3b82f6" style="width:24px; height:24px; border-radius:4px; background:#3b82f6; border:2px solid white; cursor:pointer;" title="Biru"></button>
-                                                        <button type="button" onclick="setZoneColor('#eab308', 'rgba(234,179,8,0.92)')" class="ai-zone-color-btn" data-color="#eab308" style="width:24px; height:24px; border-radius:4px; background:#eab308; border:1px solid #475569; cursor:pointer;" title="Kuning"></button>
-                                                        <button type="button" onclick="setZoneColor('#10b981', 'rgba(16,185,129,0.92)')" class="ai-zone-color-btn" data-color="#10b981" style="width:24px; height:24px; border-radius:4px; background:#10b981; border:1px solid #475569; cursor:pointer;" title="Hijau"></button>
-                                                        <button type="button" onclick="setZoneColor('#ef4444', 'rgba(239,68,68,0.92)')" class="ai-zone-color-btn" data-color="#ef4444" style="width:24px; height:24px; border-radius:4px; background:#ef4444; border:1px solid #475569; cursor:pointer;" title="Merah"></button>
-                                                        <button type="button" onclick="setZoneColor('#a855f7', 'rgba(168,85,247,0.92)')" class="ai-zone-color-btn" data-color="#a855f7" style="width:24px; height:24px; border-radius:4px; background:#a855f7; border:1px solid #475569; cursor:pointer;" title="Ungu"></button>
-                                                        <button type="button" onclick="setZoneColor('#f97316', 'rgba(249,115,22,0.92)')" class="ai-zone-color-btn" data-color="#f97316" style="width:24px; height:24px; border-radius:4px; background:#f97316; border:1px solid #475569; cursor:pointer;" title="Oranye"></button>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label style="display:block; margin-bottom:0.25rem; font-size:0.76rem; font-weight:600; color:#cbd5e1;">Target Objek:</label>
-                                                    <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
-                                                        <label style="font-size:0.78rem; display:inline-flex; align-items:center; gap:0.25rem; cursor:pointer;">
-                                                            <input type="checkbox" id="ai-target-car" checked onchange="updateActiveZoneTargets(false)"> 🚗 Mobil
-                                                        </label>
-                                                        <label style="font-size:0.78rem; display:inline-flex; align-items:center; gap:0.25rem; cursor:pointer;">
-                                                            <input type="checkbox" id="ai-target-motor" checked onchange="updateActiveZoneTargets(false)"> 🛵 Motor
-                                                        </label>
-                                                        <label style="font-size:0.78rem; display:inline-flex; align-items:center; gap:0.25rem; cursor:pointer;">
-                                                            <input type="checkbox" id="ai-target-person" checked onchange="updateActiveZoneTargets(false)"> 👤 Orang
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <!-- Quick Shape Presets -->
-                                            <div style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap; margin-top:0.6rem; padding-top:0.5rem; border-top:1px solid rgba(255,255,255,0.06);">
-                                                <span style="font-size:0.74rem; color:var(--text-muted); font-weight:600;">Preset Bentuk:</span>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('spbu')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#38bdf8; border-color:rgba(56,189,248,0.4);">⛽ Pompa BBM</button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('parking')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#facc15; border-color:rgba(250,204,21,0.4);">🅿️ Area Parkir</button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('cashier')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#c084fc; border-color:rgba(192,132,252,0.4);">💵 Meja Kasir</button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('gate')" style="padding:0.16rem 0.45rem; font-size:0.73rem; color:#ef4444; border-color:rgba(239,68,68,0.4);">🚪 Pintu Masuk</button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('center')" style="padding:0.16rem 0.45rem; font-size:0.73rem;">🎯 Fokus Tengah</button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="setUniversalPreset('full')" style="padding:0.16rem 0.45rem; font-size:0.73rem;">🔲 Full Layar</button>
-                                            </div>
-                                        </div>
-
-                                        <!-- Multi-Object Detailed Cards List (Shows Object 1, Object 2, etc. with dimensions and quick actions) -->
-                                        <div style="margin-bottom:0.75rem;">
-                                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
-                                                <span style="font-size:0.78rem; font-weight:700; color:#cbd5e1;">📋 Daftar Semua Objek Terdata:</span>
-                                                <span id="ai-zones-count-badge" style="font-size:0.72rem; color:#38bdf8; font-family:monospace; background:rgba(56,189,248,0.12); padding:1px 6px; border-radius:3px; border:1px solid rgba(56,189,248,0.3);">1 Objek Aktif</span>
-                                            </div>
-                                            <div id="ai-zones-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.5rem; max-height:180px; overflow-y:auto; padding-right:2px;">
-                                                <!-- Rendered dynamically by script.js -->
-                                            </div>
-                                        </div>
-
-                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding-top:0.4rem; border-top:1px solid var(--border);">
-                                            <div id="ai-coord-status" style="color:#eab308; font-size:0.78rem; font-family:monospace;">
-                                                Belum ada area yang digambar.
-                                            </div>
-                                            <button type="button" class="btn btn-sm btn-primary" onclick="saveCurrentZone()" style="background:#16a34a; border-color:#22c55e; font-weight:700;">
-                                                💾 Simpan Objek Ini
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- SUB-PANE 2: NLP PROMPT ENGINE -->
-                                    <div id="ai-subpane-prompt" style="display:none;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.4rem;">
-                                            <strong style="font-size:0.88rem; color:#f59e0b; display:flex; align-items:center; gap:0.4rem;">
-                                                <span>🧠</span> Instruksi Teks Prompt & Syarat Deteksi
-                                            </strong>
-                                            <span style="font-size:0.74rem; color:#34d399; background:rgba(16,185,129,0.15); padding:1px 6px; border-radius:3px;">NLP Rule Engine</span>
-                                        </div>
-                                        <div style="display:flex; gap:0.35rem; align-items:center; margin-bottom:0.65rem; flex-wrap:wrap;">
-                                            <span style="font-size:0.76rem; color:var(--text-muted); font-weight:600;">Preset Prompt:</span>
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="applyAIPromptPreset('spbu_refuel')" style="font-size:0.74rem; padding:0.2rem 0.5rem; color:#f59e0b; border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.1);">
-                                                ⛽ Pengisian Bensin SPBU (Utama)
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="applyAIPromptPreset('waiting_queue')" style="font-size:0.74rem; padding:0.2rem 0.5rem;">
-                                                🛑 Antrean / Berhenti Lama (>= 5s)
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="applyAIPromptPreset('vehicle_entry')" style="font-size:0.74rem; padding:0.2rem 0.5rem;">
-                                                🚗 Kendaraan Masuk Dispenser (>= 2s)
-                                            </button>
-                                        </div>
-                                        <div style="margin-bottom:0.65rem;">
-                                            <textarea id="ai-prompt-input" rows="2" class="form-control" placeholder="Contoh: Deteksi orang/pengendara yang datang ke area pompa bensin, berhenti lebih dari 3 detik, dan sedang menunggu atau mengisi bensin." style="width:100%; padding:0.5rem 0.65rem; font-size:0.82rem; background:rgba(0,0,0,0.35); color:#f8fafc; border:1px solid var(--border); border-radius:4px; line-height:1.4; resize:vertical;">Deteksi orang/pengendara yang datang ke area pompa bensin, berhenti lebih dari 3 detik, dan sedang menunggu atau mengisi bensin.</textarea>
-                                        </div>
-                                        <div style="display:flex; gap:0.8rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:6px; padding:0.55rem 0.75rem; margin-bottom:0.65rem; flex-wrap:wrap; align-items:center;">
-                                            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
-                                                <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">Syarat Gerak:</span>
-                                                <select id="ai-motion-condition" class="form-control" style="padding:0.25rem 0.5rem; font-size:0.78rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:4px;">
-                                                    <option value="stationary_only">Hanya saat BERHENTI (Dwell Time)</option>
-                                                    <option value="moving_or_stationary">Bergerak Maupun Berhenti</option>
-                                                </select>
-                                            </div>
-                                            <div style="display:flex; gap:0.4rem; align-items:center;">
-                                                <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">Ambang Berhenti:</span>
-                                                <input type="number" id="ai-dwell-seconds" min="1" max="60" value="3" style="width:55px; padding:0.25rem 0.4rem; font-size:0.78rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:4px; text-align:center;">
-                                                <span style="font-size:0.75rem; color:var(--text-muted);">detik</span>
-                                            </div>
-                                            <div style="display:flex; gap:0.4rem; align-items:center;">
-                                                <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">Min. Conf:</span>
-                                                <input type="number" id="ai-confidence-min" min="40" max="95" value="75" style="width:55px; padding:0.25rem 0.4rem; font-size:0.78rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:4px; text-align:center;">
-                                                <span style="font-size:0.75rem; color:var(--text-muted);">%</span>
-                                            </div>
-                                        </div>
-
-                                        <!-- ANTI-LAG STB HARDWARE RENDERING PROFILE (RULES 1, 2, 3) -->
-                                        <div style="background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.3); border-radius:6px; padding:0.6rem 0.75rem; margin-top:0.65rem;">
-                                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.3rem;">
-                                                <strong style="font-size:0.8rem; color:#38bdf8; display:flex; align-items:center; gap:0.35rem;">
-                                                    <span>⚡</span> Profil Performa Anti-Lag Hardware STB (Armbian)
-                                                </strong>
-                                                <span style="font-size:0.68rem; padding:1px 6px; border-radius:3px; background:rgba(34,197,94,0.2); color:#34d399; font-weight:700;">Zero-Buffer Enforced</span>
-                                            </div>
-                                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.6rem; align-items:center;">
-                                                <div>
-                                                    <label style="display:block; font-size:0.75rem; font-weight:700; color:#cbd5e1; margin-bottom:0.2rem;">
-                                                        Resolusi Inferensi (imgsz):
-                                                    </label>
-                                                    <select id="ai-imgsz-select" class="form-control" style="width:100%; padding:0.3rem 0.5rem; font-size:0.78rem; background:rgba(0,0,0,0.4); color:#38bdf8; border:1px solid #38bdf8; border-radius:4px; font-weight:700;">
-                                                        <option value="256">256x256 px (Ultra-Low / Super Hemat ARM CPU)</option>
-                                                        <option value="320" selected>320x320 px (Definisikan Standar STB Anti-Lag)</option>
-                                                        <option value="416">416x416 px (Maksimal Armbian STB)</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style="display:block; font-size:0.75rem; font-weight:700; color:#cbd5e1; margin-bottom:0.2rem;">
-                                                        Matrix Crop Ratio:
-                                                    </label>
-                                                    <div style="font-size:0.76rem; font-family:monospace; color:#34d399; background:rgba(0,0,0,0.3); padding:0.3rem 0.5rem; border:1px solid rgba(255,255,255,0.1); border-radius:4px; text-align:center;">
-                                                        📐 1:1 Square Crop (320x320)
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div style="font-size:0.7rem; color:var(--text-muted); margin-top:0.45rem; line-height:1.35;">
-                                                *Sistem menyuntikkan otomatis profil zero-buffer: <code style="color:#f59e0b;">rtsp_transport: udp</code>, <code style="color:#f59e0b;">fflags: nobuffer</code>, <code style="color:#f59e0b;">flags: low_delay</code>, <code style="color:#f59e0b;">h264_only: true</code>, <code style="color:#f59e0b;">imgsz: 320</code>.
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- SUB-PANE 3: ESP8266 IOT RELAY -->
-                                    <div id="ai-subpane-esp" style="display:none;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
-                                            <strong style="font-size:0.88rem; color:#60a5fa; display:flex; align-items:center; gap:0.4rem;">
-                                                <span>📡</span> Integrasi Alarm ESP8266 / IoT Relay
-                                            </strong>
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="showArduinoCodeModal()" style="font-size:0.76rem; color:#f59e0b; border-color:rgba(245,158,11,0.35);">
-                                                📋 Contoh Kode Arduino IDE
-                                            </button>
-                                        </div>
-                                        <div style="display:flex; gap:0.6rem; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap;">
-                                            <label style="display:flex; align-items:center; gap:0.35rem; font-size:0.82rem; cursor:pointer; font-weight:600; white-space:nowrap; color:var(--text);">
-                                                <input type="checkbox" id="esp-enabled-checkbox" style="width:16px; height:16px; accent-color:#3b82f6;"> Aktifkan ESP8266
-                                            </label>
-                                            <div style="flex:1; min-width:200px;">
-                                                <input type="text" id="esp-target-input" placeholder="IP/URL ESP8266 (contoh: 192.168.1.150 atau http://192.168.1.150/alarm)" class="form-control" style="width:100%; padding:0.4rem 0.6rem; font-size:0.82rem; background:rgba(0,0,0,0.35); color:white; border:1px solid var(--border); border-radius:4px;">
-                                            </div>
-                                            <div style="width:100px;">
-                                                <select id="esp-method-select" class="form-control" style="width:100%; padding:0.4rem 0.5rem; font-size:0.82rem; background:rgba(0,0,0,0.35); color:white; border:1px solid var(--border); border-radius:4px;">
-                                                    <option value="GET">HTTP GET</option>
-                                                    <option value="POST">HTTP POST</option>
-                                                </select>
-                                            </div>
-                                            <button type="button" class="btn btn-sm btn-secondary" onclick="testESP8266Trigger()" id="btn-test-esp" style="font-size:0.78rem; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.35);">
-                                                🔔 Test Trigger ESP
-                                            </button>
-                                        </div>
-                                        <div id="esp-test-status" style="font-size:0.78rem; font-family:monospace;"></div>
-                                    </div>
-
-                                    <!-- SUB-PANE 4: REAL-TIME TEXT TELEMETRY -->
-                                    <div id="ai-subpane-telemetry" style="display:none;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.4rem;">
-                                            <div style="display:flex; align-items:center; gap:0.4rem;">
-                                                <strong style="font-size:0.82rem; color:#38bdf8;">📟 Terminal Sensor Visi AI</strong>
-                                                <span style="font-size:0.7rem; padding:1px 6px; border-radius:3px; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.4);">● 25 FPS SCANNER</span>
-                                            </div>
-                                            <div style="display:flex; align-items:center; gap:0.35rem;">
-                                                <span id="ai-telemetry-eval-badge" style="font-size:0.72rem; padding:1px 6px; border-radius:3px; background:rgba(234,179,8,0.15); color:#facc15; border:1px solid rgba(234,179,8,0.3);">
-                                                    🎯 STATUS: MENUNGGU OBJEK
-                                                </span>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="copyAITelemetryLog()" style="padding:0.15rem 0.45rem; font-size:0.72rem;">📋 Salin</button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="clearAITelemetryLog()" style="padding:0.15rem 0.45rem; font-size:0.72rem; color:#ef4444;">🗑️ Bersihkan</button>
-                                            </div>
-                                        </div>
-                                        <div id="ai-text-telemetry-log" style="height:130px; overflow-y:auto; padding:0.5rem 0.75rem; font-family:'Courier New', Courier, monospace; font-size:0.75rem; line-height:1.45; color:#38bdf8; background:#040711; border:1px solid #1e293b; border-radius:4px; user-select:text;">
-                                            <div style="color:#64748b;">[00:00:00.000] ℹ️ Inisialisasi Terminal Visi AI Arch3r NVR... Menghubungkan ke stream kamera.</div>
-                                        </div>
-                                    </div> <!-- END ai-config-tab-container -->
-                                </div> <!-- END Modal Content Body -->
-
-                                <!-- Modal Footer -->
-                                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1.25rem; background:rgba(15,23,42,0.95); border-top:1px solid #1e293b;">
-                                    <div style="font-size:0.78rem; color:#38bdf8; font-family:monospace;">
-                                        ℹ️ Perubahan akan langsung diterapkan ke memori server NVR.
-                                    </div>
-                                    <div style="display:flex; gap:0.5rem; align-items:center;">
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="closeAISettingsModal()" style="font-size:0.82rem; padding:0.4rem 0.9rem;">
-                                            Batal
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-primary" onclick="saveAIGrid(); closeAISettingsModal();" style="background:#16a34a; border-color:#22c55e; font-weight:700; font-size:0.82rem; padding:0.4rem 1.1rem; box-shadow:0 0 10px rgba(34,197,94,0.4);">
-                                            💾 Simpan & Terapkan Konfigurasi
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div> <!-- END MODAL AI SETTINGS -->
-                    </div> <!-- END AI TAB PANE LIVE -->
-
-                        <!-- ======================================================== -->
-                        <!-- TAB 2: LAB SIMULASI & PEMBACAAN TEKS AI (TERISOLASI)     -->
-                        <!-- ======================================================== -->
-                        <div id="ai-tab-pane-sim" style="display:none;">
-                            <div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); border-radius:6px; padding:0.75rem 1rem; margin-bottom:0.85rem;">
-                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;">
-                                    <span style="font-size:1.1rem;">🧪</span>
-                                    <strong style="color:#60a5fa; font-size:0.9rem;">Lab Simulasi Terisolasi (AI Vision Sandbox)</strong>
-                                </div>
-                                <p style="font-size:0.8rem; color:var(--text-muted); margin:0; line-height:1.45;">
-                                    Tab ini merupakan lingkungan uji coba mandiri untuk melihat secara nyata bagaimana AI membaca objek (ID, bounding box, koordinat, status berhenti/dwell time, dan evaluasi teks prompt) tanpa mengganggu siaran langsung kamera nyata di NVR.
-                                </p>
-                            </div>
-
-                            <!-- Simulation Controls Row -->
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
-                                <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
-                                    <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">Skenario Uji Coba:</span>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setSimScenario('refuel')" id="sim-btn-refuel" style="font-size:0.76rem; color:#f59e0b; border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.12);">
-                                        ⛽ Pengisian Bensin (Motor/Mobil + Operator)
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setSimScenario('queue')" id="sim-btn-queue" style="font-size:0.76rem;">
-                                        🛑 Antrean Kendaraan Menunggu
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="setSimScenario('walkby')" id="sim-btn-walkby" style="font-size:0.76rem;">
-                                        🚶 Pejalan Melintas Kilat
-                                    </button>
-                                </div>
-                                <div style="display:flex; gap:0.4rem; align-items:center;">
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleSimPlayback()" id="btn-sim-playpause" style="font-size:0.76rem;">
-                                        ⏸️ Jeda
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="restartSimScenario()" style="font-size:0.76rem;">
-                                        🔄 Ulangi
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Simulation Sandbox Canvas Container -->
-                            <div style="position:relative; width:100%; aspect-ratio:16/9; max-height:400px; min-height:260px; background:#050811; border:1px solid #1e293b; border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center; user-select:none; box-shadow:inset 0 0 25px rgba(0,0,0,0.9);">
-                                <canvas id="ai-sim-sandbox-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
-                                
-                                <!-- Sim HUD Badge -->
-                                <div style="position:absolute; top:8px; left:10px; background:rgba(0,0,0,0.7); border:1px solid #334155; padding:2px 8px; border-radius:4px; font-size:0.72rem; color:#34d399; font-family:monospace; z-index:4;">
-                                    SIMULATION LAB • VIRTUAL SURVEILLANCE FEED
-                                </div>
-                                
-                                <!-- Sim Alert Banner -->
-                                <div id="ai-sim-alarm-banner" style="display:none; position:absolute; top:12px; left:50%; transform:translateX(-50%); background:rgba(239,68,68,0.92); color:white; padding:5px 16px; border-radius:20px; font-weight:bold; font-size:0.8rem; z-index:5; box-shadow:0 0 16px rgba(239,68,68,0.9);">
-                                    ⛽ SYARAT PROMPT TERPENUHI: PENGISIAN BENSIN TERDETEKSI!
-                                </div>
-                            </div>
-
-                            <!-- Live Telemetry Inspector for Simulation -->
-                            <div style="margin-top:0.75rem; display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
-                                <div style="background:#060a12; border:1px solid #1e293b; border-radius:6px; overflow:hidden;">
-                                    <div style="padding:0.4rem 0.65rem; background:rgba(15,23,42,0.95); border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center;">
-                                        <strong style="font-size:0.78rem; color:#38bdf8;">📟 Pembacaan Sensor Visi AI (Teks Real-Time)</strong>
-                                        <span id="sim-target-count" style="font-size:0.7rem; color:#94a3b8; font-family:monospace;">2 Target Terdeteksi</span>
-                                    </div>
-                                    <div id="sim-telemetry-text-log" style="height:120px; overflow-y:auto; padding:0.45rem 0.65rem; font-family:monospace; font-size:0.73rem; color:#38bdf8; line-height:1.4; background:#030712;">
-                                        <div>[00:00:01] 👤 person #101 x:42% y:38% | Diam: 3.4s (Memenuhi Syarat Bensin)</div>
-                                        <div>[00:00:01] 🛵 motorcycle #205 x:40% y:42% | Diam: 3.8s di Dispenser BBM</div>
-                                    </div>
-                                </div>
-
-                                <div style="background:#060a12; border:1px solid #1e293b; border-radius:6px; overflow:hidden;">
-                                    <div style="padding:0.4rem 0.65rem; background:rgba(15,23,42,0.95); border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center;">
-                                        <strong style="font-size:0.78rem; color:#f59e0b;">📤 Output Dispatch ke ESP8266 / Webhook (JSON)</strong>
-                                        <span id="sim-esp-dispatch-badge" style="font-size:0.7rem; color:#34d399; font-family:monospace;">● READY</span>
-                                    </div>
-                                    <pre id="sim-json-payload-preview" style="height:120px; overflow-y:auto; margin:0; padding:0.45rem 0.65rem; font-family:monospace; font-size:0.72rem; color:#a5f3fc; line-height:1.35; background:#030712; white-space:pre-wrap;">{
-  "event": "ai_prompt_match",
-  "rule": "spbu_refuel",
-  "object": "person + motorcycle",
-  "dwell_sec": 3.4,
-  "confidence": 88,
-  "esp_trigger": true
-}</pre>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- ======================================================== -->
-                        <!-- TAB 3: PRESETS & MARKETPLACE (.yai FORMAT)                -->
-                        <!-- ======================================================== -->
-                        <div id="ai-tab-pane-market" style="display:none;">
-                            <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:6px; padding:0.75rem 1rem; margin-bottom:0.85rem;">
-                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.35rem;">
-                                    <span style="font-size:1.1rem;">🏪</span>
-                                    <strong style="color:#f59e0b; font-size:0.9rem;">Marketplace & Manajemen Konfigurasi (.yai)</strong>
-                                </div>
-                                <p style="font-size:0.8rem; color:var(--text-muted); margin:0; line-height:1.45;">
-                                    Ekstensi <strong>.yai</strong> (Arch3r AI Configuration) menyimpan seluruh pengaturan koordinat ROI, instruksi prompt teks SPBU, filter objek, dan konfigurasi ESP8266 ke dalam satu file mandiri. Anda dapat mengunduh, mengunggah, atau mengimpor preset dari database marketplace.
-                                </p>
-                            </div>
-
-                            <!-- Local Export / Import Section -->
-                            <div style="background:rgba(15,23,42,0.8); border:1px solid #1e293b; border-radius:6px; padding:0.75rem 1rem; margin-bottom:0.85rem;">
-                                <strong style="font-size:0.84rem; color:#38bdf8; display:block; margin-bottom:0.5rem;">📁 Ekspor / Impor Konfigurasi Kamera Aktif</strong>
-                                <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
-                                    <div style="display:flex; align-items:center; gap:0.3rem;">
-                                        <span style="font-size:0.8rem; color:var(--text-muted);">Nama Preset:</span>
-                                        <input type="text" id="ai-export-name-input" value="kios_bensin" placeholder="misal: kios_bensin" style="padding:0.35rem 0.5rem; font-size:0.82rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:4px; width:160px;">
-                                        <span style="font-size:0.82rem; color:#60a5fa; font-weight:bold;">.yai</span>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-primary" onclick="downloadCustomYaiConfig()" style="font-size:0.8rem; background:#2563eb;">
-                                        📥 Unduh File .yai
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="triggerUploadYaiConfig()" style="font-size:0.8rem; color:#34d399; border-color:rgba(16,185,129,0.35);">
-                                        📤 Unggah File .yai
-                                    </button>
-                                    <input type="file" id="ai-upload-yai-file" accept=".yai,.json" style="display:none;" onchange="handleUploadYaiConfig(event)">
-                                </div>
-                            </div>
-
-                            <!-- Database Hosting & Online Marketplace Repository -->
-                            <div style="background:rgba(15,23,42,0.8); border:1px solid #1e293b; border-radius:6px; padding:0.75rem 1rem;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.65rem; flex-wrap:wrap; gap:0.5rem;">
-                                    <div>
-                                        <strong style="font-size:0.84rem; color:#f59e0b;">🌐 Database Hosting Marketplace Presets</strong>
-                                        <span style="font-size:0.74rem; color:var(--text-muted); display:block; margin-top:2px;">Koneksi repository database hosting resmi atau server kustom Anda.</span>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-secondary" onclick="fetchMarketplacePresets()" style="font-size:0.76rem;">
-                                        🔄 Segarkan Katalog
-                                    </button>
-                                </div>
-
-                                <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
-                                    <input type="text" id="ai-market-repo-url" value="https://market.arch3r.local/api/v1/presets" placeholder="URL Database Hosting Marketplace" style="flex:1; padding:0.35rem 0.6rem; font-size:0.8rem; background:rgba(0,0,0,0.4); color:white; border:1px solid var(--border); border-radius:4px;">
-                                </div>
-
-                                <!-- Marketplace Preset Cards Grid -->
-                                <div id="ai-market-cards-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:0.75rem;">
-                                    <!-- Populated dynamically via script.js -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Workstation Footer -->
-                    <div style="padding:0.85rem 1.25rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.15); flex-wrap:wrap; gap:0.5rem;">
-                        <div style="font-size:0.78rem; color:var(--text-muted);">
-                            Format file: <strong style="color:#60a5fa;">.yai</strong> &bull; Kompatibel dengan Armbian STB, MediaMTX HLS & ESP8266 IoT
-                        </div>
-                        <div style="display:flex; gap:0.6rem; align-items:center;">
-                            <span id="ai-save-feedback" style="font-size:0.82rem; font-weight:600;"></span>
-                            <button class="btn btn-secondary" onclick="navigateToView('view-addons')">Kembali ke Addons</button>
-                            <button class="btn btn-primary" onclick="saveAIGrid()" style="background:#2563eb; border-color:#2563eb;">💾 Simpan Konfigurasi Kamera</button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            <!-- Modal Contoh Kode Arduino ESP8266 -->
-            <div id="arduinoCodeModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(4px); z-index:10000; justify-content:center; align-items:center;">
-                <div style="background:var(--surface); width:92%; max-width:760px; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; max-height:90vh; box-shadow:0 25px 50px -12px rgba(0,0,0,0.9);">
-                    <div style="padding:0.85rem 1.25rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                        <h3 style="margin:0; color:#f59e0b; display:flex; align-items:center; gap:0.5rem; font-size:1rem;">
-                            <span>📟</span> Skrip Arduino IDE ESP8266 / NodeMCU (Buzzer & Relay)
-                        </h3>
-                        <button onclick="closeArduinoCodeModal()" style="background:none; border:none; color:var(--text); font-size:1.4rem; cursor:pointer; line-height:1;">&times;</button>
-                    </div>
-                    <div style="padding:1rem 1.25rem; overflow-y:auto; flex:1;">
-                        <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">
-                            Salin skrip C++ Arduino di bawah ini ke Arduino IDE, sesuaikan nama WiFi/Password Anda, lalu flash ke board ESP8266 (NodeMCU / Wemos D1 Mini). Relay/Buzzer terhubung ke Pin D1 (GPIO5).
-                        </p>
-                        <div style="position:relative;">
-                            <button onclick="copyArduinoCode()" id="btn-copy-arduino" class="btn btn-sm btn-secondary" style="position:absolute; top:8px; right:8px; z-index:10; font-size:0.75rem; background:rgba(255,255,255,0.1);">
-                                📋 Salin Skrip
-                            </button>
-                            <pre id="arduinoCodeSnippet" style="background:#0a0f1d; border:1px solid #1e293b; border-radius:6px; padding:1rem; color:#38bdf8; font-family:monospace; font-size:0.76rem; overflow-x:auto; line-height:1.4; user-select:all;"></pre>
-                        </div>
-                    </div>
-                    <div style="padding:0.75rem 1.25rem; border-top:1px solid var(--border); display:flex; justify-content:flex-end;">
-                        <button class="btn btn-secondary" onclick="closeArduinoCodeModal()">Tutup</button>
-                    </div>
-                </div>
-            </div>
-
-<!-- 9. VIEW ABOUT -->
+            <!-- 9. VIEW ABOUT -->
             <div id="view-about" class="view-pane">
                 <div class="content-wrapper" style="padding: 2rem; max-width:800px; margin:0 auto;">
                     <h2>Informasi Sistem NVR</h2>
@@ -1813,7 +1303,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 10.0.1</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 10.2.9</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>
