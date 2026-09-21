@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.1.7 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
+    <title>Arch3r NVR Ver. 10.1.8 - Professional Multi-Tenant Dashboard (SupremeTOTO V47)</title>
     <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -509,9 +509,14 @@
                                                 Isi IP kamera & Password di bawah, lalu klik <strong>"Auto-Discover / Test ONVIF"</strong> untuk mendeteksi profil resolusi, token PTZ, dan URL stream secara otomatis.
                                             </div>
                                         </div>
-                                        <button type="button" id="btnQuickProbe" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#38bdf8; border-color:#0284c7; font-weight:600;">
-                                            🔍 Auto-Discover / Test ONVIF
-                                        </button>
+                                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                                            <button type="button" id="btnQuickProbe" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#38bdf8; border-color:#0284c7; font-weight:600;">
+                                                🔍 Auto-Discover / ONVIF
+                                            </button>
+                                            <button type="button" id="btnTestRtspVideoQuick" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#10b981; border-color:#059669; font-weight:600;">
+                                                🎬 Test RTSP Video
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group flex-2">
@@ -551,6 +556,36 @@
                                 <div class="form-group">
                                     <label>Sub Stream RTSP URL (SD / 360p - Multi-Grid Ringan & Hemat Bandwidth)</label>
                                     <input type="text" id="camSubUrl" placeholder="rtsp://user:pass@192.168.1.100:554/stream2">
+                                </div>
+                                
+                                <div style="margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                                    <button type="button" id="btnTestRtspStream" class="btn btn-secondary" style="color:#10b981; border-color:#059669; font-weight:600; display:inline-flex; align-items:center; gap:0.4rem;">
+                                        <span style="font-size:1.1rem;">🎬</span> Test Connection & Preview Video RTSP
+                                    </button>
+                                    <small style="color:var(--text-muted); font-size:0.75rem;">
+                                        Uji koneksi RTSP & tampilkan video live stream langsung sebelum menyimpan kamera.
+                                    </small>
+                                </div>
+
+                                <!-- Live RTSP Video Test Preview Box -->
+                                <div id="rtspTestContainer" style="display:none; margin-bottom:1.25rem; background:rgba(15,23,42,0.9); border:1px solid #059669; border-radius:8px; padding:1rem; box-shadow:0 10px 30px rgba(0,0,0,0.6);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                                            <span id="rtspTestStatusBadge" class="badge" style="background:#10b981; font-size:0.75rem; padding:3px 8px;">⏳ Testing Stream...</span>
+                                            <strong style="color:#f8fafc; font-size:0.9rem;">Live RTSP Video Test Player</strong>
+                                        </div>
+                                        <button type="button" id="btnCloseRtspTest" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:3px 10px; color:#f43f5e; border-color:#be123c;">✕ Tutup Preview</button>
+                                    </div>
+                                    
+                                    <div style="position:relative; width:100%; aspect-ratio:16/9; max-height:280px; background:#000; border-radius:6px; overflow:hidden; border:1px solid var(--border);">
+                                        <video id="videoRtspTestPreview" class="cam-player-video" autoplay muted playsinline controls style="width:100%; height:100%; object-fit:contain;"></video>
+                                        <div id="rtspTestOverlayMsg" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; flex-direction:column; background:rgba(15,23,42,0.95); color:#94a3b8; font-size:0.85rem; padding:1.2rem; text-align:center; z-index:5;">
+                                            <div class="spinner" style="width:32px; height:32px; border:3px solid rgba(255,255,255,0.1); border-top-color:#10b981; border-radius:50%; margin-bottom:0.75rem;"></div>
+                                            <span id="rtspTestOverlayText" style="color:#e2e8f0; font-weight:500;">Menghubungkan ke RTSP stream & melakukan analisa codec...</span>
+                                        </div>
+                                    </div>
+
+                                    <div id="rtspTestDiagnostics" style="margin-top:0.75rem; font-size:0.8rem; color:#cbd5e1; background:rgba(0,0,0,0.4); padding:0.65rem 0.8rem; border-radius:6px; border:1px solid rgba(255,255,255,0.08); font-family:monospace; white-space:pre-wrap; max-height:140px; overflow-y:auto;"></div>
                                 </div>
                                 
                                 <div class="form-row" style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:0.75rem; margin-bottom:1rem;">

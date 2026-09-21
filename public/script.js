@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.1.7 Multi-Tenant Controller & Multi-Zone Vision Engine
+// script.js - Archer NVR Ver. 10.1.8 Multi-Tenant Controller & Multi-Zone Vision Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -992,6 +992,163 @@ async function updateHardwareStats() {
         btnTestOnvifProbe.addEventListener('click', () => runOnvifProbeTest('ptz'));
     }
 
+    // --- RTSP Live Stream Video Test Engine ---
+    let rtspTestHlsPlayer = null;
+
+    async function runRtspVideoTest() {
+        const mainStreamUrl = document.getElementById('camMainUrl') ? document.getElementById('camMainUrl').value.trim() : '';
+        const ipAddress = document.getElementById('camIpAddress') ? document.getElementById('camIpAddress').value.trim() : '';
+        const rtspPort = document.getElementById('camRtspPort') ? document.getElementById('camRtspPort').value.trim() : '554';
+        const username = document.getElementById('camUsername') ? document.getElementById('camUsername').value.trim() : '';
+        const password = document.getElementById('camPassword') ? document.getElementById('camPassword').value : '';
+
+        const testContainer = document.getElementById('rtspTestContainer');
+        const badge = document.getElementById('rtspTestStatusBadge');
+        const overlay = document.getElementById('rtspTestOverlayMsg');
+        const overlayText = document.getElementById('rtspTestOverlayText');
+        const diag = document.getElementById('rtspTestDiagnostics');
+        const videoEl = document.getElementById('videoRtspTestPreview');
+
+        if (!mainStreamUrl && !ipAddress) {
+            alert('Silakan masukkan IP Address Kamera atau URL Stream RTSP terlebih dahulu untuk melakukan tes video.');
+            return;
+        }
+
+        if (typeof switchCameraTab === 'function') {
+            switchCameraTab('ctab-streams');
+        }
+
+        if (testContainer) testContainer.style.display = 'block';
+        if (badge) {
+            badge.style.background = '#3b82f6';
+            badge.textContent = '⏳ Testing Stream...';
+        }
+        if (overlay) overlay.style.display = 'flex';
+        if (overlayText) overlayText.textContent = 'Menghubungkan ke RTSP stream & melakukan analisa codec video...';
+        if (diag) diag.textContent = '[INIT] Memulai tes koneksi RTSP...\nTarget: ' + (mainStreamUrl || ipAddress);
+
+        if (rtspTestHlsPlayer) {
+            try { rtspTestHlsPlayer.destroy(); } catch(e) {}
+            rtspTestHlsPlayer = null;
+        }
+        if (videoEl) {
+            videoEl.pause();
+            videoEl.src = '';
+        }
+
+        try {
+            const payload = {
+                rtspUrl: mainStreamUrl,
+                ipAddress,
+                rtspPort,
+                username,
+                password
+            };
+
+            const res = await authFetch('/api/system/test-rtsp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                if (badge) {
+                    badge.style.background = '#10b981';
+                    badge.textContent = '🟢 STREAM ONLINE';
+                }
+
+                if (data.rtspUrl) {
+                    const mainUrlEl = document.getElementById('camMainUrl');
+                    if (mainUrlEl && !mainUrlEl.value) {
+                        mainUrlEl.value = data.rtspUrl;
+                    }
+                }
+
+                const d = data.diagnostics || {};
+                if (diag) {
+                    diag.textContent = `[SUCCESS] RTSP Connection Handshake OK!
+URL Target   : ${data.maskedUrl || data.rtspUrl}
+Video Codec  : ${d.videoCodec || 'H.264'}
+Resolusi     : ${d.resolution || '-'}
+FPS          : ${d.fps || '-'}
+Audio Track  : ${d.audioCodec || 'None'}
+Status Video : Live Preview Ready`;
+                }
+
+                if (overlay) overlay.style.display = 'none';
+
+                if (videoEl && data.hlsUrl) {
+                    if (window.Hls && Hls.isSupported()) {
+                        rtspTestHlsPlayer = new Hls({
+                            manifestLoadingTimeOut: 8000,
+                            manifestLoadingMaxRetry: 5,
+                            levelLoadingTimeOut: 8000
+                        });
+                        rtspTestHlsPlayer.loadSource(data.hlsUrl);
+                        rtspTestHlsPlayer.attachMedia(videoEl);
+                        rtspTestHlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                            videoEl.play().catch(e => console.log('Preview autoplay muted:', e));
+                        });
+                    } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+                        videoEl.src = data.hlsUrl;
+                        videoEl.play().catch(e => console.log('Preview autoplay muted:', e));
+                    }
+                }
+            } else {
+                if (badge) {
+                    badge.style.background = '#ef4444';
+                    badge.textContent = '🔴 GAGAL KONEKSI';
+                }
+                if (overlay) overlay.style.display = 'flex';
+                if (overlayText) overlayText.innerHTML = `<span style="color:#f87171; font-weight:600;">⚠️ ${data.error || 'Gagal terhubung ke RTSP stream.'}</span><br><small style="color:#94a3b8; margin-top:4px; display:block;">Periksa username, password, IP address, dan RTSP port (554).</small>`;
+                if (diag) {
+                    diag.textContent = `[ERROR] Connection Failed!
+URL Target   : ${data.maskedUrl || data.rtspUrl || ipAddress}
+Detail Error : ${data.error || 'Unknown error'}
+Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kamera terhubung ke jaringan lokal NVR.'}`;
+                }
+            }
+        } catch (err) {
+            if (badge) {
+                badge.style.background = '#ef4444';
+                badge.textContent = '🔴 ERROR SYSTEM';
+            }
+            if (overlay) overlay.style.display = 'flex';
+            if (overlayText) overlayText.textContent = 'Terjadi kesalahan sistem saat menghubungi server NVR: ' + err.message;
+            if (diag) diag.textContent = '[SYSTEM ERROR] ' + err.message;
+        }
+    }
+
+    function closeRtspVideoTest() {
+        const testContainer = document.getElementById('rtspTestContainer');
+        if (testContainer) testContainer.style.display = 'none';
+        const videoEl = document.getElementById('videoRtspTestPreview');
+        if (rtspTestHlsPlayer) {
+            try { rtspTestHlsPlayer.destroy(); } catch(e) {}
+            rtspTestHlsPlayer = null;
+        }
+        if (videoEl) {
+            videoEl.pause();
+            videoEl.src = '';
+        }
+    }
+
+    const btnTestRtspVideoQuick = document.getElementById('btnTestRtspVideoQuick');
+    if (btnTestRtspVideoQuick) {
+        btnTestRtspVideoQuick.addEventListener('click', runRtspVideoTest);
+    }
+
+    const btnTestRtspStream = document.getElementById('btnTestRtspStream');
+    if (btnTestRtspStream) {
+        btnTestRtspStream.addEventListener('click', runRtspVideoTest);
+    }
+
+    const btnCloseRtspTest = document.getElementById('btnCloseRtspTest');
+    if (btnCloseRtspTest) {
+        btnCloseRtspTest.addEventListener('click', closeRtspVideoTest);
+    }
+
     window.editCamera = function(id) {
         const cam = cameras.find(c => c.id === id);
         if (!cam) return;
@@ -1130,6 +1287,7 @@ async function updateHardwareStats() {
         if (statusEl) statusEl.innerHTML = '';
         const qStatusEl = document.getElementById('quickProbeStatus');
         if (qStatusEl) { qStatusEl.style.display = 'none'; qStatusEl.innerHTML = ''; }
+        if (typeof closeRtspVideoTest === 'function') closeRtspVideoTest();
 
         if (typeof switchCameraTab === 'function') {
             switchCameraTab('ctab-general');

@@ -1,6 +1,6 @@
 import { createRequire } from 'module';
 import express from 'express';
-import child_process, { spawn, exec, execSync } from 'child_process';
+import child_process, { spawn, exec, execSync, execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -2818,6 +2818,25 @@ function syncMediaMtxConfig() {
             }
         });
 
+        // Append temporary RTSP test preview sessions
+        if (typeof activeRtspTestSessions !== 'undefined' && activeRtspTestSessions.size > 0) {
+            const now = Date.now();
+            activeRtspTestSessions.forEach((sess, sessId) => {
+                if (now - sess.timestamp > 10 * 60 * 1000) {
+                    activeRtspTestSessions.delete(sessId);
+                    return;
+                }
+                if (sess && sess.url) {
+                    const formatted = formatStreamUrl(sess.url);
+                    lines.push(`  ${sessId}:`);
+                    lines.push(`    source: "${formatted}"`);
+                    lines.push(`    sourceProtocol: tcp`);
+                    lines.push(`    sourceAnyPortEnable: yes`);
+                    activeCount++;
+                }
+            });
+        }
+
         if (activeCount === 0) {
             lines.push('  all_others:');
         }
@@ -4316,6 +4335,138 @@ app.post('/api/system/onvif-probe', verifyToken, async (req, res) => {
         return res.status(500).json({
             success: false,
             error: `Gagal menghubungkan ke kamera pada ${host}. Pastikan IP, username, password, dan port ONVIF benar: ${fallbackErr.message}`
+        });
+    }
+});
+
+// Endpoint dedicated /api/system/test-rtsp (Real-time RTSP connection test & live video preview)
+const activeRtspTestSessions = new Map(); // id -> { url, timestamp }
+
+app.post('/api/system/test-rtsp', verifyToken, async (req, res) => {
+    try {
+        const { rtspUrl, ipAddress, rtspPort, username, password } = req.body;
+        
+        let targetRtspUrl = (rtspUrl || '').trim();
+        let host = (ipAddress || '').trim();
+        let port = rtspPort ? parseInt(rtspPort, 10) : 554;
+        let user = (username || '').trim();
+        let pass = (password || '').trim();
+
+        // Construct RTSP URL if not provided directly
+        if (!targetRtspUrl && host) {
+            const authPart = (user && pass) ? `${encodeURIComponent(user)}:${encodeURIComponent(pass)}@` : '';
+            targetRtspUrl = `rtsp://${authPart}${host}:${port}/live/ch0`;
+        }
+
+        if (!targetRtspUrl) {
+            return res.status(400).json({
+                success: false,
+                error: 'URL RTSP atau IP Address kamera wajib diisi untuk melakukan pengujian video.'
+            });
+        }
+
+        // Sanitize for log output (mask password)
+        const maskedUrl = targetRtspUrl.replace(/\/\/(.*?):(.*?)@/, '//$1:***@');
+        sysLog('INFO', `[RTSP Test] Memulai uji koneksi RTSP ke ${maskedUrl}`, 'CAM');
+
+        // Execute ffprobe with execFile (safe against shell injection)
+        const ffprobeArgs = [
+            '-v', 'error',
+            '-err_detect', 'ignore_err',
+            '-rtsp_transport', 'tcp',
+            '-analyzeduration', '2000000',
+            '-probesize', '2000000',
+            '-show_entries', 'stream=index,codec_name,codec_type,width,height,r_frame_rate,sample_rate,channels',
+            '-of', 'json',
+            targetRtspUrl
+        ];
+
+        const probeResult = await new Promise((resolve) => {
+            execFile('ffprobe', ffprobeArgs, { timeout: 6000 }, (err, stdout, stderr) => {
+                if (err) {
+                    const errDetail = stderr || err.message || 'Connection timeout or invalid RTSP endpoint';
+                    return resolve({ success: false, error: errDetail });
+                }
+                try {
+                    const parsed = JSON.parse(stdout || '{}');
+                    return resolve({ success: true, data: parsed });
+                } catch (pErr) {
+                    return resolve({ success: true, data: {} });
+                }
+            });
+        });
+
+        if (!probeResult.success) {
+            let errorMsg = 'Gagal terhubung ke RTSP stream kamera.';
+            const rawErr = probeResult.error || '';
+            if (rawErr.includes('401 Unauthorized') || rawErr.includes('Auth')) {
+                errorMsg = 'Otentikasi Gagal (401 Unauthorized). Periksa kembali Username & Password kamera.';
+            } else if (rawErr.includes('Connection refused')) {
+                errorMsg = `Koneksi ditolak (Connection Refused) pada port ${port}. Pastikan service RTSP aktif pada kamera.`;
+            } else if (rawErr.includes('timed out') || rawErr.includes('timeout')) {
+                errorMsg = `Koneksi Waktu Habis (Timeout). IP ${host || 'kamera'} tidak merespon RTSP port ${port}.`;
+            } else if (rawErr.includes('404 Not Found')) {
+                errorMsg = 'Path RTSP tidak ditemukan (404 Not Found). Periksa format path RTSP URL.';
+            }
+
+            return res.status(400).json({
+                success: false,
+                error: errorMsg,
+                rtspUrl: targetRtspUrl,
+                maskedUrl,
+                detail: rawErr.split('\n')[0]
+            });
+        }
+
+        // Parse streams info
+        const streams = (probeResult.data && probeResult.data.streams) || [];
+        const videoStream = streams.find(s => s.codec_type === 'video') || {};
+        const audioStream = streams.find(s => s.codec_type === 'audio') || {};
+
+        let fps = '25';
+        if (videoStream.r_frame_rate) {
+            const parts = videoStream.r_frame_rate.split('/');
+            if (parts.length === 2 && parseInt(parts[1], 10) > 0) {
+                fps = Math.round(parseInt(parts[0], 10) / parseInt(parts[1], 10)).toString();
+            } else {
+                fps = videoStream.r_frame_rate;
+            }
+        }
+
+        const diagnostics = {
+            videoCodec: (videoStream.codec_name || 'h264').toUpperCase(),
+            resolution: (videoStream.width && videoStream.height) ? `${videoStream.width}x${videoStream.height}` : '1080p (Auto)',
+            fps: `${fps} FPS`,
+            audioCodec: audioStream.codec_name ? audioStream.codec_name.toUpperCase() : 'None / Mute',
+            channels: audioStream.channels || 0,
+            sampleRate: audioStream.sample_rate ? `${audioStream.sample_rate} Hz` : '-'
+        };
+
+        // Register temporary preview stream path for live HLS video playback
+        const testSessionId = `rtsp_test_preview`;
+        activeRtspTestSessions.set(testSessionId, {
+            url: targetRtspUrl,
+            timestamp: Date.now()
+        });
+
+        // Trigger MediaMTX sync so stream is available
+        syncMediaMtxConfig();
+
+        const token = req.query.token || req.headers.authorization?.replace('Bearer ', '') || '';
+        const hlsUrl = `/stream/${testSessionId}/index.m3u8?token=${encodeURIComponent(token)}`;
+
+        return res.json({
+            success: true,
+            message: `Stream RTSP Berhasil Terhubung! Codec: ${diagnostics.videoCodec}, Res: ${diagnostics.resolution}`,
+            hlsUrl,
+            rtspUrl: targetRtspUrl,
+            maskedUrl,
+            diagnostics
+        });
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            error: `Error internal saat menguji RTSP: ${err.message}`
         });
     }
 });

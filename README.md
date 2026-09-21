@@ -1,5 +1,17 @@
-# ⚡ Arch3r NVR (Ver. 10.1.6)
+# ⚡ Arch3r NVR (Ver. 10.1.8)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.1.8:
+- **Fitur Uji RTSP Video Stream Real-time (`🎬 Test RTSP Video`)**: Menambahkan tombol pengujian koneksi RTSP dan pemutar preview video live stream langsung pada modal konfigurasi kamera sebelum menyimpan data kamera.
+  1. **Quick Test di Tab General**: Tombol `🎬 Test RTSP Video` bersebelahan dengan `🔍 Auto-Discover / ONVIF` untuk langsung menguji RTSP berdasarkan IP Address, Username, Password, dan Port RTSP (554).
+  2. **Detailed Test di Tab Streams**: Tombol `🎬 Test Connection & Preview Video RTSP` di tab Streams untuk menguji URL RTSP Main Stream.
+  3. **Backend Handshake & Codec Diagnostics (`POST /api/system/test-rtsp`)**: Menggunakan `ffprobe` dengan proteksi `execFile` untuk mendiagnosa resolusi, codec video (H.264/H.265), FPS, serta codec audio secara akurat tanpa membuka celah keamanan.
+  4. **Live RTSP Video Test Player**: Pemutar video HLS interaktif berbasis `hls.js` dengan overlay status real-time (`🟢 STREAM ONLINE`, `🔴 GAGAL KONEKSI`) dan log diagnosa lengkap. Memory player dibersihkan secara otomatis saat modal ditutup.
+- **Pembersihan & Penataan Tombol Pengaturan Kamera**: Merapikan tata letak tombol peeking password `👁️` pada form password kamera agar tidak menutupi atau bergeser saat mengetik.
+
+### 📋 Changelog Pembaruan Ver. 10.1.7:
+- **Perbaikan Posisi & Styling Tombol Peeking Password (`👁️`)**: Merapikan kontainer wrapper password (`.password-wrapper`) agar tombol peeking pas di sisi kanan kolom input tanpa bergeser atau menutupi teks.
+- **Optimasi Live Grid View**: Memastikan kamera terhubung stabil pada tampilan grid live NVR.
 
 ### 📋 Changelog Pembaruan Ver. 10.1.6:
 - **Alur Standar NVR Profesional (2-Way Discovery & On-Demand Probe)**: Menyatukan sinkronisasi Scanner Jaringan dan Auto-Probe Form sesuai workflow industri NVR Hikvision/Dahua/UniFi Protect.
