@@ -5289,6 +5289,11 @@ app.use('/streams', (req, res, next) => {
     next();
 }, express.static(streamBaseDir));
 
+// Dedicated Addons Routing Fallback (SPA routing)
+app.get(['/addons/yolo-ai', '/addons/yolo-ai/*', '/yolo-ai'], (req, res) => {
+    res.sendFile(path.join(publicDir, 'index.html'));
+});
+
 // Serve UI & Static Assets
 app.use(express.static(publicDir));
 

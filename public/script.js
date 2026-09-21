@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.1.8 Multi-Tenant Controller & Multi-Zone Vision Engine
+// script.js - Archer NVR Ver. 10.1.9 Multi-Tenant Controller & Multi-Zone Vision Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -522,7 +522,7 @@ async function handleLogout() {
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-        window.navigateToView = function(targetId) {
+        window.navigateToView = function(targetId, updateUrl = true) {
             navItems.forEach(n => {
                 if (n.getAttribute('data-target') === targetId) {
                     n.classList.add('active');
@@ -542,8 +542,23 @@ async function handleLogout() {
             if (sidebar) sidebar.classList.remove('mobile-open');
             if (sidebarOverlay) sidebarOverlay.classList.remove('active');
 
+            // Handle URL path updating for dedicated route /addons/yolo-ai
+            if (updateUrl && window.history && window.history.pushState) {
+                if (targetId === 'view-yolo-ai') {
+                    if (window.location.pathname !== '/addons/yolo-ai') {
+                        window.history.pushState({ view: targetId }, '', '/addons/yolo-ai');
+                    }
+                } else {
+                    if (window.location.pathname === '/addons/yolo-ai' || window.location.pathname === '/yolo-ai') {
+                        window.history.pushState({ view: targetId }, '', '/');
+                    }
+                }
+            }
+
             if (targetId === 'view-yolo-ai') {
-                if (typeof openYoloAiPage === 'function') {
+                if (typeof initYoloAiPage === 'function') {
+                    initYoloAiPage();
+                } else if (typeof openYoloAiPage === 'function') {
                     openYoloAiPage();
                 }
             } else if (targetId === 'view-about') {
@@ -560,6 +575,27 @@ async function handleLogout() {
                 if (typeof fetchRecordings === 'function') fetchRecordings();
             }
         };
+
+        // Router listener for browser back/forward buttons
+        window.addEventListener('popstate', (e) => {
+            const path = window.location.pathname;
+            if (path.includes('/addons/yolo-ai') || path.includes('/yolo-ai')) {
+                window.navigateToView('view-yolo-ai', false);
+            } else if (e.state && e.state.view) {
+                window.navigateToView(e.state.view, false);
+            } else {
+                window.navigateToView('view-live', false);
+            }
+        });
+
+        // Initial route check on page load
+        const initPath = window.location.pathname;
+        const initHash = window.location.hash;
+        if (initPath.includes('/addons/yolo-ai') || initPath.includes('/yolo-ai') || initHash === '#yolo-ai' || initHash === '#addons/yolo-ai') {
+            setTimeout(() => {
+                window.navigateToView('view-yolo-ai', false);
+            }, 100);
+        }
 
         navItems.forEach(item => {
             item.addEventListener('click', (e) => {
@@ -3977,17 +4013,7 @@ let aiSimState = {
     pump: { x: 0.52, y: 0.38, w: 0.12, h: 0.35 } // relative coordinates
 };
 
-async function openYoloAiPage(defaultCamId = null) {
-    if (typeof window.navigateToView === 'function') {
-        window.navigateToView('view-yolo-ai');
-    } else {
-        const targetPane = document.getElementById('view-yolo-ai');
-        if (targetPane) {
-            document.querySelectorAll('.view-pane').forEach(v => v.classList.remove('active'));
-            targetPane.classList.add('active');
-        }
-    }
-    
+async function initYoloAiPage(defaultCamId = null) {
     // Switch to live tab by default when opened
     switchAIGridTab('live');
     
@@ -4042,7 +4068,7 @@ async function openYoloAiPage(defaultCamId = null) {
             loadCamStreamForAI();
         };
     }
-    
+
     const feedback = document.getElementById('ai-save-feedback');
     if (feedback) feedback.textContent = '';
     
@@ -4051,18 +4077,28 @@ async function openYoloAiPage(defaultCamId = null) {
     
     // Clear & seed initial telemetry log
     clearAITelemetryLog();
-    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.0.3...', 'system');
+    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.1.9...', 'system');
     appendAITelemetry('📋 Memuat konfigurasi kamera nyata NVR & Engine Prompt SPBU.', 'system');
     
     // Start continuous rendering loop
     aiStartRenderLoop();
-    
-    // Load feed and initialize canvas immediately
-    setTimeout(() => {
-        loadCamStreamForAI();
-    }, 40);
+
+    loadCamStreamForAI();
 }
 
+async function openYoloAiPage(defaultCamId = null) {
+    if (typeof window.navigateToView === 'function') {
+        window.navigateToView('view-yolo-ai');
+    } else {
+        const targetPane = document.getElementById('view-yolo-ai');
+        if (targetPane) {
+            document.querySelectorAll('.view-pane').forEach(v => v.classList.remove('active'));
+            targetPane.classList.add('active');
+        }
+        await initYoloAiPage(defaultCamId);
+    }
+}
+window.initYoloAiPage = initYoloAiPage;
 window.openYoloAiPage = openYoloAiPage;
 window.openAIGridModal = openYoloAiPage;
 function openAIGridModal(defaultCamId = null) {

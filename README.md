@@ -1,5 +1,11 @@
-# ⚡ Arch3r NVR (Ver. 10.1.8)
+# ⚡ Arch3r NVR (Ver. 10.1.9)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.1.9:
+- **Refactoring & Penataan Ulang UI Addon YOLO AI Vision (`/addons/yolo-ai`)**:
+  1. **Rute URL Mandiri Khusus (`nvr.arch3r.my.id/addons/yolo-ai`)**: Menu YOLO AI Vision di sidebar dan marketplace kini otomatis mengarahkan ke path URL dedicated `/addons/yolo-ai`. Pengguna dapat membagikan link, me-refresh, atau menavigasi langsung ke URL `/addons/yolo-ai` tanpa kehilangan tampilan.
+  2. **Pembersihan & Penataan UI Overlapping**: Memperbaiki struktur penutup tag HTML DOM `#view-yolo-ai` yang sebelumnya menimpa dan menggeser elemen UI lain di sekitarnya.
+  3. **Responsif & Studio Layout Presisi**: Menata header card, tombol preset `.yai`, studio tab navigation, floating HUD canvas overlay, responsive object cards grid (`repeat(auto-fill, minmax(220px, 1fr))`), dan footer bar agar tampil rapi, bersih, dan nyaman dipandang di seluruh perangkat (STB HDMI, Mobile, Tablet, Desktop).
 
 ### 📋 Changelog Pembaruan Ver. 10.1.8:
 - **Fitur Uji RTSP Video Stream Real-time (`🎬 Test RTSP Video`)**: Menambahkan tombol pengujian koneksi RTSP dan pemutar preview video live stream langsung pada modal konfigurasi kamera sebelum menyimpan data kamera.
