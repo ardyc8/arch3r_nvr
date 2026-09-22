@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.3.7 - Professional Multi-Tenant Dashboard</title>
+    <title>Arch3r NVR Ver. 10.3.8 - Professional Multi-Tenant Dashboard</title>
     <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -171,11 +171,7 @@
                 </a>
                 <a href="#addons" class="nav-item" data-target="view-addons">
                     <span class="icon">🧩</span>
-                    <span class="text">Marketplace (Addons)</span>
-                </a>
-                <a href="/addons/yolo-ai" class="nav-item" data-target="view-yolo-ai" id="nav-item-yolo-ai">
-                    <span class="icon">🤖</span>
-                    <span class="text">YOLO AI Vision</span>
+                    <span class="text">Addons</span>
                 </a>
                 <a href="#about" class="nav-item" data-target="view-about">
                     <span class="icon">ℹ️</span> About NVR
@@ -994,24 +990,53 @@
             
             <!-- 8.5 VIEW ADDONS -->
             <div id="view-addons" class="view-pane">
-                <div class="content-wrapper" style="padding: 2rem; max-width:1000px; margin:0 auto;">
+                <div class="content-wrapper" style="padding: 1.25rem 1.25rem 3.5rem 1.25rem; max-width: 1200px; margin: 0 auto;">
                     
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem; flex-wrap:wrap; gap:1rem;">
+                    <!-- Header Addons -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.25rem 1.5rem; box-shadow:0 4px 6px rgba(0,0,0,0.3);">
                         <div>
-                            <h2 style="margin:0; font-size:1.8rem;"><span class="icon">🧩</span> Addons Marketplace</h2>
-                            <p style="color:var(--text-muted); margin:0.5rem 0 0 0;">Kelola modul tambahan (Addons) untuk memperluas kemampuan NVR Anda.</p>
+                            <div style="display:flex; align-items:center; gap:0.6rem;">
+                                <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                    <span>🧩</span> Addons
+                                </h2>
+                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.3.8</span>
+                            </div>
+                            <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
+                                Kelola modul tambahan (Addons) dan daftar kamera NVR yang terintegrasi analitik cerdas YOLO AI.
+                            </p>
                         </div>
-                        <div>
-                            <button class="btn btn-primary" onclick="openInstallAddonModal()" style="display:flex; align-items:center; gap:0.5rem; padding: 0.6rem 1rem;">
-                                <span>➕</span> Install Addon (URL/GitHub)
+                        <div style="display:flex; gap:0.6rem; align-items:center;">
+                            <button type="button" class="btn btn-secondary" onclick="openInstallAddonModal()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; padding:0.55rem 1rem; border-radius:8px;">
+                                <span>📦</span> Install Addon (URL/GitHub)
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="openAddYoloCameraModal()" style="background:#2563eb; border-color:#2563eb; display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; font-weight:600; padding:0.55rem 1.1rem; border-radius:8px;">
+                                <span>➕</span> Tambah Kamera
                             </button>
                         </div>
                     </div>
 
-                    <div class="addons-container">
-                        <div style="background:var(--surface); border-radius:10px; border:1px solid var(--border); overflow:hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                    <!-- MAIN VIEW: PANEL LIST DAFTAR KAMERA YOLO AI -->
+                    <div id="yolo-main-list-view" style="display:block;">
+                        <div style="background:var(--surface); border-radius:10px; border:1px solid var(--border); padding:1.25rem; box-shadow:0 4px 12px rgba(0,0,0,0.3); margin-bottom:1.5rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border);">
+                                <h3 style="margin:0; font-size:1.1rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                    <span>📹</span> Panel List Kamera YOLO AI
+                                </h3>
+                                <span id="yolo-camera-count-badge" class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">0 Kamera Terhubung</span>
+                            </div>
+
+                            <!-- List Baris Kamera -->
+                            <div id="yolo-camera-list-container" style="display:flex; flex-direction:column; gap:0.75rem;">
+                                <!-- Dynamically populated via script.js -->
+                            </div>
+                        </div>
+
+                        <!-- Repositori & Modul Addons Tambahan -->
+                        <div class="addons-container" style="background:var(--surface); border-radius:10px; border:1px solid var(--border); overflow:hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
                             <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                                <h3 style="margin:0; font-size:1.1rem; color:#3b82f6;">Local Repository</h3>
+                                <h3 style="margin:0; font-size:1.05rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                    <span>📦</span> Repositori Modul Addons
+                                </h3>
                                 <button class="btn-sm btn-secondary" onclick="fetchInstalledAddons()" title="Refresh List">🔄 Refresh</button>
                             </div>
                             
@@ -1027,104 +1052,12 @@
                                         </tr>
                                     </thead>
                                     <tbody id="installed-addons-tbody">
-                                        <!-- Addons will be loaded here via JS -->
+                                        <!-- Addons loaded via JS -->
                                         <tr>
-                                            <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading addons...</td>
+                                            <td colspan="5" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">Memuat modul addons...</td>
                                         </tr>
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Install Addon -->
-            <div id="installAddonModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
-                <div style="background:var(--surface); width:90%; max-width:550px; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-                    <div style="padding:1rem 1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                        <h3 style="margin:0; color:var(--text);">📦 Install Addon Baru</h3>
-                        <button onclick="closeInstallAddonModal()" style="background:none; border:none; color:var(--text); font-size:1.5rem; cursor:pointer;">&times;</button>
-                    </div>
-                    <div style="padding:1.5rem;">
-                        <p style="color:var(--text-muted); font-size:0.9rem; margin-top:0; margin-bottom:1rem;">
-                            Masukkan URL sumber Addon atau URL repositori GitHub. Sistem akan mengunduh dan melakukan instalasi otomatis ke direktori <code style="background:rgba(255,255,255,0.1); padding:2px 4px; border-radius:3px; color:#3b82f6;">/addons</code>.
-                        </p>
-                        <div class="form-group" style="margin-bottom:1rem;">
-                            <label style="display:block; margin-bottom:0.5rem; font-weight:bold; font-size:0.9rem;">URL / GitHub Repository:</label>
-                            <input type="text" id="addon-url-input" class="form-control" placeholder="Contoh: https://github.com/developer/arch3r-addon-name.git" style="width:100%; padding:0.75rem; background:rgba(0,0,0,0.2); color:white; border:1px solid var(--border); border-radius:4px; font-family:monospace;">
-                        </div>
-                        <div style="background:rgba(234, 179, 8, 0.1); border-left:3px solid #eab308; padding:1rem; font-size:0.85rem; color:#eab308; margin-bottom:0; border-radius:0 4px 4px 0;">
-                            <strong style="display:block; margin-bottom:0.5rem;">Syarat & Ketentuan Pembuatan Addon:</strong>
-                            <ul style="margin: 0; padding-left: 1.2rem; line-height:1.5;">
-                                <li>Repositori harus memiliki file <code>manifest.json</code> di root directory.</li>
-                                <li>Untuk addon berbasis Python, harus menyediakan <code>requirements.txt</code>.</li>
-                                <li>Script utama (Node.js/Python) akan otomatis diregistrasikan dan dijalankan oleh <strong style="color:white;">PM2 Ecosystem</strong>.</li>
-                                <li>Pastikan addon kompatibel dengan arsitektur <em>arm64 (Linux Armbian)</em>.</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div style="padding:1rem 1.5rem; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:1rem;">
-                        <button class="btn btn-secondary" onclick="closeInstallAddonModal()">Batal</button>
-                        <button class="btn btn-primary" onclick="submitInstallAddon()" style="display:flex; align-items:center; gap:0.5rem;">⬇️ Download & Install</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Addon Config -->
-            <div id="addonConfigModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
-                <div style="background:var(--surface); width:90%; max-width:600px; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; max-height:80vh;">
-                    <div style="padding:1rem 1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                        <h3 style="margin:0; color:var(--text);">⚙️ Pengaturan Addon: <span id="addonConfigTitle" style="color:#3b82f6;"></span></h3>
-                        <button onclick="closeAddonConfigModal()" style="background:none; border:none; color:var(--text); font-size:1.5rem; cursor:pointer;">&times;</button>
-                    </div>
-                    <div id="addonConfigBody" style="padding:1.5rem; overflow-y:auto; flex:1;">
-                        <!-- Dynamic Form di-generate dari public/script.js -->
-                    </div>
-                    <div style="padding:1rem 1.5rem; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:1rem;">
-                        <button class="btn btn-secondary" onclick="closeAddonConfigModal()">Batal</button>
-                        <button class="btn btn-primary" onclick="saveAddonConfig()" style="display:flex; align-items:center; gap:0.5rem;">💾 Simpan Konfigurasi</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 8.6 VIEW DEDICATED YOLO AI ADDON (SEPARATE PAGE) -->
-            <div id="view-yolo-ai" class="view-pane">
-                <div class="content-wrapper" style="padding: 1.25rem 1.25rem 3.5rem 1.25rem; max-width: 1200px; margin: 0 auto;">
-                    
-                    <!-- Header Addons -->
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.25rem 1.5rem; box-shadow:0 4px 6px rgba(0,0,0,0.3);">
-                        <div>
-                            <div style="display:flex; align-items:center; gap:0.6rem;">
-                                <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                                    <span>🤖</span> Addons YOLO AI
-                                </h2>
-                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.3.7</span>
-                            </div>
-                            <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
-                                Kelola daftar kamera NVR yang terintegrasi dengan analitik cerdas YOLO AI.
-                            </p>
-                        </div>
-                        <div style="display:flex; gap:0.6rem; align-items:center;">
-                            <button type="button" class="btn btn-primary" onclick="openAddYoloCameraModal()" style="background:#2563eb; border-color:#2563eb; display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; font-weight:600; padding:0.55rem 1.1rem; border-radius:8px;">
-                                <span>➕</span> Tambah Kamera
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- MAIN VIEW: PANEL LIST DAFTAR KAMERA YOLO AI -->
-                    <div id="yolo-main-list-view" style="display:block;">
-                        <div style="background:var(--surface); border-radius:10px; border:1px solid var(--border); padding:1.25rem; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border);">
-                                <h3 style="margin:0; font-size:1.1rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                                    <span>📹</span> Panel List Kamera YOLO AI
-                                </h3>
-                                <span id="yolo-camera-count-badge" class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">0 Kamera Terhubung</span>
-                            </div>
-
-                            <!-- List Baris Kamera -->
-                            <div id="yolo-camera-list-container" style="display:flex; flex-direction:column; gap:0.75rem;">
-                                <!-- Dynamically populated via script.js -->
                             </div>
                         </div>
                     </div>

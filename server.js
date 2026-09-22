@@ -683,10 +683,6 @@ function scanAvailablePhysicalAddons() {
 }
 
 app.get('/api/addons', verifyToken, (req, res) => {
-    if (req.userRole !== 'superadmin' && req.userRole !== 'administrator' && req.userRole !== 'admin') {
-        return res.status(403).json({ error: 'Akses Ditolak: Memerlukan hak akses Administrator atau Superadmin' });
-    }
-    
     const dbData = getNvrDb();
     if (!dbData.addons) {
         dbData.addons = [];

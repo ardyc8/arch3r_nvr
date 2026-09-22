@@ -555,16 +555,10 @@ async function handleLogout() {
                 }
             }
 
-            if (targetId === 'view-yolo-ai') {
-                if (typeof initYoloAiPage === 'function') {
-                    initYoloAiPage();
-                } else if (typeof openYoloAiPage === 'function') {
-                    openYoloAiPage();
-                }
-            } else if (targetId === 'view-about') {
-                if (typeof fetchAboutInfo === 'function') fetchAboutInfo();
-            } else if (targetId === 'view-addons') {
+            if (targetId === 'view-addons' || targetId === 'view-yolo-ai') {
+                if (typeof initYoloAiPage === 'function') initYoloAiPage();
                 if (typeof fetchInstalledAddons === 'function') fetchInstalledAddons();
+            } else if (targetId === 'view-about') {
             } else if (targetId === 'view-logs') {
                 if (typeof fetchLogs === 'function') fetchLogs();
             } else if (targetId === 'view-setting-users') {
@@ -8197,8 +8191,13 @@ function initYoloAiPage() {
     if (mainList) mainList.style.display = 'block';
     if (settingsView) settingsView.style.display = 'none';
 }
-window.initYoloAiPage = initYoloAiPage;
-window.openYoloAiPage = initYoloAiPage;
+function openYoloAiPage() {
+    if (typeof window.navigateToView === 'function') {
+        window.navigateToView('view-addons');
+    }
+    initYoloAiPage();
+}
+window.openYoloAiPage = openYoloAiPage;
 
 function renderYoloCameraList() {
     const container = document.getElementById('yolo-camera-list-container');
