@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.3.3 Multi-Tenant Controller & Clean Default YOLO AI Engine
+// script.js - Archer NVR Ver. 10.3.4 Multi-Tenant Controller & Clean Default YOLO AI Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -5124,12 +5124,8 @@ function renderAIFrame() {
     renderYoloLiveDetections(ctx, w, h, isVideoPlaying);
 }
 
-// Live YOLO Real-Time Object Recognition & Bounding Box Renderer
-let yoloLiveTrackedObjects = [
-    { id: '101', type: 'person', label: 'Manusia', icon: '👤', color: '#10b981', conf: 0.92, nx: 0.18, ny: 0.28, nw: 0.14, nh: 0.42, vx: 0.0003, vy: 0 },
-    { id: '202', type: 'car', label: 'Mobil', icon: '🚗', color: '#38bdf8', conf: 0.88, nx: 0.52, ny: 0.35, nw: 0.30, nh: 0.36, vx: -0.0002, vy: 0 },
-    { id: '303', type: 'motorcycle', label: 'Motor', icon: '🛵', color: '#f59e0b', conf: 0.94, nx: 0.36, ny: 0.48, nw: 0.16, nh: 0.32, vx: 0.0004, vy: 0 }
-];
+// Live YOLO Real-Time Object Recognition & Bounding Box Renderer (Accurate Fixed Coordinates)
+window.aiLiveCameraDetections = window.aiLiveCameraDetections || {};
 
 function renderYoloLiveDetections(ctx, w, h, isVideoPlaying) {
     const isAiEnabled = document.getElementById('ai-cam-enabled') ? document.getElementById('ai-cam-enabled').checked : true;
@@ -5143,66 +5139,91 @@ function renderYoloLiveDetections(ctx, w, h, isVideoPlaying) {
     const isMotorcycleChecked = document.getElementById('yolo-target-motorcycle') ? document.getElementById('yolo-target-motorcycle').checked : true;
     const isBicycleChecked = document.getElementById('yolo-target-bicycle') ? document.getElementById('yolo-target-bicycle').checked : true;
 
-    yoloLiveTrackedObjects.forEach(obj => {
+    // Read real camera detections or mapped camera ROI zones
+    const activeCamId = (aiCurrentCam && aiCurrentCam.id) ? String(aiCurrentCam.id) : null;
+    const liveDetections = (activeCamId && window.aiLiveCameraDetections[activeCamId]) ? window.aiLiveCameraDetections[activeCamId] : null;
+
+    if (!liveDetections || !Array.isArray(liveDetections) || liveDetections.length === 0) {
+        // No fake moving boxes! Bounding boxes will only be rendered when real objects are detected or ROI zones drawn.
+        return;
+    }
+
+    liveDetections.forEach(obj => {
+        if (!obj) return;
+        const type = (obj.type || 'person').toLowerCase();
+
         // Check target filter
-        if (obj.type === 'person' && !isPersonChecked) return;
-        if (obj.type === 'car' && !isCarChecked) return;
-        if (obj.type === 'motorcycle' && !isMotorcycleChecked) return;
-        if (obj.type === 'bicycle' && !isBicycleChecked) return;
+        if (type === 'person' && !isPersonChecked) return;
+        if (type === 'car' && !isCarChecked) return;
+        if (type === 'motorcycle' && !isMotorcycleChecked) return;
+        if (type === 'bicycle' && !isBicycleChecked) return;
 
         // Check confidence threshold
-        if (obj.conf < minConfRatio) return;
+        const conf = typeof obj.conf === 'number' ? obj.conf : 0.85;
+        if (conf < minConfRatio) return;
 
-        // Animate slight realistic movement across the live frame
-        obj.nx += obj.vx;
-        if (obj.nx < 0.08 || obj.nx > 0.65) obj.vx = -obj.vx;
-
-        const x = Math.round(obj.nx * w);
-        const y = Math.round(obj.ny * h);
-        const bw = Math.round(obj.nw * w);
-        const bh = Math.round(obj.nh * h);
+        // Compute exact pixel coordinates without fake random movement
+        let x = 0, y = 0, bw = 0, bh = 0;
+        if (typeof obj.nx === 'number' && typeof obj.nw === 'number') {
+            x = Math.round(obj.nx * w);
+            y = Math.round(obj.ny * h);
+            bw = Math.round(obj.nw * w);
+            bh = Math.round(obj.nh * h);
+        } else {
+            x = obj.x || 0;
+            y = obj.y || 0;
+            bw = obj.w || 0;
+            bh = obj.h || 0;
+        }
 
         if (bw <= 0 || bh <= 0) return;
 
+        // Class theme color & icons
+        let color = '#10b981';
+        let icon = '👤';
+        let label = obj.label || 'Manusia';
+
+        if (type === 'car') {
+            color = '#38bdf8'; icon = '🚗'; label = obj.label || 'Mobil';
+        } else if (type === 'motorcycle') {
+            color = '#f59e0b'; icon = '🛵'; label = obj.label || 'Motor';
+        } else if (type === 'bicycle') {
+            color = '#a855f7'; icon = '🚲'; label = obj.label || 'Sepeda';
+        }
+
         ctx.save();
 
-        // 1. Fill semi-transparent background box
-        ctx.fillStyle = obj.color + '22';
+        // 1. Semi-transparent background box
+        ctx.fillStyle = color + '22';
         ctx.fillRect(x, y, bw, bh);
 
-        // 2. Draw outer bounding box border
-        ctx.strokeStyle = obj.color;
+        // 2. Outer bounding box border
+        ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.strokeRect(x, y, bw, bh);
 
-        // 3. Draw Corner Reticle Crosshairs (Tactical YOLO HUD)
+        // 3. Corner Reticle Crosshairs
         const cornerLen = Math.min(14, Math.floor(Math.min(bw, bh) * 0.25));
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        // Top-Left
         ctx.moveTo(x, y + cornerLen); ctx.lineTo(x, y); ctx.lineTo(x + cornerLen, y);
-        // Top-Right
         ctx.moveTo(x + bw - cornerLen, y); ctx.lineTo(x + bw, y); ctx.lineTo(x + bw, y + cornerLen);
-        // Bottom-Left
         ctx.moveTo(x, y + bh - cornerLen); ctx.lineTo(x, y + bh); ctx.lineTo(x + cornerLen, y + bh);
-        // Bottom-Right
         ctx.moveTo(x + bw - cornerLen, y + bh); ctx.lineTo(x + bw, y + bh); ctx.lineTo(x + bw, y + bh - cornerLen);
         ctx.stroke();
 
-        // 4. Draw Header Badge with Icon, Label, Confidence %, and Object Tracking ID
-        const confPercent = Math.round(obj.conf * 100);
-        const tagText = `${obj.icon} ${obj.label} [${confPercent}%] #${obj.id}`;
+        // 4. Header Badge with Icon, Label, and Confidence %
+        const confPercent = Math.round(conf * 100);
+        const tagText = `${icon} ${label} [${confPercent}%]${obj.id ? ' #' + obj.id : ''}`;
         
         ctx.font = 'bold 10px monospace';
         const tagWidth = Math.max(bw, ctx.measureText(tagText).width + 12);
         const tagHeight = 20;
         const tagY = Math.max(0, y - tagHeight);
 
-        // Solid badge background matching class color
-        ctx.fillStyle = obj.color;
+        ctx.fillStyle = color;
         ctx.fillRect(x, tagY, tagWidth, tagHeight);
 
-        // Badge text
         ctx.fillStyle = '#ffffff';
         ctx.fillText(tagText, x + 6, tagY + 14);
 
