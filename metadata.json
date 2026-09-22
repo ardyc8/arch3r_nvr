@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.6.1 - HDMI Kiosk Display Hub: Localhost Auto-Login, Protected Kiosk Viewer RBAC & Smartphone Real-Time Remote Control.",
+  "description": "Arch3r NVR Ver. 10.6.2 - HDMI Kiosk Real-Time WebRTC WHEP Engine, Instant SSE Push Remote, Pure Video Wall & Multi-Grid Control.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

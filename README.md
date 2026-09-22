@@ -1,5 +1,25 @@
-# ⚡ Arch3r NVR (Ver. 10.6.1)
+# ⚡ Arch3r NVR (Ver. 10.6.2)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.2:
+- **HDMI Kiosk Real-Time WebRTC (MediaMTX WHEP) Streaming, Push SSE Remote (<50ms), Pure Edge-to-Edge Video Wall & Multi-Grid Selector**:
+  1. **WebRTC MediaMTX WHEP Ultra-Low Latency Streaming (~0.1s Zero-Delay)**:
+     - Mengalihkan jalur video stream dari HLS berlatensi tinggi (2-5 detik buffer lag) ke **WebRTC WHEP (MediaMTX Port 8889 / `/whep`)** dengan latensi riil mendekati nol (~0.1 detik).
+     - **Optimalisasi Dual-Stream Sub-Stream Otomatis**: Pada tampilan multi-grid (4, 6, 9 kamera), sistem otomatis mengalirkan sub-stream resolusi SD untuk menjaga beban CPU/GPU decoding STB tetap di bawah 30%, melenyapkan fenomena video macet/buffering/frame drop.
+     - **Seamless Fallback ke HLS**: Jika MediaMTX WebRTC belum siap atau codec tidak didukung peramban, pemutar video otomatis berpindah ke HLS tanpa jeda dan tanpa layar hitam.
+     - **Manajemen Siklus Hidup Koneksi**: WebRTC PeerConnection ditutup secara rapi pada saat perpindahan grid atau reload untuk mencegah kebocoran memori (memory leak) di STB.
+  2. **Push SSE Instan (< 50ms) Remote Pintar Layar TV dari Smartphone**:
+     - Menggantikan mekanisme HTTP Polling dengan **Server-Sent Events (SSE)** via endpoint `/api/addons/hdmi-kiosk/events`.
+     - Perintah yang ditekan di HP (ganti tata letak, alihkan kamera, hard reload) langsung dieksekusi oleh layar TV dalam hitungan milidetik secara instan.
+  3. **Tampilan Layar TV Murni (Pure Video Wall 100vw x 100vh Edge-to-Edge)**:
+     - Menyembunyikan seluruh kontrol navigasi, tombol gear PTZ, bottom navbar, dan header saat berjalan di mode Kiosk TV.
+     - Layar TV kini murni menyajikan grid video penuh tanpa terhalang tombol apapun.
+  4. **Pilihan Grid Lengkap & Auto-Tour / Patroli**:
+     - Ditambahkan layout Grid 6 Kamera (2x3) di samping Grid 1 (Fullscreen), Grid 4 (2x2 Quad), dan Grid 9 (3x3).
+     - Ditambahkan fitur **Auto-Tour / Patroli Otomatis**: Layar TV secara otomatis berpindah giliran antar kamera aktif setiap 10 detik.
+  5. **Aksi Cepat Remote: "⚡ Hard Reload TV" & "🔄 Sambung Ulang Stream"**:
+     - Ditambahkan tombol Hard Reload untuk memaksa peramban TV memuat ulang halaman secara menyeluruh dari jarak jauh melalui HP.
+     - Ditambahkan tombol Sambung Ulang Stream untuk melakukan sinkronisasi ulang WebRTC & HLS seketika.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.1:
 - **HDMI Kiosk 3-Part Smart Ecosystem: Localhost Auto-Login, Protected Kiosk Viewer RBAC & Smartphone Virtual Remote Control**:

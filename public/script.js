@@ -469,9 +469,126 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.applyKioskDisplayMode = applyKioskDisplayMode;
 
+    let lastReloadSeq = 0;
+    let kioskTourIntervalTimer = null;
+    let kioskTourIndex = 0;
+    let kioskEventSource = null;
+
+    function applyKioskStateChanges(st) {
+        if (!st) return;
+
+        // 1. Hard Reload TV (Memaksa Chromium STB memuat ulang seluruh halaman)
+        if (st.reload_seq && st.reload_seq !== lastReloadSeq) {
+            lastReloadSeq = st.reload_seq;
+            console.log('[KIOSK] Sinyal Hard Reload diterima dari Remote HP, memuat ulang layar TV...');
+            window.location.reload(true);
+            return;
+        }
+
+        // 2. Sambung Ulang Stream (Re-sync)
+        if (st.refresh_seq && st.refresh_seq !== lastRefreshSeq) {
+            lastRefreshSeq = st.refresh_seq;
+            if (typeof window.refreshAllStreams === 'function') {
+                window.refreshAllStreams();
+            }
+        }
+
+        // 3. Standby / Layar Hitam Hemat Daya
+        let blackoutDiv = document.getElementById('kioskBlackoutOverlay');
+        if (st.blackout) {
+            if (!blackoutDiv) {
+                blackoutDiv = document.createElement('div');
+                blackoutDiv.id = 'kioskBlackoutOverlay';
+                blackoutDiv.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#475569;font-family:sans-serif;';
+                blackoutDiv.innerHTML = '<div style="font-size:3.5rem;margin-bottom:0.75rem;">🌙</div><div style="font-size:1.15rem;letter-spacing:1px;color:#64748b;font-weight:600;">ARCH3R NVR MONITOR STANDBY</div><div style="font-size:0.82rem;color:#475569;margin-top:0.4rem;">Layar TV dalam mode hemat daya • Aktifkan kembali lewat HP</div>';
+                document.body.appendChild(blackoutDiv);
+            }
+            blackoutDiv.style.display = 'flex';
+        } else if (blackoutDiv) {
+            blackoutDiv.style.display = 'none';
+        }
+
+        // 4. Auto-Tour / Patroli Bergilir Otomatis
+        if (st.tour) {
+            if (!kioskTourIntervalTimer) {
+                const intervalSec = (st.tour_interval || 10) * 1000;
+                kioskTourIntervalTimer = setInterval(() => {
+                    if (Array.isArray(cameras) && cameras.length > 0) {
+                        kioskTourIndex = (kioskTourIndex + 1) % cameras.length;
+                        const nextCam = cameras[kioskTourIndex];
+                        if (nextCam && typeof window.onChannelDropdownChange === 'function') {
+                            window.onChannelDropdownChange(nextCam.id);
+                            if (typeof window.setGridLayout === 'function') {
+                                window.setGridLayout(1);
+                            }
+                        }
+                    }
+                }, intervalSec);
+            }
+        } else {
+            if (kioskTourIntervalTimer) {
+                clearInterval(kioskTourIntervalTimer);
+                kioskTourIntervalTimer = null;
+            }
+        }
+
+        // 5. Preset Tata Letak Grid TV (Instan < 50ms)
+        if (st.preset === 'grid_1' || st.preset === 'single') {
+            if (typeof window.onChannelDropdownChange === 'function') {
+                window.onChannelDropdownChange(st.target_cam_id || 'all');
+            }
+            if (typeof window.setGridLayout === 'function') {
+                window.setGridLayout(1);
+            }
+        } else if (st.preset === 'grid_4' || st.preset === 'live_grid') {
+            if (typeof window.onChannelDropdownChange === 'function') {
+                window.onChannelDropdownChange('all');
+            }
+            if (typeof window.setGridLayout === 'function') {
+                window.setGridLayout(4);
+            }
+        } else if (st.preset === 'grid_6') {
+            if (typeof window.onChannelDropdownChange === 'function') {
+                window.onChannelDropdownChange('all');
+            }
+            if (typeof window.setGridLayout === 'function') {
+                window.setGridLayout(6);
+            }
+        } else if (st.preset === 'grid_9' || st.preset === 'live_grid_3x3') {
+            if (typeof window.onChannelDropdownChange === 'function') {
+                window.onChannelDropdownChange('all');
+            }
+            if (typeof window.setGridLayout === 'function') {
+                window.setGridLayout(9);
+            }
+        } else if (st.preset === 'grid_16') {
+            if (typeof window.onChannelDropdownChange === 'function') {
+                window.onChannelDropdownChange('all');
+            }
+            if (typeof window.setGridLayout === 'function') {
+                window.setGridLayout(16);
+            }
+        }
+    }
+
     function startKioskRemotePoller() {
+        // A. Jalur Real-Time Push SSE (< 50ms respon seketika)
+        if (window.EventSource && !kioskEventSource) {
+            try {
+                kioskEventSource = new EventSource('/api/addons/hdmi-kiosk/events');
+                kioskEventSource.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data && data.liveState) {
+                            applyKioskStateChanges(data.liveState);
+                        }
+                    } catch (_) {}
+                };
+            } catch (_) {}
+        }
+
+        // B. Heartbeat Fallback Polling (Cadangan 4 detik)
         if (kioskPollerInterval) return;
-        
         kioskPollerInterval = setInterval(async () => {
             try {
                 const res = await fetch('/api/addons/hdmi-kiosk/live-state');
@@ -482,56 +599,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const st = data.liveState;
                 if (st.updated_at && st.updated_at !== lastKioskUpdatedAt) {
                     lastKioskUpdatedAt = st.updated_at;
-
-                    // Handle refresh command
-                    if (st.refresh_seq && st.refresh_seq !== lastRefreshSeq) {
-                        lastRefreshSeq = st.refresh_seq;
-                        if (typeof window.refreshAllStreams === 'function') {
-                            window.refreshAllStreams();
-                        }
-                    }
-
-                    // Handle standby / blackout
-                    let blackoutDiv = document.getElementById('kioskBlackoutOverlay');
-                    if (st.blackout) {
-                        if (!blackoutDiv) {
-                            blackoutDiv = document.createElement('div');
-                            blackoutDiv.id = 'kioskBlackoutOverlay';
-                            blackoutDiv.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#475569;font-family:sans-serif;';
-                            blackoutDiv.innerHTML = '<div style="font-size:3.5rem;margin-bottom:0.75rem;">🌙</div><div style="font-size:1.15rem;letter-spacing:1px;color:#64748b;font-weight:600;">ARCH3R NVR MONITOR STANDBY</div><div style="font-size:0.82rem;color:#475569;margin-top:0.4rem;">Layar TV dalam mode hemat daya • Aktifkan kembali lewat HP</div>';
-                            document.body.appendChild(blackoutDiv);
-                        }
-                        blackoutDiv.style.display = 'flex';
-                    } else if (blackoutDiv) {
-                        blackoutDiv.style.display = 'none';
-                    }
-
-                    // Handle preset layout
-                    if (st.preset === 'grid_1' || st.preset === 'single') {
-                        if (typeof window.onChannelDropdownChange === 'function') {
-                            window.onChannelDropdownChange(st.target_cam_id || 'all');
-                        }
-                        if (typeof window.setGridLayout === 'function') {
-                            window.setGridLayout(1);
-                        }
-                    } else if (st.preset === 'grid_4' || st.preset === 'live_grid') {
-                        if (typeof window.onChannelDropdownChange === 'function') {
-                            window.onChannelDropdownChange('all');
-                        }
-                        if (typeof window.setGridLayout === 'function') {
-                            window.setGridLayout(4);
-                        }
-                    } else if (st.preset === 'grid_9' || st.preset === 'live_grid_3x3') {
-                        if (typeof window.onChannelDropdownChange === 'function') {
-                            window.onChannelDropdownChange('all');
-                        }
-                        if (typeof window.setGridLayout === 'function') {
-                            window.setGridLayout(9);
-                        }
-                    }
+                    applyKioskStateChanges(st);
                 }
             } catch (_) {}
-        }, 2000);
+        }, 4000);
     }
     window.startKioskRemotePoller = startKioskRemotePoller;
 
@@ -2849,18 +2920,116 @@ async function fetchCameras() {
     
 
     const activeHlsPlayers = {};
+    const activeWebRtcPlayers = {};
     window.activeHlsPlayers = activeHlsPlayers;
+    window.activeWebRtcPlayers = activeWebRtcPlayers;
 
     function destroyHlsPlayers() {
         for (const id in activeHlsPlayers) {
             if (activeHlsPlayers[id]) {
-                activeHlsPlayers[id].destroy();
+                try { activeHlsPlayers[id].destroy(); } catch (e) {}
             }
             delete activeHlsPlayers[id];
+        }
+        for (const id in activeWebRtcPlayers) {
+            if (activeWebRtcPlayers[id]) {
+                try {
+                    const pc = activeWebRtcPlayers[id];
+                    if (typeof pc.close === 'function') pc.close();
+                } catch (e) {}
+            }
+            delete activeWebRtcPlayers[id];
         }
     }
     window.destroyHlsPlayers = destroyHlsPlayers;
     window.activeHlsPlayers = activeHlsPlayers;
+
+    // WebRTC WHEP Ultra-Low Latency Player (~0.1s delay) with Auto Fallback to HLS
+    async function playUltraStream(elementId, hlsUrl, streamPath, onReady, onError) {
+        const video = (typeof elementId === 'string') ? document.getElementById(elementId) : elementId;
+        if (!video) return null;
+
+        const id = video.id || (typeof elementId === 'string' ? elementId : 'video_' + Math.random().toString(36).substr(2, 9));
+
+        if (activeHlsPlayers[id]) {
+            try { activeHlsPlayers[id].destroy(); } catch (e) {}
+            delete activeHlsPlayers[id];
+        }
+        if (activeWebRtcPlayers[id]) {
+            try { activeWebRtcPlayers[id].close(); } catch (e) {}
+            delete activeWebRtcPlayers[id];
+        }
+
+        // Coba jalur WebRTC (MediaMTX WHEP) terlebih dahulu untuk memotong latensi hingga 0.1 detik
+        if (window.RTCPeerConnection && streamPath) {
+            try {
+                const pc = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+                    bundlePolicy: 'max-bundle'
+                });
+                activeWebRtcPlayers[id] = pc;
+
+                pc.addTransceiver('video', { direction: 'recvonly' });
+                pc.addTransceiver('audio', { direction: 'recvonly' });
+
+                const stream = new MediaStream();
+                video.srcObject = stream;
+
+                pc.ontrack = (event) => {
+                    if (event.track) stream.addTrack(event.track);
+                    video.play().catch(() => {});
+                };
+
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                const mediamtxPort = (window.nvrSystemSettings && window.nvrSystemSettings.mediamtxPort) || 8889;
+                const endpoints = [
+                    `/whep/${streamPath}/whep`,
+                    `http://${window.location.hostname}:${mediamtxPort}/${streamPath}/whep`
+                ];
+
+                let connected = false;
+                for (const url of endpoints) {
+                    try {
+                        const ctrl = new AbortController();
+                        const tmr = setTimeout(() => ctrl.abort(), 2000);
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/sdp' },
+                            body: offer.sdp,
+                            signal: ctrl.signal
+                        });
+                        clearTimeout(tmr);
+
+                        if (res.ok) {
+                            const answerSdp = await res.text();
+                            await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+                            connected = true;
+                            if (typeof onReady === 'function') onReady(pc);
+                            return pc;
+                        }
+                    } catch (_) {}
+                }
+
+                if (!connected) {
+                    try { pc.close(); } catch (_) {}
+                    delete activeWebRtcPlayers[id];
+                    video.srcObject = null;
+                }
+            } catch (wErr) {
+                if (activeWebRtcPlayers[id]) {
+                    try { activeWebRtcPlayers[id].close(); } catch (_) {}
+                    delete activeWebRtcPlayers[id];
+                }
+                video.srcObject = null;
+            }
+        }
+
+        // Fallback otomatis ke HLS jika WebRTC belum siap atau tidak tersedia
+        return initHlsPlayer(video, hlsUrl, onReady, onError);
+    }
+    window.playUltraStream = playUltraStream;
 
     function initHlsPlayer(elementId, hlsUrl, onReady, onError) {
         const video = (typeof elementId === 'string') ? document.getElementById(elementId) : elementId;
@@ -2985,16 +3154,18 @@ async function fetchCameras() {
                     const defaultQuality = (count > 1 && hasDistinctSub) ? 'SD' : 'HD';
                     const curQuality = userQuality || defaultQuality;
                     let hlsUrl = '';
+                    const streamPath = (curQuality === 'SD' && hasDistinctSub)
+                        ? (cam.mediaMtxSubPath || ((cam.mediaMtxPath || cam.id) + '_sub'))
+                        : (cam.mediaMtxPath || cam.id);
+
                     if (curQuality === 'SD' && hasDistinctSub) {
                         if (cam.subStreamUrl && cam.subStreamUrl.startsWith('http')) {
                             hlsUrl = cam.subStreamUrl;
                         } else {
-                            const subPath = cam.mediaMtxSubPath || ((cam.mediaMtxPath || cam.id) + '_sub');
-                            hlsUrl = '/stream/' + subPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken());
+                            hlsUrl = '/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken());
                         }
                     } else {
-                        const mainPath = cam.mediaMtxPath || cam.id;
-                        hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + mainPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                        hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
                     }
                     const videoId = "cam_video_admin_" + i;
                     
@@ -3010,7 +3181,7 @@ async function fetchCameras() {
                             </div>
                         </div>
                     `;
-                    inits.push(() => { if (cam.enabled !== false) initHlsPlayer(videoId, hlsUrl); });
+                    inits.push(() => { if (cam.enabled !== false) playUltraStream(videoId, hlsUrl, streamPath); });
                 } else {
                     cell.className = "cam-cell empty-cell";
                     cell.id = "cell_empty_" + i;
@@ -3037,16 +3208,18 @@ async function fetchCameras() {
                     const defaultQuality = (count > 1 && hasDistinctSub) ? 'SD' : 'HD';
                     const curQuality = userQuality || defaultQuality;
                     let hlsUrl = '';
+                    const streamPath = (curQuality === 'SD' && hasDistinctSub)
+                        ? (cam.mediaMtxSubPath || ((cam.mediaMtxPath || cam.id) + '_sub'))
+                        : (cam.mediaMtxPath || cam.id);
+
                     if (curQuality === 'SD' && hasDistinctSub) {
                         if (cam.subStreamUrl && cam.subStreamUrl.startsWith('http')) {
                             hlsUrl = cam.subStreamUrl;
                         } else {
-                            const subPath = cam.mediaMtxSubPath || ((cam.mediaMtxPath || cam.id) + '_sub');
-                            hlsUrl = '/stream/' + subPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken());
+                            hlsUrl = '/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken());
                         }
                     } else {
-                        const mainPath = cam.mediaMtxPath || cam.id;
-                        hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + mainPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                        hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
                     }
                     const videoId = "cam_video_mobile_" + i;
                     
@@ -3062,7 +3235,7 @@ async function fetchCameras() {
                             </div>
                         </div>
                     `;
-                    inits.push(() => { if (cam.enabled !== false) initHlsPlayer(videoId, hlsUrl); });
+                    inits.push(() => { if (cam.enabled !== false) playUltraStream(videoId, hlsUrl, streamPath); });
                 } else {
                     mCell.className = "cam-cell empty-cell";
                     mCell.id = "m_cell_empty_" + i;
@@ -8264,41 +8437,58 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
             </div>
 
             <!-- REMOTE PINTAR LAYAR TV DARI SMARTPHONE (REAL-TIME KIOSK CONTROLLER) -->
-            <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);">
+            <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid #3b82f6; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
                     <strong style="color:#38bdf8; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
                         <span>🎮</span> Remote Pintar Layar TV (HP Controller)
                     </strong>
-                    <span style="font-size:0.72rem; padding:0.2rem 0.5rem; border-radius:4px; background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.25);">
-                        Bebas Mouse / Keyboard Fisik
-                    </span>
+                    <div style="display:flex; gap:0.35rem;">
+                        <span style="font-size:0.7rem; padding:0.2rem 0.45rem; border-radius:4px; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); font-weight:600;">
+                            ⚡ WebRTC WHEP (~0.1s)
+                        </span>
+                        <span style="font-size:0.7rem; padding:0.2rem 0.45rem; border-radius:4px; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-weight:600;">
+                            📡 SSE Instan (&lt;50ms)
+                        </span>
+                    </div>
                 </div>
 
-                <div style="margin-bottom:0.75rem;">
-                    <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.35rem; font-weight:600;">Ganti Tata Letak Grid TV:</span>
-                    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0.5rem;">
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_4', camId: 'all' })" style="padding:0.45rem; font-size:0.8rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.3rem;">
-                            <span>🔲</span> Quad (2x2)
+                <!-- 1. Pilihan Grid TV -->
+                <div style="margin-bottom:0.85rem;">
+                    <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Pilih Tata Letak Grid TV:</span>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap:0.45rem;">
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_1', camId: availableCams[0]?.id || 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                            <span>⏹️</span> 1 Kamera
                         </button>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_9', camId: 'all' })" style="padding:0.45rem; font-size:0.8rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.3rem;">
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_4', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                            <span>🔲</span> 4 Kamera (2x2)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_6', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                            <span>▦</span> 6 Kamera (2x3)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_9', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
                             <span>▦</span> 9 Kamera (3x3)
                         </button>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_1', camId: availableCams[0]?.id || 'all' })" style="padding:0.45rem; font-size:0.8rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.3rem;">
-                            <span>⏹️</span> 1 Kamera Full
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'tour_toggle', tourInterval: 10 })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);">
+                            <span>🔄</span> Patroli / Tour
                         </button>
                     </div>
                 </div>
 
-                <div style="margin-bottom:0.75rem;">
-                    <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.35rem; font-weight:600;">Alihkan Langsung ke Kamera Tertentu di TV:</span>
-                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:110px; overflow-y:auto; padding:0.25rem 0;">
+                <!-- 2. Alihkan Langsung ke Kamera Tertentu -->
+                <div style="margin-bottom:0.85rem;">
+                    <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Alihkan Langsung ke Kamera Tertentu (Fullscreen TV):</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:115px; overflow-y:auto; padding:0.25rem 0;">
                         ${camRemoteBtnsHtml}
                     </div>
                 </div>
 
+                <!-- 3. Aksi Kontrol Cepat TV -->
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.75rem;">
                     <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'refresh' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
-                        <span>🔄</span> Refresh Layar TV
+                        <span>🔄</span> Sambung Ulang Stream
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'reload' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem; background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.3);" title="Paksa muat ulang halaman TV jika tampilan macet atau perlu update">
+                        <span>⚡</span> Hard Reload TV
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary" onclick="toggleKioskBlackout()" id="btnKioskBlackout" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
                         <span>🌙</span> Standby / Layar Hitam

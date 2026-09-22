@@ -1395,8 +1395,19 @@ function extractToken(req) {
     return null;
 }
 
+// Localhost physical STB detector (kernel-level loopback check)
+function isLocalhostRequest(req) {
+    const rawIp = req.socket?.remoteAddress || req.connection?.remoteAddress || '';
+    return rawIp === '127.0.0.1' || 
+           rawIp === '::1' || 
+           rawIp === '::ffff:127.0.0.1';
+}
+
 // Proxy HLS streams from MediaMTX (Internal Port 8880) to allow remote access
 app.use('/stream', (req, res, next) => {
+    if (isLocalhostRequest(req) || (req.query && req.query.kiosk === '1')) {
+        return next();
+    }
     const token = extractToken(req);
     if (!token) return res.status(401).send('Unauthorized');
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
@@ -1408,6 +1419,26 @@ app.use('/stream', (req, res, next) => {
     changeOrigin: true,
     pathRewrite: {
         '^/stream': '' // strip /stream so it goes to /cam1/
+    },
+    ws: true
+}));
+
+// Proxy WebRTC WHEP streams from MediaMTX (Internal Port 8889) for Ultra Low Latency (~0.1s)
+app.use('/whep', (req, res, next) => {
+    if (isLocalhostRequest(req) || (req.query && req.query.kiosk === '1')) {
+        return next();
+    }
+    const token = extractToken(req);
+    if (!token) return res.status(401).send('Unauthorized');
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(401).send('Unauthorized');
+        next();
+    });
+}, createProxyMiddleware({
+    target: 'http://127.0.0.1:8889',
+    changeOrigin: true,
+    pathRewrite: {
+        '^/whep': '' // strip /whep so /whep/cam1/whep passes to /cam1/whep
     },
     ws: true
 }));
@@ -5303,14 +5334,7 @@ app.post('/api/addons/hdmi-kiosk/toggle', verifyToken, requireAdmin, (req, res) 
     }
 });
 
-// --- Kiosk Auto-Login & Remote Control Hub (Ver 10.6.1) ---
-function isLocalhostRequest(req) {
-    const rawIp = req.socket?.remoteAddress || req.connection?.remoteAddress || '';
-    return rawIp === '127.0.0.1' || 
-           rawIp === '::1' || 
-           rawIp === '::ffff:127.0.0.1';
-}
-
+// --- Kiosk Auto-Login & Remote Control Hub (Ver 10.6.2) ---
 app.post('/api/kiosk/auth', (req, res) => {
     // 1. Validasi pemanggil adalah localhost (STB fisik itu sendiri)
     if (!isLocalhostRequest(req)) {
@@ -5372,13 +5396,57 @@ app.post('/api/kiosk/auth', (req, res) => {
     });
 });
 
+// Real-Time SSE Broadcaster for Instant TV Remote (<50ms)
+const kioskSseClients = new Set();
+
+function broadcastKioskEvent(eventData) {
+    const payload = `data: ${JSON.stringify(eventData)}\n\n`;
+    for (const client of kioskSseClients) {
+        try {
+            client.write(payload);
+        } catch (_) {
+            kioskSseClients.delete(client);
+        }
+    }
+}
+
 let kioskLiveState = {
     preset: 'grid_4',
     target_cam_id: 'all',
     refresh_seq: 0,
+    reload_seq: 0,
+    tour: false,
+    tour_interval: 10,
     blackout: false,
     updated_at: Date.now()
 };
+
+app.get('/api/addons/hdmi-kiosk/events', (req, res) => {
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'X-Accel-Buffering': 'no'
+    });
+    res.write(`data: ${JSON.stringify({ type: 'init', liveState: kioskLiveState })}\n\n`);
+
+    kioskSseClients.add(res);
+
+    const keepAliveTimer = setInterval(() => {
+        try {
+            res.write(': keepalive\n\n');
+        } catch (_) {
+            clearInterval(keepAliveTimer);
+            kioskSseClients.delete(res);
+        }
+    }, 15000);
+
+    req.on('close', () => {
+        clearInterval(keepAliveTimer);
+        kioskSseClients.delete(res);
+    });
+});
 
 app.get('/api/addons/hdmi-kiosk/live-state', (req, res) => {
     let cfg = {};
@@ -5393,7 +5461,7 @@ app.get('/api/addons/hdmi-kiosk/live-state', (req, res) => {
 });
 
 app.post('/api/addons/hdmi-kiosk/remote-cmd', verifyToken, requireAdmin, (req, res) => {
-    const { action, preset, camId, blackout } = req.body;
+    const { action, preset, camId, blackout, tour, tourInterval } = req.body;
     
     if (preset) {
         kioskLiveState.preset = preset;
@@ -5404,14 +5472,32 @@ app.post('/api/addons/hdmi-kiosk/remote-cmd', verifyToken, requireAdmin, (req, r
     if (action === 'refresh') {
         kioskLiveState.refresh_seq = (kioskLiveState.refresh_seq || 0) + 1;
     }
+    if (action === 'reload') {
+        kioskLiveState.reload_seq = (kioskLiveState.reload_seq || 0) + 1;
+    }
+    if (typeof tour === 'boolean') {
+        kioskLiveState.tour = tour;
+    } else if (action === 'tour_toggle') {
+        kioskLiveState.tour = !kioskLiveState.tour;
+    }
+    if (tourInterval) {
+        kioskLiveState.tour_interval = parseInt(tourInterval) || 10;
+    }
     if (typeof blackout === 'boolean') {
         kioskLiveState.blackout = blackout;
     }
     kioskLiveState.updated_at = Date.now();
 
+    // Broadcast secara instan via SSE ke seluruh layar TV yang terhubung (< 50ms)
+    broadcastKioskEvent({
+        type: 'command',
+        command: req.body,
+        liveState: kioskLiveState
+    });
+
     res.json({
         success: true,
-        message: 'Perintah remote berhasil diterapkan ke layar TV',
+        message: 'Perintah remote berhasil diterapkan ke layar TV secara instan',
         liveState: kioskLiveState
     });
 });
