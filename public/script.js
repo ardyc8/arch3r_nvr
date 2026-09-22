@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.2.9 Multi-Tenant Controller & Clean Default YOLO AI Engine
+// script.js - Archer NVR Ver. 10.3.0 Multi-Tenant Controller & Clean Default YOLO AI Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
