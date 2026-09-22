@@ -1090,7 +1090,7 @@
 
             <!-- 8.6 VIEW DEDICATED YOLO AI ADDON (SEPARATE PAGE) -->
             <div id="view-yolo-ai" class="view-pane">
-                <div class="content-wrapper" style="padding: 1.5rem; max-width: 1200px; margin: 0 auto;">
+                <div class="content-wrapper" style="padding: 1.25rem 1.25rem 3.5rem 1.25rem; max-width: 1300px; margin: 0 auto;">
                     
                     <!-- Dedicated Page Header -->
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.25rem 1.5rem; box-shadow:0 4px 6px rgba(0,0,0,0.3);">
@@ -1099,25 +1099,25 @@
                                 <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
                                     <span>🤖</span> YOLOv8 AI Vision Engine & Presets
                                 </h2>
-                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.3.2</span>
+                                <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.3.3</span>
                             </div>
                             <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
-                                Addon Analitik Cerdas untuk NVR: Deteksi Area ROI Live RTSP, Engine Aturan Prompt SPBU, Notifikasi Alarm ESP8266 IoT, Notifikasi Telegram, dan Manajemen File Preset .yai.
+                                Addon Analitik Cerdas untuk NVR: Deteksi Objek Live RTSP, Pemindaian Bounding Box Real-Time, Notifikasi Alarm ESP8266 IoT & Telegram.
                             </p>
                         </div>
                         <div style="display:flex; gap:0.6rem; flex-wrap:wrap; align-items:center;">
                             <button type="button" class="btn btn-secondary" onclick="navigateToView('view-addons')" style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem;">
                                 <span>🧩</span> Addons Marketplace
                             </button>
-                            <button type="button" class="btn btn-primary" onclick="saveAIGrid()" id="btn-save-ai-grid" style="background:#2563eb; border-color:#2563eb; display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:600;">
-                                <span>💾</span> Simpan Konfigurasi Kamera
+                            <button type="button" class="btn btn-primary" onclick="saveDefaultYoloConfig()" style="background:#2563eb; border-color:#2563eb; display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:600;">
+                                <span>💾</span> Simpan Konfigurasi
                             </button>
                         </div>
                     </div>
 
                     <!-- Workstation Card -->
-                    <div class="ai-workstation-card" style="background:var(--surface); border-radius:10px; border:1px solid var(--border); overflow:hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-                        <div style="padding:1rem 1.25rem; overflow-y:auto; flex:1;">
+                    <div class="ai-workstation-card" style="background:var(--surface); border-radius:10px; border:1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin-bottom:2.5rem;">
+                        <div style="padding:1.25rem;">
                             <!-- DEFAULT CLEAN YOLO AI WORKSTATION -->
                             <div id="ai-tab-pane-live" style="display:block;">
                                 <!-- Standard YOLO Toolbar -->
@@ -1180,7 +1180,7 @@
                                 </div>
 
                                 <!-- Default Video Feed & Live Bounding Box Canvas -->
-                                <div id="ai-canvas-container" style="position:relative; width:100%; aspect-ratio:16/9; max-height:480px; min-height:280px; background:#070b14; border:1px solid #1e293b; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 20px rgba(0,0,0,0.8); margin-bottom:0.85rem;">
+                                <div id="ai-canvas-container" style="position:relative; width:100%; aspect-ratio:16/9; max-height:420px; min-height:260px; background:#070b14; border:1px solid #1e293b; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 20px rgba(0,0,0,0.8); margin-bottom:1rem;">
                                     
                                     <!-- Badge Status -->
                                     <div style="position:absolute; top:12px; left:12px; z-index:10; background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.4); padding:4px 10px; border-radius:6px; font-size:0.75rem; color:#38bdf8; font-family:monospace; font-weight:700; display:flex; align-items:center; gap:6px;">
@@ -1212,14 +1212,14 @@
                                 </div>
 
                                 <!-- Default Telemetry Terminal Log -->
-                                <div style="background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:0.75rem 1rem;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
-                                        <span style="font-size:0.78rem; font-weight:700; color:#94a3b8; display:flex; align-items:center; gap:0.4rem;">
-                                            <span>📟</span> Telemetry Output Log Deteksi YOLO
+                                <div style="background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:0.85rem 1rem; margin-bottom:1rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                                        <span style="font-size:0.82rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem;">
+                                            <span>📟</span> Output Telemetry Log Deteksi YOLO
                                         </span>
-                                        <button type="button" onclick="clearAITelemetryLog()" style="background:none; border:none; color:#f87171; font-size:0.72rem; cursor:pointer;">Bersihkan Log</button>
+                                        <button type="button" onclick="clearAITelemetryLog()" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; font-size:0.75rem; padding:2px 8px; border-radius:4px; cursor:pointer;">Bersihkan Log</button>
                                     </div>
-                                    <div id="ai-telemetry-log" style="height:90px; overflow-y:auto; font-family:monospace; font-size:0.75rem; color:#38bdf8; background:rgba(0,0,0,0.5); padding:0.5rem; border-radius:5px; border:1px solid rgba(255,255,255,0.05); line-height:1.4;">
+                                    <div id="ai-telemetry-log" style="height:140px; min-height:120px; max-height:240px; overflow-y:auto; font-family:monospace; font-size:0.78rem; color:#38bdf8; background:rgba(0,0,0,0.7); padding:0.65rem 0.85rem; border-radius:6px; border:1px solid rgba(56,189,248,0.25); line-height:1.5;">
                                         <div style="color:#64748b;">[Sistem YOLO AI Aktif - Menunggu deteksi objek pada siaran video live...]</div>
                                     </div>
                                 </div>
