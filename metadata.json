@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.5.0",
-  "description": "Arch3r NVR Ver. 10.5.0 - Professional NVR System with AI HUD Badge, Collapsible Control Drawer, Smooth Position Interpolation, AI Event Snapshots & Config Backup/Restore.",
+  "name": "Arch3r NVR Ver. 10.5.1",
+  "description": "Arch3r NVR Ver. 10.5.1 - Clean Commercial Grade NVR Interface with Precise Real-Time YOLO Overlay, Structured AI Settings Panel & Optimized STB Armbian Performance.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

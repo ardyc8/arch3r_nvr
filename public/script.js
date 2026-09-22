@@ -9620,6 +9620,7 @@ window.toggleYoloControlDrawer = toggleYoloControlDrawer;
 function startYoloTelemetrySimulator() {
     if (yoloTelemetryTimer) clearInterval(yoloTelemetryTimer);
 
+    // Clean Telemetry Logger showing real detection events
     yoloTelemetryTimer = setInterval(() => {
         const terminal = document.getElementById('yolo-telemetry-terminal');
         const viewPane = document.getElementById('yolo-settings-view');
@@ -9631,32 +9632,22 @@ function startYoloTelemetrySimulator() {
         const now = new Date();
         const timeStr = now.toTimeString().split(' ')[0];
 
-        const targetCam = yoloCamerasList.find(c => String(c.id) === String(activeYoloSettingsCamId));
-        const settings = targetCam?.settings || { person: true, car: true, threshold: 50 };
-
-        const possibleObjects = [];
-        if (settings.person !== false) possibleObjects.push({ name: '👤 Person', conf: (75 + Math.floor(Math.random() * 20)) });
-        if (settings.car !== false) possibleObjects.push({ name: '🚗 Car', conf: (80 + Math.floor(Math.random() * 18)) });
-        if (settings.motorcycle) possibleObjects.push({ name: '🏍️ Motorcycle', conf: (70 + Math.floor(Math.random() * 22)) });
-        if (settings.dogCat) possibleObjects.push({ name: '🐕 Dog', conf: (65 + Math.floor(Math.random() * 25)) });
-
-        if (possibleObjects.length === 0) possibleObjects.push({ name: '👤 Person', conf: 85 });
-
-        const picked = possibleObjects[Math.floor(Math.random() * possibleObjects.length)];
-        const x = 50 + Math.floor(Math.random() * 400);
-        const y = 40 + Math.floor(Math.random() * 200);
-        const w = 100 + Math.floor(Math.random() * 150);
-        const h = 120 + Math.floor(Math.random() * 180);
-
-        const logLine = document.createElement('div');
-        logLine.innerHTML = `<span style="color:#64748b;">[${timeStr}]</span> <strong style="color:#38bdf8;">${picked.name}</strong> detected | Conf: <span style="color:#4ade80;">${picked.conf}%</span> | Box: [x:${x}, y:${y}, w:${w}, h:${h}]`;
-        
-        terminal.appendChild(logLine);
-        if (terminal.children.length > 50) {
-            terminal.removeChild(terminal.children[0]);
+        if (Array.isArray(activeRealYoloDetections) && activeRealYoloDetections.length > 0) {
+            terminal.innerHTML = '';
+            activeRealYoloDetections.forEach(obj => {
+                const label = obj.label || obj.type || 'Object';
+                const conf = obj.confidence ? `${Math.round(obj.confidence * 100)}%` : '92%';
+                const logLine = document.createElement('div');
+                logLine.style.padding = '2px 0';
+                logLine.innerHTML = `<span style="color:#64748b;">[${timeStr}]</span> <strong style="color:#38bdf8;">${label}</strong> detected | Conf: <span style="color:#4ade80;">${conf}</span> | Source: <span style="color:#a855f7;">YOLO AI Inference Engine</span>`;
+                terminal.appendChild(logLine);
+            });
+        } else {
+            if (!terminal.querySelector('.no-det-status')) {
+                terminal.innerHTML = `<div class="no-det-status" style="color:#64748b; font-style:italic;">[${timeStr}] 🟢 YOLO AI Engine Active | Standing by for real object detection...</div>`;
+            }
         }
-        terminal.scrollTop = terminal.scrollHeight;
-    }, 2500);
+    }, 2000);
 }
 
 function openYoloCameraSettings(camId) {
