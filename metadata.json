@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.4.8",
-  "description": "Arch3r NVR Ver. 10.4.8 - Full-Stack NVR CCTV System featuring Pure Real YOLO AI Inference Object Detection without any Simulation or Dummy Data.",
+  "name": "Arch3r NVR Ver. 10.5.0",
+  "description": "Arch3r NVR Ver. 10.5.0 - Professional NVR System with AI HUD Badge, Collapsible Control Drawer, Smooth Position Interpolation, AI Event Snapshots & Config Backup/Restore.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

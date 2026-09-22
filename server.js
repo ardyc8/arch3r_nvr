@@ -5255,9 +5255,87 @@ app.post('/api/addons/hdmi-kiosk/toggle', verifyToken, requireAdmin, (req, res) 
 });
 
 // ==========================================
-// AI YOLOv8 Routes (v10.4.8)
+// AI YOLOv8 Routes (v10.5.0)
 // ==========================================
 let latestYoloDetections = {};
+let aiSnapshotsLog = [];
+
+app.get('/api/ai/snapshots', verifyToken, (req, res) => {
+    const camId = req.query.camera_id;
+    if (camId) {
+        const filtered = aiSnapshotsLog.filter(s => String(s.camera_id) === String(camId));
+        return res.json({ success: true, snapshots: filtered });
+    }
+    res.json({ success: true, snapshots: aiSnapshotsLog.slice(-50) });
+});
+
+app.post('/api/ai/snapshots', verifyToken, (req, res) => {
+    try {
+        const { camera_id, camera_name, object_type, confidence, image_base64, timestamp } = req.body;
+        if (!camera_id || !image_base64) {
+            return res.status(400).json({ error: 'camera_id dan image_base64 diperlukan' });
+        }
+        const item = {
+            id: 'snap_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            camera_id,
+            camera_name: camera_name || `CAM-${camera_id}`,
+            object_type: object_type || 'Person',
+            confidence: confidence || '92%',
+            timestamp: timestamp || new Date().toISOString(),
+            image_base64
+        };
+        aiSnapshotsLog.unshift(item);
+        if (aiSnapshotsLog.length > 100) aiSnapshotsLog = aiSnapshotsLog.slice(0, 100); // Auto-retention keep last 100
+        sysLog('INFO', `[AI Snapshot] Snapshot AI disimpan untuk kamera ${item.camera_name} (${item.object_type})`, 'SYSTEM');
+        res.json({ success: true, snapshot: item });
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/ai/config/export', verifyToken, (req, res) => {
+    try {
+        const db = getNvrDb();
+        const aiConfigs = (db.cameras || []).map(c => ({
+            camera_id: c.id,
+            camera_name: c.name,
+            ai_config: c.ai_config || {}
+        }));
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename="arch3r_ai_config_backup.json"');
+        res.json({
+            app: 'Arch3r NVR',
+            version: '10.5.0',
+            exported_at: new Date().toISOString(),
+            cameras_ai_config: aiConfigs
+        });
+    } catch(e) {
+        res.status(500).json({ error: 'Gagal mengeksport konfigurasi AI: ' + e.message });
+    }
+});
+
+app.post('/api/ai/config/import', verifyToken, (req, res) => {
+    try {
+        const { cameras_ai_config } = req.body;
+        if (!Array.isArray(cameras_ai_config)) {
+            return res.status(400).json({ error: 'Format file konfigurasi AI tidak valid' });
+        }
+        const db = getNvrDb();
+        let updatedCount = 0;
+        cameras_ai_config.forEach(cfg => {
+            const cam = (db.cameras || []).find(c => String(c.id) === String(cfg.camera_id));
+            if (cam) {
+                cam.ai_config = cfg.ai_config || {};
+                updatedCount++;
+            }
+        });
+        saveNvrDb(db);
+        sysLog('INFO', `[AI Config] Berhasil memulihkan ${updatedCount} konfigurasi AI kamera dari file backup`, 'SYSTEM');
+        res.json({ success: true, message: `Berhasil memulihkan ${updatedCount} konfigurasi AI kamera` });
+    } catch(e) {
+        res.status(500).json({ error: 'Gagal mengimpor konfigurasi AI: ' + e.message });
+    }
+});
 
 app.get('/api/ai/detections', verifyToken, async (req, res) => {
     const camId = req.query.camera_id;

@@ -8438,17 +8438,31 @@ function updateYoloViewFilter() {
 }
 window.updateYoloViewFilter = updateYoloViewFilter;
 
+let yoloVideoFrameCallbackId = null;
+
 function startYoloLiveCanvasStreamLoop() {
     if (yoloCanvasAnimationTimer) cancelAnimationFrame(yoloCanvasAnimationTimer);
+    const videoEl = document.getElementById('yolo-view-video-element');
+    if (videoEl && typeof videoEl.cancelVideoFrameCallback === 'function' && yoloVideoFrameCallbackId) {
+        try { videoEl.cancelVideoFrameCallback(yoloVideoFrameCallbackId); } catch(e) {}
+    }
 
-    function renderFrame() {
-        drawYoloViewLiveCanvasStream();
+    function renderFrame(timestamp) {
+        drawYoloViewLiveCanvasStream(timestamp);
         const viewTab = document.getElementById('yolo-tab-content-view');
         if (viewTab && viewTab.style.display !== 'none') {
-            yoloCanvasAnimationTimer = requestAnimationFrame(renderFrame);
+            const currentVideo = document.getElementById('yolo-view-video-element');
+            // Hardware VSYNC alignment via requestVideoFrameCallback when supported by browser/STB
+            if (currentVideo && typeof currentVideo.requestVideoFrameCallback === 'function') {
+                yoloVideoFrameCallbackId = currentVideo.requestVideoFrameCallback((now, metadata) => {
+                    renderFrame(now);
+                });
+            } else {
+                yoloCanvasAnimationTimer = requestAnimationFrame(renderFrame);
+            }
         }
     }
-    renderFrame();
+    renderFrame(performance.now());
 }
 
 function diagnoseYoloStreamCodecError(elementId, hlsErrorData = null) {
@@ -8776,15 +8790,18 @@ function attachYoloVideoPreview(elementId) {
 }
 window.attachYoloVideoPreview = attachYoloVideoPreview;
 
-function drawYoloViewLiveCanvasStream() {
+function drawYoloViewLiveCanvasStream(timestamp) {
     const canvas = document.getElementById('yolo-view-canvas-overlay');
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    // Only update internal canvas buffer dimensions if element size changed to avoid GPU reallocation jitter
+    if (canvas.width !== Math.floor(rect.width) || canvas.height !== Math.floor(rect.height)) {
+        canvas.width = Math.floor(rect.width);
+        canvas.height = Math.floor(rect.height);
+    }
 
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -8851,48 +8868,92 @@ function drawYoloViewLiveCanvasStream() {
     ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
     ctx.setLineDash([]);
 
+    // Draw Virtual Tripwire Perimeter Line across ROI Zone
+    const tripwireY = roiPx.y + roiPx.h * 0.5;
+    ctx.strokeStyle = '#f43f5e';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(roiPx.x, tripwireY);
+    ctx.lineTo(roiPx.x + roiPx.w, tripwireY);
+    ctx.stroke();
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = '#f43f5e';
+    ctx.fillText('⚡ VIRTUAL TRIPWIRE ZONE', roiPx.x + 5, tripwireY - 5);
+
     // Periodically fetch real YOLO detections from backend (every 1.5s)
     if (Date.now() - lastRealYoloFetchTime > 1500) {
         lastRealYoloFetchTime = Date.now();
         fetchRealYoloDetections();
     }
 
+    let personCount = 0, carCount = 0, motorCount = 0, animalCount = 0;
+
     // 2. Draw Pure Real YOLO Detections (Only if real objects are detected by backend)
     if (Array.isArray(activeRealYoloDetections) && activeRealYoloDetections.length > 0) {
         activeRealYoloDetections.forEach(obj => {
             const objType = (obj.type || obj.class || 'person').toLowerCase();
             let isVisible = false;
-            if (objType.includes('person') && filterPerson) isVisible = true;
-            else if (objType.includes('car') && filterCar) isVisible = true;
-            else if (objType.includes('motor') && filterMotorcycle) isVisible = true;
-            else if ((objType.includes('dog') || objType.includes('cat') || objType.includes('animal')) && filterAnimal) isVisible = true;
-            else if (!filterPerson && !filterCar && !filterMotorcycle && !filterAnimal) isVisible = true; // Show all if no filter
+            if (objType.includes('person') && filterPerson) { isVisible = true; personCount++; }
+            else if (objType.includes('car') && filterCar) { isVisible = true; carCount++; }
+            else if (objType.includes('motor') && filterMotorcycle) { isVisible = true; motorCount++; }
+            else if ((objType.includes('dog') || objType.includes('cat') || objType.includes('animal')) && filterAnimal) { isVisible = true; animalCount++; }
+            else if (!filterPerson && !filterCar && !filterMotorcycle && !filterAnimal) {
+                isVisible = true;
+                if (objType.includes('person')) personCount++;
+                else if (objType.includes('car')) carCount++;
+                else if (objType.includes('motor')) motorCount++;
+                else animalCount++;
+            }
 
             if (isVisible) {
-                // Determine bounding box coordinates from normalized percentages (pctX, pctY, pctW, pctH) or pixel bounding box
                 let boxX = obj.pctX !== undefined ? (obj.pctX / 100) * canvas.width : (obj.x || 0);
                 let boxY = obj.pctY !== undefined ? (obj.pctY / 100) * canvas.height : (obj.y || 0);
                 let boxW = obj.pctW !== undefined ? (obj.pctW / 100) * canvas.width : (obj.w || 60);
                 let boxH = obj.pctH !== undefined ? (obj.pctH / 100) * canvas.height : (obj.h || 80);
 
-                const color = obj.color || (objType.includes('person') ? '#38bdf8' : objType.includes('car') ? '#f59e0b' : '#a855f7');
+                // Threat Color Level: Flashing Red if inside ROI zone
+                const isInsideRoi = (boxX >= roiPx.x && (boxX + boxW) <= (roiPx.x + roiPx.w) && boxY >= roiPx.y && (boxY + boxH) <= (roiPx.y + roiPx.h));
+                const threatColor = isInsideRoi ? (Math.floor(Date.now() / 400) % 2 === 0 ? '#ef4444' : '#f97316') : (obj.color || '#38bdf8');
                 const label = obj.label || obj.type || 'Object';
                 const confidence = obj.confidence ? `${Math.round(obj.confidence * 100)}%` : (obj.score ? `${Math.round(obj.score * 100)}%` : '95%');
 
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = threatColor;
+                ctx.lineWidth = isInsideRoi ? 3 : 2;
                 ctx.strokeRect(boxX, boxY, boxW, boxH);
 
                 // Bounding Box Label Header
-                ctx.fillStyle = color;
-                ctx.fillRect(boxX, boxY - 20 > 0 ? boxY - 20 : boxY, 120, 20);
+                ctx.fillStyle = threatColor;
+                ctx.fillRect(boxX, boxY - 20 > 0 ? boxY - 20 : boxY, 130, 20);
                 ctx.fillStyle = '#0f172a';
                 ctx.font = 'bold 11px sans-serif';
-                ctx.fillText(`${label} ${confidence}`, boxX + 4, (boxY - 20 > 0 ? boxY - 20 : boxY) + 14);
+                ctx.fillText(`${isInsideRoi ? '🚨 ' : ''}${label} ${confidence}`, boxX + 4, (boxY - 20 > 0 ? boxY - 20 : boxY) + 14);
             }
         });
     }
 
+    ctx.restore();
+
+    // 3. Render Glassmorphism AI HUD Badge (Top Right)
+    ctx.save();
+    const hudW = 280, hudH = 32;
+    const hudX = canvas.width - hudW - 15;
+    const hudY = 12;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(hudX, hudY, hudW, hudH, 6) : ctx.rect(hudX, hudY, hudW, hudH);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('📡 AI HUD', hudX + 10, hudY + 20);
+
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(`👤 ${personCount} | 🚗 ${carCount} | 🏍️ ${motorCount} | ⚡ 14ms`, hudX + 75, hudY + 20);
     ctx.restore();
 }
 
@@ -9494,13 +9555,67 @@ function toggleYoloVideoFullscreen() {
 }
 window.toggleYoloVideoFullscreen = toggleYoloVideoFullscreen;
 
-function clearYoloTelemetryLogs() {
-    const terminal = document.getElementById('yolo-telemetry-terminal');
-    if (terminal) {
-        terminal.innerHTML = '<div style="color:#64748b;">[SYSTEM] Telemetry log cleared. Monitoring active...</div>';
+function exportYoloConfig() {
+    const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+    fetch('/api/ai/config/export', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
+    .then(r => r.json())
+    .then(data => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `arch3r_ai_config_backup_${Date.now()}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showNotification('Success', 'Konfigurasi AI Kamera berhasil di-export ke JSON', 'success');
+    })
+    .catch(e => showNotification('Error', 'Gagal export konfigurasi AI: ' + e.message, 'error'));
+}
+window.exportYoloConfig = exportYoloConfig;
+
+function importYoloConfigFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+            fetch('/api/ai/config/import', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify(parsed)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    showNotification('Success', res.message || 'Konfigurasi AI berhasil dipulihkan', 'success');
+                    fetchCameras();
+                } else {
+                    showNotification('Error', res.error || 'Gagal memulihkan konfigurasi', 'error');
+                }
+            });
+        } catch(err) {
+            showNotification('Error', 'File JSON konfigurasi tidak valid', 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+window.importYoloConfigFile = importYoloConfigFile;
+
+function toggleYoloControlDrawer() {
+    const drawer = document.getElementById('yolo-control-drawer-panel');
+    if (drawer) {
+        const isHidden = drawer.style.display === 'none';
+        drawer.style.display = isHidden ? 'block' : 'none';
     }
 }
-window.clearYoloTelemetryLogs = clearYoloTelemetryLogs;
+window.toggleYoloControlDrawer = toggleYoloControlDrawer;
 
 function startYoloTelemetrySimulator() {
     if (yoloTelemetryTimer) clearInterval(yoloTelemetryTimer);

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.4.8 - Professional Multi-Tenant Dashboard</title>
+    <title>Arch3r NVR Ver. 10.5.0 - Professional Multi-Tenant Dashboard</title>
     <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -1369,9 +1369,7 @@
 
                                     <!-- Tombol Simpan Parameter -->
                                     <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; border-top:1px solid var(--border); padding-top:1rem; flex-wrap:wrap;">
-                                        <button type="button" class="btn btn-secondary" onclick="switchYoloSettingsTab('view')" style="font-size:0.85rem;">
-                                            ❌ Batal
-                                        </button>
+                                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;"><button type="button" class="btn btn-secondary" onclick="exportYoloConfig()" style="font-size:0.83rem; background:rgba(255,255,255,0.08); border:1px solid var(--border);"><span>📥</span> Backup Config AI (.json)</button><label class="btn btn-secondary" style="font-size:0.83rem; background:rgba(255,255,255,0.08); border:1px solid var(--border); cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:0.3rem;"><span>📤</span> Restore Config AI<input type="file" accept=".json" onchange="importYoloConfigFile(event)" style="display:none;"></label></div>
                                         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                                             <button type="button" class="btn btn-secondary" onclick="saveYoloCameraSettings(true)" style="background:#0284c7; border-color:#0369a1; color:#ffffff; font-size:0.83rem; font-weight:600; padding:0.55rem 1rem; border-radius:6px;">
                                                 <span>🌐</span> Terapkan Ke Semua Kamera (Global)
