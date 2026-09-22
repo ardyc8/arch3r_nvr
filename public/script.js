@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.4.5 Multi-Tenant Controller & Clean Default YOLO AI Engine
+// script.js - Archer NVR Ver. 10.4.6 Multi-Tenant Controller & Clean Default YOLO AI Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -8430,6 +8430,134 @@ function startYoloLiveCanvasStreamLoop() {
     renderFrame();
 }
 
+function diagnoseYoloStreamCodecError(elementId, hlsErrorData = null) {
+    const videoEl = (typeof elementId === 'string') ? document.getElementById(elementId) : elementId;
+    const targetId = (typeof elementId === 'string') ? elementId : (videoEl ? (videoEl.id || 'video-element') : 'yolo-view-video-element');
+    if (!videoEl) return null;
+
+    const mediaError = videoEl.error; // HTMLMediaElement.error
+    let isHevcIssue = false;
+    let codecStringFound = '';
+    let videoTracksInfo = [];
+
+    // 1. Inspect 'videoTracks' property (HTMLMediaElement VideoTrackList, if available)
+    if (videoEl.videoTracks) {
+        try {
+            for (let i = 0; i < videoEl.videoTracks.length; i++) {
+                const track = videoEl.videoTracks[i];
+                const trackInfo = {
+                    id: track.id || `track-${i}`,
+                    kind: track.kind || 'video',
+                    label: track.label || '',
+                    selected: track.selected || false,
+                    language: track.language || ''
+                };
+                videoTracksInfo.push(trackInfo);
+                const trackText = (track.label || '').toLowerCase();
+                if (trackText.includes('h265') || trackText.includes('hevc') || trackText.includes('hvc1') || trackText.includes('hev1')) {
+                    isHevcIssue = true;
+                    codecStringFound = track.label;
+                }
+            }
+        } catch (e) {
+            console.warn(`[Codec Diagnostics] Unable to enumerate videoTracks on #${targetId}:`, e);
+        }
+    }
+
+    // 1b. Inspect 'srcObject' MediaStream video tracks if present
+    if (videoEl.srcObject && typeof videoEl.srcObject.getVideoTracks === 'function') {
+        try {
+            const streamTracks = videoEl.srcObject.getVideoTracks();
+            streamTracks.forEach((tr, idx) => {
+                const settings = typeof tr.getSettings === 'function' ? tr.getSettings() : {};
+                videoTracksInfo.push({
+                    id: tr.id || `stream-track-${idx}`,
+                    label: tr.label || '',
+                    enabled: tr.enabled,
+                    muted: tr.muted,
+                    readyState: tr.readyState,
+                    settings: settings
+                });
+                const trText = (tr.label || '').toLowerCase();
+                if (trText.includes('h265') || trText.includes('hevc') || trText.includes('hvc1') || trText.includes('hev1')) {
+                    isHevcIssue = true;
+                    codecStringFound = tr.label;
+                }
+            });
+        } catch (e) {
+            console.warn(`[Codec Diagnostics] Unable to inspect srcObject tracks on #${targetId}:`, e);
+        }
+    }
+
+    // 2. Inspect 'mediaError' (HTMLMediaElement.error - MediaError instance)
+    let mediaErrorDetails = 'No MediaError detected on video element.';
+    if (mediaError) {
+        const errorCodes = {
+            1: 'MEDIA_ERR_ABORTED',
+            2: 'MEDIA_ERR_NETWORK',
+            3: 'MEDIA_ERR_DECODE',
+            4: 'MEDIA_ERR_SRC_NOT_SUPPORTED'
+        };
+        const codeName = errorCodes[mediaError.code] || `CODE_${mediaError.code}`;
+        mediaErrorDetails = `MediaError Code ${mediaError.code} (${codeName}): ${mediaError.message || 'Browser failed to decode media'}`;
+
+        // MEDIA_ERR_DECODE (3) or MEDIA_ERR_SRC_NOT_SUPPORTED (4) frequently caused by H.265/HEVC on unsupported browsers
+        if (mediaError.code === 3 || mediaError.code === 4) {
+            const supportsHevcHvc1 = (window.MediaSource && typeof MediaSource.isTypeSupported === 'function') ? MediaSource.isTypeSupported('video/mp4; codecs="hvc1.1.6.L93.B0"') : false;
+            const supportsHevcHev1 = (window.MediaSource && typeof MediaSource.isTypeSupported === 'function') ? MediaSource.isTypeSupported('video/mp4; codecs="hev1.1.6.L93.B0"') : false;
+
+            if (!supportsHevcHvc1 && !supportsHevcHev1) {
+                isHevcIssue = true;
+                codecStringFound = codecStringFound || 'H.265 / HEVC (MediaError Triggered)';
+            }
+        }
+    }
+
+    // 3. Inspect HLS.js error payload if provided
+    if (hlsErrorData) {
+        const detailsStr = String(hlsErrorData.details || '').toLowerCase();
+        const reasonStr = String(hlsErrorData.reason || '').toLowerCase();
+        if (detailsStr.includes('codec') || reasonStr.includes('codec') || detailsStr === 'manifestincompatiblecodecserror' || detailsStr === 'bufferaddcodecerror') {
+            isHevcIssue = true;
+            codecStringFound = codecStringFound || `HLS.js: ${hlsErrorData.details || hlsErrorData.reason}`;
+        }
+    }
+
+    // 4. Browser H.264 vs H.265 support checks
+    const canPlayH264 = videoEl.canPlayType('video/mp4; codecs="avc1.42E01E"') || 'maybe';
+    const canPlayHevc = videoEl.canPlayType('video/mp4; codecs="hvc1.1.6.L93.B0"') || videoEl.canPlayType('video/mp4; codecs="hevc"');
+    const mseHevcSupported = (window.MediaSource && typeof MediaSource.isTypeSupported === 'function')
+        ? (MediaSource.isTypeSupported('video/mp4; codecs="hvc1.1.6.L93.B0"') || MediaSource.isTypeSupported('video/mp4; codecs="hev1.1.6.L93.B0"'))
+        : false;
+
+    // Structured Console Diagnostics
+    console.group(`🔍 [YOLO Stream Codec Diagnostics] Target: #${targetId}`);
+    console.log(`• Target Video Element ID:`, targetId);
+    console.log(`• mediaError (videoEl.error):`, mediaError ? { code: mediaError.code, message: mediaError.message, summary: mediaErrorDetails } : 'Null');
+    console.log(`• videoTracks inspected:`, videoTracksInfo.length > 0 ? videoTracksInfo : (videoEl.videoTracks ? `Length: ${videoEl.videoTracks.length}` : 'Not available / None'));
+    console.log(`• Browser H.264 (AVC) Support:`, canPlayH264);
+    console.log(`• Browser H.265 (HEVC) Native canPlayType:`, canPlayHevc || 'Not supported ("")');
+    console.log(`• MSE MediaSource H.265/HEVC Support:`, mseHevcSupported ? '✅ YES' : '❌ NO (Unsupported in this browser player)');
+    if (hlsErrorData) console.log(`• HLS.js Error Data:`, hlsErrorData);
+
+    if (isHevcIssue) {
+        console.warn(`🚨 [H.265/HEVC CODEC ISSUE DETECTED] Stream failure on #${targetId} is caused by H.265/HEVC codec incompatibility in this browser player!`);
+        console.warn(`💡 Action Required: Reconfigure RTSP Camera video encoding from H.265 to H.264 (AVC) in camera settings, or enable server H.264 transcoding.`);
+    }
+    console.groupEnd();
+
+    return {
+        targetId,
+        isHevcIssue,
+        codecStringFound,
+        mediaError: mediaError ? { code: mediaError.code, message: mediaError.message } : null,
+        mediaErrorDetails,
+        videoTracksInfo,
+        mseHevcSupported
+    };
+}
+window.diagnoseYoloStreamCodecError = diagnoseYoloStreamCodecError;
+
 function setYoloStreamErrorUI(elementId, isError, errorTitle, errorMsg, errorDetails) {
     const videoEl = document.getElementById(elementId);
     if (!videoEl) return;
@@ -8543,17 +8671,21 @@ function attachYoloVideoPreview(elementId) {
     }
 
     videoEl.onerror = () => {
+        const diag = diagnoseYoloStreamCodecError(elementId);
         const err = videoEl.error;
         console.error(`[YOLO HTML5 Video Element Error] #${elementId}`, err);
-        if (err) {
-            setYoloStreamErrorUI(
-                elementId,
-                true,
-                'HTML5 Media Playback Error',
-                'Browser gagal memproses sumber video stream.',
-                `Code: ${err.code} - ${err.message || 'Media decode failure / Network error'}`
-            );
+
+        let errorTitle = 'HTML5 Media Playback Error';
+        let errorMsg = 'Browser gagal memproses sumber video stream.';
+        let details = err ? `Code: ${err.code} - ${err.message || 'Media decode failure / Network error'}` : 'Unknown video error';
+
+        if (diag && diag.isHevcIssue) {
+            errorTitle = '⚠️ Error Codec H.265 / HEVC Inkompatibel';
+            errorMsg = 'Kamera mengirim stream H.265 yang tidak dapat didekode oleh browser ini.';
+            details = `${diag.mediaErrorDetails} | Solusi: Ubah codec RTSP kamera ke H.264.`;
         }
+
+        setYoloStreamErrorUI(elementId, true, errorTitle, errorMsg, details);
     };
 
     if (window.Hls && Hls.isSupported()) {
@@ -8580,14 +8712,16 @@ function attachYoloVideoPreview(elementId) {
         hls.on(Hls.Events.ERROR, (event, data) => {
             console.warn(`[YOLO AI HLS Event Error] #${elementId}`, data);
             if (data.fatal) {
+                const diag = diagnoseYoloStreamCodecError(elementId, data);
+
                 let errorTitle = 'Gagal Memuat Stream RTSP / HLS';
                 let errorMsg = 'Stream kamera terputus atau URL MediaMTX tidak dapat dijangkau.';
                 let details = `Fatal Error: ${data.type} | Details: ${data.details}`;
 
-                if (data.details === 'manifestIncompatibleCodecsError' || data.details === 'bufferAddCodecError' || (data.reason && data.reason.includes('codec'))) {
+                if ((diag && diag.isHevcIssue) || data.details === 'manifestIncompatibleCodecsError' || data.details === 'bufferAddCodecError' || (data.reason && data.reason.includes('codec'))) {
                     errorTitle = '⚠️ Error Codec Inkompatibel (H.265 / HEVC)';
-                    errorMsg = 'Kamera menggunakan codec H.265 yang tidak didukung secara native oleh browser.';
-                    details = `Codec RTSP mismatch: Transcode video RTSP ke H.264 pada setting Kamera / NVR.`;
+                    errorMsg = 'Kamera menggunakan codec H.265 yang tidak didukung secara native oleh browser ini.';
+                    details = `Codec RTSP mismatch: Ubah encoding video RTSP ke H.264 pada setting Kamera / NVR.`;
                     console.error(`[YOLO AI Codec Error] Camera ${activeYoloSettingsCamId} stream failed due to unsupported H.265 codec.`);
                 }
 
