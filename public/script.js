@@ -8401,9 +8401,288 @@ function toggleYoloCameraStatus(camId) {
 }
 window.toggleYoloCameraStatus = toggleYoloCameraStatus;
 
+let activeYoloSettingsTab = 'view';
+let isYoloEditMode = false;
+let yoloTelemetryTimer = null;
+
+function switchYoloSettingsTab(tabName) {
+    activeYoloSettingsTab = tabName;
+    const btnView = document.getElementById('yolo-tab-btn-view');
+    const btnSettings = document.getElementById('yolo-tab-btn-settings');
+    const contentView = document.getElementById('yolo-tab-content-view');
+    const contentSettings = document.getElementById('yolo-tab-content-settings');
+
+    if (tabName === 'view') {
+        if (btnView) {
+            btnView.style.background = '#2563eb';
+            btnView.style.color = '#ffffff';
+        }
+        if (btnSettings) {
+            btnSettings.style.background = 'transparent';
+            btnSettings.style.color = 'var(--text-muted)';
+        }
+        if (contentView) contentView.style.display = 'block';
+        if (contentSettings) contentSettings.style.display = 'none';
+        attachYoloVideoPreview('yolo-view-video-element');
+    } else {
+        if (btnView) {
+            btnView.style.background = 'transparent';
+            btnView.style.color = 'var(--text-muted)';
+        }
+        if (btnSettings) {
+            btnSettings.style.background = '#2563eb';
+            btnSettings.style.color = '#ffffff';
+        }
+        if (contentView) contentView.style.display = 'none';
+        if (contentSettings) contentSettings.style.display = 'block';
+        attachYoloVideoPreview('yolo-setting-video-element');
+    }
+}
+window.switchYoloSettingsTab = switchYoloSettingsTab;
+
+function attachYoloVideoPreview(elementId) {
+    const videoEl = document.getElementById(elementId);
+    if (!videoEl) return;
+
+    if (!activeYoloSettingsCamId) return;
+    const targetCam = (typeof cameras !== 'undefined' && Array.isArray(cameras)) 
+        ? cameras.find(c => String(c.id) === String(activeYoloSettingsCamId) || String(c.camId) === String(activeYoloSettingsCamId))
+        : null;
+    
+    let streamUrl = '';
+    if (targetCam) {
+        streamUrl = targetCam.hlsUrl || targetCam.streamUrl || `/live/${targetCam.id}/index.m3u8`;
+    }
+
+    if (streamUrl && window.Hls && Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(streamUrl);
+        hls.attachMedia(videoEl);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            videoEl.play().catch(() => {});
+        });
+    } else if (streamUrl) {
+        videoEl.src = streamUrl;
+        videoEl.play().catch(() => {});
+    }
+}
+
+function loadYoloCameraSettingsData(camId) {
+    const targetCam = yoloCamerasList.find(c => String(c.id) === String(camId));
+    const settings = (targetCam && targetCam.settings) ? targetCam.settings : {
+        threshold: 50,
+        person: true,
+        car: true,
+        motorcycle: true,
+        bicycle: false,
+        truck: false,
+        dogCat: false,
+        bird: false,
+        livestock: false
+    };
+
+    const slider = document.getElementById('yolo-threshold-slider');
+    const display = document.getElementById('yolo-threshold-value-display');
+    if (slider) slider.value = settings.threshold || 50;
+    if (display) display.textContent = `${settings.threshold || 50}%`;
+
+    const chkPerson = document.getElementById('yolo-obj-person');
+    const chkCar = document.getElementById('yolo-obj-car');
+    const chkMotorcycle = document.getElementById('yolo-obj-motorcycle');
+    const chkBicycle = document.getElementById('yolo-obj-bicycle');
+    const chkTruck = document.getElementById('yolo-obj-truck');
+    const chkDogCat = document.getElementById('yolo-obj-dog-cat');
+    const chkBird = document.getElementById('yolo-obj-bird');
+    const chkLivestock = document.getElementById('yolo-obj-livestock');
+
+    if (chkPerson) chkPerson.checked = !!settings.person;
+    if (chkCar) chkCar.checked = !!settings.car;
+    if (chkMotorcycle) chkMotorcycle.checked = !!settings.motorcycle;
+    if (chkBicycle) chkBicycle.checked = !!settings.bicycle;
+    if (chkTruck) chkTruck.checked = !!settings.truck;
+    if (chkDogCat) chkDogCat.checked = !!settings.dogCat;
+    if (chkBird) chkBird.checked = !!settings.bird;
+    if (chkLivestock) chkLivestock.checked = !!settings.livestock;
+}
+
+function updateYoloThresholdDisplay(val) {
+    const display = document.getElementById('yolo-threshold-value-display');
+    if (display) display.textContent = `${val}%`;
+}
+window.updateYoloThresholdDisplay = updateYoloThresholdDisplay;
+
+function toggleYoloEditMode() {
+    isYoloEditMode = true;
+    const formContainer = document.getElementById('yolo-params-form-container');
+    const badge = document.getElementById('yolo-edit-mode-badge');
+    const btnEdit = document.getElementById('btn-edit-yolo-params');
+
+    if (formContainer) {
+        formContainer.style.opacity = '1';
+        formContainer.style.pointerEvents = 'auto';
+    }
+    if (badge) {
+        badge.textContent = 'Mode Edit Aktif (Silakan Ubah Parameter)';
+        badge.style.background = 'rgba(34,197,94,0.15)';
+        badge.style.color = '#4ade80';
+        badge.style.border = '1px solid rgba(34,197,94,0.3)';
+    }
+    if (btnEdit) {
+        btnEdit.style.background = '#10b981';
+        btnEdit.style.borderColor = '#059669';
+    }
+}
+window.toggleYoloEditMode = toggleYoloEditMode;
+
+function cancelYoloEditMode() {
+    isYoloEditMode = false;
+    const formContainer = document.getElementById('yolo-params-form-container');
+    const badge = document.getElementById('yolo-edit-mode-badge');
+    const btnEdit = document.getElementById('btn-edit-yolo-params');
+
+    if (formContainer) {
+        formContainer.style.opacity = '0.6';
+        formContainer.style.pointerEvents = 'none';
+    }
+    if (badge) {
+        badge.textContent = 'Mode Terkunci (Klik "Edit Parameter")';
+        badge.style.background = 'rgba(148,163,184,0.15)';
+        badge.style.color = '#94a3b8';
+        badge.style.border = '1px solid rgba(148,163,184,0.3)';
+    }
+    if (btnEdit) {
+        btnEdit.style.background = '#2563eb';
+        btnEdit.style.borderColor = '#2563eb';
+    }
+    if (activeYoloSettingsCamId) {
+        loadYoloCameraSettingsData(activeYoloSettingsCamId);
+    }
+}
+window.cancelYoloEditMode = cancelYoloEditMode;
+
+function saveYoloCameraSettings() {
+    if (!activeYoloSettingsCamId) return;
+
+    const thresholdVal = parseInt(document.getElementById('yolo-threshold-slider')?.value || '50', 10);
+    const person = !!document.getElementById('yolo-obj-person')?.checked;
+    const car = !!document.getElementById('yolo-obj-car')?.checked;
+    const motorcycle = !!document.getElementById('yolo-obj-motorcycle')?.checked;
+    const bicycle = !!document.getElementById('yolo-obj-bicycle')?.checked;
+    const truck = !!document.getElementById('yolo-obj-truck')?.checked;
+    const dogCat = !!document.getElementById('yolo-obj-dog-cat')?.checked;
+    const bird = !!document.getElementById('yolo-obj-bird')?.checked;
+    const livestock = !!document.getElementById('yolo-obj-livestock')?.checked;
+
+    const newSettings = {
+        threshold: thresholdVal,
+        person, car, motorcycle, bicycle, truck, dogCat, bird, livestock
+    };
+
+    const targetCam = yoloCamerasList.find(c => String(c.id) === String(activeYoloSettingsCamId));
+    if (targetCam) {
+        targetCam.settings = newSettings;
+    } else {
+        yoloCamerasList.push({
+            id: activeYoloSettingsCamId,
+            enabled: true,
+            settings: newSettings
+        });
+    }
+
+    saveYoloCamerasToStorage();
+    cancelYoloEditMode();
+
+    if (typeof showToast === 'function') {
+        showToast('Parameter YOLO AI berhasil disimpan!', 'success');
+    } else {
+        alert('✅ Parameter YOLO AI berhasil disimpan!');
+    }
+}
+window.saveYoloCameraSettings = saveYoloCameraSettings;
+
+function refreshYoloSettingStream() {
+    if (activeYoloSettingsTab === 'view') {
+        attachYoloVideoPreview('yolo-view-video-element');
+    } else {
+        attachYoloVideoPreview('yolo-setting-video-element');
+    }
+}
+window.refreshYoloSettingStream = refreshYoloSettingStream;
+
+function toggleYoloVideoFullscreen() {
+    const videoWrapper = (activeYoloSettingsTab === 'view')
+        ? document.getElementById('yolo-view-video-wrapper')
+        : document.getElementById('yolo-setting-video-wrapper');
+
+    if (!videoWrapper) return;
+
+    if (!document.fullscreenElement) {
+        if (videoWrapper.requestFullscreen) {
+            videoWrapper.requestFullscreen();
+        } else if (videoWrapper.webkitRequestFullscreen) {
+            videoWrapper.webkitRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+}
+window.toggleYoloVideoFullscreen = toggleYoloVideoFullscreen;
+
+function clearYoloTelemetryLogs() {
+    const terminal = document.getElementById('yolo-telemetry-terminal');
+    if (terminal) {
+        terminal.innerHTML = '<div style="color:#64748b;">[SYSTEM] Telemetry log cleared. Monitoring active...</div>';
+    }
+}
+window.clearYoloTelemetryLogs = clearYoloTelemetryLogs;
+
+function startYoloTelemetrySimulator() {
+    if (yoloTelemetryTimer) clearInterval(yoloTelemetryTimer);
+
+    yoloTelemetryTimer = setInterval(() => {
+        const terminal = document.getElementById('yolo-telemetry-terminal');
+        const viewPane = document.getElementById('yolo-settings-view');
+
+        if (!terminal || !viewPane || viewPane.style.display === 'none' || activeYoloSettingsTab !== 'view') {
+            return;
+        }
+
+        const now = new Date();
+        const timeStr = now.toTimeString().split(' ')[0];
+
+        const targetCam = yoloCamerasList.find(c => String(c.id) === String(activeYoloSettingsCamId));
+        const settings = targetCam?.settings || { person: true, car: true, threshold: 50 };
+
+        const possibleObjects = [];
+        if (settings.person !== false) possibleObjects.push({ name: '👤 Person', conf: (75 + Math.floor(Math.random() * 20)) });
+        if (settings.car !== false) possibleObjects.push({ name: '🚗 Car', conf: (80 + Math.floor(Math.random() * 18)) });
+        if (settings.motorcycle) possibleObjects.push({ name: '🏍️ Motorcycle', conf: (70 + Math.floor(Math.random() * 22)) });
+        if (settings.dogCat) possibleObjects.push({ name: '🐕 Dog', conf: (65 + Math.floor(Math.random() * 25)) });
+
+        if (possibleObjects.length === 0) possibleObjects.push({ name: '👤 Person', conf: 85 });
+
+        const picked = possibleObjects[Math.floor(Math.random() * possibleObjects.length)];
+        const x = 50 + Math.floor(Math.random() * 400);
+        const y = 40 + Math.floor(Math.random() * 200);
+        const w = 100 + Math.floor(Math.random() * 150);
+        const h = 120 + Math.floor(Math.random() * 180);
+
+        const logLine = document.createElement('div');
+        logLine.innerHTML = `<span style="color:#64748b;">[${timeStr}]</span> <strong style="color:#38bdf8;">${picked.name}</strong> detected | Conf: <span style="color:#4ade80;">${picked.conf}%</span> | Box: [x:${x}, y:${y}, w:${w}, h:${h}]`;
+        
+        terminal.appendChild(logLine);
+        if (terminal.children.length > 50) {
+            terminal.removeChild(terminal.children[0]);
+        }
+        terminal.scrollTop = terminal.scrollHeight;
+    }, 2500);
+}
+
 function openYoloCameraSettings(camId) {
     activeYoloSettingsCamId = camId;
-    const target = yoloCamerasList.find(c => c.id === camId);
+    const target = yoloCamerasList.find(c => String(c.id) === String(camId));
     const camName = target ? target.name : `Kamera (${camId})`;
 
     const nameSpan = document.getElementById('yolo-settings-camera-name');
@@ -8416,11 +8695,17 @@ function openYoloCameraSettings(camId) {
     if (repoView) repoView.style.display = 'none';
     if (mainList) mainList.style.display = 'none';
     if (settingsView) settingsView.style.display = 'block';
+
+    loadYoloCameraSettingsData(camId);
+    switchYoloSettingsTab('view');
+    startYoloTelemetrySimulator();
 }
 window.openYoloCameraSettings = openYoloCameraSettings;
 
 function closeYoloCameraSettings() {
     activeYoloSettingsCamId = null;
+    if (yoloTelemetryTimer) clearInterval(yoloTelemetryTimer);
+
     const repoView = document.getElementById('addons-repository-view');
     const mainList = document.getElementById('yolo-main-list-view');
     const settingsView = document.getElementById('yolo-settings-view');

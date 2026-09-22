@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.3.9",
-  "description": "Arch3r NVR Ver. 10.3.9 - Full-Stack NVR CCTV System featuring Addons Repository Navigation with Nested YOLO AI Camera Management Panel.",
+  "name": "Arch3r NVR Ver. 10.4.0",
+  "description": "Arch3r NVR Ver. 10.4.0 - Full-Stack NVR CCTV System featuring Dual Tab View (Preview & Settings) for YOLO AI Camera Configuration.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
