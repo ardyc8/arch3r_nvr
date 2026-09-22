@@ -8430,6 +8430,53 @@ function startYoloLiveCanvasStreamLoop() {
     renderFrame();
 }
 
+function attachYoloVideoPreview(elementId) {
+    const videoEl = document.getElementById(elementId);
+    if (!videoEl) return;
+
+    if (!activeYoloSettingsCamId) return;
+
+    let targetCam = null;
+    if (typeof cameras !== 'undefined' && Array.isArray(cameras)) {
+        targetCam = cameras.find(c => String(c.id) === String(activeYoloSettingsCamId) || String(c.camId) === String(activeYoloSettingsCamId));
+    }
+    if (!targetCam && typeof yoloCamerasList !== 'undefined' && Array.isArray(yoloCamerasList)) {
+        const yCam = yoloCamerasList.find(c => String(c.id) === String(activeYoloSettingsCamId));
+        if (yCam) targetCam = yCam;
+    }
+
+    const token = localStorage.getItem('nvr_auth_token') || '';
+    let streamUrl = '';
+
+    if (targetCam) {
+        if (targetCam.mainStreamUrl && (targetCam.mainStreamUrl.startsWith('http://') || targetCam.mainStreamUrl.startsWith('https://') || targetCam.mainStreamUrl.endsWith('.m3u8'))) {
+            streamUrl = targetCam.mainStreamUrl;
+        } else if (targetCam.hlsUrl) {
+            streamUrl = targetCam.hlsUrl;
+        } else {
+            const path = targetCam.mediaMtxPath || targetCam.id || activeYoloSettingsCamId;
+            streamUrl = `/stream/${path}/index.m3u8?token=${encodeURIComponent(token)}`;
+        }
+    } else {
+        streamUrl = `/stream/${activeYoloSettingsCamId}/index.m3u8?token=${encodeURIComponent(token)}`;
+    }
+
+    if (typeof initHlsPlayer === 'function') {
+        initHlsPlayer(elementId, streamUrl);
+    } else if (window.Hls && Hls.isSupported()) {
+        const hls = new Hls({ lowLatencyMode: true });
+        hls.loadSource(streamUrl);
+        hls.attachMedia(videoEl);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            videoEl.play().catch(() => {});
+        });
+    } else {
+        videoEl.src = streamUrl;
+        videoEl.play().catch(() => {});
+    }
+}
+window.attachYoloVideoPreview = attachYoloVideoPreview;
+
 function drawYoloViewLiveCanvasStream() {
     const canvas = document.getElementById('yolo-view-canvas-overlay');
     if (!canvas) return;
@@ -8443,32 +8490,33 @@ function drawYoloViewLiveCanvasStream() {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Synthetic Simulated Background CCTV Motion (Ensures preview video is NEVER pitch black)
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const videoEl = document.getElementById('yolo-view-video-element');
+    const isVideoPlaying = videoEl && !videoEl.paused && videoEl.readyState >= 2;
 
-    // Road lane lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([15, 15]);
-    ctx.beginPath();
-    ctx.moveTo(0, canvas.height * 0.6);
-    ctx.lineTo(canvas.width, canvas.height * 0.6);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    // Only draw semi-transparent background if real video is not actively playing
+    if (!isVideoPlaying) {
+        ctx.fillStyle = 'rgba(9, 13, 22, 0.75)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Grid & Camera Watermark
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 50) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        // Grid & Camera Watermark
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 50) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+
+        ctx.font = '13px sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.textAlign = 'center';
+        ctx.fillText('📡 Menghubungkan Stream RTSP / HLS Kamera...', canvas.width / 2, canvas.height / 2);
+        ctx.textAlign = 'left';
     }
 
     const now = new Date();
     const timeString = now.toISOString().replace('T', ' ').substring(0, 19);
     ctx.font = 'bold 12px monospace';
     ctx.fillStyle = '#22c55e';
-    ctx.fillText(`REC ● CAM-YOLO | ${timeString} | FPS: 30.0 | ARCH3R NVR`, 15, 25);
+    ctx.fillText(`REC ● CAM-YOLO | ${timeString} | ARCH3R NVR`, 15, 25);
 
     // Read Filter Checkboxes
     const filterPerson = !!document.getElementById('yolo-view-filter-person')?.checked;
@@ -8493,7 +8541,7 @@ function drawYoloViewLiveCanvasStream() {
 
         if (isVisible) {
             ctx.strokeStyle = obj.color;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
 
             // Bounding Box Label Header
@@ -8535,17 +8583,22 @@ function drawYoloStudioCanvas() {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Studio Canvas Grid Background
-    ctx.fillStyle = '#020617';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const settingVideoEl = document.getElementById('yolo-setting-video-element');
+    const isSettingVideoPlaying = settingVideoEl && !settingVideoEl.paused && settingVideoEl.readyState >= 2;
 
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 30) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += 30) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    // Studio Canvas Grid Background (only filled if video is not actively playing)
+    if (!isSettingVideoPlaying) {
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 30) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += 30) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
     }
 
     ctx.font = 'bold 12px sans-serif';
@@ -8679,6 +8732,7 @@ function switchYoloSettingsTab(tabName) {
         if (contentView) contentView.style.display = 'none';
         if (contentSettings) contentSettings.style.display = 'block';
 
+        attachYoloVideoPreview('yolo-setting-video-element');
         setTimeout(() => {
             drawYoloStudioCanvas();
             initYoloStudioCanvasDragging();

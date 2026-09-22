@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.4.2",
-  "description": "Arch3r NVR Ver. 10.4.2 - Full-Stack NVR CCTV System featuring Single Main Live Video Preview, Object Filter Checklist, Telemetry Terminal, and Interactive Studio ROI Canvas Drawing Studio.",
+  "name": "Arch3r NVR Ver. 10.4.3",
+  "description": "Arch3r NVR Ver. 10.4.3 - Full-Stack NVR CCTV System featuring Transparent Canvas Overlay & Direct RTSP/HLS Video Stream Integration on View & Setting AI Tabs.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
