@@ -8467,10 +8467,222 @@ function attachYoloVideoPreview(elementId) {
     }
 }
 
+let currentYoloRoi = { x: 10, y: 10, w: 80, h: 80 };
+let isDraggingRoi = false;
+let roiDragStart = { x: 0, y: 0 };
+let roiBoxStart = { x: 10, y: 10, w: 80, h: 80 };
+
+function updateYoloVideoCropPreview() {
+    const zoomVal = parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0');
+    const cropXVal = parseInt(document.getElementById('yolo-crop-x-slider')?.value || '0', 10);
+    const cropYVal = parseInt(document.getElementById('yolo-crop-y-slider')?.value || '0', 10);
+    const resVal = document.getElementById('yolo-stream-resolution')?.value || '720p';
+
+    const zoomDisp = document.getElementById('yolo-zoom-value-display');
+    const cropXDisp = document.getElementById('yolo-crop-x-display');
+    const cropYDisp = document.getElementById('yolo-crop-y-display');
+
+    if (zoomDisp) zoomDisp.textContent = `${zoomVal.toFixed(1)}x`;
+    if (cropXDisp) cropXDisp.textContent = `${cropXVal}%`;
+    if (cropYDisp) cropYDisp.textContent = `${cropYVal}%`;
+
+    const videoElView = document.getElementById('yolo-view-video-element');
+    const videoElSetting = document.getElementById('yolo-setting-video-element');
+
+    const transformCss = `scale(${zoomVal}) translate(${cropXVal / zoomVal}%, ${cropYVal / zoomVal}%)`;
+    if (videoElView) videoElView.style.transform = transformCss;
+    if (videoElSetting) videoElSetting.style.transform = transformCss;
+
+    drawYoloSettingCanvasOverlay();
+}
+window.updateYoloVideoCropPreview = updateYoloVideoCropPreview;
+
+function resetYoloRoiBox() {
+    currentYoloRoi = { x: 10, y: 10, w: 80, h: 80 };
+    updateYoloRoiDisplays();
+    drawYoloSettingCanvasOverlay();
+}
+window.resetYoloRoiBox = resetYoloRoiBox;
+
+function updateYoloRoiDisplays() {
+    const xDisp = document.getElementById('yolo-roi-x-val');
+    const yDisp = document.getElementById('yolo-roi-y-val');
+    const wDisp = document.getElementById('yolo-roi-w-val');
+    const hDisp = document.getElementById('yolo-roi-h-val');
+
+    if (xDisp) xDisp.textContent = `${Math.round(currentYoloRoi.x)}%`;
+    if (yDisp) yDisp.textContent = `${Math.round(currentYoloRoi.y)}%`;
+    if (wDisp) wDisp.textContent = `${Math.round(currentYoloRoi.w)}%`;
+    if (hDisp) hDisp.textContent = `${Math.round(currentYoloRoi.h)}%`;
+}
+
+function drawYoloSettingCanvasOverlay() {
+    const canvas = document.getElementById('yolo-setting-canvas-overlay');
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. Draw CCTV Grid Pattern & Camera Info Watermark (Ensures layout is never pitch-black void)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    const gridSize = 40;
+    for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+
+    const now = new Date();
+    const timeString = now.toISOString().replace('T', ' ').substring(0, 19);
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#4ade80';
+    ctx.fillText(`REC ● LIVE RTSP/HLS | ${timeString} | ARCH3R NVR YOLO AI`, 15, 25);
+
+    // 2. Calculate ROI box dimensions
+    const roiPx = {
+        x: (currentYoloRoi.x / 100) * canvas.width,
+        y: (currentYoloRoi.y / 100) * canvas.height,
+        w: (currentYoloRoi.w / 100) * canvas.width,
+        h: (currentYoloRoi.h / 100) * canvas.height
+    };
+
+    // Semi-transparent dimming outside ROI box
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.fillRect(0, 0, canvas.width, roiPx.y); // top
+    ctx.fillRect(0, roiPx.y + roiPx.h, canvas.width, canvas.height - (roiPx.y + roiPx.h)); // bottom
+    ctx.fillRect(0, roiPx.y, roiPx.x, roiPx.h); // left
+    ctx.fillRect(roiPx.x + roiPx.w, roiPx.y, canvas.width - (roiPx.x + roiPx.w), roiPx.h); // right
+
+    // Green Neon ROI Box
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
+    ctx.setLineDash([]);
+
+    // Corner Drag Handles
+    ctx.fillStyle = '#22c55e';
+    const handleSize = 8;
+    ctx.fillRect(roiPx.x - handleSize/2, roiPx.y - handleSize/2, handleSize, handleSize);
+    ctx.fillRect(roiPx.x + roiPx.w - handleSize/2, roiPx.y - handleSize/2, handleSize, handleSize);
+    ctx.fillRect(roiPx.x - handleSize/2, roiPx.y + roiPx.h - handleSize/2, handleSize, handleSize);
+    ctx.fillRect(roiPx.x + roiPx.w - handleSize/2, roiPx.y + roiPx.h - handleSize/2, handleSize, handleSize);
+
+    // ROI Label Header
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(roiPx.x, roiPx.y - 20 > 0 ? roiPx.y - 20 : roiPx.y, 140, 20);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(' ZONA ROI DETEKSI', roiPx.x + 4, (roiPx.y - 20 > 0 ? roiPx.y - 20 : roiPx.y) + 14);
+
+    // Render Enabled Object Category Badges Inside ROI
+    const activeObjects = [];
+    if (document.getElementById('yolo-obj-person')?.checked) activeObjects.push('👤 Person');
+    if (document.getElementById('yolo-obj-car')?.checked) activeObjects.push('🚗 Car');
+    if (document.getElementById('yolo-obj-motorcycle')?.checked) activeObjects.push('🏍️ Motor');
+    if (document.getElementById('yolo-obj-bicycle')?.checked) activeObjects.push('🚲 Sepeda');
+    if (document.getElementById('yolo-obj-truck')?.checked) activeObjects.push('🚚 Truk');
+    if (document.getElementById('yolo-obj-dog-cat')?.checked) activeObjects.push('🐕 Anjing/Kucing');
+
+    if (activeObjects.length > 0) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(roiPx.x + 8, roiPx.y + 10, 160, 20 + activeObjects.length * 16);
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(roiPx.x + 8, roiPx.y + 10, 160, 20 + activeObjects.length * 16);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText('TARGET OBJEK AKTIF:', roiPx.x + 14, roiPx.y + 24);
+
+        ctx.font = '10px sans-serif';
+        ctx.fillStyle = '#f8fafc';
+        activeObjects.forEach((objName, idx) => {
+            ctx.fillText(`• ${objName}`, roiPx.x + 18, roiPx.y + 40 + (idx * 15));
+        });
+    }
+}
+window.drawYoloSettingCanvasOverlay = drawYoloSettingCanvasOverlay;
+
+function initYoloRoiDragging() {
+    const canvas = document.getElementById('yolo-setting-canvas-overlay');
+    if (!canvas) return;
+
+    canvas.style.pointerEvents = 'auto';
+    canvas.style.cursor = 'move';
+
+    const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: ((clientX - rect.left) / rect.width) * 100,
+            y: ((clientY - rect.top) / rect.height) * 100
+        };
+    };
+
+    const startDrag = (e) => {
+        if (!isYoloEditMode) return;
+        isDraggingRoi = true;
+        roiDragStart = getPos(e);
+        roiBoxStart = { ...currentYoloRoi };
+        e.preventDefault();
+    };
+
+    const doDrag = (e) => {
+        if (!isDraggingRoi || !isYoloEditMode) return;
+        const currentPos = getPos(e);
+        const dx = currentPos.x - roiDragStart.x;
+        const dy = currentPos.y - roiDragStart.y;
+
+        let newX = roiBoxStart.x + dx;
+        let newY = roiBoxStart.y + dy;
+
+        newX = Math.max(0, Math.min(100 - roiBoxStart.w, newX));
+        newY = Math.max(0, Math.min(100 - roiBoxStart.h, newY));
+
+        currentYoloRoi.x = newX;
+        currentYoloRoi.y = newY;
+
+        updateYoloRoiDisplays();
+        drawYoloSettingCanvasOverlay();
+        e.preventDefault();
+    };
+
+    const stopDrag = () => {
+        isDraggingRoi = false;
+    };
+
+    canvas.removeEventListener('mousedown', startDrag);
+    canvas.removeEventListener('mousemove', doDrag);
+    canvas.removeEventListener('mouseup', stopDrag);
+
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('mousemove', doDrag);
+    canvas.addEventListener('mouseup', stopDrag);
+
+    canvas.addEventListener('touchstart', startDrag, { passive: false });
+    canvas.addEventListener('touchmove', doDrag, { passive: false });
+    canvas.addEventListener('touchend', stopDrag);
+}
+
 function loadYoloCameraSettingsData(camId) {
     const targetCam = yoloCamerasList.find(c => String(c.id) === String(camId));
     const settings = (targetCam && targetCam.settings) ? targetCam.settings : {
         threshold: 50,
+        resolution: '720p',
+        zoom: 1.0,
+        cropX: 0,
+        cropY: 0,
+        roi: { x: 10, y: 10, w: 80, h: 80 },
         person: true,
         car: true,
         motorcycle: true,
@@ -8485,6 +8697,24 @@ function loadYoloCameraSettingsData(camId) {
     const display = document.getElementById('yolo-threshold-value-display');
     if (slider) slider.value = settings.threshold || 50;
     if (display) display.textContent = `${settings.threshold || 50}%`;
+
+    const resSelect = document.getElementById('yolo-stream-resolution');
+    const zoomSlider = document.getElementById('yolo-zoom-slider');
+    const cropXSlider = document.getElementById('yolo-crop-x-slider');
+    const cropYSlider = document.getElementById('yolo-crop-y-slider');
+
+    if (resSelect) resSelect.value = settings.resolution || '720p';
+    if (zoomSlider) zoomSlider.value = settings.zoom || 1.0;
+    if (cropXSlider) cropXSlider.value = settings.cropX || 0;
+    if (cropYSlider) cropYSlider.value = settings.cropY || 0;
+
+    if (settings.roi) {
+        currentYoloRoi = { ...settings.roi };
+    } else {
+        currentYoloRoi = { x: 10, y: 10, w: 80, h: 80 };
+    }
+
+    updateYoloRoiDisplays();
 
     const chkPerson = document.getElementById('yolo-obj-person');
     const chkCar = document.getElementById('yolo-obj-car');
@@ -8503,67 +8733,20 @@ function loadYoloCameraSettingsData(camId) {
     if (chkDogCat) chkDogCat.checked = !!settings.dogCat;
     if (chkBird) chkBird.checked = !!settings.bird;
     if (chkLivestock) chkLivestock.checked = !!settings.livestock;
+
+    updateYoloVideoCropPreview();
+    initYoloRoiDragging();
 }
 
-function updateYoloThresholdDisplay(val) {
-    const display = document.getElementById('yolo-threshold-value-display');
-    if (display) display.textContent = `${val}%`;
-}
-window.updateYoloThresholdDisplay = updateYoloThresholdDisplay;
-
-function toggleYoloEditMode() {
-    isYoloEditMode = true;
-    const formContainer = document.getElementById('yolo-params-form-container');
-    const badge = document.getElementById('yolo-edit-mode-badge');
-    const btnEdit = document.getElementById('btn-edit-yolo-params');
-
-    if (formContainer) {
-        formContainer.style.opacity = '1';
-        formContainer.style.pointerEvents = 'auto';
-    }
-    if (badge) {
-        badge.textContent = 'Mode Edit Aktif (Silakan Ubah Parameter)';
-        badge.style.background = 'rgba(34,197,94,0.15)';
-        badge.style.color = '#4ade80';
-        badge.style.border = '1px solid rgba(34,197,94,0.3)';
-    }
-    if (btnEdit) {
-        btnEdit.style.background = '#10b981';
-        btnEdit.style.borderColor = '#059669';
-    }
-}
-window.toggleYoloEditMode = toggleYoloEditMode;
-
-function cancelYoloEditMode() {
-    isYoloEditMode = false;
-    const formContainer = document.getElementById('yolo-params-form-container');
-    const badge = document.getElementById('yolo-edit-mode-badge');
-    const btnEdit = document.getElementById('btn-edit-yolo-params');
-
-    if (formContainer) {
-        formContainer.style.opacity = '0.6';
-        formContainer.style.pointerEvents = 'none';
-    }
-    if (badge) {
-        badge.textContent = 'Mode Terkunci (Klik "Edit Parameter")';
-        badge.style.background = 'rgba(148,163,184,0.15)';
-        badge.style.color = '#94a3b8';
-        badge.style.border = '1px solid rgba(148,163,184,0.3)';
-    }
-    if (btnEdit) {
-        btnEdit.style.background = '#2563eb';
-        btnEdit.style.borderColor = '#2563eb';
-    }
-    if (activeYoloSettingsCamId) {
-        loadYoloCameraSettingsData(activeYoloSettingsCamId);
-    }
-}
-window.cancelYoloEditMode = cancelYoloEditMode;
-
-function saveYoloCameraSettings() {
-    if (!activeYoloSettingsCamId) return;
+function saveYoloCameraSettings(applyToAllGlobal = false) {
+    if (!activeYoloSettingsCamId && !applyToAllGlobal) return;
 
     const thresholdVal = parseInt(document.getElementById('yolo-threshold-slider')?.value || '50', 10);
+    const resolution = document.getElementById('yolo-stream-resolution')?.value || '720p';
+    const zoom = parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0');
+    const cropX = parseInt(document.getElementById('yolo-crop-x-slider')?.value || '0', 10);
+    const cropY = parseInt(document.getElementById('yolo-crop-y-slider')?.value || '0', 10);
+
     const person = !!document.getElementById('yolo-obj-person')?.checked;
     const car = !!document.getElementById('yolo-obj-car')?.checked;
     const motorcycle = !!document.getElementById('yolo-obj-motorcycle')?.checked;
@@ -8575,27 +8758,43 @@ function saveYoloCameraSettings() {
 
     const newSettings = {
         threshold: thresholdVal,
+        resolution,
+        zoom,
+        cropX,
+        cropY,
+        roi: { ...currentYoloRoi },
         person, car, motorcycle, bicycle, truck, dogCat, bird, livestock
     };
 
-    const targetCam = yoloCamerasList.find(c => String(c.id) === String(activeYoloSettingsCamId));
-    if (targetCam) {
-        targetCam.settings = newSettings;
-    } else {
-        yoloCamerasList.push({
-            id: activeYoloSettingsCamId,
-            enabled: true,
-            settings: newSettings
+    if (applyToAllGlobal) {
+        yoloCamerasList.forEach(cam => {
+            cam.settings = { ...newSettings };
         });
+        localStorage.setItem('arch3r_yolo_global_default', JSON.stringify(newSettings));
+    } else {
+        const targetCam = yoloCamerasList.find(c => String(c.id) === String(activeYoloSettingsCamId));
+        if (targetCam) {
+            targetCam.settings = newSettings;
+        } else {
+            yoloCamerasList.push({
+                id: activeYoloSettingsCamId,
+                enabled: true,
+                settings: newSettings
+            });
+        }
     }
 
     saveYoloCamerasToStorage();
     cancelYoloEditMode();
 
+    const msg = applyToAllGlobal
+        ? '🌐 Parameter YOLO AI berhasil diterapkan ke SEMUA kamera secara Global!'
+        : '💾 Parameter YOLO AI berhasil disimpan khusus untuk kamera ini (Per-Kamera)!';
+
     if (typeof showToast === 'function') {
-        showToast('Parameter YOLO AI berhasil disimpan!', 'success');
+        showToast(msg, 'success');
     } else {
-        alert('✅ Parameter YOLO AI berhasil disimpan!');
+        alert(`✅ ${msg}`);
     }
 }
 window.saveYoloCameraSettings = saveYoloCameraSettings;
