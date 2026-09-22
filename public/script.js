@@ -556,7 +556,7 @@ async function handleLogout() {
             }
 
             if (targetId === 'view-addons' || targetId === 'view-yolo-ai') {
-                if (typeof initYoloAiPage === 'function') initYoloAiPage();
+                if (typeof resetAddonsView === 'function') resetAddonsView();
                 if (typeof fetchInstalledAddons === 'function') fetchInstalledAddons();
             } else if (targetId === 'view-about') {
             } else if (targetId === 'view-logs') {
@@ -8181,23 +8181,43 @@ function saveYoloCamerasToStorage() {
     }
 }
 
+function resetAddonsView() {
+    const repoView = document.getElementById('addons-repository-view');
+    const yoloMainView = document.getElementById('yolo-main-list-view');
+    const yoloSettingsView = document.getElementById('yolo-settings-view');
+
+    if (repoView) repoView.style.display = 'block';
+    if (yoloMainView) yoloMainView.style.display = 'none';
+    if (yoloSettingsView) yoloSettingsView.style.display = 'none';
+}
+window.resetAddonsView = resetAddonsView;
+
 function initYoloAiPage() {
     loadYoloCamerasFromStorage();
     renderYoloCameraList();
-    
-    // Ensure main list is shown and settings view is hidden by default
-    const mainList = document.getElementById('yolo-main-list-view');
-    const settingsView = document.getElementById('yolo-settings-view');
-    if (mainList) mainList.style.display = 'block';
-    if (settingsView) settingsView.style.display = 'none';
 }
+window.initYoloAiPage = initYoloAiPage;
+
 function openYoloAiPage() {
     if (typeof window.navigateToView === 'function') {
-        window.navigateToView('view-addons');
+        window.navigateToView('view-addons', false);
     }
+    const repoView = document.getElementById('addons-repository-view');
+    const yoloMainView = document.getElementById('yolo-main-list-view');
+    const yoloSettingsView = document.getElementById('yolo-settings-view');
+
+    if (repoView) repoView.style.display = 'none';
+    if (yoloMainView) yoloMainView.style.display = 'block';
+    if (yoloSettingsView) yoloSettingsView.style.display = 'none';
+
     initYoloAiPage();
 }
 window.openYoloAiPage = openYoloAiPage;
+
+function closeYoloAiPage() {
+    resetAddonsView();
+}
+window.closeYoloAiPage = closeYoloAiPage;
 
 function renderYoloCameraList() {
     const container = document.getElementById('yolo-camera-list-container');
@@ -8389,9 +8409,11 @@ function openYoloCameraSettings(camId) {
     const nameSpan = document.getElementById('yolo-settings-camera-name');
     if (nameSpan) nameSpan.textContent = camName;
 
+    const repoView = document.getElementById('addons-repository-view');
     const mainList = document.getElementById('yolo-main-list-view');
     const settingsView = document.getElementById('yolo-settings-view');
 
+    if (repoView) repoView.style.display = 'none';
     if (mainList) mainList.style.display = 'none';
     if (settingsView) settingsView.style.display = 'block';
 }
@@ -8399,9 +8421,11 @@ window.openYoloCameraSettings = openYoloCameraSettings;
 
 function closeYoloCameraSettings() {
     activeYoloSettingsCamId = null;
+    const repoView = document.getElementById('addons-repository-view');
     const mainList = document.getElementById('yolo-main-list-view');
     const settingsView = document.getElementById('yolo-settings-view');
 
+    if (repoView) repoView.style.display = 'none';
     if (mainList) mainList.style.display = 'block';
     if (settingsView) settingsView.style.display = 'none';
 }
