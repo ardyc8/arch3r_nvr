@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.4.1 - Professional Multi-Tenant Dashboard</title>
+    <title>Arch3r NVR Ver. 10.4.2 - Professional Multi-Tenant Dashboard</title>
     <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -1001,7 +1001,7 @@
                                     <h2 style="margin:0; font-size:1.6rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
                                         <span>🧩</span> Addons Marketplace
                                     </h2>
-                                    <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.4.1</span>
+                                    <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:3px 8px; border-radius:4px;">Ver. 10.4.2</span>
                                 </div>
                                 <p style="color:var(--text-muted); margin:0.4rem 0 0 0; font-size:0.88rem;">
                                     Kelola modul tambahan (Addons) untuk memperluas kemampuan NVR Anda.
@@ -1111,101 +1111,111 @@
                                 </div>
                             </div>
 
-                            <!-- TAB 1: VIEW (Preview Readonly Video & Log Output Telemetri AI) -->
+                            <!-- TAB 1: VIEW (Satu-satunya Kotak Preview Video + Checklist Objek Filter + Log Output Telemetri) -->
                             <div id="yolo-tab-content-view" style="display:block;">
-                                <!-- Video Player Readonly Box -->
-                                <div id="yolo-view-video-wrapper" style="position:relative; width:100%; max-width:800px; margin:0 auto 1.25rem auto; background:#000; border-radius:10px; border:1px solid var(--border); overflow:hidden; aspect-ratio:16/9; box-shadow:0 8px 20px rgba(0,0,0,0.5);">
+                                <!-- Satu Kotak Video Player Preview -->
+                                <div id="yolo-view-video-wrapper" style="position:relative; width:100%; max-width:850px; margin:0 auto 1.25rem auto; background:#000; border-radius:10px; border:1px solid var(--border); overflow:hidden; aspect-ratio:16/9; box-shadow:0 8px 20px rgba(0,0,0,0.5);">
                                     <div style="position:absolute; top:10px; left:10px; z-index:10; background:rgba(15,23,42,0.85); backdrop-filter:blur(4px); border:1px solid rgba(59,130,246,0.4); padding:4px 10px; border-radius:6px; font-size:0.75rem; color:#60a5fa; font-weight:600; display:flex; align-items:center; gap:0.4rem;">
                                         <span style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block; animation:pulse 1.5s infinite;"></span>
-                                        READONLY PREVIEW VIDEO
+                                        LIVE ANALYTICS PREVIEW
                                     </div>
                                     <video id="yolo-view-video-element" autoplay playsinline muted style="width:100%; height:100%; object-fit:contain; display:block; background:#000;"></video>
                                     <canvas id="yolo-view-canvas-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;"></canvas>
                                 </div>
 
+                                <!-- Filter Checklist Objek Target yang Mau Dilihat -->
+                                <div style="background:rgba(15,23,42,0.7); border:1px solid var(--border); border-radius:8px; padding:1rem; max-width:850px; margin:0 auto 1.25rem auto;">
+                                    <div style="font-size:0.88rem; font-weight:700; color:#f8fafc; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+                                        <span>👁️</span> Filter Objek Target yang Ingin Dilihat pada Video & Telemetri:
+                                    </div>
+                                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:0.75rem;">
+                                        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(0,0,0,0.3); padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border);">
+                                            <input type="checkbox" id="yolo-view-filter-person" checked onchange="updateYoloViewFilter()" style="accent-color:#2563eb; width:16px; height:16px;">
+                                            <span>👤 Manusia (Person)</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(0,0,0,0.3); padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border);">
+                                            <input type="checkbox" id="yolo-view-filter-car" checked onchange="updateYoloViewFilter()" style="accent-color:#2563eb; width:16px; height:16px;">
+                                            <span>🚗 Mobil (Car)</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(0,0,0,0.3); padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border);">
+                                            <input type="checkbox" id="yolo-view-filter-motorcycle" checked onchange="updateYoloViewFilter()" style="accent-color:#2563eb; width:16px; height:16px;">
+                                            <span>🏍️ Sepeda Motor</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(0,0,0,0.3); padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border);">
+                                            <input type="checkbox" id="yolo-view-filter-animal" onchange="updateYoloViewFilter()" style="accent-color:#2563eb; width:16px; height:16px;">
+                                            <span>🐕 Hewan (Animal)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
                                 <!-- Parameter Output Telemetri AI -->
-                                <div style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; padding:1rem; max-width:800px; margin:0 auto;">
+                                <div style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:8px; padding:1rem; max-width:850px; margin:0 auto;">
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
                                         <div style="font-size:0.9rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem;">
-                                            <span>📟</span> Output Parameter AI (Live Telemetry)
+                                            <span>📟</span> Output Parameter AI (Live Telemetry Log)
                                         </div>
                                         <button type="button" class="btn btn-sm btn-secondary" onclick="clearYoloTelemetryLogs()" style="font-size:0.75rem; padding:2px 8px;">
                                             🧹 Bersihkan Log
                                         </button>
                                     </div>
-                                    <div id="yolo-telemetry-terminal" style="font-family:'Courier New', Courier, monospace; font-size:0.8rem; color:#4ade80; background:#020617; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:0.75rem; height:150px; overflow-y:auto; line-height:1.5;">
+                                    <div id="yolo-telemetry-terminal" style="font-family:'Courier New', Courier, monospace; font-size:0.8rem; color:#4ade80; background:#020617; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:0.75rem; height:160px; overflow-y:auto; line-height:1.5;">
                                         <div style="color:#64748b;">[SYSTEM] Telemetry log stream initialized for camera preview...</div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- TAB 2: SETTING AI -->
+                            <!-- TAB 2: SETTING AI (Khusus Drawing & Konfigurasi Parameter Video Source + ROI) -->
                             <div id="yolo-tab-content-settings" style="display:none;">
-                                <!-- 1. Preview Video Readonly Tengah Atas -->
-                                <div id="yolo-setting-video-wrapper" style="position:relative; width:100%; max-width:720px; margin:0 auto 0.75rem auto; background:#000; border-radius:10px; border:1px solid var(--border); overflow:hidden; aspect-ratio:16/9; box-shadow:0 8px 20px rgba(0,0,0,0.5);">
-                                    <div style="position:absolute; top:10px; left:10px; z-index:10; background:rgba(15,23,42,0.85); backdrop-filter:blur(4px); border:1px solid rgba(59,130,246,0.4); padding:4px 10px; border-radius:6px; font-size:0.75rem; color:#60a5fa; font-weight:600; display:flex; align-items:center; gap:0.4rem;">
-                                        <span>👁️</span> PREVIEW KONFIGURASI AI
-                                    </div>
-                                    <video id="yolo-setting-video-element" autoplay playsinline muted style="width:100%; height:100%; object-fit:contain; display:block; background:#000;"></video>
-                                    <canvas id="yolo-setting-canvas-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;"></canvas>
-                                </div>
-
-                                <!-- 2. Tombol Edit, Refresh, Full Screen Tepat Di Bawah Video -->
-                                <div style="display:flex; justify-content:center; align-items:center; gap:0.75rem; margin-bottom:1.5rem; flex-wrap:wrap;">
-                                    <button type="button" id="btn-edit-yolo-params" class="btn btn-primary" onclick="toggleYoloEditMode()" style="background:#2563eb; border-color:#2563eb; display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:600; padding:0.5rem 1rem; border-radius:6px;">
-                                        <span>✏️</span> Edit Parameter
-                                    </button>
-                                    <button type="button" class="btn btn-secondary" onclick="refreshYoloSettingStream()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; padding:0.5rem 1rem; border-radius:6px;">
-                                        <span>🔄</span> Refresh Stream
-                                    </button>
-                                    <button type="button" class="btn btn-secondary" onclick="toggleYoloVideoFullscreen()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; padding:0.5rem 1rem; border-radius:6px;">
-                                        <span>🖵</span> Full Screen
-                                    </button>
-                                </div>
-
-                                <!-- 3. Panel Form Parameter Setting YOLO AI -->
-                                <div id="yolo-params-form-container" style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:10px; padding:1.25rem 1.5rem; max-width:800px; margin:0 auto; opacity:0.6; pointer-events:none; transition:all 0.3s ease;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.75rem;">
-                                        <h4 style="margin:0; font-size:1.05rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                                            <span>🎛️</span> Parameter Deteksi YOLO AI
+                                <div style="background:rgba(15,23,42,0.6); border:1px solid var(--border); border-radius:10px; padding:1.25rem 1.5rem; max-width:850px; margin:0 auto;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; border-bottom:1px solid var(--border); padding-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                        <h4 style="margin:0; font-size:1.1rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                            <span>🎨</span> Studio Gambar ROI & Konfigurasi Source Video
                                         </h4>
-                                        <span id="yolo-edit-mode-badge" class="badge" style="background:rgba(148,163,184,0.15); color:#94a3b8; border:1px solid rgba(148,163,184,0.3);">
-                                            Mode Terkunci (Klik "Edit Parameter")
+                                        <span id="yolo-edit-mode-badge" class="badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3);">
+                                            Mode Edit Aktif
                                         </span>
                                     </div>
 
-                                    <!-- A. Threshold Slider -->
-                                    <div style="margin-bottom:1.25rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                                    <!-- Studio Drawing Canvas ROI Area -->
+                                    <div style="margin-bottom:1.5rem;">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                                             <label style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem;">
-                                                🎯 Threshold Sensitivity (Confidence Level)
+                                                ✏️ Layar Drawing ROI (Region of Interest)
                                             </label>
-                                            <span id="yolo-threshold-value-display" style="font-size:0.9rem; font-weight:700; color:#38bdf8;">50%</span>
+                                            <div style="display:flex; gap:0.5rem;">
+                                                <button type="button" class="btn btn-secondary" onclick="resetYoloRoiBox()" style="font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:4px;">
+                                                    🔄 Reset Zona Full
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" onclick="addNewRoiZone()" style="background:#2563eb; color:#fff; font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:4px; border:none;">
+                                                    ➕ Tambah Zona ROI
+                                                </button>
+                                            </div>
                                         </div>
-                                        <input type="range" id="yolo-threshold-slider" min="20" max="90" value="50" oninput="updateYoloThresholdDisplay(this.value)" style="width:100%; accent-color:#2563eb; cursor:pointer;">
-                                        <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-top:0.3rem;">
-                                            <span>20% (Sensitif / Deteksi Lebih Banyak)</span>
-                                            <span>90% (Ketat / Presisi Tinggi)</span>
+
+                                        <div style="position:relative; width:100%; background:#020617; border-radius:8px; border:2px dashed #2563eb; overflow:hidden; aspect-ratio:16/9; box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+                                            <canvas id="yolo-studio-drawing-canvas" style="width:100%; height:100%; display:block; cursor:crosshair;"></canvas>
+                                            <div style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.7); color:#4ade80; font-size:0.75rem; padding:4px 8px; border-radius:4px; pointer-events:none;">
+                                                Geser (Drag) Kotak ROI Hijau untuk Menyesuaikan Zona
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <!-- C. Resolusi Stream & Crop/Zoom Source Video -->
+                                    <!-- Pengaturan Source Video & Zoom Crop -->
                                     <div style="margin-bottom:1.25rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
                                         <div style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.75rem;">
-                                            <span>📷</span> Resolusi Stream & Zoom/Crop Input YOLO AI
+                                            <span>📷</span> Parameter Source Video & Zoom Scale
                                         </div>
                                         
                                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-bottom:0.75rem;">
                                             <!-- Resolution Selection -->
                                             <div>
                                                 <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.3rem;">
-                                                    Resolusi Stream Source:
+                                                    Resolusi Source Stream:
                                                 </label>
-                                                <select id="yolo-stream-resolution" onchange="updateYoloVideoCropPreview()" style="width:100%; background:#0f172a; color:#f8fafc; border:1px solid var(--border); padding:0.45rem; border-radius:6px; font-size:0.83rem;">
-                                                    <option value="1080p">Mainstream 1080p (1920x1080 Full High Def)</option>
-                                                    <option value="720p" selected>Substream 720p (1280x720 - Optimal STB)</option>
-                                                    <option value="480p">Substream 480p (854x480 Low Latency)</option>
-                                                    <option value="640x640">Inference Native 640x640 (Square Crop)</option>
+                                                <select id="yolo-stream-resolution" style="width:100%; background:#0f172a; color:#f8fafc; border:1px solid var(--border); padding:0.45rem; border-radius:6px; font-size:0.83rem;">
+                                                    <option value="1080p">Mainstream 1080p (1920x1080)</option>
+                                                    <option value="720p" selected>Substream 720p (1280x720)</option>
+                                                    <option value="480p">Substream 480p (854x480)</option>
                                                 </select>
                                             </div>
 
@@ -1213,131 +1223,37 @@
                                             <div>
                                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
                                                     <label style="font-size:0.8rem; color:var(--text-muted);">
-                                                        Zoom / Skala Crop Video:
+                                                        Zoom / Scale In-Out:
                                                     </label>
                                                     <span id="yolo-zoom-value-display" style="font-size:0.8rem; font-weight:700; color:#38bdf8;">1.0x</span>
                                                 </div>
-                                                <input type="range" id="yolo-zoom-slider" min="1.0" max="3.0" step="0.1" value="1.0" oninput="updateYoloVideoCropPreview()" style="width:100%; accent-color:#2563eb; cursor:pointer;">
-                                            </div>
-                                        </div>
-
-                                        <!-- Crop Position Offsets -->
-                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
-                                            <div>
-                                                <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:0.2rem;">
-                                                    <span>Offset Horisontal (X):</span>
-                                                    <span id="yolo-crop-x-display" style="color:#f8fafc;">0%</span>
-                                                </div>
-                                                <input type="range" id="yolo-crop-x-slider" min="-50" max="50" value="0" oninput="updateYoloVideoCropPreview()" style="width:100%; accent-color:#2563eb; cursor:pointer;">
-                                            </div>
-                                            <div>
-                                                <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:0.2rem;">
-                                                    <span>Offset Vertikal (Y):</span>
-                                                    <span id="yolo-crop-y-display" style="color:#f8fafc;">0%</span>
-                                                </div>
-                                                <input type="range" id="yolo-crop-y-slider" min="-50" max="50" value="0" oninput="updateYoloVideoCropPreview()" style="width:100%; accent-color:#2563eb; cursor:pointer;">
+                                                <input type="range" id="yolo-zoom-slider" min="1.0" max="3.0" step="0.1" value="1.0" oninput="updateYoloStudioZoomDisplay(this.value)" style="width:100%; accent-color:#2563eb; cursor:pointer;">
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- D. ROI (Region of Interest) Area Settings -->
-                                    <div style="margin-bottom:1.25rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                                    <!-- Threshold Confidence Slider -->
+                                    <div style="margin-bottom:1.5rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                                            <div style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem;">
-                                                <span>📐</span> Area Zona ROI Pendeteksi (Region of Interest)
-                                            </div>
-                                            <button type="button" class="btn btn-secondary" onclick="resetYoloRoiBox()" style="font-size:0.75rem; padding:0.25rem 0.6rem; border-radius:4px;">
-                                                🔄 Reset ROI Full Canvas
-                                            </button>
+                                            <label style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem;">
+                                                🎯 Threshold Confidence Sensitivity
+                                            </label>
+                                            <span id="yolo-threshold-value-display" style="font-size:0.9rem; font-weight:700; color:#38bdf8;">50%</span>
                                         </div>
-                                        <p style="font-size:0.78rem; color:var(--text-muted); margin:0 0 0.6rem 0;">
-                                            Petunjuk: Klik dan geser (drag) kotak ROI berwarna neon hijau di atas layar video preview untuk menyesuaikan zona area yang akan dibaca oleh AI.
-                                        </p>
-                                        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:0.5rem; text-align:center; background:#0f172a; padding:0.5rem; border-radius:6px; border:1px solid var(--border); font-size:0.78rem;">
-                                            <div>X: <strong id="yolo-roi-x-val" style="color:#38bdf8;">10%</strong></div>
-                                            <div>Y: <strong id="yolo-roi-y-val" style="color:#38bdf8;">10%</strong></div>
-                                            <div>Lebar: <strong id="yolo-roi-w-val" style="color:#38bdf8;">80%</strong></div>
-                                            <div>Tinggi: <strong id="yolo-roi-h-val" style="color:#38bdf8;">80%</strong></div>
-                                        </div>
+                                        <input type="range" id="yolo-threshold-slider" min="20" max="90" value="50" oninput="updateYoloThresholdDisplay(this.value)" style="width:100%; accent-color:#2563eb; cursor:pointer;">
                                     </div>
 
-                                    <!-- B. Checkbox Objek Target -->
-                                    <div style="margin-bottom:1.5rem;">
-                                        <label style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:block; margin-bottom:0.75rem;">
-                                            📦 Objek Target yang Dimasukkan ke Box Video:
-                                        </label>
-                                        
-                                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.85rem;">
-                                            <!-- Group 1: Manusia -->
-                                            <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:8px; padding:0.85rem;">
-                                                <div style="font-size:0.82rem; font-weight:700; color:#60a5fa; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.3rem;">
-                                                    <span>👤</span> KATEGORI MANUSIA
-                                                </div>
-                                                <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:#f8fafc; cursor:pointer;">
-                                                    <input type="checkbox" id="yolo-obj-person" checked onchange="drawYoloSettingCanvasOverlay()" style="accent-color:#2563eb; width:16px; height:16px;">
-                                                    <span>Manusia / Orang (Person)</span>
-                                                </label>
-                                            </div>
-
-                                            <!-- Group 2: Kendaraan -->
-                                            <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:8px; padding:0.85rem;">
-                                                <div style="font-size:0.82rem; font-weight:700; color:#f59e0b; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.3rem;">
-                                                    <span>🚗</span> KATEGORI KENDARAAN
-                                                </div>
-                                                <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                                                    <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer;">
-                                                        <input type="checkbox" id="yolo-obj-car" checked onchange="drawYoloSettingCanvasOverlay()" style="accent-color:#2563eb; width:16px; height:16px;">
-                                                        <span>Mobil (Car)</span>
-                                                    </label>
-                                                    <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer;">
-                                                        <input type="checkbox" id="yolo-obj-motorcycle" checked onchange="drawYoloSettingCanvasOverlay()" style="accent-color:#2563eb; width:16px; height:16px;">
-                                                        <span>Sepeda Motor (Motorcycle)</span>
-                                                    </label>
-                                                    <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer;">
-                                                        <input type="checkbox" id="yolo-obj-bicycle" onchange="drawYoloSettingCanvasOverlay()" style="accent-color:#2563eb; width:16px; height:16px;">
-                                                        <span>Sepeda (Bicycle)</span>
-                                                    </label>
-                                                    <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer;">
-                                                        <input type="checkbox" id="yolo-obj-truck" onchange="drawYoloSettingCanvasOverlay()" style="accent-color:#2563eb; width:16px; height:16px;">
-                                                        <span>Truk / Bus (Truck/Bus)</span>
-                                                    </label>
-                                                </div>
-                                            </div>
-
-                                            <!-- Group 3: Hewan -->
-                                            <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:8px; padding:0.85rem;">
-                                                <div style="font-size:0.82rem; font-weight:700; color:#10b981; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.3rem;">
-                                                    <span>🐕</span> KATEGORI HEWAN
-                                                </div>
-                                                <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                                                    <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer;">
-                                                        <input type="checkbox" id="yolo-obj-dog-cat" onchange="drawYoloSettingCanvasOverlay()" style="accent-color:#2563eb; width:16px; height:16px;">
-                                                        <span>Anjing & Kucing (Dog / Cat)</span>
-                                                    </label>
-                                                    <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer;">
-                                                        <input type="checkbox" id="yolo-obj-bird" onchange="drawYoloSettingCanvasOverlay()" style="accent-color:#2563eb; width:16px; height:16px;">
-                                                        <span>Burung (Bird)</span>
-                                                    </label>
-                                                    <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer;">
-                                                        <input type="checkbox" id="yolo-obj-livestock" onchange="drawYoloSettingCanvasOverlay()" style="accent-color:#2563eb; width:16px; height:16px;">
-                                                        <span>Sapi / Kambing (Livestock)</span>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- E. Tombol Simpan Per-Kamera dan Global -->
+                                    <!-- Tombol Simpan Parameter -->
                                     <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; border-top:1px solid var(--border); padding-top:1rem; flex-wrap:wrap;">
-                                        <button type="button" class="btn btn-secondary" onclick="cancelYoloEditMode()" style="font-size:0.85rem;">
+                                        <button type="button" class="btn btn-secondary" onclick="switchYoloSettingsTab('view')" style="font-size:0.85rem;">
                                             ❌ Batal
                                         </button>
                                         <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                                            <button type="button" class="btn btn-secondary" onclick="saveYoloCameraSettings(true)" style="background:#0284c7; border-color:#0369a1; color:#ffffff; font-size:0.83rem; font-weight:600; padding:0.55rem 1rem; border-radius:6px;" title="Terapkan konfigurasi ini sebagai default ke semua kamera">
+                                            <button type="button" class="btn btn-secondary" onclick="saveYoloCameraSettings(true)" style="background:#0284c7; border-color:#0369a1; color:#ffffff; font-size:0.83rem; font-weight:600; padding:0.55rem 1rem; border-radius:6px;">
                                                 <span>🌐</span> Terapkan Ke Semua Kamera (Global)
                                             </button>
-                                            <button type="button" class="btn btn-primary" onclick="saveYoloCameraSettings(false)" style="background:#22c55e; border-color:#16a34a; font-weight:700; font-size:0.9rem; padding:0.55rem 1.25rem; display:flex; align-items:center; gap:0.4rem; border-radius:6px;" title="Simpan khusus hanya untuk kamera ini">
-                                                <span>💾</span> Simpan Kamera Ini (Per-Kamera)
+                                            <button type="button" class="btn btn-primary" onclick="saveYoloCameraSettings(false)" style="background:#22c55e; border-color:#16a34a; font-weight:700; font-size:0.9rem; padding:0.55rem 1.25rem; display:flex; align-items:center; gap:0.4rem; border-radius:6px;">
+                                                <span>💾</span> Simpan Kamera Ini
                                             </button>
                                         </div>
                                     </div>

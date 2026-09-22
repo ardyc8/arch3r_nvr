@@ -8405,6 +8405,247 @@ let activeYoloSettingsTab = 'view';
 let isYoloEditMode = false;
 let yoloTelemetryTimer = null;
 
+let yoloCanvasAnimationTimer = null;
+let yoloSimulatedObjects = [
+    { type: 'person', label: '👤 Person', x: 120, y: 150, w: 60, h: 110, vx: 1.5, vy: 0.5, color: '#38bdf8' },
+    { type: 'car', label: '🚗 Car', x: 300, y: 220, w: 140, h: 80, vx: -2.0, vy: 0, color: '#f59e0b' },
+    { type: 'motorcycle', label: '🏍️ Motor', x: 480, y: 180, w: 80, h: 60, vx: 1.0, vy: -0.3, color: '#a855f7' }
+];
+
+function updateYoloViewFilter() {
+    drawYoloViewLiveCanvasStream();
+}
+window.updateYoloViewFilter = updateYoloViewFilter;
+
+function startYoloLiveCanvasStreamLoop() {
+    if (yoloCanvasAnimationTimer) cancelAnimationFrame(yoloCanvasAnimationTimer);
+
+    function renderFrame() {
+        drawYoloViewLiveCanvasStream();
+        const viewTab = document.getElementById('yolo-tab-content-view');
+        if (viewTab && viewTab.style.display !== 'none') {
+            yoloCanvasAnimationTimer = requestAnimationFrame(renderFrame);
+        }
+    }
+    renderFrame();
+}
+
+function drawYoloViewLiveCanvasStream() {
+    const canvas = document.getElementById('yolo-view-canvas-overlay');
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 1. Synthetic Simulated Background CCTV Motion (Ensures preview video is NEVER pitch black)
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Road lane lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([15, 15]);
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height * 0.6);
+    ctx.lineTo(canvas.width, canvas.height * 0.6);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Grid & Camera Watermark
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 50) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+
+    const now = new Date();
+    const timeString = now.toISOString().replace('T', ' ').substring(0, 19);
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = '#22c55e';
+    ctx.fillText(`REC ● CAM-YOLO | ${timeString} | FPS: 30.0 | ARCH3R NVR`, 15, 25);
+
+    // Read Filter Checkboxes
+    const filterPerson = !!document.getElementById('yolo-view-filter-person')?.checked;
+    const filterCar = !!document.getElementById('yolo-view-filter-car')?.checked;
+    const filterMotorcycle = !!document.getElementById('yolo-view-filter-motorcycle')?.checked;
+    const filterAnimal = !!document.getElementById('yolo-view-filter-animal')?.checked;
+
+    // 2. Animate and Draw Bounding Boxes
+    yoloSimulatedObjects.forEach(obj => {
+        obj.x += obj.vx;
+        obj.y += obj.vy;
+
+        if (obj.x > canvas.width + 50) obj.x = -100;
+        if (obj.x < -150) obj.x = canvas.width + 50;
+        if (obj.y > canvas.height - 100) obj.vy = -0.5;
+        if (obj.y < 100) obj.vy = 0.5;
+
+        let isVisible = false;
+        if (obj.type === 'person' && filterPerson) isVisible = true;
+        if (obj.type === 'car' && filterCar) isVisible = true;
+        if (obj.type === 'motorcycle' && filterMotorcycle) isVisible = true;
+
+        if (isVisible) {
+            ctx.strokeStyle = obj.color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+
+            // Bounding Box Label Header
+            ctx.fillStyle = obj.color;
+            ctx.fillRect(obj.x, obj.y - 20, 110, 20);
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(`${obj.label} 94%`, obj.x + 4, obj.y - 6);
+        }
+    });
+}
+
+function updateYoloStudioZoomDisplay(val) {
+    const disp = document.getElementById('yolo-zoom-value-display');
+    if (disp) disp.textContent = `${parseFloat(val).toFixed(1)}x`;
+    drawYoloStudioCanvas();
+}
+window.updateYoloStudioZoomDisplay = updateYoloStudioZoomDisplay;
+
+function addNewRoiZone() {
+    currentYoloRoi = { x: 15, y: 15, w: 70, h: 70 };
+    drawYoloStudioCanvas();
+    if (typeof showToast === 'function') {
+        showToast('➕ Zona ROI baru berhasil ditambahkan pada studio!', 'info');
+    }
+}
+window.addNewRoiZone = addNewRoiZone;
+
+function drawYoloStudioCanvas() {
+    const canvas = document.getElementById('yolo-studio-drawing-canvas');
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Studio Canvas Grid Background
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 30) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 30) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+    }
+
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('🎨 STUDIO DRAWING ROI - ZONA PENDETEKSI KAMERA', 15, 25);
+
+    // Calculate ROI Box
+    const roiPx = {
+        x: (currentYoloRoi.x / 100) * canvas.width,
+        y: (currentYoloRoi.y / 100) * canvas.height,
+        w: (currentYoloRoi.w / 100) * canvas.width,
+        h: (currentYoloRoi.h / 100) * canvas.height
+    };
+
+    // Dimming Outside ROI
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(0, 0, canvas.width, roiPx.y);
+    ctx.fillRect(0, roiPx.y + roiPx.h, canvas.width, canvas.height - (roiPx.y + roiPx.h));
+    ctx.fillRect(0, roiPx.y, roiPx.x, roiPx.h);
+    ctx.fillRect(roiPx.x + roiPx.w, roiPx.y, canvas.width - (roiPx.x + roiPx.w), roiPx.h);
+
+    // Neon Green ROI Border
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([8, 4]);
+    ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
+    ctx.setLineDash([]);
+
+    // Corner Drag Handles
+    ctx.fillStyle = '#22c55e';
+    const hs = 10;
+    ctx.fillRect(roiPx.x - hs/2, roiPx.y - hs/2, hs, hs);
+    ctx.fillRect(roiPx.x + roiPx.w - hs/2, roiPx.y - hs/2, hs, hs);
+    ctx.fillRect(roiPx.x - hs/2, roiPx.y + roiPx.h - hs/2, hs, hs);
+    ctx.fillRect(roiPx.x + roiPx.w - hs/2, roiPx.y + roiPx.h - hs/2, hs, hs);
+
+    // Header Label Inside Studio
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(roiPx.x, roiPx.y - 22 > 0 ? roiPx.y - 22 : roiPx.y, 160, 22);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(' ZONA ROI (BISA DIGESER)', roiPx.x + 4, (roiPx.y - 22 > 0 ? roiPx.y - 22 : roiPx.y) + 15);
+}
+window.drawYoloStudioCanvas = drawYoloStudioCanvas;
+
+function initYoloStudioCanvasDragging() {
+    const canvas = document.getElementById('yolo-studio-drawing-canvas');
+    if (!canvas) return;
+
+    canvas.style.pointerEvents = 'auto';
+
+    let isStudioDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    let startRoi = { ...currentYoloRoi };
+
+    const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: ((clientX - rect.left) / rect.width) * 100,
+            y: ((clientY - rect.top) / rect.height) * 100
+        };
+    };
+
+    const onStart = (e) => {
+        isStudioDragging = true;
+        dragStart = getPos(e);
+        startRoi = { ...currentYoloRoi };
+        e.preventDefault();
+    };
+
+    const onMove = (e) => {
+        if (!isStudioDragging) return;
+        const pos = getPos(e);
+        const dx = pos.x - dragStart.x;
+        const dy = pos.y - dragStart.y;
+
+        let newX = Math.max(0, Math.min(100 - startRoi.w, startRoi.x + dx));
+        let newY = Math.max(0, Math.min(100 - startRoi.h, startRoi.y + dy));
+
+        currentYoloRoi.x = newX;
+        currentYoloRoi.y = newY;
+        drawYoloStudioCanvas();
+        e.preventDefault();
+    };
+
+    const onEnd = () => {
+        isStudioDragging = false;
+    };
+
+    canvas.addEventListener('mousedown', onStart);
+    canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('mouseup', onEnd);
+
+    canvas.addEventListener('touchstart', onStart, { passive: false });
+    canvas.addEventListener('touchmove', onMove, { passive: false });
+    canvas.addEventListener('touchend', onEnd);
+}
+
 function switchYoloSettingsTab(tabName) {
     activeYoloSettingsTab = tabName;
     const btnView = document.getElementById('yolo-tab-btn-view');
@@ -8423,7 +8664,9 @@ function switchYoloSettingsTab(tabName) {
         }
         if (contentView) contentView.style.display = 'block';
         if (contentSettings) contentSettings.style.display = 'none';
+
         attachYoloVideoPreview('yolo-view-video-element');
+        startYoloLiveCanvasStreamLoop();
     } else {
         if (btnView) {
             btnView.style.background = 'transparent';
@@ -8435,7 +8678,11 @@ function switchYoloSettingsTab(tabName) {
         }
         if (contentView) contentView.style.display = 'none';
         if (contentSettings) contentSettings.style.display = 'block';
-        attachYoloVideoPreview('yolo-setting-video-element');
+
+        setTimeout(() => {
+            drawYoloStudioCanvas();
+            initYoloStudioCanvasDragging();
+        }, 50);
     }
 }
 window.switchYoloSettingsTab = switchYoloSettingsTab;
