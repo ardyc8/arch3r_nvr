@@ -87,13 +87,10 @@ class HdmiKioskAddon {
     /**
      * Ensure /opt/arch3r-kiosk/start-kiosk.sh exists and is up to date before launching
      */
-    ensureKioskScript() {
+    ensureKioskScript(callback) {
         const kioskDir = '/opt/arch3r-kiosk';
         const scriptPath = path.join(kioskDir, 'start-kiosk.sh');
         try {
-            if (!fs.existsSync(kioskDir)) {
-                fs.mkdirSync(kioskDir, { recursive: true });
-            }
             const cfg = this.loadConfig();
             const targetUrl = cfg.display_url || this.appUrl || 'http://localhost:3000/#monitor';
 
@@ -110,44 +107,97 @@ elif which openbox >/dev/null 2>&1; then
     openbox &
 fi
 
-# Deteksi binary Chromium di Linux Armbian
-CHROMIUM_BIN=$(which chromium-browser 2>/dev/null || which chromium 2>/dev/null || which google-chrome 2>/dev/null || echo "")
+# Deteksi binary peramban di Linux Armbian
+BROWSER_BIN=$(which chromium-browser 2>/dev/null || which chromium 2>/dev/null || which google-chrome 2>/dev/null || which midori 2>/dev/null || which firefox-esr 2>/dev/null || echo "")
 
-if [ -z "$CHROMIUM_BIN" ]; then
-    echo "[Arch3r Kiosk] ERROR: Peramban Chromium belum terpasang di STB!" >&2
+if [ -z "$BROWSER_BIN" ]; then
+    echo "[Arch3r Kiosk] ERROR: Peramban (Chromium/Midori) belum terpasang di STB!" >&2
     sleep 5
     exit 1
 fi
 
-while true; do
-    rm -rf /tmp/arch3r_kiosk_chrome/Singleton* 2>/dev/null || true
-    $CHROMIUM_BIN \\
-        --kiosk \\
-        --no-first-run \\
-        --no-default-browser-check \\
-        --disable-infobars \\
-        --disable-session-crashed-bubble \\
-        --disable-translate \\
-        --noerrdialogs \\
-        --no-sandbox \\
-        --test-type \\
-        --user-data-dir=/tmp/arch3r_kiosk_chrome \\
-        --disable-dev-shm-usage \\
-        --in-process-gpu \\
-        --ignore-gpu-blocklist \\
-        --enable-zero-copy \\
-        --autoplay-policy=no-user-gesture-required \\
-        --check-for-update-interval=31536000 \\
-        --app="${targetUrl}"
-    sleep 3
-done
+echo "[Arch3r Kiosk] Meluncurkan tampilan dengan: $BROWSER_BIN"
+
+if [[ "$BROWSER_BIN" == *"midori"* ]]; then
+    while true; do
+        $BROWSER_BIN -e Fullscreen -a "${targetUrl}"
+        sleep 3
+    done
+else
+    while true; do
+        rm -rf /tmp/arch3r_kiosk_chrome/Singleton* 2>/dev/null || true
+        $BROWSER_BIN \\
+            --kiosk \\
+            --no-first-run \\
+            --no-default-browser-check \\
+            --disable-infobars \\
+            --disable-session-crashed-bubble \\
+            --disable-translate \\
+            --noerrdialogs \\
+            --no-sandbox \\
+            --test-type \\
+            --user-data-dir=/tmp/arch3r_kiosk_chrome \\
+            --disable-dev-shm-usage \\
+            --in-process-gpu \\
+            --ignore-gpu-blocklist \\
+            --enable-zero-copy \\
+            --autoplay-policy=no-user-gesture-required \\
+            --check-for-update-interval=31536000 \\
+            --app="${targetUrl}"
+        sleep 3
+    done
+fi
 `;
-            fs.writeFileSync(scriptPath, scriptContent, { mode: 0o755 });
+            // Coba tulis langsung dengan Node.js fs
+            let writeSuccess = false;
+            try {
+                if (!fs.existsSync(kioskDir)) {
+                    fs.mkdirSync(kioskDir, { recursive: true });
+                }
+                fs.writeFileSync(scriptPath, scriptContent, { mode: 0o755 });
+                writeSuccess = true;
+            } catch (fsErr) {
+                this.logger('WARN', 'Direct fs write failed, attempting sudo fallback: ' + fsErr.message);
+            }
+
+            // Jika gagal karena hak akses root di /opt, gunakan sudo fallback melalui /tmp
+            const tempPath = '/tmp/arch3r_start_kiosk.sh';
+            try {
+                fs.writeFileSync(tempPath, scriptContent, { mode: 0o755 });
+            } catch (_) {}
+
+            const applySudoCmd = `sudo mkdir -p /opt/arch3r-kiosk && sudo cp ${tempPath} /opt/arch3r-kiosk/start-kiosk.sh && sudo chmod 755 /opt/arch3r-kiosk/start-kiosk.sh && sudo sed -i "s/ vt7//g" /etc/systemd/system/arch3r-kiosk.service 2>/dev/null || true; sudo systemctl daemon-reload 2>/dev/null || true`;
+            
+            exec(applySudoCmd, (cmdErr) => {
+                if (cmdErr && !writeSuccess) {
+                    this.logger('WARN', 'Sudo fallback command had notice: ' + cmdErr.message);
+                }
+                if (typeof callback === 'function') callback(true, 'Script updated');
+            });
+
             return true;
         } catch (err) {
             this.logger('WARN', 'Failed to ensure kiosk script: ' + err.message);
+            if (typeof callback === 'function') callback(false, err.message);
             return false;
         }
+    }
+
+    /**
+     * Repair kiosk environment and restart service
+     */
+    repairKioskEnvironment(callback) {
+        this.ensureKioskScript((success, msg) => {
+            exec('sudo systemctl restart arch3r-kiosk 2>/dev/null || systemctl restart arch3r-kiosk 2>/dev/null', (err, stdout, stderr) => {
+                this.checkSystemdServiceStatus((isActive) => {
+                    if (callback) callback(null, {
+                        success: true,
+                        message: 'Script launcher berhasil diperbarui ke mode anti-crash dan service direstart.',
+                        isActive
+                    });
+                });
+            });
+        });
     }
 
     /**

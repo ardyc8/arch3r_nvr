@@ -5269,6 +5269,20 @@ app.get('/api/addons/hdmi-kiosk/diagnostics', verifyToken, (req, res) => {
     }
 });
 
+app.post('/api/addons/hdmi-kiosk/repair', verifyToken, requireAdmin, (req, res) => {
+    if (!hdmiKioskAddon) {
+        return res.status(404).json({ error: 'Add-on HDMI Kiosk belum terinstal di sistem' });
+    }
+    if (typeof hdmiKioskAddon.repairKioskEnvironment === 'function') {
+        hdmiKioskAddon.repairKioskEnvironment((err, result) => {
+            if (err) return res.status(500).json({ error: 'Gagal memperbaiki kiosk: ' + err.message });
+            res.json({ success: true, ...result, status: hdmiKioskAddon.getStatus() });
+        });
+    } else {
+        res.status(501).json({ error: 'Metode perbaikan belum diimplementasikan' });
+    }
+});
+
 app.post('/api/addons/hdmi-kiosk/toggle', verifyToken, requireAdmin, (req, res) => {
     if (!hdmiKioskAddon) {
         return res.status(404).json({ error: 'Add-on HDMI tidak ditemukan di ./addons/hdmi-kiosk' });

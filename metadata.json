@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.5.8 - HDMI Monitor & Armbian Kiosk Resilience: Restored Addon Settings Modal, Crash-Free Armbian Display Launcher & Live STB Diagnostic Logs.",
+  "description": "Arch3r NVR Ver. 10.6.0 - HDMI Monitor & Armbian Kiosk: Auto-Sudo Launcher Repair, Multi-Browser Fallback Engine & Real-Time STB Telemetry.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

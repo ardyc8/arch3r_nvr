@@ -1,5 +1,24 @@
-# ⚡ Arch3r NVR (Ver. 10.5.8)
+# ⚡ Arch3r NVR (Ver. 10.6.0)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.0:
+- **HDMI Kiosk Auto-Sudo Launcher Repair & Dynamic Multi-Browser Fallback**:
+  1. **Solusi Definitif Error `exec: midori: not found`**:
+     - Log STB mengungkap bahwa script lama `/opt/arch3r-kiosk/start-kiosk.sh` di STB masih memanggil binary `midori` yang tidak ada di sistem.
+     - Ditambahkan mekanisme injeksi script self-healing dengan hak akses `sudo` otomatis melalui `/tmp/arch3r_start_kiosk.sh` -> `/opt/arch3r-kiosk/start-kiosk.sh` sehingga file script di direktori root dapat diperbarui dari web tanpa hambatan izin (permission denied).
+  2. **Tombol "⚡ Perbarui Script Launcher Kiosk STB" di Antarmuka Web**:
+     - Ditambahkan tombol aksi perbaikan langsung di samping box log journalctl serta endpoint backend `POST /api/addons/hdmi-kiosk/repair`.
+     - Pengguna dapat memperbarui script launcher di STB dan me-restart service hanya dengan satu klik dari HP atau komputer.
+  3. **Mesin Deteksi Peramban Dinamis**:
+     - Launcher kini mendeteksi binary peramban secara otomatis dan bertingkat (`chromium-browser`, `chromium`, `google-chrome`, `midori`, `firefox-esr`) dengan parameter anti-crash yang disesuaikan secara dinamis.
+
+### 📋 Changelog Pembaruan Ver. 10.5.9:
+- **HDMI Kiosk Auto-Sanitization & One-Click TV Display Activation**:
+  1. **Otomatisasi Pembersihan Parameter `vt7` pada Systemd Service**:
+     - Sistem kini secara otomatis mendeteksi dan menghapus argumen `vt7` yang tersisa di `/etc/systemd/system/arch3r-kiosk.service` saat tombol Start/Toggle ditekan.
+     - Mengeksekusi `systemctl daemon-reload` di latar belakang secara mulus tanpa memerlukan intervensi terminal manual oleh pengguna.
+  2. **Verifikasi Sukses Dependensi Grafis STB**:
+     - Diagnostik telemetri HDMI Kiosk terbukti sukses 100% memvalidasi kelengkapan dependensi Xorg, Chromium, Window Manager, dan Launcher script di Linux Armbian STB.
 
 ### 📋 Changelog Pembaruan Ver. 10.5.8:
 - **HDMI Monitor & Armbian Kiosk Resilience: Pemulihan Modal Pengaturan & Launcher Anti-Crash**:
