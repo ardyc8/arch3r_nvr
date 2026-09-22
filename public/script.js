@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.5.7 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.5.8 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -8066,6 +8066,18 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                     <button type="button" class="btn btn-sm btn-secondary" onclick="refreshHdmiKioskStatus()" style="display:flex; align-items:center; gap:0.3rem;">
                         <span>🔄</span> Cek Kabel Ulang
                     </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="checkHdmiKioskDiagnostics()" style="display:flex; align-items:center; gap:0.3rem; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+                        <span>📋</span> Diagnostik & Log STB
+                    </button>
+                </div>
+                <div id="hdmiKioskDiagBox" style="display:none; margin-top:0.85rem; padding:0.85rem; border-radius:6px; background:#0b1329; border:1px solid #1e293b; font-size:0.82rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                        <strong style="color:#60a5fa; display:flex; align-items:center; gap:0.4rem;">
+                            <span>🔍</span> Hasil Diagnostik Kiosk Armbian STB
+                        </strong>
+                        <button type="button" onclick="document.getElementById('hdmiKioskDiagBox').style.display='none'" style="background:transparent; border:none; color:#94a3b8; cursor:pointer; font-size:1rem;">✖</button>
+                    </div>
+                    <div id="hdmiKioskDiagContent">Memeriksa status STB...</div>
                 </div>
             </div>
 
@@ -8245,6 +8257,60 @@ async function toggleHdmiKioskOutput(action) {
 async function refreshHdmiKioskStatus() {
     openAddonConfig('hdmi-kiosk', 'HDMI Monitor & Armbian Kiosk');
 }
+
+async function checkHdmiKioskDiagnostics() {
+    const box = document.getElementById('hdmiKioskDiagBox');
+    const content = document.getElementById('hdmiKioskDiagContent');
+    if (!box || !content) return;
+
+    box.style.display = 'block';
+    content.innerHTML = '<span style="color:#94a3b8;">⏳ Memeriksa dependensi grafis dan log systemd STB...</span>';
+
+    try {
+        const res = await authFetch('/api/addons/hdmi-kiosk/diagnostics');
+        const data = await res.json();
+        if (res.ok && data.diagnostics) {
+            const d = data.diagnostics;
+            const safeLog = String(d.journalLogs || 'Tidak ada catatan log.')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            content.innerHTML = `
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.5rem; margin-bottom:0.75rem;">
+                    <div style="padding:0.4rem 0.6rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:var(--text-muted); font-size:0.72rem; display:block;">Xorg Server:</span>
+                        <strong style="color:${d.hasXorg ? '#22c55e' : '#ef4444'}; font-size:0.8rem;">${d.hasXorg ? '✅ Terpasang' : '❌ Belum Terpasang'}</strong>
+                    </div>
+                    <div style="padding:0.4rem 0.6rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:var(--text-muted); font-size:0.72rem; display:block;">Chromium:</span>
+                        <strong style="color:${d.hasChromium ? '#22c55e' : '#ef4444'}; font-size:0.8rem;">${d.hasChromium ? '✅ Terpasang' : '❌ Belum Terpasang'}</strong>
+                    </div>
+                    <div style="padding:0.4rem 0.6rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:var(--text-muted); font-size:0.72rem; display:block;">Window Mgr:</span>
+                        <strong style="color:${d.hasWindowManager ? '#22c55e' : '#f59e0b'}; font-size:0.8rem;">${d.hasWindowManager ? '✅ Ada' : '⚠️ Tidak Ada'}</strong>
+                    </div>
+                    <div style="padding:0.4rem 0.6rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:var(--text-muted); font-size:0.72rem; display:block;">Launcher Script:</span>
+                        <strong style="color:${d.hasKioskScript ? '#22c55e' : '#ef4444'}; font-size:0.8rem;">${d.hasKioskScript ? '✅ Siap' : '❌ Belum Ada'}</strong>
+                    </div>
+                </div>
+                <div style="padding:0.5rem 0.75rem; border-radius:4px; background:${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}; border:1px solid ${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}; margin-bottom:0.75rem; font-size:0.8rem;">
+                    <strong>${d.recommendation || ''}</strong>
+                </div>
+                <div>
+                    <span style="display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.25rem;">Log Journalctl Service arch3r-kiosk:</span>
+                    <pre style="margin:0; padding:0.5rem; background:#000; color:#38bdf8; font-size:0.72rem; border-radius:4px; max-height:140px; overflow-y:auto; white-space:pre-wrap; border:1px solid #1e293b;">${safeLog}</pre>
+                </div>
+            `;
+        } else {
+            content.innerHTML = `<span style="color:#ef4444;">Gagal mengambil diagnosa: ${data.error || 'Server tidak merespon'}</span>`;
+        }
+    } catch (e) {
+        content.innerHTML = `<span style="color:#ef4444;">Gagal menghubungi server: ${e.message || e}</span>`;
+    }
+}
+window.checkHdmiKioskDiagnostics = checkHdmiKioskDiagnostics;
 
 async function saveAddonConfig() {
     if (!currentConfigAddonId) return;

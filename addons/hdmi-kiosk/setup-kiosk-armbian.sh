@@ -18,7 +18,7 @@ echo "=========================================================="
 echo "⚡ Arch3r NVR - Konfigurasi Kiosk Layar HDMI Standalone"
 echo "=========================================================="
 
-echo "[1/4] Menginstal dependensi grafis minimal (Xorg, Matchbox, Chromium)..."
+echo "[1/4] Menginstal dependensi grafis minimal (Xorg, Matchbox/Openbox, Chromium)..."
 apt-get update -y
 apt-get install -y --no-install-recommends \
     xserver-xorg \
@@ -26,6 +26,7 @@ apt-get install -y --no-install-recommends \
     xinit \
     x11-xserver-utils \
     matchbox-window-manager \
+    openbox \
     chromium-browser || apt-get install -y chromium || true
 
 echo "[2/4] Mengonfigurasi hak akses Xwrapper untuk non-console..."
@@ -45,10 +46,20 @@ xset s off 2>/dev/null || true
 xset s noblank 2>/dev/null || true
 
 # Jalankan window manager ringan
-matchbox-window-manager -use_titlebar no &
+if which matchbox-window-manager >/dev/null 2>&1; then
+    matchbox-window-manager -use_titlebar no &
+elif which openbox >/dev/null 2>&1; then
+    openbox &
+fi
 
-# Deteksi binary Chromium
-CHROMIUM_BIN=$(which chromium-browser 2>/dev/null || which chromium 2>/dev/null || which google-chrome 2>/dev/null || echo "/usr/bin/chromium-browser")
+# Deteksi binary Chromium di Linux Armbian
+CHROMIUM_BIN=$(which chromium-browser 2>/dev/null || which chromium 2>/dev/null || which google-chrome 2>/dev/null || echo "")
+
+if [ -z "$CHROMIUM_BIN" ]; then
+    echo "[Arch3r Kiosk] ERROR: Peramban Chromium belum terpasang di STB!" >&2
+    sleep 5
+    exit 1
+fi
 
 # Loop keep-alive agar Chromium selalu aktif dan memuat streaming NVR
 while true; do
@@ -65,12 +76,13 @@ while true; do
         --test-type \
         --user-data-dir=/tmp/arch3r_kiosk_chrome \
         --disable-dev-shm-usage \
-        --disable-gpu \
-        --disable-software-rasterizer \
+        --in-process-gpu \
+        --ignore-gpu-blocklist \
+        --enable-zero-copy \
         --autoplay-policy=no-user-gesture-required \
         --check-for-update-interval=31536000 \
-        --app=http://localhost:3000
-    sleep 2
+        --app=http://localhost:3000/#monitor
+    sleep 3
 done
 EOF
 chmod +x /opt/arch3r-kiosk/start-kiosk.sh
@@ -85,9 +97,11 @@ After=systemd-user-sessions.service network.target
 Type=simple
 User=root
 Environment=DISPLAY=:0
-ExecStart=/usr/bin/xinit /opt/arch3r-kiosk/start-kiosk.sh -- /usr/bin/X :0 -nocursor -nolisten tcp vt7
+ExecStart=/usr/bin/xinit /opt/arch3r-kiosk/start-kiosk.sh -- /usr/bin/X :0 -nocursor -nolisten tcp
 Restart=always
 RestartSec=5
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

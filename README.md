@@ -1,5 +1,22 @@
-# ⚡ Arch3r NVR (Ver. 10.5.7)
+# ⚡ Arch3r NVR (Ver. 10.5.8)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.5.8:
+- **HDMI Monitor & Armbian Kiosk Resilience: Pemulihan Modal Pengaturan & Launcher Anti-Crash**:
+  1. **Pemulihan Modal Dialog Pengaturan Addon (`#addonConfigModalOverlay`)**:
+     - Memulihkan elemen modal markup `#addonConfigModalOverlay` dan `#installAddonModalOverlay` di `public/index.html` dengan desain Vanilla DOM & CSS murni (tanpa dependensi framework pihak ketiga).
+     - Tombol ⚙️ (Pengaturan) pada semua kartu addon (khususnya HDMI Monitor & Armbian Kiosk serta AI YOLOv8) kini kembali aktif, responsif, dan membuka form konfigurasi secara instan di desktop maupun layar smartphone.
+  2. **Perbaikan Mesin Launcher HDMI Kiosk Anti-Crash di Armbian STB (`start-kiosk.sh`)**:
+     - Mengeliminasi penyebab layar TV hitam berkedip `_` yang langsung keluar ke terminal prompt login Armbian.
+     - Menghapus kombinasi flag fatal `--disable-gpu` dan `--disable-software-rasterizer` yang sebelumnya mematikan seluruh pipeline grafis Chromium.
+     - Menggantinya dengan flag akselerasi grafis Armbian SoC yang stabil: `--in-process-gpu`, `--ignore-gpu-blocklist`, `--enable-zero-copy`, `--disable-dev-shm-usage`, dan `--no-sandbox`.
+     - Menghapus argumen kaku `vt7` pada systemd service `arch3r-kiosk` yang memicu kegagalan alokasi TTY pada kernel Amlogic STB, sehingga Xorg berjalan mulus di virtual terminal yang aktif.
+  3. **Diagnostik & Live Log STB Terintegrasi (`/api/addons/hdmi-kiosk/diagnostics`)**:
+     - Menambahkan tombol interaktif **"📋 Diagnostik & Log STB"** di dalam jendela pengaturan HDMI Kiosk.
+     - Memeriksa secara real-time status kelengkapan paket grafis STB (Xorg, Chromium Browser, Matchbox/Openbox Window Manager, Launcher Script di `/opt/arch3r-kiosk`, serta status service systemd).
+     - Menampilkan kutipan 25 baris terakhir dari `journalctl -u arch3r-kiosk` langsung di antarmuka web beserta rekomendasi perbaikan jika ada dependensi Linux yang belum terpasang.
+  4. **Self-Healing Script Generator**:
+     - Backend secara otomatis memverifikasi dan memperbarui script `/opt/arch3r-kiosk/start-kiosk.sh` dengan URL preset tampilan NVR terbaru setiap kali tombol *Start* ditekan.
 
 ### 📋 Changelog Pembaruan Ver. 10.5.7:
 - **Ketahanan Jaringan Mobile HP (Offline Resilience) & Persistent AI Sensor Viewport**:

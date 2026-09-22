@@ -85,6 +85,72 @@ class HdmiKioskAddon {
     }
 
     /**
+     * Ensure /opt/arch3r-kiosk/start-kiosk.sh exists and is up to date before launching
+     */
+    ensureKioskScript() {
+        const kioskDir = '/opt/arch3r-kiosk';
+        const scriptPath = path.join(kioskDir, 'start-kiosk.sh');
+        try {
+            if (!fs.existsSync(kioskDir)) {
+                fs.mkdirSync(kioskDir, { recursive: true });
+            }
+            const cfg = this.loadConfig();
+            const targetUrl = cfg.display_url || this.appUrl || 'http://localhost:3000/#monitor';
+
+            const scriptContent = `#!/bin/bash
+export DISPLAY=:0
+xset -dpms 2>/dev/null || true
+xset s off 2>/dev/null || true
+xset s noblank 2>/dev/null || true
+
+# Jalankan window manager ringan
+if which matchbox-window-manager >/dev/null 2>&1; then
+    matchbox-window-manager -use_titlebar no &
+elif which openbox >/dev/null 2>&1; then
+    openbox &
+fi
+
+# Deteksi binary Chromium di Linux Armbian
+CHROMIUM_BIN=$(which chromium-browser 2>/dev/null || which chromium 2>/dev/null || which google-chrome 2>/dev/null || echo "")
+
+if [ -z "$CHROMIUM_BIN" ]; then
+    echo "[Arch3r Kiosk] ERROR: Peramban Chromium belum terpasang di STB!" >&2
+    sleep 5
+    exit 1
+fi
+
+while true; do
+    rm -rf /tmp/arch3r_kiosk_chrome/Singleton* 2>/dev/null || true
+    $CHROMIUM_BIN \\
+        --kiosk \\
+        --no-first-run \\
+        --no-default-browser-check \\
+        --disable-infobars \\
+        --disable-session-crashed-bubble \\
+        --disable-translate \\
+        --noerrdialogs \\
+        --no-sandbox \\
+        --test-type \\
+        --user-data-dir=/tmp/arch3r_kiosk_chrome \\
+        --disable-dev-shm-usage \\
+        --in-process-gpu \\
+        --ignore-gpu-blocklist \\
+        --enable-zero-copy \\
+        --autoplay-policy=no-user-gesture-required \\
+        --check-for-update-interval=31536000 \\
+        --app="${targetUrl}"
+    sleep 3
+done
+`;
+            fs.writeFileSync(scriptPath, scriptContent, { mode: 0o755 });
+            return true;
+        } catch (err) {
+            this.logger('WARN', 'Failed to ensure kiosk script: ' + err.message);
+            return false;
+        }
+    }
+
+    /**
      * Check if systemd Kiosk service is active (if installed)
      */
     checkSystemdServiceStatus(callback) {
@@ -104,9 +170,64 @@ class HdmiKioskAddon {
             return;
         }
 
+        if (action === 'start' || action === 'restart') {
+            this.ensureKioskScript();
+        }
+
         exec(`systemctl ${action} arch3r-kiosk 2>/dev/null`, (err, stdout, stderr) => {
             this.checkSystemdServiceStatus(() => {
                 if (callback) callback(err, { success: !err, stdout, stderr, isActive: this.isKioskServiceActive });
+            });
+        });
+    }
+
+    /**
+     * Diagnostic report of Armbian STB graphic environment for Kiosk
+     */
+    getDiagnostics(callback) {
+        const results = {
+            hasXorg: false,
+            hasChromium: false,
+            hasWindowManager: false,
+            hasKioskScript: false,
+            hasSystemdService: false,
+            isServiceActive: false,
+            journalLogs: '',
+            detectedPath: this.detectedSysPath,
+            isHdmiConnected: this.isHdmiConnected,
+            recommendation: ''
+        };
+
+        exec('which Xorg || which X', (err, stdout) => {
+            results.hasXorg = !!(!err && stdout && stdout.trim());
+            exec('which chromium-browser || which chromium || which google-chrome', (err2, stdout2) => {
+                results.hasChromium = !!(!err2 && stdout2 && stdout2.trim());
+                exec('which matchbox-window-manager || which openbox', (err3, stdout3) => {
+                    results.hasWindowManager = !!(!err3 && stdout3 && stdout3.trim());
+                    results.hasKioskScript = fs.existsSync('/opt/arch3r-kiosk/start-kiosk.sh');
+                    results.hasSystemdService = fs.existsSync('/etc/systemd/system/arch3r-kiosk.service');
+
+                    exec('systemctl is-active arch3r-kiosk 2>/dev/null', (err4, stdout4) => {
+                        results.isServiceActive = (stdout4 || '').trim() === 'active';
+                        exec('journalctl -u arch3r-kiosk -n 25 --no-pager 2>/dev/null', (err5, stdout5) => {
+                            results.journalLogs = stdout5 ? stdout5.trim() : 'Tidak ada log systemd terbaru.';
+
+                            if (!results.hasXorg) {
+                                results.recommendation = '⚠️ Paket Xorg belum terinstal. Jalankan: sudo apt-get install -y xserver-xorg xinit di terminal STB.';
+                            } else if (!results.hasChromium) {
+                                results.recommendation = '⚠️ Chromium belum terinstal di STB. Jalankan: sudo apt-get install -y chromium-browser || sudo apt-get install -y chromium di terminal STB.';
+                            } else if (!results.hasSystemdService) {
+                                results.recommendation = '⚠️ Service Kiosk belum terkonfigurasi. Jalankan: sudo bash ./addons/hdmi-kiosk/setup-kiosk-armbian.sh di terminal STB.';
+                            } else if (!results.isHdmiConnected) {
+                                results.recommendation = 'ℹ️ Kabel HDMI ke TV/Monitor tidak terdeteksi atau TV mati.';
+                            } else {
+                                results.recommendation = '✅ Semua dependensi grafis STB lengkap & siap digunakan.';
+                            }
+
+                            if (callback) callback(null, results);
+                        });
+                    });
+                });
             });
         });
     }

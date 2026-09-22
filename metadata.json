@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.5.7 - Mobile Offline Resilience & Auto-Sync Engine: Anti-Disconnect Local Storage, Golden DB Sync & Enterprise YOLO AI Viewport.",
+  "description": "Arch3r NVR Ver. 10.5.8 - HDMI Monitor & Armbian Kiosk Resilience: Restored Addon Settings Modal, Crash-Free Armbian Display Launcher & Live STB Diagnostic Logs.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
