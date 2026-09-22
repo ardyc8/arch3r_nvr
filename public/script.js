@@ -8159,3 +8159,251 @@ function closeAISettingsModal() {
     if (modal) modal.style.display = 'none';
 }
 window.closeAISettingsModal = closeAISettingsModal;
+
+// =======================================================
+// YOLO AI ADDON CAMERA LIST & PER-CAMERA SETTINGS ENGINE
+// =======================================================
+let yoloCamerasList = [];
+let activeYoloSettingsCamId = null;
+
+function loadYoloCamerasFromStorage() {
+    try {
+        const stored = localStorage.getItem('arch3r_yolo_cameras');
+        if (stored) {
+            yoloCamerasList = JSON.parse(stored);
+        } else {
+            yoloCamerasList = [];
+        }
+    } catch (e) {
+        yoloCamerasList = [];
+    }
+}
+
+function saveYoloCamerasToStorage() {
+    try {
+        localStorage.setItem('arch3r_yolo_cameras', JSON.stringify(yoloCamerasList));
+    } catch (e) {
+        console.error('Failed to save yolo cameras to storage', e);
+    }
+}
+
+function initYoloAiPage() {
+    loadYoloCamerasFromStorage();
+    renderYoloCameraList();
+    
+    // Ensure main list is shown and settings view is hidden by default
+    const mainList = document.getElementById('yolo-main-list-view');
+    const settingsView = document.getElementById('yolo-settings-view');
+    if (mainList) mainList.style.display = 'block';
+    if (settingsView) settingsView.style.display = 'none';
+}
+window.initYoloAiPage = initYoloAiPage;
+window.openYoloAiPage = initYoloAiPage;
+
+function renderYoloCameraList() {
+    const container = document.getElementById('yolo-camera-list-container');
+    const badge = document.getElementById('yolo-camera-count-badge');
+    if (!container) return;
+
+    if (badge) badge.textContent = `${yoloCamerasList.length} Kamera Terhubung`;
+
+    if (yoloCamerasList.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:3rem 1.5rem; color:var(--text-muted); background:rgba(15,23,42,0.3); border:1px dashed var(--border); border-radius:8px;">
+                <div style="font-size:2.2rem; margin-bottom:0.6rem; color:#64748b;">📹</div>
+                <div style="font-size:0.95rem; font-weight:600; color:#f8fafc; margin-bottom:0.3rem;">Belum ada kamera terhubung ke YOLO AI</div>
+                <div style="font-size:0.82rem; margin-bottom:1.2rem;">Klik tombol <strong>+ Tambah Kamera</strong> untuk mendaftarkan kamera NVR.</div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="openAddYoloCameraModal()" style="background:#2563eb; font-size:0.85rem;">
+                    ➕ Tambah Kamera Sekarang
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = '';
+    yoloCamerasList.forEach(cam => {
+        const item = document.createElement('div');
+        item.style.background = 'rgba(15, 23, 42, 0.7)';
+        item.style.border = '1px solid var(--border)';
+        item.style.borderRadius = '8px';
+        item.style.padding = '0.9rem 1.1rem';
+        item.style.display = 'flex';
+        item.style.justifyContent = 'space-between';
+        item.style.alignItems = 'center';
+        item.style.flexWrap = 'wrap';
+        item.style.gap = '0.85rem';
+
+        const isEnabled = cam.enabled !== false;
+
+        item.innerHTML = `
+            <div style="display:flex; align-items:center; gap:0.85rem;">
+                <div style="width:40px; height:40px; border-radius:8px; background:${isEnabled ? 'rgba(37,99,235,0.15)' : 'rgba(100,116,139,0.15)'}; border:1px solid ${isEnabled ? 'rgba(37,99,235,0.4)' : 'rgba(100,116,139,0.3)'}; display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:${isEnabled ? '#60a5fa' : '#64748b'};">
+                    📹
+                </div>
+                <div>
+                    <div style="font-size:0.92rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                        <span>${cam.name || 'Kamera NVR'}</span>
+                        <span style="font-size:0.68rem; padding:1px 6px; border-radius:4px; font-weight:600; ${isEnabled ? 'background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3);' : 'background:rgba(148,163,184,0.15); color:#94a3b8; border:1px solid rgba(148,163,184,0.3);'}">
+                            ${isEnabled ? 'AKTIF' : 'NONAKTIF'}
+                        </span>
+                    </div>
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.2rem;">
+                        ID: <code style="color:#38bdf8;">${cam.id}</code> ${cam.ip ? '• IP: ' + cam.ip : ''}
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+                <!-- Sakelar Toggle On/Off -->
+                <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.82rem; font-weight:600; color:${isEnabled ? '#34d399' : '#94a3b8'}; cursor:pointer; background:rgba(0,0,0,0.3); padding:0.35rem 0.65rem; border-radius:6px; border:1px solid var(--border);">
+                    <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleYoloCameraStatus('${cam.id}')" style="accent-color:#2563eb; width:16px; height:16px; cursor:pointer;">
+                    <span>${isEnabled ? 'Aktif' : 'Nonaktif'}</span>
+                </label>
+
+                <!-- Tombol Settings (Icon ⚙️) -->
+                <button type="button" class="btn btn-sm btn-secondary" onclick="openYoloCameraSettings('${cam.id}')" style="display:flex; align-items:center; gap:0.3rem; font-size:0.85rem; padding:0.35rem 0.65rem;" title="Pengaturan YOLO AI Kamera Ini">
+                    <span>⚙️</span>
+                </button>
+
+                <!-- Tombol Hapus (Icon 🗑️) -->
+                <button type="button" class="btn btn-sm btn-secondary" onclick="removeCameraFromYoloList('${cam.id}')" style="display:flex; align-items:center; gap:0.3rem; font-size:0.85rem; padding:0.35rem 0.65rem; color:#ef4444; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.1);" title="Hapus dari Daftar YOLO AI">
+                    <span>🗑️</span>
+                </button>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+function openAddYoloCameraModal() {
+    const modal = document.getElementById('modal-add-yolo-camera');
+    const container = document.getElementById('add-yolo-camera-list');
+    if (!modal || !container) return;
+
+    modal.style.display = 'flex';
+    container.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:1rem;">⏳ Memuat daftar kamera NVR...</div>';
+
+    const nvrCams = (typeof cameras !== 'undefined' && Array.isArray(cameras)) ? cameras : [];
+    
+    if (nvrCams.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">
+                Tidak ada kamera terdaftar pada NVR. Silakan tambahkan kamera terlebih dahulu di menu <strong>Pengaturan Kamera</strong>.
+            </div>
+        `;
+        return;
+    }
+
+    const addedIds = new Set(yoloCamerasList.map(c => c.id));
+    const availableCams = nvrCams.filter(c => c && (c.id || c.name));
+
+    if (availableCams.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">
+                Tidak ada kamera NVR yang tersedia.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = '';
+    availableCams.forEach(c => {
+        const camId = c.id || c.name;
+        const camName = c.name || `Kamera ${camId}`;
+        const isAlreadyAdded = addedIds.has(camId);
+
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.justifyContent = 'space-between';
+        row.style.alignItems = 'center';
+        row.style.padding = '0.75rem';
+        row.style.borderBottom = '1px solid var(--border)';
+        row.style.gap = '0.5rem';
+
+        row.innerHTML = `
+            <div>
+                <strong style="font-size:0.88rem; color:#f8fafc; display:block;">${camName}</strong>
+                <span style="font-size:0.75rem; color:var(--text-muted);">${c.ip || c.rtsp_url || 'Channel RTSP'}</span>
+            </div>
+            <div>
+                ${isAlreadyAdded ? `
+                    <span style="font-size:0.75rem; color:#34d399; font-weight:600; padding:3px 8px; border-radius:4px; background:rgba(16,185,129,0.15);">✓ Sudah Terhubung</span>
+                ` : `
+                    <button type="button" class="btn btn-sm btn-primary" onclick="addCameraToYoloList('${camId}', '${camName.replace(/'/g, "\\'")}', '${(c.ip || '').replace(/'/g, "\\'")}')" style="font-size:0.8rem; background:#2563eb;">
+                        ➕ Hubungkan
+                    </button>
+                `}
+            </div>
+        `;
+        container.appendChild(row);
+    });
+}
+window.openAddYoloCameraModal = openAddYoloCameraModal;
+
+function closeAddYoloCameraModal() {
+    const modal = document.getElementById('modal-add-yolo-camera');
+    if (modal) modal.style.display = 'none';
+}
+window.closeAddYoloCameraModal = closeAddYoloCameraModal;
+
+function addCameraToYoloList(camId, camName, camIp) {
+    if (!camId) return;
+    const exists = yoloCamerasList.some(c => c.id === camId);
+    if (!exists) {
+        yoloCamerasList.push({
+            id: camId,
+            name: camName || `Kamera ${camId}`,
+            ip: camIp || '',
+            enabled: true
+        });
+        saveYoloCamerasToStorage();
+        renderYoloCameraList();
+    }
+    closeAddYoloCameraModal();
+}
+window.addCameraToYoloList = addCameraToYoloList;
+
+function removeCameraFromYoloList(camId) {
+    if (!camId) return;
+    yoloCamerasList = yoloCamerasList.filter(c => c.id !== camId);
+    saveYoloCamerasToStorage();
+    renderYoloCameraList();
+}
+window.removeCameraFromYoloList = removeCameraFromYoloList;
+
+function toggleYoloCameraStatus(camId) {
+    const target = yoloCamerasList.find(c => c.id === camId);
+    if (target) {
+        target.enabled = !target.enabled;
+        saveYoloCamerasToStorage();
+        renderYoloCameraList();
+    }
+}
+window.toggleYoloCameraStatus = toggleYoloCameraStatus;
+
+function openYoloCameraSettings(camId) {
+    activeYoloSettingsCamId = camId;
+    const target = yoloCamerasList.find(c => c.id === camId);
+    const camName = target ? target.name : `Kamera (${camId})`;
+
+    const nameSpan = document.getElementById('yolo-settings-camera-name');
+    if (nameSpan) nameSpan.textContent = camName;
+
+    const mainList = document.getElementById('yolo-main-list-view');
+    const settingsView = document.getElementById('yolo-settings-view');
+
+    if (mainList) mainList.style.display = 'none';
+    if (settingsView) settingsView.style.display = 'block';
+}
+window.openYoloCameraSettings = openYoloCameraSettings;
+
+function closeYoloCameraSettings() {
+    activeYoloSettingsCamId = null;
+    const mainList = document.getElementById('yolo-main-list-view');
+    const settingsView = document.getElementById('yolo-settings-view');
+
+    if (mainList) mainList.style.display = 'block';
+    if (settingsView) settingsView.style.display = 'none';
+}
+window.closeYoloCameraSettings = closeYoloCameraSettings;
