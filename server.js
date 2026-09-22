@@ -278,101 +278,8 @@ app.use(cookieParser());
 // ==========================================
 const espTriggerCooldowns = new Map(); // camera_id -> timestamp to avoid spamming ESP8266
 
-// Preset templates with .yai format (Arch3r AI Config)
-const DEFAULT_YAI_PRESETS = [
-    {
-        id: 'kios_bensin',
-        filename: 'kios_bensin.yai',
-        name: 'Kios Bensin (SPBU Refuel Trigger)',
-        category: 'SPBU & Retail',
-        description: 'Mendeteksi orang/kendaraan yang datang dan berhenti mengisi bensin di dispenser minimal 3 detik untuk memicu alarm/notifikasi ESP.',
-        data: {
-            format: 'arch3r_yai',
-            version: '10.0.1',
-            preset_name: 'kios_bensin',
-            title: 'Kios Bensin - Deteksi Pengisian BBM',
-            prompt_rules: {
-                prompt_text: 'Deteksi orang/pengendara yang datang ke area pompa bensin, berhenti lebih dari 3 detik, dan sedang menunggu atau mengisi bensin.',
-                preset_id: 'spbu_refuel',
-                target_classes: ['person', 'motorcycle', 'car'],
-                require_stationary: true,
-                min_dwell_sec: 3,
-                confidence_min: 75
-            },
-            grid_rect_percent: { x: 25, y: 25, w: 50, h: 50 },
-            esp_config: { enabled: true, ip_or_url: '192.168.1.150', method: 'GET' }
-        }
-    },
-    {
-        id: 'antrean_spbu',
-        filename: 'antrean_spbu.yai',
-        name: 'Antrean Pompa Bensin (Dwell >= 5s)',
-        category: 'SPBU & Retail',
-        description: 'Mendeteksi penumpukan antrean atau kendaraan yang berhenti lama di jalur dispenser BBM.',
-        data: {
-            format: 'arch3r_yai',
-            version: '10.0.1',
-            preset_name: 'antrean_spbu',
-            title: 'Antrean Pompa Bensin',
-            prompt_rules: {
-                prompt_text: 'Deteksi kendaraan atau orang yang berhenti lama mengantre lebih dari 5 detik di area dispenser.',
-                preset_id: 'waiting_queue',
-                target_classes: ['motorcycle', 'car', 'person'],
-                require_stationary: true,
-                min_dwell_sec: 5,
-                confidence_min: 70
-            },
-            grid_rect_percent: { x: 20, y: 30, w: 60, h: 45 },
-            esp_config: { enabled: true, ip_or_url: '192.168.1.150', method: 'GET' }
-        }
-    },
-    {
-        id: 'kendaraan_dispenser',
-        filename: 'kendaraan_dispenser.yai',
-        name: 'Kendaraan Masuk Dispenser (Dwell >= 2s)',
-        category: 'SPBU & Retail',
-        description: 'Mendeteksi kedatangan mobil atau motor tepat saat memasuki area pengisian BBM.',
-        data: {
-            format: 'arch3r_yai',
-            version: '10.0.1',
-            preset_name: 'kendaraan_dispenser',
-            title: 'Kendaraan Tiba di Dispenser',
-            prompt_rules: {
-                prompt_text: 'Deteksi mobil atau sepeda motor yang baru masuk dan berhenti di area dispenser BBM.',
-                preset_id: 'vehicle_entry',
-                target_classes: ['motorcycle', 'car'],
-                require_stationary: true,
-                min_dwell_sec: 2,
-                confidence_min: 70
-            },
-            grid_rect_percent: { x: 15, y: 20, w: 70, h: 60 },
-            esp_config: { enabled: true, ip_or_url: '192.168.1.150', method: 'GET' }
-        }
-    },
-    {
-        id: 'intrusi_gerbang',
-        filename: 'intrusi_gerbang.yai',
-        name: 'Intrusi Gerbang Masuk (Barrier Gate)',
-        category: 'Keamanan & Akses',
-        description: 'Mendeteksi pergerakan orang atau kendaraan yang melintasi area gerbang masuk.',
-        data: {
-            format: 'arch3r_yai',
-            version: '10.0.1',
-            preset_name: 'intrusi_gerbang',
-            title: 'Intrusi Gerbang Masuk',
-            prompt_rules: {
-                prompt_text: 'Deteksi setiap orang atau kendaraan yang melintasi area gerbang masuk.',
-                preset_id: 'instant_intrusion',
-                target_classes: ['person', 'motorcycle', 'car'],
-                require_stationary: false,
-                min_dwell_sec: 1,
-                confidence_min: 65
-            },
-            grid_rect_percent: { x: 30, y: 15, w: 40, h: 70 },
-            esp_config: { enabled: true, ip_or_url: '192.168.1.150', method: 'GET' }
-        }
-    }
-];
+// Preset templates with .yai format (Arch3r AI Config) - Clean Slate Default
+const DEFAULT_YAI_PRESETS = [];
 
 app.get('/api/ai/presets', verifyToken, (req, res) => {
     try {
@@ -424,8 +331,8 @@ app.get('/api/ai/grid/:camId', verifyToken, (req, res) => {
             grid: (cam.ai_config && cam.ai_config.grid) || null,
             esp_config: (cam.ai_config && cam.ai_config.esp_config) || (db.settings && db.settings.ai_esp_config) || null,
             prompt_rules: (cam.ai_config && cam.ai_config.prompt_rules) || {
-                prompt_text: 'Deteksi orang/pengendara yang datang ke area pompa bensin, berhenti lebih dari 3 detik, dan sedang menunggu atau mengisi bensin.',
-                preset_id: 'gas_station_refuel',
+                prompt_text: 'Deteksi orang, mobil, atau kendaraan yang berada di area pantauan terlarang atau berhenti melebihi batas waktu.',
+                preset_id: 'general_security',
                 target_classes: ['person', 'motorcycle', 'car'],
                 require_stationary: true,
                 min_dwell_sec: 3,
@@ -501,9 +408,9 @@ app.post('/api/ai/test_prompt', verifyToken, async (req, res) => {
         const { camera_id, prompt_text, target_classes, dwell_seconds = 3 } = req.body || {};
         const db = getNvrDb();
         const cam = (db.cameras || []).find(c => String(c.id) === String(camera_id));
-        const camName = cam ? cam.name : (camera_id || 'Kamera SPBU');
+        const camName = cam ? cam.name : (camera_id || 'Kamera NVR');
         
-        const logMsg = `[AI PROMPT MATCH] Syarat Terpenuhi pada ${camName}: "${prompt_text || 'Orang berhenti sedang menunggu mengisi bensin'}" (Objek: ${(target_classes || ['person', 'motorcycle']).join(', ')}, Berhenti: ${dwell_seconds} detik)`;
+        const logMsg = `[AI PROMPT MATCH] Syarat Terpenuhi pada ${camName}: "${prompt_text || 'Deteksi objek di area pantauan terlarang'}" (Objek: ${(target_classes || ['person', 'motorcycle']).join(', ')}, Berhenti: ${dwell_seconds} detik)`;
         sysLog('WARN', logMsg, 'SECURITY');
         
         let espTriggered = false;
@@ -520,9 +427,9 @@ app.post('/api/ai/test_prompt', verifyToken, async (req, res) => {
                 if (!parsedUrl.pathname || parsedUrl.pathname === '/') {
                     parsedUrl.pathname = '/alarm';
                 }
-                parsedUrl.searchParams.set('event', 'refuel_prompt_triggered');
+                parsedUrl.searchParams.set('event', 'ai_prompt_triggered');
                 parsedUrl.searchParams.set('cam', camera_id || 'cam1');
-                parsedUrl.searchParams.set('prompt', (prompt_text || 'isi_bensin').substring(0, 40));
+                parsedUrl.searchParams.set('prompt', (prompt_text || 'intrusi_keamanan').substring(0, 40));
                 
                 const controller = new AbortController();
                 const timer = setTimeout(() => controller.abort(), 2500);

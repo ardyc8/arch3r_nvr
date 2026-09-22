@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.3.4 Multi-Tenant Controller & Clean Default YOLO AI Engine
+// script.js - Archer NVR Ver. 10.3.6 Multi-Tenant Controller & Clean Default YOLO AI Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -3937,7 +3937,7 @@ let aiTouchStartScale = 1.0;
 let aiZones = [
     {
         id: 'zone_1',
-        label: '⛽ Area Pompa BBM',
+        label: '🎯 Area Pantauan Utama',
         color: '#3b82f6',
         themeColor: 'rgba(59,130,246,0.92)',
         x: 0, y: 0, w: 0, h: 0,
@@ -4143,22 +4143,10 @@ window.selectCamForAIWorkstation = selectCamForAIWorkstation;
 
 function applyQuickPresetYai(presetVal) {
     if (!presetVal) return;
-    if (presetVal === 'kios_bensin') {
-        if (typeof applyAIPromptPreset === 'function') applyAIPromptPreset('spbu_refuel');
-        if (typeof setUniversalPreset === 'function') setUniversalPreset('spbu');
-        appendAITelemetry('⛽ Preset .yai "Kios Bensin SPBU" berhasil diterapkan ke kamera!', 'success');
-    } else if (presetVal === 'gerbang_masuk') {
-        if (typeof applyAIPromptPreset === 'function') applyAIPromptPreset('vehicle_entry');
-        if (typeof setUniversalPreset === 'function') setUniversalPreset('gate');
-        appendAITelemetry('🚪 Preset .yai "Keamanan Gerbang Masuk" berhasil diterapkan!', 'success');
-    } else if (presetVal === 'area_parkir') {
-        if (typeof applyAIPromptPreset === 'function') applyAIPromptPreset('waiting_queue');
-        if (typeof setUniversalPreset === 'function') setUniversalPreset('parking');
-        appendAITelemetry('🅿️ Preset .yai "Area Parkir & Antrean" berhasil diterapkan!', 'success');
-    } else if (presetVal === 'kasir_transaksi') {
-        if (typeof applyAIPromptPreset === 'function') applyAIPromptPreset('spbu_refuel');
-        if (typeof setUniversalPreset === 'function') setUniversalPreset('cashier');
-        appendAITelemetry('💳 Preset .yai "Meja Kasir & Transaksi" berhasil diterapkan!', 'success');
+    if (typeof setAIGridPreset === 'function') {
+        if (presetVal === 'center') setAIGridPreset('center');
+        else if (presetVal === 'full') setAIGridPreset('full');
+        else if (presetVal === 'clear') setAIGridPreset('clear');
     }
 }
 window.applyQuickPresetYai = applyQuickPresetYai;
@@ -4400,12 +4388,13 @@ function playCustomRTSPStream() {
     }
 }
 
-function loadDemoSPBUFeed() {
+function loadDemoNVRFeed() {
     const select = document.getElementById('ai-cam-select');
     if (select) select.value = 'virtual_test';
     
-    applyAIPromptPreset('spbu_refuel');
-    setAIGridPreset('spbu');
+    if (typeof clearAIGrid === 'function') clearAIGrid();
+    const promptInp = document.getElementById('ai-prompt-input');
+    if (promptInp) promptInp.value = '';
     
     aiSimActive = true;
     const btnSim = document.getElementById('btn-toggle-ai-sim');
@@ -4415,9 +4404,10 @@ function loadDemoSPBUFeed() {
         btnSim.style.color = '#34d399';
     }
     
-    appendAITelemetry('⛽ Skenario Demo SPBU Dimuat: Kendaraan datang ke dispenser BBM.', 'system');
+    appendAITelemetry('📹 Aliran Video Standar Dimuat (Kanvas & Prompt Siap dari Awal).', 'system');
     loadCamStreamForAI();
 }
+function loadDemoSPBUFeed() { loadDemoNVRFeed(); }
 
 async function loadCamStreamForAI() {
     const select = document.getElementById('ai-cam-select');
@@ -5345,14 +5335,14 @@ function emitLiveTelemetryTick(promptMet, colliding, stationary, minDwell) {
     
     if (colliding) {
         if (stationary) {
-            appendAITelemetry(`⏳ EVALUASI LOGIKA: Objek berhenti di dalam ROI Pompa BBM • Dwell Time: ${aiDwellTimer.toFixed(1)}s / ${minDwell}s`, 'eval');
+            appendAITelemetry(`⏳ EVALUASI LOGIKA: Objek berhenti di dalam Area ROI Pantauan • Dwell Time: ${aiDwellTimer.toFixed(1)}s / ${minDwell}s`, 'eval');
         } else {
             appendAITelemetry(`ℹ️ EVALUASI LOGIKA: Objek melintas di area ROI (Bergerak)...`, 'eval');
         }
     }
     
     if (promptMet) {
-        appendAITelemetry(`🚨 SYARAT PROMPT TERPENUHI: "Orang berhenti sedang menunggu mengisi bensin"! (Dwell ${aiDwellTimer.toFixed(1)}s >= ${minDwell}s)`, 'alarm');
+        appendAITelemetry(`🚨 SYARAT PROMPT TERPENUHI: Objek terdeteksi berhenti di area terlarang! (Dwell ${aiDwellTimer.toFixed(1)}s >= ${minDwell}s)`, 'alarm');
         appendAITelemetry(`📡 TRIGGER ALARM: Notifikasi HTTP Webhook & Alarm ESP8266 dikirimkan ke relay!`, 'success');
     }
 }
@@ -5438,46 +5428,16 @@ function applyAIPromptPreset(presetId) {
     const dwellInp = document.getElementById('ai-dwell-seconds');
     const confInp = document.getElementById('ai-confidence-min');
     
-    if (presetId === 'spbu_refuel') {
-        if (promptInp) promptInp.value = 'Deteksi orang/pengendara yang datang ke area pompa bensin, berhenti lebih dari 3 detik, dan sedang menunggu atau mengisi bensin.';
-        if (chkPerson) chkPerson.checked = true;
-        if (chkMotor) chkMotor.checked = true;
-        if (chkCar) chkCar.checked = true;
-        if (motionSel) motionSel.value = 'stationary_only';
-        if (dwellInp) dwellInp.value = 3;
-        if (confInp) confInp.value = 75;
-        setAIGridPreset('spbu');
-        appendAITelemetry('⛽ Menerapkan Preset SPBU: Deteksi Orang/Pengendara Berhenti Mengisi Bensin (>= 3s)', 'system');
-    } else if (presetId === 'waiting_queue') {
-        if (promptInp) promptInp.value = 'Deteksi orang berdiri diam atau menunggu di area pompa lebih dari 5 detik.';
-        if (chkPerson) chkPerson.checked = true;
-        if (chkMotor) chkMotor.checked = false;
-        if (chkCar) chkCar.checked = false;
-        if (motionSel) motionSel.value = 'stationary_only';
-        if (dwellInp) dwellInp.value = 5;
-        if (confInp) confInp.value = 75;
-        setAIGridPreset('center');
-        appendAITelemetry('🛑 Menerapkan Preset Antrean: Deteksi Orang Berdiri Diam / Menunggu (>= 5s)', 'system');
-    } else if (presetId === 'vehicle_entry') {
-        if (promptInp) promptInp.value = 'Deteksi kendaraan masuk dan berhenti di samping dispenser BBM minimal 2 detik.';
-        if (chkPerson) chkPerson.checked = false;
-        if (chkMotor) chkMotor.checked = true;
-        if (chkCar) chkCar.checked = true;
-        if (motionSel) motionSel.value = 'stationary_only';
-        if (dwellInp) dwellInp.value = 2;
-        if (confInp) confInp.value = 70;
-        setAIGridPreset('spbu');
-        appendAITelemetry('🚗 Menerapkan Preset Kendaraan: Deteksi Kendaraan Berhenti di Dispenser (>= 2s)', 'system');
-    } else if (presetId === 'instant_intrusion') {
-        if (promptInp) promptInp.value = 'Deteksi siapapun objek manusia atau kendaraan yang melintas di area ini.';
+    if (presetId === 'clear' || presetId === 'reset') {
+        if (promptInp) promptInp.value = '';
         if (chkPerson) chkPerson.checked = true;
         if (chkMotor) chkMotor.checked = true;
         if (chkCar) chkCar.checked = true;
         if (motionSel) motionSel.value = 'moving_or_stationary';
-        if (dwellInp) dwellInp.value = 1;
-        if (confInp) confInp.value = 60;
-        setAIGridPreset('gate');
-        appendAITelemetry('⚡ Menerapkan Preset Intrusi Kilat: Deteksi Semua Gerakan Objek', 'system');
+        if (dwellInp) dwellInp.value = 0;
+        if (confInp) confInp.value = 50;
+        if (typeof clearAIGrid === 'function') clearAIGrid();
+        appendAITelemetry('🧹 Konfigurasi & ROI Canvas AI Dikosongkan (Mulai dari Awal)', 'system');
     }
 }
 
@@ -5763,8 +5723,8 @@ function addNewZoneSlot() {
     let defaultLabel = `Objek / Area #${newIdx}`;
     let defaultTargets = ['car', 'motorcycle', 'person'];
     if (newIdx === 1) {
-        defaultLabel = '⛽ Area Pompa BBM';
-        defaultTargets = ['car', 'motorcycle'];
+        defaultLabel = '🎯 Area Pantauan Utama';
+        defaultTargets = ['car', 'motorcycle', 'person'];
     } else if (newIdx === 2) {
         defaultLabel = '🅿️ Area Parkir';
         defaultTargets = ['car', 'motorcycle'];
@@ -6303,27 +6263,18 @@ function setAIGridPreset(preset) {
     const cw = aiDrawCanvas.width || 800;
     const ch = aiDrawCanvas.height || 450;
     
-    let x = 0, y = 0, w = 0, h = 0, label = 'Area Deteksi';
+    let x = 0, y = 0, w = 0, h = 0, label = 'Area Deteksi Kosong';
     let nx = 0, ny = 0, nw = 0, nh = 0;
     
-    if (preset === 'spbu') {
-        nx = 0.30; ny = 0.25; nw = 0.48; nh = 0.65;
-        label = '⛽ Area Pompa / Dispenser BBM';
-    } else if (preset === 'parking') {
-        nx = 0.15; ny = 0.35; nw = 0.70; nh = 0.60;
-        label = '🅿️ Area Parkir Kendaraan';
-    } else if (preset === 'gate') {
-        nx = 0.12; ny = 0.40; nw = 0.76; nh = 0.55;
-        label = '🚪 Pintu Masuk / Gerbang Utama';
-    } else if (preset === 'cashier') {
-        nx = 0.35; ny = 0.25; nw = 0.38; nh = 0.55;
-        label = '💳 Meja Kasir / Transaksi';
-    } else if (preset === 'center') {
+    if (preset === 'center') {
         nx = 0.20; ny = 0.20; nw = 0.60; nh = 0.60;
         label = '🎯 Area Fokus Tengah (ROI)';
     } else if (preset === 'full') {
         nx = 0.01; ny = 0.01; nw = 0.98; nh = 0.98;
         label = '🔲 Seluruh Area Pantauan (Full Frame)';
+    } else if (preset === 'clear' || preset === 'reset') {
+        nx = 0; ny = 0; nw = 0; nh = 0;
+        label = 'Area Deteksi Kosong';
     }
     
     x = Math.round(nx * cw);
@@ -6422,7 +6373,7 @@ function restoreAIGridFromData(grid) {
             nx = x / cw; ny = y / ch; nw = w / cw; nh = h / ch;
         }
         
-        const zoneLabel = grid.label || '⛽ Area Pompa BBM';
+        const zoneLabel = grid.label || '🎯 Area Pantauan Utama';
         const zoneColor = grid.color || '#3b82f6';
         const zoneTheme = grid.themeColor || 'rgba(59,130,246,0.92)';
         
@@ -7261,7 +7212,7 @@ function updateSimTelemetryUI(targets, promptMet, colliding, stationary) {
 // Download currently active AI Grid & Prompt configuration as <name>.yai
 function downloadCustomYaiConfig() {
     const nameInp = document.getElementById('ai-export-name-input');
-    let rawName = (nameInp ? nameInp.value.trim() : '') || 'kios_bensin';
+    let rawName = (nameInp ? nameInp.value.trim() : '') || 'preset_kamera_nvr';
     const cleanName = rawName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     
     const cw = (aiDrawCanvas && aiDrawCanvas.width) || 800;
@@ -7280,7 +7231,7 @@ function downloadCustomYaiConfig() {
     if (document.getElementById('ai-filter-motorcycle')?.checked) targetClasses.push('motorcycle');
     if (document.getElementById('ai-filter-car')?.checked) targetClasses.push('car');
     
-    const promptText = document.getElementById('ai-prompt-input')?.value.trim() || 'Deteksi orang berhenti mengisi bensin';
+    const promptText = document.getElementById('ai-prompt-input')?.value.trim() || 'Deteksi objek di area pantauan terlarang';
     const requireStationary = (document.getElementById('ai-motion-condition')?.value === 'stationary_only');
     const minDwellSec = parseInt(document.getElementById('ai-dwell-seconds')?.value, 10) || 3;
     const confidenceMin = (parseInt(document.getElementById('ai-confidence-min')?.value, 10) || 75) / 100;
@@ -7424,10 +7375,11 @@ async function fetchMarketplacePresets() {
         const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
         const res = await fetchFn('/api/ai/presets');
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const presets = await res.json();
+        const rawData = await res.json();
+        const presets = Array.isArray(rawData) ? rawData : (rawData.presets || []);
         
         if (!Array.isArray(presets) || presets.length === 0) {
-            container.innerHTML = '<div style="color:var(--text-muted); font-size:0.82rem; padding:1rem; grid-column:1/-1; text-align:center;">Belum ada preset terdaftar.</div>';
+            container.innerHTML = '<div style="color:var(--text-muted); font-size:0.82rem; padding:1.5rem; grid-column:1/-1; text-align:center;">ℹ️ Belum ada preset .yai terdaftar (Mulai dari Awal). Anda dapat mengekspor dan menyimpan preset kustom Anda.</div>';
             return;
         }
         
@@ -7454,7 +7406,7 @@ async function fetchMarketplacePresets() {
                         <span style="background:#f59e0b; color:#020617; font-weight:bold; font-size:0.68rem; padding:1px 6px; border-radius:4px; font-family:monospace;">.yai</span>
                     </div>
                     <div style="font-size:0.75rem; color:#94a3b8; line-height:1.4; margin-bottom:0.6rem;">
-                        ${p.description || 'Preset konfigurasi deteksi AI SPBU.'}
+                        ${p.description || 'Preset konfigurasi deteksi Visi AI NVR.'}
                     </div>
                     <div style="display:flex; gap:0.3rem; flex-wrap:wrap; margin-bottom:0.6rem;">
                         ${classesHtml}
@@ -7485,7 +7437,8 @@ async function applyMarketPresetById(presetId) {
         const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
         const res = await fetchFn('/api/ai/presets');
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const presets = await res.json();
+        const rawData = await res.json();
+        const presets = Array.isArray(rawData) ? rawData : (rawData.presets || []);
         const found = presets.find(p => p.id === presetId);
         if (!found) throw new Error('Preset tidak ditemukan');
         

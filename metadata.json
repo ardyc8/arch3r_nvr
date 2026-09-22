@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.1.6",
-  "description": "Arch3r NVR Ver. 10.1.6 - Full-Stack NVR CCTV System featuring Standard NVR 2-Way Camera Discovery Workflow, Advanced Subnet IP Scanner, Categorized Multi-Tab Settings, and ONVIF/V380 Auto-Probe.",
+  "name": "Arch3r NVR Ver. 10.3.6",
+  "description": "Arch3r NVR Ver. 10.3.6 - Full-Stack NVR CCTV System featuring Clean Slate YOLO AI Addon Engine, Zero Default Presets, Real-Time RTSP Stream Integration, and Multi-Tenant RBAC Security.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
