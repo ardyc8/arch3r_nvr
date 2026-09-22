@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.4.6",
-  "description": "Arch3r NVR Ver. 10.4.6 - Full-Stack NVR CCTV System featuring H.265/HEVC Codec & MediaError Diagnostic Handlers for YOLO AI Video Preview Streams.",
+  "name": "Arch3r NVR Ver. 10.4.7",
+  "description": "Arch3r NVR Ver. 10.4.7 - Full-Stack NVR CCTV System featuring ROI-Aligned Bounding Box Scaling & Pan/Zoom Canvas Projection for YOLO AI Overlay.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

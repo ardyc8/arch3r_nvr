@@ -8407,9 +8407,10 @@ let yoloTelemetryTimer = null;
 
 let yoloCanvasAnimationTimer = null;
 let yoloSimulatedObjects = [
-    { type: 'person', label: '👤 Person', x: 120, y: 150, w: 60, h: 110, vx: 1.5, vy: 0.5, color: '#38bdf8' },
-    { type: 'car', label: '🚗 Car', x: 300, y: 220, w: 140, h: 80, vx: -2.0, vy: 0, color: '#f59e0b' },
-    { type: 'motorcycle', label: '🏍️ Motor', x: 480, y: 180, w: 80, h: 60, vx: 1.0, vy: -0.3, color: '#a855f7' }
+    { type: 'person', label: '👤 Person', pctX: 15, pctY: 20, pctW: 10, pctH: 32, vx: 0.18, vy: 0.05, color: '#38bdf8' },
+    { type: 'car', label: '🚗 Car', pctX: 45, pctY: 45, pctW: 22, pctH: 22, vx: -0.25, vy: 0, color: '#f59e0b' },
+    { type: 'motorcycle', label: '🏍️ Motor', pctX: 30, pctY: 40, pctW: 12, pctH: 16, vx: 0.15, vy: -0.04, color: '#a855f7' },
+    { type: 'animal', label: '🐕 Animal', pctX: 60, pctY: 55, pctW: 10, pctH: 14, vx: -0.12, vy: 0.08, color: '#10b981' }
 ];
 
 function updateYoloViewFilter() {
@@ -8802,34 +8803,76 @@ function drawYoloViewLiveCanvasStream() {
     const filterMotorcycle = !!document.getElementById('yolo-view-filter-motorcycle')?.checked;
     const filterAnimal = !!document.getElementById('yolo-view-filter-animal')?.checked;
 
-    // 2. Animate and Draw Bounding Boxes
-    yoloSimulatedObjects.forEach(obj => {
-        obj.x += obj.vx;
-        obj.y += obj.vy;
+    // Read Zoom & Crop/Pan slider values to align canvas projection with video element CSS transform
+    const zoomVal = parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0');
+    const cropXVal = parseInt(document.getElementById('yolo-crop-x-slider')?.value || '0', 10);
+    const cropYVal = parseInt(document.getElementById('yolo-crop-y-slider')?.value || '0', 10);
 
-        if (obj.x > canvas.width + 50) obj.x = -100;
-        if (obj.x < -150) obj.x = canvas.width + 50;
-        if (obj.y > canvas.height - 100) obj.vy = -0.5;
-        if (obj.y < 100) obj.vy = 0.5;
+    ctx.save();
+    // Synchronize Canvas Context Transformation with Video Element CSS Transform
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    ctx.translate(cx, cy);
+    ctx.scale(zoomVal, zoomVal);
+    ctx.translate(-cx + (cropXVal / zoomVal) * (canvas.width / 100), -cy + (cropYVal / zoomVal) * (canvas.height / 100));
+
+    // Calculate Active ROI Zone Pixel Bounds
+    const roiPx = {
+        x: ((currentYoloRoi?.x || 10) / 100) * canvas.width,
+        y: ((currentYoloRoi?.y || 10) / 100) * canvas.height,
+        w: ((currentYoloRoi?.w || 80) / 100) * canvas.width,
+        h: ((currentYoloRoi?.h || 80) / 100) * canvas.height
+    };
+
+    // Draw Subtle ROI Detection Boundary Line
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
+    ctx.setLineDash([]);
+
+    // 2. Animate and Draw ROI-Constrained Bounding Boxes
+    yoloSimulatedObjects.forEach(obj => {
+        // Motion within percentage space
+        obj.pctX += obj.vx;
+        obj.pctY += obj.vy;
+
+        const minX = (currentYoloRoi?.x || 10) + 2;
+        const maxX = (currentYoloRoi?.x || 10) + (currentYoloRoi?.w || 80) - (obj.pctW + 2);
+        const minY = (currentYoloRoi?.y || 10) + 2;
+        const maxY = (currentYoloRoi?.y || 10) + (currentYoloRoi?.h || 80) - (obj.pctH + 2);
+
+        if (obj.pctX > maxX) { obj.pctX = maxX; obj.vx = -Math.abs(obj.vx); }
+        if (obj.pctX < minX) { obj.pctX = minX; obj.vx = Math.abs(obj.vx); }
+        if (obj.pctY > maxY) { obj.pctY = maxY; obj.vy = -Math.abs(obj.vy); }
+        if (obj.pctY < minY) { obj.pctY = minY; obj.vy = Math.abs(obj.vy); }
 
         let isVisible = false;
         if (obj.type === 'person' && filterPerson) isVisible = true;
         if (obj.type === 'car' && filterCar) isVisible = true;
         if (obj.type === 'motorcycle' && filterMotorcycle) isVisible = true;
+        if (obj.type === 'animal' && filterAnimal) isVisible = true;
 
         if (isVisible) {
+            const boxX = (obj.pctX / 100) * canvas.width;
+            const boxY = (obj.pctY / 100) * canvas.height;
+            const boxW = (obj.pctW / 100) * canvas.width;
+            const boxH = (obj.pctH / 100) * canvas.height;
+
             ctx.strokeStyle = obj.color;
             ctx.lineWidth = 2.5;
-            ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+            ctx.strokeRect(boxX, boxY, boxW, boxH);
 
             // Bounding Box Label Header
             ctx.fillStyle = obj.color;
-            ctx.fillRect(obj.x, obj.y - 20, 110, 20);
+            ctx.fillRect(boxX, boxY - 20 > 0 ? boxY - 20 : boxY, 110, 20);
             ctx.fillStyle = '#0f172a';
             ctx.font = 'bold 11px sans-serif';
-            ctx.fillText(`${obj.label} 94%`, obj.x + 4, obj.y - 6);
+            ctx.fillText(`${obj.label} 94%`, boxX + 4, (boxY - 20 > 0 ? boxY - 20 : boxY) + 14);
         }
     });
+
+    ctx.restore();
 }
 
 function updateYoloStudioZoomDisplay(val) {
