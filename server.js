@@ -949,14 +949,11 @@ app.get('/api/addons/:id/config', verifyToken, (req, res) => {
         if (addon.id === 'ai_yolo' || addon.id === 'ai-yolo') {
             addon.config = {
                 camera_id: '',
-                stream_type: 'sub',
+                enabled: true,
+                imgsz: 320,
                 confidence_threshold: 0.50,
                 detection_model: 'yolov8n.pt',
-                frame_skip: 15,
-                sound_buzzer: true,
-                log_alerts: true,
-                auto_start: false,
-                webhook_url: `http://127.0.0.1:${port}/api/ai/webhook`
+                target_classes: ['person', 'car', 'motorcycle', 'bicycle']
             };
         } else if (addon.id === 'hdmi-kiosk' || addon.id === 'hdmi_kiosk') {
             addon.config = {

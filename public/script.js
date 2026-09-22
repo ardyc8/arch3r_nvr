@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.3.0 Multi-Tenant Controller & Clean Default YOLO AI Engine
+// script.js - Archer NVR Ver. 10.3.1 Multi-Tenant Controller & Clean Default YOLO AI Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -4208,9 +4208,6 @@ let aiSimState = {
 };
 
 async function initYoloAiPage(defaultCamId = null) {
-    // Switch to live tab by default when opened
-    switchAIGridTab('live');
-    
     // Ensure cameras list is fetched and available
     let camList = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
     if ((!camList || camList.length === 0) && (typeof window.fetchCameras === 'function' || typeof fetchCameras === 'function')) {
@@ -4254,14 +4251,45 @@ async function initYoloAiPage(defaultCamId = null) {
             select.appendChild(opt);
         }
         
-        const group = document.getElementById('aiCamSelectGroup') || select.parentElement;
-        if (group) group.style.display = 'block';
-        select.style.display = 'block';
-
         select.onchange = () => {
             loadCamStreamForAI();
         };
     }
+
+    // Restore saved default YOLO AI config if available
+    try {
+        const rawSaved = localStorage.getItem('default_yolo_ai_config');
+        if (rawSaved) {
+            const savedCfg = JSON.parse(rawSaved);
+            if (savedCfg.camId || savedCfg.camera_id) {
+                const targetCam = savedCfg.camId || savedCfg.camera_id;
+                if (select && Array.from(select.options).some(o => o.value === targetCam)) {
+                    select.value = targetCam;
+                }
+            }
+            if (typeof savedCfg.enabled === 'boolean') {
+                const chk = document.getElementById('ai-cam-enabled');
+                if (chk) chk.checked = savedCfg.enabled;
+            }
+            if (savedCfg.imgsz) {
+                const sel = document.getElementById('ai-imgsz-select');
+                if (sel) sel.value = String(savedCfg.imgsz);
+            }
+            if (savedCfg.conf || savedCfg.confidence_threshold) {
+                const confVal = savedCfg.conf || (savedCfg.confidence_threshold * 100);
+                const slider = document.getElementById('ai-conf-slider');
+                const confTxt = document.getElementById('ai-conf-val');
+                if (slider) slider.value = confVal;
+                if (confTxt) confTxt.textContent = confVal + '%';
+            }
+            if (savedCfg.targets) {
+                if (document.getElementById('yolo-target-person')) document.getElementById('yolo-target-person').checked = !!savedCfg.targets.person;
+                if (document.getElementById('yolo-target-car')) document.getElementById('yolo-target-car').checked = !!savedCfg.targets.car;
+                if (document.getElementById('yolo-target-motorcycle')) document.getElementById('yolo-target-motorcycle').checked = !!savedCfg.targets.motorcycle;
+                if (document.getElementById('yolo-target-bicycle')) document.getElementById('yolo-target-bicycle').checked = !!savedCfg.targets.bicycle;
+            }
+        }
+    } catch (e) {}
 
     const feedback = document.getElementById('ai-save-feedback');
     if (feedback) feedback.textContent = '';
@@ -4271,11 +4299,8 @@ async function initYoloAiPage(defaultCamId = null) {
     
     // Clear & seed initial telemetry log
     clearAITelemetryLog();
-    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.2.0...', 'system');
-    appendAITelemetry('📋 Memuat konfigurasi kamera nyata NVR & Engine Prompt SPBU.', 'system');
-    
-    // Render camera overview grid
-    renderAiCameraOverviewGrid();
+    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.3.0...', 'system');
+    appendAITelemetry('📋 Dimuat dengan Konfigurasi Standar Default YOLO AI.', 'system');
 
     // Start continuous rendering loop
     aiStartRenderLoop();
@@ -7995,7 +8020,7 @@ window.selectActiveZone = selectActiveZone;
 
 
 // Clean Default YOLO AI Functions
-function saveDefaultYoloConfig() {
+async function saveDefaultYoloConfig() {
     const camSelect = document.getElementById('ai-cam-select');
     const enabled = document.getElementById('ai-cam-enabled') ? document.getElementById('ai-cam-enabled').checked : true;
     const imgsz = document.getElementById('ai-imgsz-select') ? document.getElementById('ai-imgsz-select').value : '320';
@@ -8008,16 +8033,36 @@ function saveDefaultYoloConfig() {
         bicycle: document.getElementById('yolo-target-bicycle') ? document.getElementById('yolo-target-bicycle').checked : true
     };
 
+    const targetClasses = Object.keys(targets).filter(k => targets[k]);
+
     const config = {
         camId: camSelect ? camSelect.value : '',
+        camera_id: camSelect ? camSelect.value : '',
         enabled,
-        imgsz,
+        imgsz: parseInt(imgsz, 10) || 320,
         conf,
+        confidence_threshold: (parseInt(conf, 10) || 50) / 100,
         targets,
+        target_classes: targetClasses,
         updatedAt: new Date().toISOString()
     };
 
     localStorage.setItem('default_yolo_ai_config', JSON.stringify(config));
+
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
+        await fetchFn('/api/addons/ai_yolo/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config })
+        });
+    } catch (e) {
+        console.warn('[YOLO AI] Gagal menyimpan ke server backend:', e);
+    }
+
+    if (typeof appendAITelemetry === 'function') {
+        appendAITelemetry(`💾 Konfigurasi YOLO AI disimpan (Kamera: ${config.camId || 'Default'}, imgsz: ${config.imgsz}, Conf: ${conf}%).`, 'success');
+    }
     
     if (typeof showToast === 'function') {
         showToast('✓ Konfigurasi Default YOLO AI Berhasil Disimpan!', 'success');
