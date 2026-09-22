@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.4.7",
-  "description": "Arch3r NVR Ver. 10.4.7 - Full-Stack NVR CCTV System featuring ROI-Aligned Bounding Box Scaling & Pan/Zoom Canvas Projection for YOLO AI Overlay.",
+  "name": "Arch3r NVR Ver. 10.4.8",
+  "description": "Arch3r NVR Ver. 10.4.8 - Full-Stack NVR CCTV System featuring Pure Real YOLO AI Inference Object Detection without any Simulation or Dummy Data.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

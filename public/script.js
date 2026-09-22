@@ -8406,12 +8406,32 @@ let isYoloEditMode = false;
 let yoloTelemetryTimer = null;
 
 let yoloCanvasAnimationTimer = null;
-let yoloSimulatedObjects = [
-    { type: 'person', label: '👤 Person', pctX: 15, pctY: 20, pctW: 10, pctH: 32, vx: 0.18, vy: 0.05, color: '#38bdf8' },
-    { type: 'car', label: '🚗 Car', pctX: 45, pctY: 45, pctW: 22, pctH: 22, vx: -0.25, vy: 0, color: '#f59e0b' },
-    { type: 'motorcycle', label: '🏍️ Motor', pctX: 30, pctY: 40, pctW: 12, pctH: 16, vx: 0.15, vy: -0.04, color: '#a855f7' },
-    { type: 'animal', label: '🐕 Animal', pctX: 60, pctY: 55, pctW: 10, pctH: 14, vx: -0.12, vy: 0.08, color: '#10b981' }
-];
+let activeRealYoloDetections = [];
+let lastRealYoloFetchTime = 0;
+
+async function fetchRealYoloDetections() {
+    const camId = typeof activeYoloSettingsCamId !== 'undefined' ? activeYoloSettingsCamId : null;
+    if (!camId) {
+        activeRealYoloDetections = [];
+        return;
+    }
+    const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+    try {
+        const resp = await fetch(`/api/ai/detections?camera_id=${encodeURIComponent(camId)}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data && Array.isArray(data.detections)) {
+                activeRealYoloDetections = data.detections;
+            } else {
+                activeRealYoloDetections = [];
+            }
+        }
+    } catch(e) {
+        activeRealYoloDetections = [];
+    }
+}
 
 function updateYoloViewFilter() {
     drawYoloViewLiveCanvasStream();
@@ -8831,46 +8851,47 @@ function drawYoloViewLiveCanvasStream() {
     ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
     ctx.setLineDash([]);
 
-    // 2. Animate and Draw ROI-Constrained Bounding Boxes
-    yoloSimulatedObjects.forEach(obj => {
-        // Motion within percentage space
-        obj.pctX += obj.vx;
-        obj.pctY += obj.vy;
+    // Periodically fetch real YOLO detections from backend (every 1.5s)
+    if (Date.now() - lastRealYoloFetchTime > 1500) {
+        lastRealYoloFetchTime = Date.now();
+        fetchRealYoloDetections();
+    }
 
-        const minX = (currentYoloRoi?.x || 10) + 2;
-        const maxX = (currentYoloRoi?.x || 10) + (currentYoloRoi?.w || 80) - (obj.pctW + 2);
-        const minY = (currentYoloRoi?.y || 10) + 2;
-        const maxY = (currentYoloRoi?.y || 10) + (currentYoloRoi?.h || 80) - (obj.pctH + 2);
+    // 2. Draw Pure Real YOLO Detections (Only if real objects are detected by backend)
+    if (Array.isArray(activeRealYoloDetections) && activeRealYoloDetections.length > 0) {
+        activeRealYoloDetections.forEach(obj => {
+            const objType = (obj.type || obj.class || 'person').toLowerCase();
+            let isVisible = false;
+            if (objType.includes('person') && filterPerson) isVisible = true;
+            else if (objType.includes('car') && filterCar) isVisible = true;
+            else if (objType.includes('motor') && filterMotorcycle) isVisible = true;
+            else if ((objType.includes('dog') || objType.includes('cat') || objType.includes('animal')) && filterAnimal) isVisible = true;
+            else if (!filterPerson && !filterCar && !filterMotorcycle && !filterAnimal) isVisible = true; // Show all if no filter
 
-        if (obj.pctX > maxX) { obj.pctX = maxX; obj.vx = -Math.abs(obj.vx); }
-        if (obj.pctX < minX) { obj.pctX = minX; obj.vx = Math.abs(obj.vx); }
-        if (obj.pctY > maxY) { obj.pctY = maxY; obj.vy = -Math.abs(obj.vy); }
-        if (obj.pctY < minY) { obj.pctY = minY; obj.vy = Math.abs(obj.vy); }
+            if (isVisible) {
+                // Determine bounding box coordinates from normalized percentages (pctX, pctY, pctW, pctH) or pixel bounding box
+                let boxX = obj.pctX !== undefined ? (obj.pctX / 100) * canvas.width : (obj.x || 0);
+                let boxY = obj.pctY !== undefined ? (obj.pctY / 100) * canvas.height : (obj.y || 0);
+                let boxW = obj.pctW !== undefined ? (obj.pctW / 100) * canvas.width : (obj.w || 60);
+                let boxH = obj.pctH !== undefined ? (obj.pctH / 100) * canvas.height : (obj.h || 80);
 
-        let isVisible = false;
-        if (obj.type === 'person' && filterPerson) isVisible = true;
-        if (obj.type === 'car' && filterCar) isVisible = true;
-        if (obj.type === 'motorcycle' && filterMotorcycle) isVisible = true;
-        if (obj.type === 'animal' && filterAnimal) isVisible = true;
+                const color = obj.color || (objType.includes('person') ? '#38bdf8' : objType.includes('car') ? '#f59e0b' : '#a855f7');
+                const label = obj.label || obj.type || 'Object';
+                const confidence = obj.confidence ? `${Math.round(obj.confidence * 100)}%` : (obj.score ? `${Math.round(obj.score * 100)}%` : '95%');
 
-        if (isVisible) {
-            const boxX = (obj.pctX / 100) * canvas.width;
-            const boxY = (obj.pctY / 100) * canvas.height;
-            const boxW = (obj.pctW / 100) * canvas.width;
-            const boxH = (obj.pctH / 100) * canvas.height;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-            ctx.strokeStyle = obj.color;
-            ctx.lineWidth = 2.5;
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-            // Bounding Box Label Header
-            ctx.fillStyle = obj.color;
-            ctx.fillRect(boxX, boxY - 20 > 0 ? boxY - 20 : boxY, 110, 20);
-            ctx.fillStyle = '#0f172a';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.fillText(`${obj.label} 94%`, boxX + 4, (boxY - 20 > 0 ? boxY - 20 : boxY) + 14);
-        }
-    });
+                // Bounding Box Label Header
+                ctx.fillStyle = color;
+                ctx.fillRect(boxX, boxY - 20 > 0 ? boxY - 20 : boxY, 120, 20);
+                ctx.fillStyle = '#0f172a';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillText(`${label} ${confidence}`, boxX + 4, (boxY - 20 > 0 ? boxY - 20 : boxY) + 14);
+            }
+        });
+    }
 
     ctx.restore();
 }

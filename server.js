@@ -5255,8 +5255,45 @@ app.post('/api/addons/hdmi-kiosk/toggle', verifyToken, requireAdmin, (req, res) 
 });
 
 // ==========================================
-// AI YOLOv8 Routes (v9.9.8)
+// AI YOLOv8 Routes (v10.4.8)
 // ==========================================
+let latestYoloDetections = {};
+
+app.get('/api/ai/detections', verifyToken, async (req, res) => {
+    const camId = req.query.camera_id;
+    if (!camId) {
+        return res.json({ success: true, detections: latestYoloDetections });
+    }
+
+    // Try fetching from Python YOLO inference engine if running on local port 8000
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1000);
+        const pyResp = await fetch(`http://127.0.0.1:8000/api/ai/detections?camera_id=${encodeURIComponent(camId)}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (pyResp.ok) {
+            const pyData = await pyResp.json();
+            if (pyData && Array.isArray(pyData.detections)) {
+                latestYoloDetections[camId] = pyData.detections;
+                return res.json({ success: true, camera_id: camId, detections: pyData.detections });
+            }
+        }
+    } catch(e) {}
+
+    // Fallback to latest pushed real detections or empty array
+    const camDetections = latestYoloDetections[camId] || [];
+    res.json({ success: true, camera_id: camId, detections: camDetections });
+});
+
+app.post('/api/ai/detections', verifyToken, (req, res) => {
+    const { camera_id, detections } = req.body;
+    if (!camera_id) return res.status(400).json({ error: 'camera_id diperlukan' });
+    latestYoloDetections[camera_id] = Array.isArray(detections) ? detections : [];
+    res.json({ success: true, camera_id, count: latestYoloDetections[camera_id].length });
+});
+
 app.get('/api/ai/grid', verifyToken, (req, res) => {
     const camId = req.query.camera_id;
     const db = getNvrDb();
