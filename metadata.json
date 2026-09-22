@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.4.3",
-  "description": "Arch3r NVR Ver. 10.4.3 - Full-Stack NVR CCTV System featuring Transparent Canvas Overlay & Direct RTSP/HLS Video Stream Integration on View & Setting AI Tabs.",
+  "name": "Arch3r NVR Ver. 10.4.4",
+  "description": "Arch3r NVR Ver. 10.4.4 - Full-Stack NVR CCTV System featuring Professional YOLO AI Addon Studio with Target Object Classifications, Pan/Crop Offsets, NPU STB Acceleration & Event Triggers.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

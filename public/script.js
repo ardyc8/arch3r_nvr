@@ -8975,6 +8975,11 @@ function initYoloRoiDragging() {
     canvas.addEventListener('touchend', stopDrag);
 }
 
+function cancelYoloEditMode() {
+    switchYoloSettingsTab('view');
+}
+window.cancelYoloEditMode = cancelYoloEditMode;
+
 function loadYoloCameraSettingsData(camId) {
     const targetCam = yoloCamerasList.find(c => String(c.id) === String(camId));
     const settings = (targetCam && targetCam.settings) ? targetCam.settings : {
@@ -8991,7 +8996,13 @@ function loadYoloCameraSettingsData(camId) {
         truck: false,
         dogCat: false,
         bird: false,
-        livestock: false
+        livestock: false,
+        engineModel: 'yolov8n',
+        processingFps: '10',
+        npuAccel: true,
+        eventRecord: true,
+        eventBuzzer: false,
+        eventTelegram: false
     };
 
     const slider = document.getElementById('yolo-threshold-slider');
@@ -9008,6 +9019,22 @@ function loadYoloCameraSettingsData(camId) {
     if (zoomSlider) zoomSlider.value = settings.zoom || 1.0;
     if (cropXSlider) cropXSlider.value = settings.cropX || 0;
     if (cropYSlider) cropYSlider.value = settings.cropY || 0;
+
+    const engineSelect = document.getElementById('yolo-engine-model');
+    const fpsSelect = document.getElementById('yolo-processing-fps');
+    const npuAccelChk = document.getElementById('yolo-npu-accel');
+
+    if (engineSelect) engineSelect.value = settings.engineModel || 'yolov8n';
+    if (fpsSelect) fpsSelect.value = String(settings.processingFps || '10');
+    if (npuAccelChk) npuAccelChk.checked = settings.npuAccel !== false;
+
+    const chkRec = document.getElementById('yolo-event-record');
+    const chkBuzz = document.getElementById('yolo-event-buzzer');
+    const chkTel = document.getElementById('yolo-event-telegram');
+
+    if (chkRec) chkRec.checked = settings.eventRecord !== false;
+    if (chkBuzz) chkBuzz.checked = !!settings.eventBuzzer;
+    if (chkTel) chkTel.checked = !!settings.eventTelegram;
 
     if (settings.roi) {
         currentYoloRoi = { ...settings.roi };
@@ -9026,14 +9053,25 @@ function loadYoloCameraSettingsData(camId) {
     const chkBird = document.getElementById('yolo-obj-bird');
     const chkLivestock = document.getElementById('yolo-obj-livestock');
 
-    if (chkPerson) chkPerson.checked = !!settings.person;
-    if (chkCar) chkCar.checked = !!settings.car;
-    if (chkMotorcycle) chkMotorcycle.checked = !!settings.motorcycle;
+    if (chkPerson) chkPerson.checked = settings.person !== false;
+    if (chkCar) chkCar.checked = settings.car !== false;
+    if (chkMotorcycle) chkMotorcycle.checked = settings.motorcycle !== false;
     if (chkBicycle) chkBicycle.checked = !!settings.bicycle;
     if (chkTruck) chkTruck.checked = !!settings.truck;
     if (chkDogCat) chkDogCat.checked = !!settings.dogCat;
     if (chkBird) chkBird.checked = !!settings.bird;
     if (chkLivestock) chkLivestock.checked = !!settings.livestock;
+
+    // Synchronize View Tab Filter Checkboxes
+    const vPerson = document.getElementById('yolo-view-filter-person');
+    const vCar = document.getElementById('yolo-view-filter-car');
+    const vMotorcycle = document.getElementById('yolo-view-filter-motorcycle');
+    const vAnimal = document.getElementById('yolo-view-filter-animal');
+
+    if (vPerson) vPerson.checked = settings.person !== false;
+    if (vCar) vCar.checked = settings.car !== false;
+    if (vMotorcycle) vMotorcycle.checked = settings.motorcycle !== false;
+    if (vAnimal) vAnimal.checked = (!!settings.dogCat || !!settings.bird || !!settings.livestock);
 
     updateYoloVideoCropPreview();
     initYoloRoiDragging();
@@ -9057,6 +9095,14 @@ function saveYoloCameraSettings(applyToAllGlobal = false) {
     const bird = !!document.getElementById('yolo-obj-bird')?.checked;
     const livestock = !!document.getElementById('yolo-obj-livestock')?.checked;
 
+    const engineModel = document.getElementById('yolo-engine-model')?.value || 'yolov8n';
+    const processingFps = document.getElementById('yolo-processing-fps')?.value || '10';
+    const npuAccel = !!document.getElementById('yolo-npu-accel')?.checked;
+
+    const eventRecord = !!document.getElementById('yolo-event-record')?.checked;
+    const eventBuzzer = !!document.getElementById('yolo-event-buzzer')?.checked;
+    const eventTelegram = !!document.getElementById('yolo-event-telegram')?.checked;
+
     const newSettings = {
         threshold: thresholdVal,
         resolution,
@@ -9064,7 +9110,9 @@ function saveYoloCameraSettings(applyToAllGlobal = false) {
         cropX,
         cropY,
         roi: { ...currentYoloRoi },
-        person, car, motorcycle, bicycle, truck, dogCat, bird, livestock
+        person, car, motorcycle, bicycle, truck, dogCat, bird, livestock,
+        engineModel, processingFps, npuAccel,
+        eventRecord, eventBuzzer, eventTelegram
     };
 
     if (applyToAllGlobal) {

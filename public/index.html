@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.4.3 - Professional Multi-Tenant Dashboard</title>
+    <title>Arch3r NVR Ver. 10.4.4 - Professional Multi-Tenant Dashboard</title>
     <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -1201,10 +1201,10 @@
                                         </div>
                                     </div>
 
-                                    <!-- Pengaturan Source Video & Zoom Crop -->
+                                    <!-- Pengaturan Source Video, Zoom & Crop Offset Pan -->
                                     <div style="margin-bottom:1.25rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
                                         <div style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.75rem;">
-                                            <span>📷</span> Parameter Source Video & Zoom Scale
+                                            <span>📷</span> Parameter Source Video, Zoom & Offset Crop
                                         </div>
                                         
                                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-bottom:0.75rem;">
@@ -1230,11 +1230,113 @@
                                                 </div>
                                                 <input type="range" id="yolo-zoom-slider" min="1.0" max="3.0" step="0.1" value="1.0" oninput="updateYoloStudioZoomDisplay(this.value)" style="width:100%; accent-color:#2563eb; cursor:pointer;">
                                             </div>
+
+                                            <!-- Crop Offset X -->
+                                            <div>
+                                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                                    <label style="font-size:0.8rem; color:var(--text-muted);">
+                                                        Offset Pan X (Sumbu Horizontal):
+                                                    </label>
+                                                    <span id="yolo-crop-x-display" style="font-size:0.8rem; font-weight:700; color:#38bdf8;">0%</span>
+                                                </div>
+                                                <input type="range" id="yolo-crop-x-slider" min="-50" max="50" step="1" value="0" oninput="updateYoloCropXDisplay(this.value)" style="width:100%; accent-color:#2563eb; cursor:pointer;">
+                                            </div>
+
+                                            <!-- Crop Offset Y -->
+                                            <div>
+                                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem;">
+                                                    <label style="font-size:0.8rem; color:var(--text-muted);">
+                                                        Offset Pan Y (Sumbu Vertikal):
+                                                    </label>
+                                                    <span id="yolo-crop-y-display" style="font-size:0.8rem; font-weight:700; color:#38bdf8;">0%</span>
+                                                </div>
+                                                <input type="range" id="yolo-crop-y-slider" min="-50" max="50" step="1" value="0" oninput="updateYoloCropYDisplay(this.value)" style="width:100%; accent-color:#2563eb; cursor:pointer;">
+                                            </div>
                                         </div>
                                     </div>
 
+                                    <!-- Filter Objek Target Kamera Ini -->
+                                    <div style="margin-bottom:1.25rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                                        <div style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.75rem;">
+                                            <span>🎯</span> Kategori Objek Terdeteksi (Klasifikasi Target)
+                                        </div>
+                                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem;">
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.45rem 0.65rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-obj-person" checked style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>👤 Manusia (Person)</span>
+                                            </label>
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.45rem 0.65rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-obj-car" checked style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>🚗 Mobil (Car)</span>
+                                            </label>
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.45rem 0.65rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-obj-motorcycle" checked style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>🏍️ Sepeda Motor</span>
+                                            </label>
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.45rem 0.65rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-obj-bicycle" style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>🚲 Sepeda (Bicycle)</span>
+                                            </label>
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.45rem 0.65rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-obj-truck" style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>🚚 Truk / Bus</span>
+                                            </label>
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.45rem 0.65rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-obj-dog-cat" style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>🐕 Hewan (Dog/Cat)</span>
+                                            </label>
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.45rem 0.65rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-obj-bird" style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>🐦 Burung (Bird)</span>
+                                            </label>
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.45rem 0.65rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-obj-livestock" style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>🐄 Ternak (Livestock)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Hardware Inference Acceleration & Engine Rate -->
+                                    <div style="margin-bottom:1.25rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                                        <div style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.75rem;">
+                                            <span>⚡</span> Engine Inference & Akselerasi STB Armbian
+                                        </div>
+                                        
+                                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-bottom:0.75rem;">
+                                            <!-- Model Engine Selection -->
+                                            <div>
+                                                <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.3rem;">
+                                                    Model AI Engine:
+                                                </label>
+                                                <select id="yolo-engine-model" style="width:100%; background:#0f172a; color:#f8fafc; border:1px solid var(--border); padding:0.45rem; border-radius:6px; font-size:0.83rem;">
+                                                    <option value="yolov8n" selected>YOLOv8 Nano (Sangat Ringan - Low CPU STB)</option>
+                                                    <option value="yolov8s">YOLOv8 Small (Standar NVR)</option>
+                                                    <option value="yolov8m">YOLOv8 Medium (Presisi Tinggi)</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- FPS Sampling -->
+                                            <div>
+                                                <label style="font-size:0.8rem; color:var(--text-muted); display:block; margin-bottom:0.3rem;">
+                                                    Rate Sampling Analisis FPS:
+                                                </label>
+                                                <select id="yolo-processing-fps" style="width:100%; background:#0f172a; color:#f8fafc; border:1px solid var(--border); padding:0.45rem; border-radius:6px; font-size:0.83rem;">
+                                                    <option value="5">5 FPS (Hemat Beban CPU STB)</option>
+                                                    <option value="10" selected>10 FPS (Rekomendasi NVR)</option>
+                                                    <option value="15">15 FPS (Sensitif)</option>
+                                                    <option value="30">30 FPS (Full Realtime Streaming)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#38bdf8; cursor:pointer; margin-top:0.5rem;">
+                                            <input type="checkbox" id="yolo-npu-accel" checked style="accent-color:#2563eb; width:16px; height:16px;">
+                                            <span>🚀 Aktifkan Akselerasi Hardware NPU / RKNN STB Armbian</span>
+                                        </label>
+                                    </div>
+
                                     <!-- Threshold Confidence Slider -->
-                                    <div style="margin-bottom:1.5rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                                    <div style="margin-bottom:1.25rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
                                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                                             <label style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem;">
                                                 🎯 Threshold Confidence Sensitivity
@@ -1242,6 +1344,27 @@
                                             <span id="yolo-threshold-value-display" style="font-size:0.9rem; font-weight:700; color:#38bdf8;">50%</span>
                                         </div>
                                         <input type="range" id="yolo-threshold-slider" min="20" max="90" value="50" oninput="updateYoloThresholdDisplay(this.value)" style="width:100%; accent-color:#2563eb; cursor:pointer;">
+                                    </div>
+
+                                    <!-- Action Pemicu Event & Alarm NVR -->
+                                    <div style="margin-bottom:1.5rem; background:rgba(0,0,0,0.25); padding:1rem; border-radius:8px; border:1px solid var(--border);">
+                                        <div style="font-size:0.88rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.75rem;">
+                                            <span>🔔</span> Aksi Pemicu Event & Alarm NVR
+                                        </div>
+                                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-event-record" checked style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>📹 Rekam Klip Event saat Deteksi ROI</span>
+                                            </label>
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-event-buzzer" style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>🚨 Bunyikan Buzzer STB Armbian</span>
+                                            </label>
+                                            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.83rem; color:#f8fafc; cursor:pointer; background:rgba(15,23,42,0.6); padding:0.5rem 0.75rem; border-radius:6px; border:1px solid var(--border);">
+                                                <input type="checkbox" id="yolo-event-telegram" style="accent-color:#2563eb; width:16px; height:16px;">
+                                                <span>📱 Notifikasi Snapshot Telegram</span>
+                                            </label>
+                                        </div>
                                     </div>
 
                                     <!-- Tombol Simpan Parameter -->
