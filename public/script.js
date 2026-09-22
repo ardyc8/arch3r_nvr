@@ -2442,13 +2442,20 @@ async function fetchCameras() {
         }
 
         if (Hls.isSupported()) {
+            const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '');
             const hls = new Hls({
                 lowLatencyMode: true,
-                maxBufferLength: 4,
-                maxMaxBufferLength: 6,
-                maxBufferSize: 10 * 1024 * 1024, // 10 MB per player
+                maxBufferLength: 6,
+                maxMaxBufferLength: 10,
+                maxBufferSize: 15 * 1024 * 1024,
                 backBufferLength: 0,
-                enableWorker: true
+                enableWorker: true,
+                xhrSetup: function (xhr, url) {
+                    xhr.withCredentials = true;
+                    if (token) {
+                        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                    }
+                }
             });
             activeHlsPlayers[id] = hls;
             hls.loadSource(hlsUrl);
@@ -8723,55 +8730,116 @@ function attachYoloVideoPreview(elementId) {
         setYoloStreamErrorUI(elementId, true, errorTitle, errorMsg, details);
     };
 
+    // Candidate for lighter sub-stream fallback if main stream experiences heavy packet loss or delay
+    const subStreamCandidate = targetCam?.subStreamUrl || `/stream/${mediaMtxPath}_sub/index.m3u8?token=${encodeURIComponent(token)}`;
+
     if (window.Hls && Hls.isSupported()) {
         const hls = new Hls({
-            lowLatencyMode: true,
-            maxBufferLength: 4,
-            maxMaxBufferLength: 6,
-            enableWorker: true
+            lowLatencyMode: false,
+            maxBufferLength: 8,
+            maxMaxBufferLength: 16,
+            maxBufferSize: 20 * 1024 * 1024,
+            manifestLoadingMaxRetry: 10,
+            manifestLoadingRetryDelay: 1000,
+            manifestLoadingMaxRetryTimeout: 15000,
+            levelLoadingMaxRetry: 10,
+            levelLoadingRetryDelay: 1000,
+            levelLoadingMaxRetryTimeout: 15000,
+            fragLoadingMaxRetry: 10,
+            fragLoadingRetryDelay: 1000,
+            fragLoadingMaxRetryTimeout: 15000,
+            enableWorker: true,
+            xhrSetup: function (xhr, url) {
+                xhr.withCredentials = true;
+                if (token) {
+                    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+                }
+            }
         });
+
         if (typeof activeHlsPlayers !== 'undefined') {
             activeHlsPlayers[elementId] = hls;
         }
+
         hls.loadSource(streamUrl);
         hls.attachMedia(videoEl);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            console.log(`[YOLO AI Stream] ✅ Manifest parsed successfully for #${elementId}. Stream Levels:`, data.levels);
+        let consecutiveErrors = 0;
+        let hasTriedSubFallback = false;
+
+        const onStreamRecovered = () => {
+            consecutiveErrors = 0;
             setYoloStreamErrorUI(elementId, false);
+        };
+
+        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            console.log(`[YOLO AI Stream] ✅ Manifest parsed successfully for #${elementId}. Levels:`, data.levels?.length || 1);
+            onStreamRecovered();
             videoEl.play().catch(err => {
                 console.warn(`[YOLO AI Stream] Autoplay blocked or deferred for #${elementId}:`, err);
             });
         });
 
+        hls.on(Hls.Events.FRAG_LOADED, onStreamRecovered);
+        hls.on(Hls.Events.LEVEL_LOADED, onStreamRecovered);
+        videoEl.onplaying = onStreamRecovered;
+
         hls.on(Hls.Events.ERROR, (event, data) => {
             console.warn(`[YOLO AI HLS Event Error] #${elementId}`, data);
             if (data.fatal) {
+                consecutiveErrors++;
                 const diag = diagnoseYoloStreamCodecError(elementId, data);
+                const isCodecIssue = (diag && diag.isHevcIssue) || 
+                                     data.details === 'manifestIncompatibleCodecsError' || 
+                                     data.details === 'bufferAddCodecError' || 
+                                     (data.reason && data.reason.includes('codec'));
 
-                let errorTitle = 'Gagal Memuat Stream RTSP / HLS';
-                let errorMsg = 'Stream kamera terputus atau URL MediaMTX tidak dapat dijangkau.';
-                let details = `Fatal Error: ${data.type} | Details: ${data.details}`;
-
-                if ((diag && diag.isHevcIssue) || data.details === 'manifestIncompatibleCodecsError' || data.details === 'bufferAddCodecError' || (data.reason && data.reason.includes('codec'))) {
-                    errorTitle = '⚠️ Error Codec Inkompatibel (H.265 / HEVC)';
-                    errorMsg = 'Kamera menggunakan codec H.265 yang tidak didukung secara native oleh browser ini.';
-                    details = `Codec RTSP mismatch: Ubah encoding video RTSP ke H.264 pada setting Kamera / NVR.`;
-                    console.error(`[YOLO AI Codec Error] Camera ${activeYoloSettingsCamId} stream failed due to unsupported H.265 codec.`);
+                if (isCodecIssue) {
+                    const errorTitle = '⚠️ Error Codec Inkompatibel (H.265 / HEVC)';
+                    const errorMsg = 'Kamera menggunakan codec H.265 yang tidak didukung secara native oleh browser ini.';
+                    const details = `Codec RTSP mismatch: Ubah encoding video RTSP ke H.264 pada setting Kamera / NVR.`;
+                    setYoloStreamErrorUI(elementId, true, errorTitle, errorMsg, details);
+                    hls.destroy();
+                    return;
                 }
-
-                setYoloStreamErrorUI(elementId, true, errorTitle, errorMsg, details);
 
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.log(`[YOLO AI Stream] Attempting network recovery for #${elementId}...`);
-                        setTimeout(() => { if (activeHlsPlayers && activeHlsPlayers[elementId]) activeHlsPlayers[elementId].startLoad(); }, 3000);
+                        console.log(`[YOLO AI Stream] Network error (#${elementId}, attempt ${consecutiveErrors}): ${data.details}`);
+                        
+                        // Auto-switch to sub-stream if main-stream repeatedly fails
+                        if (consecutiveErrors >= 2 && !hasTriedSubFallback && subStreamCandidate && streamUrl !== subStreamCandidate) {
+                            hasTriedSubFallback = true;
+                            console.log(`[YOLO AI Stream] Switching to lighter Sub-Stream: ${subStreamCandidate}`);
+                            hls.loadSource(subStreamCandidate);
+                            hls.startLoad();
+                            return;
+                        }
+
+                        // Display warning only if error persists beyond initial recovery attempts
+                        if (consecutiveErrors >= 3) {
+                            let errorTitle = 'Gagal Memuat Stream RTSP / HLS';
+                            let errorMsg = 'Stream kamera terputus atau URL MediaMTX tidak dapat dijangkau.';
+                            let details = `Fatal Error: ${data.type} | Details: ${data.details} (Mencoba menghubungkan ulang...)`;
+                            setYoloStreamErrorUI(elementId, true, errorTitle, errorMsg, details);
+                        }
+
+                        setTimeout(() => {
+                            if (activeHlsPlayers && activeHlsPlayers[elementId]) {
+                                activeHlsPlayers[elementId].startLoad();
+                            }
+                        }, 1500);
                         break;
+
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         console.log(`[YOLO AI Stream] Attempting media recovery for #${elementId}...`);
                         hls.recoverMediaError();
                         break;
+
                     default:
+                        if (consecutiveErrors >= 3) {
+                            setYoloStreamErrorUI(elementId, true, 'Stream Terputus', 'Gagal memuat video kamera.', data.details);
+                        }
                         hls.destroy();
                         break;
                 }

@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.5.1",
-  "description": "Arch3r NVR Ver. 10.5.1 - Clean Commercial Grade NVR Interface with Precise Real-Time YOLO Overlay, Structured AI Settings Panel & Optimized STB Armbian Performance.",
+  "name": "Arch3r NVR Ver. 10.5.2",
+  "description": "Arch3r NVR Ver. 10.5.2 - Enhanced HLS Resilience with Adaptive Buffering, Bearer Auth Segments, Auto-Recovery & Sub-Stream Fallback.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
