@@ -1,0 +1,11 @@
+{
+  "id": "hdmi-native",
+  "name": "HDMI Native Hardware Player (MPV)",
+  "version": "1.0.0",
+  "description": "Output HDMI Direct Hardware ultra-ringan tanpa browser/Chromium. Menggunakan MPV + VPU hardware decoding Linux untuk STB hemat RAM (<60MB) & eMMC (<25MB), dilengkapi remote kontrol paging (Halaman Berikutnya/Sebelumnya).",
+  "author": "Arch3r NVR Team",
+  "category": "display",
+  "icon": "📺",
+  "systemd_service": "arch3r-native",
+  "entry": "index.js"
+}

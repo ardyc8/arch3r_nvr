@@ -1,0 +1,8 @@
+{
+  "name": "arch3r-addon-hdmi-native",
+  "version": "1.0.0",
+  "description": "Arch3r NVR Addon: HDMI Native Hardware MPV Streamer without Chromium",
+  "main": "index.js",
+  "author": "Arch3r NVR Team",
+  "license": "UNLICENSED"
+}

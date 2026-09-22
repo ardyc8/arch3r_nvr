@@ -686,6 +686,20 @@ function scanAvailablePhysicalAddons() {
         });
     }
 
+    // Pastikan HDMI Native Player terdeteksi dari /addons/hdmi-native jika belum terdaftar
+    const hasNative = list.some(a => a.id === 'hdmi-native' || a.id === 'hdmi_native');
+    if (!hasNative && fs.existsSync(path.join(addonsDir, 'hdmi-native'))) {
+        list.push({
+            id: 'hdmi-native',
+            name: 'HDMI Native Hardware Player (MPV)',
+            version: '1.0.0',
+            icon: '📺',
+            description: 'Output HDMI Direct Hardware ultra-ringan tanpa browser/Chromium. Menggunakan MPV + VPU hardware decoding Linux untuk STB hemat RAM (<60MB) & eMMC (<25MB), dilengkapi remote kontrol paging.',
+            main: 'index.js',
+            system_protected: false
+        });
+    }
+
     return list;
 }
 
@@ -795,6 +809,20 @@ app.post('/api/addons/:id/toggle', verifyToken, (req, res) => {
         } catch (kErr) {
             console.warn('[Addons] HDMI Kiosk toggle error:', kErr.message);
         }
+    } else if (addon.id === 'hdmi-native' || addon.id === 'hdmi_native') {
+        try {
+            const nativeEntry = path.join(__dirname, 'addons', 'hdmi-native', 'index.js');
+            if (fs.existsSync(nativeEntry)) {
+                const nAddon = require(nativeEntry);
+                if (typeof nAddon.controlService === 'function') {
+                    nAddon.controlService(addon.active ? 'start' : 'stop', () => {
+                        sysLog('INFO', `[Addons] HDMI Native Service ${addon.active ? 'dinyalakan' : 'dimatikan'}`, 'SYSTEM');
+                    });
+                }
+            }
+        } catch (nErr) {
+            console.warn('[Addons] HDMI Native toggle error:', nErr.message);
+        }
     }
     
     res.json({ success: true, addon });
@@ -822,6 +850,8 @@ app.delete('/api/addons/:id', verifyToken, (req, res) => {
             child_process.exec('pm2 delete arch3r-ai-yolo 2>/dev/null || true');
         } else if (addon.id === 'hdmi-kiosk' || addon.id === 'hdmi_kiosk') {
             child_process.exec('systemctl stop arch3r-kiosk 2>/dev/null || true; systemctl disable arch3r-kiosk 2>/dev/null || true');
+        } else if (addon.id === 'hdmi-native' || addon.id === 'hdmi_native') {
+            child_process.exec('systemctl stop arch3r-native 2>/dev/null || true; systemctl disable arch3r-native 2>/dev/null || true');
         } else {
             child_process.exec(`pm2 delete arch3r-${addon.id} 2>/dev/null || true`, () => {
                 const addonDir = path.join(__dirname, 'addons', addon.id);
@@ -874,7 +904,22 @@ app.get('/api/addons/:id/config', verifyToken, (req, res) => {
                 rotation: '0',
                 auto_start: false,
                 poll_interval_sec: 30,
-                auto_restart_crash: true
+                auto_restart_crash: true,
+                hardened_mode: true,
+                incognito: true
+            };
+        } else if (addon.id === 'hdmi-native' || addon.id === 'hdmi_native') {
+            addon.config = {
+                layout: 'quad',
+                target_cam_id: 'all',
+                page: 1,
+                cams_per_page: 4,
+                tour: false,
+                tour_interval: 10,
+                hwdec: 'auto',
+                vo: 'gpu',
+                osd: true,
+                auto_start: true
             };
         } else {
             addon.config = {};
@@ -5500,6 +5545,68 @@ app.post('/api/addons/hdmi-kiosk/remote-cmd', verifyToken, requireAdmin, (req, r
         message: 'Perintah remote berhasil diterapkan ke layar TV secara instan',
         liveState: kioskLiveState
     });
+});
+
+// ==========================================
+// HDMI NATIVE PLAYER ADDON (MPV Direct Engine)
+// ==========================================
+let hdmiNativeAddon = null;
+try {
+    const nativeEntry = path.join(__dirname, 'addons', 'hdmi-native', 'index.js');
+    if (fs.existsSync(nativeEntry)) {
+        hdmiNativeAddon = require(nativeEntry);
+        if (typeof hdmiNativeAddon.init === 'function') {
+            hdmiNativeAddon.init({
+                logger: (level, msg) => sysLog(level, msg, 'HDMI-NATIVE')
+            });
+            sysLog('INFO', 'Arch3r HDMI Native Hardware Add-on loaded (MPV Direct Engine)', 'ADDON');
+        }
+    }
+} catch (nativeErr) {
+    console.warn('[Addon] HDMI Native addon load skipped:', nativeErr.message);
+}
+
+// --- HDMI Native Player API Endpoints ---
+app.get('/api/addons/hdmi-native/status', verifyToken, (req, res) => {
+    if (!hdmiNativeAddon) {
+        return res.json({ installed: false, enabled: false, message: 'Add-on HDMI Native belum terinstal' });
+    }
+    res.json({ installed: true, ...hdmiNativeAddon.getStatus() });
+});
+
+app.get('/api/addons/hdmi-native/diagnostics', verifyToken, (req, res) => {
+    if (!hdmiNativeAddon) {
+        return res.status(404).json({ error: 'Add-on HDMI Native belum terinstal di sistem' });
+    }
+    hdmiNativeAddon.getDiagnostics((err, diag) => {
+        if (err) return res.status(500).json({ error: 'Gagal menjalankan diagnosa: ' + err.message });
+        res.json({ success: true, diagnostics: diag });
+    });
+});
+
+app.post('/api/addons/hdmi-native/toggle', verifyToken, requireAdmin, (req, res) => {
+    if (!hdmiNativeAddon) {
+        return res.status(404).json({ error: 'Add-on HDMI Native tidak ditemukan' });
+    }
+    const { action } = req.body;
+    hdmiNativeAddon.controlService(action || 'status', (err, result) => {
+        if (err) return res.status(500).json({ error: `Gagal menjalankan aksi ${action}: ${err.message}` });
+        res.json({ success: true, ...result, status: hdmiNativeAddon.getStatus() });
+    });
+});
+
+app.post('/api/addons/hdmi-native/remote-cmd', verifyToken, requireAdmin, async (req, res) => {
+    if (!hdmiNativeAddon) {
+        return res.status(404).json({ error: 'Add-on HDMI Native belum terpasang atau tidak aktif' });
+    }
+    const dbData = getNvrDb();
+    const availableCams = dbData.cameras || [];
+    try {
+        const result = await hdmiNativeAddon.handleRemoteCommand(req.body, availableCams);
+        res.json(result);
+    } catch (cmdErr) {
+        res.status(500).json({ success: false, error: cmdErr.message });
+    }
 });
 
 // ==========================================

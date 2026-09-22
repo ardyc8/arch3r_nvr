@@ -70,8 +70,24 @@ while true; do
         --no-default-browser-check \
         --disable-infobars \
         --disable-session-crashed-bubble \
-        --disable-translate \
+        --disable-features=Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider \
         --noerrdialogs \
+        --password-store=basic \
+        --disable-save-password-bubble \
+        --disable-notifications \
+        --disable-component-update \
+        --disable-background-networking \
+        --disable-domain-reliability \
+        --disable-client-side-phishing-detection \
+        --disable-hang-monitor \
+        --disable-popup-blocking \
+        --disable-prompt-on-repost \
+        --disable-sync \
+        --metrics-recording-only \
+        --no-pings \
+        --disable-pinch \
+        --overscroll-history-navigation=0 \
+        --incognito \
         --no-sandbox \
         --test-type \
         --user-data-dir=/tmp/arch3r_kiosk_chrome \

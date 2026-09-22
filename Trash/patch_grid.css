@@ -1,8 +1,0 @@
-.video-grid {
-    grid-auto-rows: max-content !important;
-    align-content: start !important;
-    align-items: start !important;
-}
-.grid-wrapper {
-    display: block !important;
-}

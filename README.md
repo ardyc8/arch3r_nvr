@@ -1,5 +1,24 @@
-# ⚡ Arch3r NVR (Ver. 10.6.2)
+# ⚡ Arch3r NVR (Ver. 10.6.3)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.3:
+- **Standalone HDMI Native Hardware Player (MPV Engine), Smart Paging Remote & Hardened Clean Chromium Kiosk**:
+  1. **Addon Terpisah: HDMI Native Hardware Player (`addons/hdmi-native`)**:
+     - Menghadirkan opsi pemutar output HDMI mandiri berbasis **MPV Direct Hardware Decoding (VPU DRM/KMS)** murni tanpa peramban Chromium / X11 Desktop.
+     - **Efisiensi Ekstrem**: Ukuran instalasi hanya ~25 MB (dibandingkan ~350 MB Chromium), konsumsi RAM <60 MB, dan temperatur SoC STB jauh lebih dingin.
+     - Dikelola melalui script instalasi `setup-native-armbian.sh` dan service `arch3r-native.service`.
+  2. **Konsol Remote Pintar Smart Paging Controller dari Smartphone**:
+     - Mengatasi keterbatasan multi-kamera hardware decoding pada STB melalui **Smart Paging**:
+       - Tombol **"⬅️ Halaman Sebelumnya"** & **"➡️ Halaman Berikutnya"** untuk berpindah grup kamera secara instan.
+       - Tombol langsung lompat ke halaman tertentu: `[Hal 1 (Kamera 1-4)]`, `[Hal 2 (Kamera 5-8)]`, `[Hal 3 (Kamera 9-12)]`, dst.
+       - Tombol beralih langsung ke kamera tunggal fullscreen atau multi-kamera quad.
+       - Auto-Tour / Patroli Paging otomatis berpindah halaman secara berkala (5-300 detik).
+       - Kontrol instan langsung lewat MPV JSON-RPC Unix IPC Socket (`/tmp/mpv-socket`).
+  3. **Pembersihan Total Chromium Kiosk (Zero-Distraction & Anti-Google Features)**:
+     - Menonaktifkan Google Translate bar, pop-up sandi, banner pemulihan sesi, telemetry hints, media router, dan bubble peramban dengan parameter komprehensif (`--disable-features=Translate,OptimizationHints,MediaRouter`, `--disable-infobars`, `--incognito`).
+     - Menghilangkan kedipan (flicker) layar login saat awal booting melalui sinkronisasi auto-login instan.
+  4. **Perlindungan Git `.gitignore` untuk File Konfigurasi Addon**:
+     - Mengamankan file konfigurasi lokal `addons/hdmi-kiosk/config.json` dan `addons/hdmi-native/config.json` agar tidak bentrok saat `git pull` di STB Armbian.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.2:
 - **HDMI Kiosk Real-Time WebRTC (MediaMTX WHEP) Streaming, Push SSE Remote (<50ms), Pure Edge-to-Edge Video Wall & Multi-Grid Selector**:

@@ -28,3 +28,10 @@ data/live_db/*
 live_db/
 live_db/*
 local_db_*.json
+
+# Addon Local Runtime Configs
+addons/hdmi-kiosk/config.json
+addons/hdmi-native/config.json
+addons/*/config.json
+/Trash/
+/Trash/*

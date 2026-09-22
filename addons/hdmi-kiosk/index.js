@@ -94,6 +94,36 @@ class HdmiKioskAddon {
             const cfg = this.loadConfig();
             const targetUrl = cfg.display_url || 'http://localhost:3000/?kiosk=1';
 
+            const isHardened = cfg.hardened_mode !== false;
+            const isIncognito = cfg.incognito !== false;
+
+            let extraFlags = '';
+            if (isHardened) {
+                extraFlags += `            --disable-features=Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider \\
+            --disable-infobars \\
+            --disable-session-crashed-bubble \\
+            --noerrdialogs \\
+            --password-store=basic \\
+            --disable-save-password-bubble \\
+            --disable-notifications \\
+            --disable-component-update \\
+            --disable-background-networking \\
+            --disable-domain-reliability \\
+            --disable-client-side-phishing-detection \\
+            --disable-hang-monitor \\
+            --disable-popup-blocking \\
+            --disable-prompt-on-repost \\
+            --disable-sync \\
+            --metrics-recording-only \\
+            --no-pings \\
+            --disable-pinch \\
+            --overscroll-history-navigation=0 \\
+`;
+            }
+            if (isIncognito) {
+                extraFlags += `            --incognito \\\n`;
+            }
+
             const scriptContent = `#!/bin/bash
 export DISPLAY=:0
 xset -dpms 2>/dev/null || true
@@ -130,11 +160,7 @@ else
             --kiosk \\
             --no-first-run \\
             --no-default-browser-check \\
-            --disable-infobars \\
-            --disable-session-crashed-bubble \\
-            --disable-translate \\
-            --noerrdialogs \\
-            --no-sandbox \\
+${extraFlags}            --no-sandbox \\
             --test-type \\
             --user-data-dir=/tmp/arch3r_kiosk_chrome \\
             --disable-dev-shm-usage \\

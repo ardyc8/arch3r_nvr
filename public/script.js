@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.6.0 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.6.3 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -607,6 +607,41 @@ document.addEventListener('DOMContentLoaded', () => {
     window.startKioskRemotePoller = startKioskRemotePoller;
 
 async function checkAuth() {
+        // 0. Jalur Cepat Kiosk Layar TV STB (Bebas Form Login & Langsung Auto-Handshake)
+        const isKioskCandidate = window.location.search.includes('kiosk=1') || 
+                                 window.location.hash.includes('kiosk') || 
+                                 localStorage.getItem('nvr_role') === 'kiosk_viewer' ||
+                                 window.location.hostname === 'localhost' || 
+                                 window.location.hostname === '127.0.0.1';
+
+        if (isKioskCandidate) {
+            window.isKioskDisplay = true;
+            applyKioskDisplayMode();
+            if (authOverlay) authOverlay.style.display = 'none';
+
+            try {
+                const kioskRes = await fetch('/api/kiosk/auth', { method: 'POST' });
+                if (kioskRes.ok) {
+                    const kData = await kioskRes.json();
+                    if (kData.success && kData.token) {
+                        localStorage.setItem('nvr_auth_token', kData.token);
+                        localStorage.setItem('nvr_role', kData.role);
+                        localStorage.setItem('nvr_username', kData.username);
+                        currentUserRole = kData.role;
+                        currentUsername = kData.username;
+
+                        if (userApp) userApp.style.display = 'none';
+                        if (adminApp) adminApp.style.display = 'flex';
+                        initAdminDashboard();
+                        startKioskRemotePoller();
+                        return;
+                    }
+                }
+            } catch (kErr) {
+                console.warn('[KIOSK] Auto-handshake STB tertunda:', kErr);
+            }
+        }
+
         try {
             const res = await authFetch('/api/auth/status');
             if (!res.ok) throw new Error('Authentication failed');
@@ -651,74 +686,12 @@ async function checkAuth() {
                     initMobileUserApp();
                 }
             } else {
-                // Periksa apakah ini antarmuka Kiosk lokal STB (localhost / ?kiosk=1)
-                const isKioskCandidate = window.location.search.includes('kiosk=1') || 
-                                         window.location.hash.includes('kiosk') || 
-                                         window.location.hostname === 'localhost' || 
-                                         window.location.hostname === '127.0.0.1';
-                if (isKioskCandidate) {
-                    try {
-                        const kioskRes = await fetch('/api/kiosk/auth', { method: 'POST' });
-                        if (kioskRes.ok) {
-                            const kData = await kioskRes.json();
-                            if (kData.success && kData.token) {
-                                localStorage.setItem('nvr_auth_token', kData.token);
-                                localStorage.setItem('nvr_role', kData.role);
-                                localStorage.setItem('nvr_username', kData.username);
-                                currentUserRole = kData.role;
-                                currentUsername = kData.username;
-                                window.isKioskDisplay = true;
-
-                                authOverlay.style.display = 'none';
-                                userApp.style.display = 'none';
-                                adminApp.style.display = 'flex';
-                                applyKioskDisplayMode();
-                                initAdminDashboard();
-                                startKioskRemotePoller();
-                                return;
-                            }
-                        }
-                    } catch (kErr) {
-                        console.warn('[KIOSK] Auto-login STB gagal, beralih ke form login:', kErr);
-                    }
-                }
-
                 localStorage.removeItem('nvr_auth_token');
                 authOverlay.style.display = 'flex';
                 adminApp.style.display = 'none';
                 userApp.style.display = 'none';
             }
         } catch (err) {
-            // Periksa apakah ini antarmuka Kiosk lokal STB saat catch
-            const isKioskCandidate = window.location.search.includes('kiosk=1') || 
-                                     window.location.hash.includes('kiosk') || 
-                                     window.location.hostname === 'localhost' || 
-                                     window.location.hostname === '127.0.0.1';
-            if (isKioskCandidate) {
-                try {
-                    const kioskRes = await fetch('/api/kiosk/auth', { method: 'POST' });
-                    if (kioskRes.ok) {
-                        const kData = await kioskRes.json();
-                        if (kData.success && kData.token) {
-                            localStorage.setItem('nvr_auth_token', kData.token);
-                            localStorage.setItem('nvr_role', kData.role);
-                            localStorage.setItem('nvr_username', kData.username);
-                            currentUserRole = kData.role;
-                            currentUsername = kData.username;
-                            window.isKioskDisplay = true;
-
-                            authOverlay.style.display = 'none';
-                            userApp.style.display = 'none';
-                            adminApp.style.display = 'flex';
-                            applyKioskDisplayMode();
-                            initAdminDashboard();
-                            startKioskRemotePoller();
-                            return;
-                        }
-                    }
-                } catch (_) {}
-            }
-
             localStorage.removeItem('nvr_auth_token');
             authOverlay.style.display = 'flex';
             adminApp.style.display = 'none';
@@ -8245,6 +8218,7 @@ async function openAddonConfig(addonId, addonName) {
             authFetch('/api/addons/' + addonId + '/config'),
             (addonId === 'ai_yolo' || addonId === 'ai-yolo') ? authFetch('/api/addons/ai_yolo/status').catch(() => null) :
             (addonId === 'hdmi-kiosk' || addonId === 'hdmi_kiosk') ? authFetch('/api/addons/hdmi-kiosk/status').catch(() => null) :
+            (addonId === 'hdmi-native' || addonId === 'hdmi_native') ? authFetch('/api/addons/hdmi-native/status').catch(() => null) :
             Promise.resolve(null)
         ]);
 
@@ -8552,8 +8526,16 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                 </div>
 
                 <div style="background:rgba(0,0,0,0.15); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
-                    <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Pengaturan Sistem & Penghemat Daya:</strong>
+                    <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Pengaturan Sistem, Pembersihan Browser & Penghemat Daya:</strong>
                     <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                            <input type="checkbox" name="hardened_mode" value="true" ${configObj.hardened_mode !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#10b981;">
+                            <span>🛡️ <strong>Mode Kiosk Bersih:</strong> Matikan Google Translate, dialog error, info-bar, dan pop-up sandi</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                            <input type="checkbox" name="incognito" value="true" ${configObj.incognito !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#10b981;">
+                            <span>🧹 <strong>Profil Bersih / Incognito:</strong> Bebas cache lama dan sesi kadaluwarsa setiap boot STB</span>
+                        </label>
                         <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
                             <input type="checkbox" name="auto_start" value="true" ${configObj.auto_start ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
                             <span>Otomatis nyalakan tampilan HDMI saat STB Boot jika kabel terdeteksi</span>
@@ -8574,7 +8556,203 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
         return;
     }
 
-    // --- 3. FORMAT GENERIK (Untuk Addon Kustom Lainnya) ---
+    // --- 3. SPESIFIKASI: HDMI Native Hardware Player (MPV Direct Engine) ---
+    if (addonId === 'hdmi-native' || addonId === 'hdmi_native') {
+        const isMpvInst = statusData ? !!statusData.isMpvInstalled : false;
+        const isServiceAct = statusData ? !!statusData.isServiceActive : false;
+        const isHdmiConn = statusData ? !!statusData.isHdmiConnected : false;
+        const liveSt = (statusData && statusData.liveState) || {};
+        const curPage = liveSt.currentPage || 1;
+        const totalPages = Math.max(1, Math.ceil(availableCams.length / (configObj.cams_per_page || 4)));
+        const curLayout = liveSt.layout || configObj.layout || 'quad';
+
+        // Buat Tombol Cepat Halaman (Paging)
+        let pageBtnsHtml = '';
+        for (let p = 1; p <= totalPages; p++) {
+            const isCur = (p === curPage);
+            const startIdx = (p - 1) * (configObj.cams_per_page || 4) + 1;
+            const endIdx = Math.min(availableCams.length, p * (configObj.cams_per_page || 4));
+            pageBtnsHtml += `
+                <button type="button" class="btn btn-sm ${isCur ? 'btn-primary' : 'btn-secondary'}" onclick="sendNativeRemoteCmd({ action: 'set_page', page: ${p} })" style="font-size:0.78rem; padding:0.3rem 0.6rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.25rem;">
+                    <span>📄</span> Hal ${p} (${startIdx}-${endIdx})
+                </button>
+            `;
+        }
+
+        // Buat Tombol Cepat Kamera Langsung
+        let camRemoteBtnsHtml = '';
+        availableCams.forEach((cam, idx) => {
+            const isFocus = (liveSt.currentCamId === cam.id && curLayout === 'single');
+            camRemoteBtnsHtml += `
+                <button type="button" class="btn btn-sm ${isFocus ? 'btn-primary' : 'btn-secondary'}" onclick="sendNativeRemoteCmd({ action: 'single_cam', camId: '${cam.id}' })" style="font-size:0.75rem; padding:0.25rem 0.55rem; border-radius:4px; white-space:nowrap;">
+                    📹 ${cam.name || `Kamera ${idx + 1}`}
+                </button>
+            `;
+        });
+
+        container.innerHTML = `
+            <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: rgba(56, 189, 248, 0.07); border: 1px solid rgba(56, 189, 248, 0.3);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                    <div>
+                        <strong style="color:#38bdf8; font-size:1.02rem; display:block;">📺 Mesin Direct Hardware: MPV Low-Latency (VPU ARM)</strong>
+                        <span style="font-size:0.84rem; color:var(--text-muted);">
+                            Murni direct hardware rendering Linux tanpa browser / Chromium • Irit RAM (<60MB) • Ukuran hanya ~25MB
+                        </span>
+                    </div>
+                    <div style="display:flex; gap:0.4rem; align-items:center;">
+                        <span style="padding: 0.25rem 0.55rem; border-radius: 4px; font-size: 0.78rem; font-weight: bold; background:${isHdmiConn ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isHdmiConn ? '#22c55e' : '#ef4444'}; border: 1px solid ${isHdmiConn ? '#22c55e' : '#ef4444'};">
+                            ${isHdmiConn ? '🔌 HDMI Tersambung' : '🔌 HDMI Lepas'}
+                        </span>
+                        <span style="padding: 0.25rem 0.55rem; border-radius: 4px; font-size: 0.78rem; font-weight: bold; background:${isServiceAct ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isServiceAct ? '#22c55e' : '#ef4444'}; border: 1px solid ${isServiceAct ? '#22c55e' : '#ef4444'};">
+                            ${isServiceAct ? '🟢 Service Aktif' : '⚪ Service Siaga / Mati'}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Kontrol Service Hardware -->
+                <div style="display:flex; gap:0.5rem; margin-top:0.85rem; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="toggleHdmiNativeOutput('${isServiceAct ? 'restart' : 'start'}')" style="display:flex; align-items:center; gap:0.3rem; background:#0284c7; border-color:#0284c7;">
+                        <span>${isServiceAct ? '🔄' : '▶️'}</span> ${isServiceAct ? 'Restart MPV Service' : 'Nyalakan Layanan MPV'}
+                    </button>
+                    ${isServiceAct ? `
+                    <button type="button" class="btn btn-sm btn-danger" onclick="toggleHdmiNativeOutput('stop')" style="display:flex; align-items:center; gap:0.3rem; background:rgba(239,68,68,0.2); border-color:#ef4444; color:#f87171;">
+                        <span>⏹️</span> Matikan Service MPV
+                    </button>
+                    ` : ''}
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="checkHdmiNativeDiagnostics()" style="display:flex; align-items:center; gap:0.3rem;">
+                        <span>🩺</span> Diagnosa STB & Log MPV
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="refreshHdmiNativeStatus()" style="display:flex; align-items:center; gap:0.3rem;">
+                        <span>🔄</span> Segarkan Status
+                    </button>
+                </div>
+
+                <!-- Hasil Diagnosa Hardware STB -->
+                <div id="hdmiNativeDiagBox" style="display:none; margin-top:0.85rem; padding:0.75rem; border-radius:4px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.1);">
+                    <div id="hdmiNativeDiagContent"></div>
+                </div>
+            </div>
+
+            <!-- KONSOL REMOTE KONTROL TV PINTAR (SMART PAGING CONTROLLER) -->
+            <div style="margin-bottom: 1.25rem; padding: 1.1rem; border-radius: 8px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.35); box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span style="font-size:1.15rem;">🎮</span>
+                        <strong style="color:#f8fafc; font-size:0.95rem;">Remote Kontrol Pintar TV (Smart Paging Controller)</strong>
+                    </div>
+                    <span style="font-size:0.78rem; padding:0.2rem 0.55rem; border-radius:4px; background:rgba(56,189,248,0.15); color:#38bdf8; font-weight:600;">
+                        📄 Halaman ${curPage} / ${totalPages}
+                    </span>
+                </div>
+
+                <!-- 1. Navigasi Paging (Sebelumnya / Berikutnya) -->
+                <div style="margin-bottom:0.9rem;">
+                    <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:0.45rem; font-weight:600;">Navigasi Halaman Cepat:</div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendNativeRemoteCmd({ action: 'prev_page' })" style="display:flex; align-items:center; gap:0.35rem; font-size:0.82rem; padding:0.4rem 0.8rem; background:rgba(255,255,255,0.06);">
+                            <span>⬅️</span> Halaman Sebelumnya
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="sendNativeRemoteCmd({ action: 'next_page' })" style="display:flex; align-items:center; gap:0.35rem; font-size:0.82rem; padding:0.4rem 0.8rem; background:#0284c7; border-color:#0284c7;">
+                            <span>➡️</span> Halaman Berikutnya
+                        </button>
+                    </div>
+                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.5rem;">
+                        ${pageBtnsHtml}
+                    </div>
+                </div>
+
+                <!-- 2. Pilihan Layout Tampilan -->
+                <div style="margin-bottom:0.9rem; border-top:1px solid rgba(255,255,255,0.06); padding-top:0.75rem;">
+                    <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:0.45rem; font-weight:600;">Mode Tampilan Layout:</div>
+                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-sm ${curLayout === 'quad' ? 'btn-primary' : 'btn-secondary'}" onclick="sendNativeRemoteCmd({ action: 'quad' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.8rem;">
+                            <span>🔲</span> 4 Kamera (Quad)
+                        </button>
+                        <button type="button" class="btn btn-sm ${curLayout === 'single' ? 'btn-primary' : 'btn-secondary'}" onclick="sendNativeRemoteCmd({ action: 'single_cam', camId: '${availableCams[0] ? availableCams[0].id : ''}' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.8rem;">
+                            <span>📹</span> 1 Kamera Fullscreen
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Lompat Langsung ke Kamera Tertentu -->
+                <div style="margin-bottom:0.9rem; border-top:1px solid rgba(255,255,255,0.06); padding-top:0.75rem;">
+                    <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:0.45rem; font-weight:600;">Lompat Langsung ke Kamera:</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:115px; overflow-y:auto; padding:0.2rem 0;">
+                        ${camRemoteBtnsHtml}
+                    </div>
+                </div>
+
+                <!-- 4. Aksi Kontrol Cepat MPV -->
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.75rem;">
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="sendNativeRemoteCmd({ action: 'refresh' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
+                        <span>🔄</span> Sambung Ulang Video
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="sendNativeRemoteCmd({ action: 'toggle_osd' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
+                        <span>🔤</span> Tampilkan / Sembunyikan OSD
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="sendNativeRemoteCmd({ action: 'toggle_tour' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
+                        <span>🔄</span> Auto-Tour / Paging Otomatis
+                    </button>
+                </div>
+            </div>
+
+            <!-- FORM PENGATURAN PARAMETER HARDWARE MPV -->
+            <form id="addonConfigForm">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Hardware Video Output (VO):</label>
+                        <select name="vo" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="gpu" ${configObj.vo === 'gpu' || !configObj.vo ? 'selected' : ''}>gpu (Mali GPU Hardware Render - Direkomendasikan)</option>
+                            <option value="drm" ${configObj.vo === 'drm' ? 'selected' : ''}>drm (Direct Rendering Manager - Murni KMS)</option>
+                            <option value="xv" ${configObj.vo === 'xv' ? 'selected' : ''}>xv (XVideo Hardware Acceleration)</option>
+                            <option value="fbdev" ${configObj.vo === 'fbdev' ? 'selected' : ''}>fbdev (Direct Linux Framebuffer)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Hardware Decoding (HWDEC):</label>
+                        <select name="hwdec" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="auto" ${configObj.hwdec === 'auto' || !configObj.hwdec ? 'selected' : ''}>auto (Deteksi Otomatis VPU STB Amlogic)</option>
+                            <option value="v4l2m2m-copy" ${configObj.hwdec === 'v4l2m2m-copy' ? 'selected' : ''}>v4l2m2m-copy (Linux V4L2 Memory-to-Memory)</option>
+                            <option value="no" ${configObj.hwdec === 'no' ? 'selected' : ''}>no (Software CPU Decoding murni)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Kamera per Halaman Paging:</label>
+                        <select name="cams_per_page" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="4" ${configObj.cams_per_page === 4 || !configObj.cams_per_page ? 'selected' : ''}>4 Kamera per Halaman (Layout Quad 2x2)</option>
+                            <option value="1" ${configObj.cams_per_page === 1 ? 'selected' : ''}>1 Kamera per Halaman (Fullscreen Paging)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Interval Auto-Tour Halaman (Detik):</label>
+                        <input type="number" name="tour_interval" min="5" max="300" value="${configObj.tour_interval || 10}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                    </div>
+                </div>
+
+                <div style="background:rgba(0,0,0,0.15); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
+                    <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Preferensi Display Hardware:</strong>
+                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                            <input type="checkbox" name="osd" value="true" ${configObj.osd !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#0284c7;">
+                            <span>🔤 Tampilkan Overlay Nama Kamera (OSD) di pojok layar TV</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                            <input type="checkbox" name="auto_start" value="true" ${configObj.auto_start !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#0284c7;">
+                            <span>🚀 Otomatis jalankan layanan pemutar MPV Hardware saat STB Boot</span>
+                        </label>
+                    </div>
+                </div>
+            </form>
+        `;
+        return;
+    }
+
+    // --- 4. FORMAT GENERIK (Untuk Addon Kustom Lainnya) ---
     if (!configObj || Object.keys(configObj).length === 0) {
         container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">Addon ini siap beroperasi secara default dan tidak memerlukan parameter konfigurasi tambahan.</p>';
         return;
@@ -8793,6 +8971,108 @@ async function repairHdmiKioskScript() {
     }
 }
 window.repairHdmiKioskScript = repairHdmiKioskScript;
+
+// ==========================================
+// HDMI NATIVE PLAYER (MPV) CONTROLLER HELPERS
+// ==========================================
+async function sendNativeRemoteCmd(payload) {
+    try {
+        const res = await authFetch('/api/addons/hdmi-native/remote-cmd', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            // Update tampilan status modal jika sedang terbuka
+            openAddonConfig('hdmi-native', 'HDMI Native Hardware Player (MPV)');
+        } else {
+            alert('Gagal mengirim perintah: ' + (data.error || 'Terjadi kesalahan'));
+        }
+    } catch (e) {
+        console.warn('[HDMI-NATIVE] Gagal kirim perintah:', e);
+    }
+}
+window.sendNativeRemoteCmd = sendNativeRemoteCmd;
+
+async function toggleHdmiNativeOutput(action) {
+    try {
+        const res = await authFetch('/api/addons/hdmi-native/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert(`Aksi ${action} pada layanan MPV Hardware berhasil dikirim ke STB.`);
+            openAddonConfig('hdmi-native', 'HDMI Native Hardware Player (MPV)');
+        } else {
+            alert('Gagal mengatur layanan MPV: ' + (data.error || 'Terjadi kesalahan'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server.');
+    }
+}
+window.toggleHdmiNativeOutput = toggleHdmiNativeOutput;
+
+async function refreshHdmiNativeStatus() {
+    openAddonConfig('hdmi-native', 'HDMI Native Hardware Player (MPV)');
+}
+window.refreshHdmiNativeStatus = refreshHdmiNativeStatus;
+
+async function checkHdmiNativeDiagnostics() {
+    const box = document.getElementById('hdmiNativeDiagBox');
+    const content = document.getElementById('hdmiNativeDiagContent');
+    if (!box || !content) return;
+
+    box.style.display = 'block';
+    content.innerHTML = '<span style="color:#94a3b8;">⏳ Memeriksa dependensi MPV dan log service STB...</span>';
+
+    try {
+        const res = await authFetch('/api/addons/hdmi-native/diagnostics');
+        const data = await res.json();
+        if (res.ok && data.diagnostics) {
+            const d = data.diagnostics;
+            const safeLog = String(d.serviceLogs || 'Tidak ada catatan log.')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            content.innerHTML = `
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.5rem; margin-bottom:0.75rem;">
+                    <div style="padding:0.4rem 0.6rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:var(--text-muted); font-size:0.72rem; display:block;">MPV Hardware:</span>
+                        <strong style="color:${d.hasMpv ? '#22c55e' : '#ef4444'}; font-size:0.8rem;">${d.hasMpv ? '✅ Terpasang' : '❌ Belum Terpasang'}</strong>
+                    </div>
+                    <div style="padding:0.4rem 0.6rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:var(--text-muted); font-size:0.72rem; display:block;">IPC Socat:</span>
+                        <strong style="color:${d.hasSocat ? '#22c55e' : '#ef4444'}; font-size:0.8rem;">${d.hasSocat ? '✅ Terpasang' : '❌ Belum Terpasang'}</strong>
+                    </div>
+                    <div style="padding:0.4rem 0.6rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:var(--text-muted); font-size:0.72rem; display:block;">IPC Socket:</span>
+                        <strong style="color:${d.hasIpcSocket ? '#22c55e' : '#f59e0b'}; font-size:0.8rem;">${d.hasIpcSocket ? '✅ Aktif' : '⚪ Belum Aktif'}</strong>
+                    </div>
+                    <div style="padding:0.4rem 0.6rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:var(--text-muted); font-size:0.72rem; display:block;">Systemd Service:</span>
+                        <strong style="color:${d.isServiceActive ? '#22c55e' : '#ef4444'}; font-size:0.8rem;">${d.isServiceActive ? '🟢 Aktif' : '⚪ Mati'}</strong>
+                    </div>
+                </div>
+                <div style="padding:0.5rem 0.75rem; border-radius:4px; background:${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}; border:1px solid ${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}; margin-bottom:0.75rem; font-size:0.8rem;">
+                    <strong>${d.recommendation || ''}</strong>
+                </div>
+                <div>
+                    <div style="margin-bottom:0.35rem; font-size:0.75rem; color:#94a3b8;">Log Journalctl arch3r-native:</div>
+                    <pre style="margin:0; padding:0.5rem; background:#000; color:#38bdf8; font-size:0.72rem; border-radius:4px; max-height:140px; overflow-y:auto; white-space:pre-wrap; border:1px solid #1e293b;">${safeLog}</pre>
+                </div>
+            `;
+        } else {
+            content.innerHTML = `<span style="color:#ef4444;">Gagal mengambil diagnosa: ${data.error || 'Server tidak merespon'}</span>`;
+        }
+    } catch (e) {
+        content.innerHTML = `<span style="color:#ef4444;">Gagal menghubungi server: ${e.message || e}</span>`;
+    }
+}
+window.checkHdmiNativeDiagnostics = checkHdmiNativeDiagnostics;
 
 async function saveAddonConfig() {
     if (!currentConfigAddonId) return;

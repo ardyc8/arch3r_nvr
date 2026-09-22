@@ -4,9 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.6.2 - Professional Multi-Tenant Dashboard</title>
+    <title>Arch3r NVR Ver. 10.6.3 - Professional Multi-Tenant Dashboard</title>
     <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
+    <script>
+        // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
+        if (window.location.search.includes('kiosk=1') || window.location.hash.includes('kiosk') || localStorage.getItem('nvr_role') === 'kiosk_viewer') {
+            document.documentElement.classList.add('kiosk-display-mode');
+            const earlyStyle = document.createElement('style');
+            earlyStyle.id = 'earlyKioskStyle';
+            earlyStyle.textContent = '#authOverlay { display: none !important; }';
+            document.head.appendChild(earlyStyle);
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="version_sync.js?v=10.1.6"></script>
     <style>
