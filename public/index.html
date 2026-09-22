@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.5.5 - Professional Multi-Tenant Dashboard</title>
+    <title>Arch3r NVR Ver. 10.5.7 - Professional Multi-Tenant Dashboard</title>
     <link rel="stylesheet" href="style.css?v=10.1.6">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -110,7 +110,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 10.5.5</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 10.5.7</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -1127,43 +1127,44 @@
                                 
                                 <!-- KOLOM KIRI: Unified Stream & Tactical HUD Canvas Workspace -->
                                 <div>
-                                    <!-- Video & Canvas Wrapper -->
-                                    <div id="yolo-view-video-wrapper" style="position:relative; width:100%; background:#000; border-radius:10px; border:1px solid var(--border); overflow:hidden; aspect-ratio:16/9; box-shadow:0 8px 24px rgba(0,0,0,0.6);">
-                                        
-                                        <!-- Top Left Live HUD Badge -->
-                                        <div style="position:absolute; top:12px; left:12px; z-index:10; background:rgba(15,23,42,0.85); backdrop-filter:blur(6px); border:1px solid rgba(59,130,246,0.4); padding:4px 10px; border-radius:6px; font-size:0.75rem; color:#60a5fa; font-weight:700; display:flex; align-items:center; gap:0.45rem;">
-                                            <span style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block; box-shadow:0 0 8px #22c55e;"></span>
-                                            LIVE ANALYTICS
-                                        </div>
-
-                                        <!-- Top Right Resolution & Model Badge -->
-                                        <div style="position:absolute; top:12px; right:12px; z-index:10; background:rgba(15,23,42,0.85); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.1); padding:4px 8px; border-radius:6px; font-size:0.72rem; color:#94a3b8; font-family:monospace;">
-                                            <span id="yolo-hud-model-name" style="color:#38bdf8; font-weight:600;">YOLOv8 Nano</span> &bull; <span id="yolo-hud-fps">10 FPS</span>
-                                        </div>
-
-                                        <!-- Floating In-Player ROI Editing Banner (Active during ROI Dragging) -->
-                                        <div id="yolo-roi-edit-banner" style="display:none; position:absolute; top:48px; left:12px; right:12px; z-index:15; background:rgba(15,23,42,0.92); border:1px solid #22c55e; border-radius:8px; padding:0.6rem 0.85rem; box-shadow:0 4px 16px rgba(0,0,0,0.5); backdrop-filter:blur(6px); display:none; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                                            <div style="font-size:0.8rem; font-weight:600; color:#4ade80; display:flex; align-items:center; gap:0.4rem;">
-                                                <span>✏️</span> <span>Mode Edit Zona: Seret kotak atau titik sudut untuk menentukan area deteksi ROI.</span>
+                                    <!-- Video & Canvas Wrapper with Fullscreen Lock & 16:9 Stage -->
+                                    <div id="yolo-view-video-wrapper" class="yolo-video-wrapper">
+                                        <div id="yolo-video-stage" class="yolo-video-stage">
+                                            <!-- Top Left Live HUD Badge -->
+                                            <div style="position:absolute; top:12px; left:12px; z-index:10; background:rgba(15,23,42,0.85); backdrop-filter:blur(6px); border:1px solid rgba(59,130,246,0.4); padding:4px 10px; border-radius:6px; font-size:0.75rem; color:#60a5fa; font-weight:700; display:flex; align-items:center; gap:0.45rem;">
+                                                <span style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block; box-shadow:0 0 8px #22c55e;"></span>
+                                                LIVE ANALYTICS
                                             </div>
-                                            <div style="display:flex; gap:0.4rem;">
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="resetYoloRoiBox()" style="font-size:0.75rem; padding:0.25rem 0.6rem;">
-                                                    🔄 Reset Penuh
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-primary" onclick="saveAndExitYoloRoiEditMode()" style="background:#22c55e; border-color:#16a34a; font-size:0.75rem; font-weight:700; padding:0.25rem 0.75rem;">
-                                                    ✓ Simpan Zona
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-secondary" onclick="cancelYoloRoiEditMode()" style="font-size:0.75rem; padding:0.25rem 0.6rem;">
-                                                    ✕ Batal
-                                                </button>
-                                            </div>
-                                        </div>
 
-                                        <!-- Stream Video Element -->
-                                        <video id="yolo-view-video-element" autoplay playsinline muted style="width:100%; height:100%; object-fit:contain; display:block; background:#000;"></video>
-                                        
-                                        <!-- Tactical HUD Canvas Overlay -->
-                                        <canvas id="yolo-view-canvas-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:5;"></canvas>
+                                            <!-- Top Right Resolution & Model Badge -->
+                                            <div style="position:absolute; top:12px; right:12px; z-index:10; background:rgba(15,23,42,0.85); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.1); padding:4px 8px; border-radius:6px; font-size:0.72rem; color:#94a3b8; font-family:monospace;">
+                                                <span id="yolo-hud-model-name" style="color:#38bdf8; font-weight:600;">YOLOv8 Nano</span> &bull; <span id="yolo-hud-fps">10 FPS</span>
+                                            </div>
+
+                                            <!-- Floating In-Player ROI Editing Banner (Active during ROI Dragging) -->
+                                            <div id="yolo-roi-edit-banner" style="display:none; position:absolute; top:48px; left:12px; right:12px; z-index:15; background:rgba(15,23,42,0.92); border:1px solid #22c55e; border-radius:8px; padding:0.6rem 0.85rem; box-shadow:0 4px 16px rgba(0,0,0,0.5); backdrop-filter:blur(6px); justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                                                <div style="font-size:0.8rem; font-weight:600; color:#4ade80; display:flex; align-items:center; gap:0.4rem;">
+                                                    <span>✏️</span> <span>Mode Edit Zona: Seret kotak atau titik sudut untuk menentukan area deteksi ROI.</span>
+                                                </div>
+                                                <div style="display:flex; gap:0.4rem;">
+                                                    <button type="button" class="btn btn-sm btn-secondary" onclick="resetYoloRoiBox()" style="font-size:0.75rem; padding:0.25rem 0.6rem;">
+                                                        🔄 Reset Penuh
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-primary" onclick="saveAndExitYoloRoiEditMode()" style="background:#22c55e; border-color:#16a34a; font-size:0.75rem; font-weight:700; padding:0.25rem 0.75rem;">
+                                                        ✓ Simpan Zona
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-secondary" onclick="cancelYoloRoiEditMode()" style="font-size:0.75rem; padding:0.25rem 0.6rem;">
+                                                        ✕ Batal
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Stream Video Element (Hardware Scaled & Aligned) -->
+                                            <video id="yolo-view-video-element" autoplay playsinline muted></video>
+                                            
+                                            <!-- Tactical HUD Canvas Overlay (Pixel-Perfect Alignment) -->
+                                            <canvas id="yolo-view-canvas-overlay"></canvas>
+                                        </div>
                                     </div>
 
                                     <!-- Quick Detection Filter Pills -->
@@ -1190,36 +1191,61 @@
                                         </div>
                                     </div>
 
-                                    <!-- Quick Source Stream Framing & Alignment Bar -->
-                                    <div style="margin-top:0.75rem; background:rgba(15,23,42,0.35); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:0.65rem 0.85rem; display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:0.75rem; align-items:center;">
-                                        <div>
-                                            <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:2px;">
-                                                <span>🔍 Zoom:</span>
-                                                <span id="yolo-zoom-value-display" style="color:#38bdf8; font-weight:700;">1.0x</span>
+                                    <!-- KALIBRASI FRAME SENSOR AI (DEFAULT SENSOR OBSERVATION VIEWPORT) -->
+                                    <div style="margin-top:0.75rem; background:rgba(15,23,42,0.65); border:1px solid rgba(59,130,246,0.35); border-radius:8px; padding:0.75rem 1rem;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.65rem; padding-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.07);">
+                                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                                <span style="font-size:0.85rem; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:0.35rem;">
+                                                    <span>🎯</span> Kalibrasi Frame Sensor AI (Default Viewport)
+                                                </span>
+                                                <span style="font-size:0.68rem; color:#94a3b8; background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px;">
+                                                    Sensor e-PTZ
+                                                </span>
                                             </div>
-                                            <input type="range" id="yolo-zoom-slider" min="1.0" max="3.0" step="0.1" value="1.0" oninput="updateYoloVideoCropPreview()" style="width:100%; accent-color:#2563eb; cursor:pointer;">
-                                        </div>
-                                        <div>
-                                            <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:2px;">
-                                                <span>↔️ Pan X:</span>
-                                                <span id="yolo-crop-x-display" style="color:#38bdf8; font-weight:700;">0%</span>
+                                            <div style="display:flex; gap:0.4rem; align-items:center;">
+                                                <button type="button" class="btn btn-sm btn-secondary" onclick="resetYoloSensorCropFrame()" style="font-size:0.72rem; padding:0.25rem 0.6rem;" title="Kembalikan ke Frame Standar 1.0x Full">
+                                                    🔄 Reset Frame
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-primary" onclick="saveYoloSensorCropFrame()" style="background:#2563eb; border-color:#1d4ed8; font-size:0.72rem; font-weight:700; padding:0.25rem 0.75rem;" title="Simpan sebagai area pantauan sensor default YOLO AI">
+                                                    💾 Simpan Frame Sensor
+                                                </button>
                                             </div>
-                                            <input type="range" id="yolo-crop-x-slider" min="-50" max="50" step="1" value="0" oninput="updateYoloVideoCropPreview()" style="width:100%; accent-color:#2563eb; cursor:pointer;">
                                         </div>
-                                        <div>
-                                            <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:2px;">
-                                                <span>↕️ Pan Y:</span>
-                                                <span id="yolo-crop-y-display" style="color:#38bdf8; font-weight:700;">0%</span>
+
+                                        <!-- Sliders Grid -->
+                                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap:0.85rem; align-items:center;">
+                                            <div>
+                                                <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:3px;">
+                                                    <span>🔍 Zoom Sensor:</span>
+                                                    <span id="yolo-zoom-value-display" style="color:#38bdf8; font-weight:700;">1.0x</span>
+                                                </div>
+                                                <input type="range" id="yolo-zoom-slider" min="1.0" max="3.0" step="0.1" value="1.0" oninput="updateYoloVideoCropPreview()" style="width:100%; accent-color:#2563eb; cursor:pointer;">
                                             </div>
-                                            <input type="range" id="yolo-crop-y-slider" min="-50" max="50" step="1" value="0" oninput="updateYoloVideoCropPreview()" style="width:100%; accent-color:#2563eb; cursor:pointer;">
+                                            <div>
+                                                <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:3px;">
+                                                    <span>↔️ Pan X (Offset):</span>
+                                                    <span id="yolo-crop-x-display" style="color:#38bdf8; font-weight:700;">0%</span>
+                                                </div>
+                                                <input type="range" id="yolo-crop-x-slider" min="-50" max="50" step="1" value="0" oninput="updateYoloVideoCropPreview()" style="width:100%; accent-color:#2563eb; cursor:pointer;">
+                                            </div>
+                                            <div>
+                                                <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:3px;">
+                                                    <span>↕️ Pan Y (Offset):</span>
+                                                    <span id="yolo-crop-y-display" style="color:#38bdf8; font-weight:700;">0%</span>
+                                                </div>
+                                                <input type="range" id="yolo-crop-y-slider" min="-50" max="50" step="1" value="0" oninput="updateYoloVideoCropPreview()" style="width:100%; accent-color:#2563eb; cursor:pointer;">
+                                            </div>
+                                            <div>
+                                                <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:3px;">Resolusi Sensor:</div>
+                                                <select id="yolo-stream-resolution" onchange="updateYoloVideoCropPreview()" style="width:100%; background:#0f172a; color:#f8fafc; border:1px solid var(--border); padding:0.25rem 0.4rem; border-radius:4px; font-size:0.75rem;">
+                                                    <option value="1080p">1080p (Main Stream)</option>
+                                                    <option value="720p" selected>720p (Substream Optimal)</option>
+                                                    <option value="480p">480p (Low Bandwidth)</option>
+                                                </select>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:2px;">Resolusi Stream:</div>
-                                            <select id="yolo-stream-resolution" onchange="updateYoloVideoCropPreview()" style="width:100%; background:#0f172a; color:#f8fafc; border:1px solid var(--border); padding:0.25rem 0.4rem; border-radius:4px; font-size:0.75rem;">
-                                                <option value="1080p">1080p (Main)</option>
-                                                <option value="720p" selected>720p (Substream)</option>
-                                                <option value="480p">480p (Low)</option>
-                                            </select>
+                                        <div style="margin-top:0.45rem; font-size:0.68rem; color:#64748b;">
+                                            ℹ️ <em>Frame ini adalah batas sensor digital yang dianalisis oleh AI NVR. Simpan frame untuk menjadikannya sudut pantauan tetap kamera.</em>
                                         </div>
                                     </div>
                                 </div>
@@ -1235,9 +1261,14 @@
                                                 0 Objek
                                             </span>
                                         </div>
-                                        <button type="button" class="btn btn-sm btn-secondary" onclick="clearYoloEventStrip()" style="font-size:0.75rem; padding:2px 8px;" title="Bersihkan Daftar Target">
-                                            🧹 Bersihkan
-                                        </button>
+                                        <div style="display:flex; gap:0.35rem; align-items:center;">
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="simulateYoloDetectionTest()" style="font-size:0.72rem; padding:2px 7px; color:#38bdf8; border-color:rgba(56,189,248,0.4);" title="Uji Deteksi Objek Simulasi">
+                                                🧪 Uji Target
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-secondary" onclick="clearYoloEventStrip()" style="font-size:0.72rem; padding:2px 7px;" title="Bersihkan Daftar Target">
+                                                🧹 Bersihkan
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <!-- Event Cards Gallery Container -->
@@ -1256,13 +1287,17 @@
                                             <span style="color:#22c55e;">●</span> Latency: <strong id="yolo-stat-latency" style="color:#f8fafc;">14ms</strong> &bull; NPU STB
                                         </div>
                                         <button type="button" class="btn btn-sm btn-secondary" onclick="toggleYoloRawTerminalLog()" style="font-size:0.7rem; padding:2px 6px;">
-                                            Terminal Log
+                                            💻 Terminal Log
                                         </button>
                                     </div>
 
-                                    <!-- Collapsible Terminal Log -->
+                                    <!-- Collapsible Streaming Terminal Log -->
                                     <div id="yolo-terminal-log-wrapper" style="display:none; margin-top:0.5rem;">
-                                        <div id="yolo-telemetry-terminal" style="font-family:'Courier New', Courier, monospace; font-size:0.72rem; color:#4ade80; background:#020617; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:0.5rem; height:120px; overflow-y:auto; line-height:1.4;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; background:#0b1329; padding:4px 8px; border:1px solid rgba(255,255,255,0.1); border-bottom:none; border-radius:6px 6px 0 0; font-size:0.68rem; color:#94a3b8;">
+                                            <span style="font-family:monospace; color:#38bdf8;">● YOLO AI Inference Stream Log</span>
+                                            <button type="button" onclick="clearYoloTerminalLog()" style="background:transparent; border:none; color:#f87171; cursor:pointer; font-size:0.68rem;">🧹 Bersihkan</button>
+                                        </div>
+                                        <div id="yolo-telemetry-terminal" style="font-family:'Courier New', Courier, monospace; font-size:0.72rem; color:#4ade80; background:#020617; border:1px solid rgba(255,255,255,0.1); border-radius:0 0 6px 6px; padding:0.5rem; height:130px; overflow-y:auto; line-height:1.45; word-break:break-word;">
                                             <div style="color:#64748b;">[SYSTEM] YOLO AI Inference Telemetry Stream Initialized...</div>
                                         </div>
                                     </div>

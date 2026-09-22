@@ -347,12 +347,17 @@ app.get('/api/ai/grid/:camId', verifyToken, (req, res) => {
 app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
     try {
         const payload = req.body;
-        if (!payload || !payload.camera_id) {
+        const camId = payload?.camera_id || payload?.camId || 'default';
+        if (!payload) {
             return res.status(400).json({ error: 'Payload tidak valid: camera_id diperlukan' });
         }
+        payload.camera_id = camId;
 
         const db = getNvrDb();
-        const cam = (db.cameras || []).find(c => String(c.id) === String(payload.camera_id));
+        if (!db.ai_grids) db.ai_grids = {};
+        db.ai_grids[camId] = payload;
+
+        const cam = (db.cameras || []).find(c => String(c.id) === String(camId));
         
         // Simpan konfig AI, Prompt Rules & ESP8266 ke database lokal (persisten saat reboot STB)
         if (cam) {
@@ -364,10 +369,12 @@ app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
             if (payload.prompt_rules) {
                 cam.ai_config.prompt_rules = payload.prompt_rules;
             }
-            saveNvrDb(db);
             const zoneCount = (payload.zones && Array.isArray(payload.zones)) ? payload.zones.length : 1;
             sysLog('INFO', `[AI Vision Engine] Konfigurasi ROI (${zoneCount} Objek Area), Prompt Rules ("${(payload.prompt_rules && payload.prompt_rules.prompt_text) || 'Default'}") & ESP8266 disimpan untuk kamera ${cam.name}`, 'SYSTEM');
+        } else {
+            sysLog('INFO', `[AI Vision Engine] Konfigurasi ROI disimpan untuk target ID ${camId}`, 'SYSTEM');
         }
+        saveNvrDb(db);
 
         // Teruskan ke daemon Python YOLO jika berjalan (port 8000)
         let pythonForwarded = false;
@@ -1569,7 +1576,11 @@ function getNvrDb() {
     }
     
     const s_cam = tryParse(fCameras);
-    if (s_cam) data.cameras = s_cam.cameras || [];
+    if (s_cam) {
+        data.cameras = s_cam.cameras || [];
+        if (s_cam.ai_grids) data.ai_grids = s_cam.ai_grids;
+    }
+    if (!data.ai_grids) data.ai_grids = {};
     
     const s_rec = tryParse(fRecordings);
     if (s_rec) data.recordings = s_rec.recordings || [];
@@ -1670,7 +1681,7 @@ function scheduleDbSave() {
         // ==========================================
         const payloadSettings = { super_settings: cachedDb.super_settings, recording_path: cachedDb.recording_path };
         const payloadAccounts = { administrators: cachedDb.administrators || [], users: cachedDb.users || [] };
-        const payloadCameras = { cameras: cachedDb.cameras || [] };
+        const payloadCameras = { cameras: cachedDb.cameras || [], ai_grids: cachedDb.ai_grids || {} };
         const payloadRecordings = { recordings: cachedDb.recordings || [] };
         const payloadLogs = { system_logs: cachedDb.system_logs || [] };
         const payloadAddons = {
@@ -1824,8 +1835,8 @@ function requireSuperadmin(req, res, next) {
 }
 
 function requireAdministrator(req, res, next) {
-    if (req.userRole !== 'administrator') {
-        return res.status(403).json({ error: 'Akses Ditolak: Memerlukan hak akses Administrator (Pemilik Gedung)' });
+    if (req.userRole !== 'administrator' && req.userRole !== 'superadmin') {
+        return res.status(403).json({ error: 'Akses Ditolak: Memerlukan hak akses Administrator (Pemilik Gedung) atau Superadmin' });
     }
     next();
 }
@@ -3116,24 +3127,27 @@ app.get('/api/cameras', verifyToken, (req, res) => {
 });
 
 app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
-    if (req.userRole !== 'administrator') {
-        return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator Gedung yang dapat menambahkan kamera.' });
+    const isSuperAdmin = req.userRole === 'superadmin';
+    if (req.userRole !== 'administrator' && !isSuperAdmin) {
+        return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator Gedung atau Superadmin yang dapat menambahkan kamera.' });
     }
 
-    const currentAdminId = req.adminId || req.userId;
+    const currentAdminId = isSuperAdmin ? (req.body.tenant_id || req.body.admin_id || 'superadmin') : (req.adminId || req.userId);
     const dbData = getNvrDb();
-    const admin = (dbData.administrators || []).find(a => a.id === currentAdminId);
+    const admin = (dbData.administrators || []).find(a => a.id === currentAdminId) || (isSuperAdmin ? { name: 'Superadmin', max_cameras: 999 } : null);
     if (!admin) {
         return res.status(403).json({ error: 'Akun Administrator tidak terdaftar dalam sistem' });
     }
 
-    // Periksa Batas Kuota Kamera (max_cameras)
-    const existingCams = (dbData.cameras || []).filter(c => c.tenant_id === currentAdminId || c.admin_id === currentAdminId);
-    const maxCameras = admin.max_cameras || 8;
-    if (existingCams.length >= maxCameras) {
-        return res.status(400).json({
-            error: `Batas kuota kamera untuk gedung Anda telah penuh (${existingCams.length}/${maxCameras} Kamera). Silakan hubungi Superadmin untuk menambah kuota.`
-        });
+    // Periksa Batas Kuota Kamera (max_cameras) jika bukan superadmin
+    if (!isSuperAdmin) {
+        const existingCams = (dbData.cameras || []).filter(c => c.tenant_id === currentAdminId || c.admin_id === currentAdminId);
+        const maxCameras = admin.max_cameras || 8;
+        if (existingCams.length >= maxCameras) {
+            return res.status(400).json({
+                error: `Batas kuota kamera untuk gedung Anda telah penuh (${existingCams.length}/${maxCameras} Kamera). Silakan hubungi Superadmin untuk menambah kuota.`
+            });
+        }
     }
 
     const {
@@ -3231,8 +3245,9 @@ app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
 });
 
 app.put('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
-    if (req.userRole !== 'administrator') {
-        return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator yang berhak mengubah kamera.' });
+    const isSuperAdmin = req.userRole === 'superadmin';
+    if (req.userRole !== 'administrator' && !isSuperAdmin) {
+        return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator atau Superadmin yang berhak mengubah kamera.' });
     }
 
     const currentAdminId = req.adminId || req.userId;
@@ -3241,8 +3256,8 @@ app.put('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
     if (index === -1) return res.status(404).json({ error: 'Kamera tidak ditemukan' });
     
     const targetCam = dbData.cameras[index];
-    // Isolasi Data Ketat: Hanya admin pemilik gedung yang dapat mengubah
-    if (targetCam.tenant_id !== currentAdminId && targetCam.admin_id !== currentAdminId) {
+    // Isolasi Data Ketat: Hanya admin pemilik gedung yang dapat mengubah (Superadmin bebas akses)
+    if (!isSuperAdmin && targetCam.tenant_id !== currentAdminId && targetCam.admin_id !== currentAdminId) {
         return res.status(403).json({ error: 'Akses Ditolak: Anda tidak memiliki izin mengedit kamera milik gedung lain.' });
     }
 
@@ -4528,8 +4543,9 @@ app.post('/api/system/scan', verifyToken, requireAdmin, async (req, res) => {
 });
 
 app.delete('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
-    if (req.userRole !== 'administrator') {
-        return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator yang berhak menghapus kamera.' });
+    const isSuperAdmin = req.userRole === 'superadmin';
+    if (req.userRole !== 'administrator' && !isSuperAdmin) {
+        return res.status(403).json({ error: 'Akses Ditolak: Hanya Administrator atau Superadmin yang berhak menghapus kamera.' });
     }
 
     const currentAdminId = req.adminId || req.userId;
@@ -4538,7 +4554,7 @@ app.delete('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => 
     if (index === -1) return res.status(404).json({ error: 'Kamera tidak ditemukan' });
 
     const targetCam = dbData.cameras[index];
-    if (targetCam.tenant_id !== currentAdminId && targetCam.admin_id !== currentAdminId) {
+    if (!isSuperAdmin && targetCam.tenant_id !== currentAdminId && targetCam.admin_id !== currentAdminId) {
         return res.status(403).json({ error: 'Akses Ditolak: Anda tidak memiliki izin menghapus kamera milik gedung lain.' });
     }
 
@@ -5375,25 +5391,45 @@ app.post('/api/ai/detections', verifyToken, (req, res) => {
 app.get('/api/ai/grid', verifyToken, (req, res) => {
     const camId = req.query.camera_id;
     const db = getNvrDb();
-    if (!camId) return res.json({ success: true, grids: (db.cameras || []).map(c => ({ camera_id: c.id, grid: c.ai_config?.grid || null })) });
+    if (!camId) {
+        return res.json({
+            success: true,
+            grids: (db.cameras || []).map(c => ({
+                camera_id: c.id,
+                grid: c.ai_config?.grid || (db.ai_grids && db.ai_grids[c.id]) || null
+            }))
+        });
+    }
     const cam = (db.cameras || []).find(c => String(c.id) === String(camId));
-    res.json({ success: true, camera_id: camId, grid: cam?.ai_config?.grid || null });
+    res.json({
+        success: true,
+        camera_id: camId,
+        grid: cam?.ai_config?.grid || (db.ai_grids && db.ai_grids[camId]) || null
+    });
 });
 
 app.post('/api/ai/grid', verifyToken, async (req, res) => {
     try {
         const payload = req.body;
-        if (!payload || !payload.camera_id) {
-            return res.status(400).json({ error: 'camera_id diperlukan' });
+        const camId = payload?.camera_id || payload?.camId || 'default';
+        if (!payload) {
+            return res.status(400).json({ error: 'Payload tidak valid' });
         }
+        payload.camera_id = camId;
+
         const db = getNvrDb();
-        const cam = (db.cameras || []).find(c => String(c.id) === String(payload.camera_id));
+        if (!db.ai_grids) db.ai_grids = {};
+        db.ai_grids[camId] = payload;
+
+        const cam = (db.cameras || []).find(c => String(c.id) === String(camId));
         if (cam) {
             if (!cam.ai_config) cam.ai_config = {};
             cam.ai_config.grid = payload;
-            saveNvrDb(db);
             sysLog('INFO', `[AI Addon] Area deteksi visual disimpan untuk kamera ${cam.name}`, 'SYSTEM');
+        } else {
+            sysLog('INFO', `[AI Addon] Area deteksi visual disimpan untuk target kamera ID ${camId}`, 'SYSTEM');
         }
+        saveNvrDb(db);
 
         // Forward to Python if available
         try {

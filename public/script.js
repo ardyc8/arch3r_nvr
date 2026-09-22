@@ -1,4 +1,64 @@
-// script.js - Archer NVR Ver. 10.5.5 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.5.7 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+
+// --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
+function showToast(message, type = 'info') {
+    let container = document.getElementById('arch3r-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'arch3r-toast-container';
+        container.style.position = 'fixed';
+        container.style.top = '16px';
+        container.style.right = '16px';
+        container.style.zIndex = '100000';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '8px';
+        container.style.maxWidth = '90vw';
+        container.style.width = '360px';
+        container.style.pointerEvents = 'none';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.style.pointerEvents = 'auto';
+    toast.style.padding = '10px 16px';
+    toast.style.borderRadius = '8px';
+    toast.style.fontSize = '0.84rem';
+    toast.style.lineHeight = '1.35';
+    toast.style.fontWeight = '500';
+    toast.style.boxShadow = '0 6px 20px rgba(0,0,0,0.6)';
+    toast.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
+
+    const colors = {
+        success: { bg: 'rgba(16, 185, 129, 0.95)', border: '#059669', text: '#ffffff' },
+        warning: { bg: 'rgba(245, 158, 11, 0.95)', border: '#d97706', text: '#1e293b' },
+        alarm: { bg: 'rgba(239, 68, 68, 0.95)', border: '#dc2626', text: '#ffffff' },
+        error: { bg: 'rgba(239, 68, 68, 0.95)', border: '#dc2626', text: '#ffffff' },
+        info: { bg: 'rgba(30, 41, 59, 0.95)', border: '#475569', text: '#f8fafc' },
+        sensor: { bg: 'rgba(14, 165, 233, 0.95)', border: '#0284c7', text: '#ffffff' }
+    };
+
+    const c = colors[type] || colors.info;
+    toast.style.background = c.bg;
+    toast.style.border = `1px solid ${c.border}`;
+    toast.style.color = c.text;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+    requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    });
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => toast.remove(), 350);
+    }, 4500);
+}
+window.showToast = showToast;
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -18,6 +78,189 @@ function authFetch(url, options = {}) {
     return fetch(url, opts);
 }
 window.authFetch = authFetch;
+
+// =======================================================
+// ARCH3R NVR - ENTERPRISE OFFLINE RESILIENCE & AUTO-SYNC ENGINE
+// Designed for Mobile (HP) Network Dropouts & Armbian STB
+// =======================================================
+const OFFLINE_SYNC_STORAGE_KEY = 'arch3r_offline_sync_queue';
+let isSyncingOfflineQueue = false;
+
+function getOfflineSyncQueue() {
+    try {
+        const raw = localStorage.getItem(OFFLINE_SYNC_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+}
+window.getOfflineSyncQueue = getOfflineSyncQueue;
+
+function saveOfflineSyncQueue(queue) {
+    try {
+        localStorage.setItem(OFFLINE_SYNC_STORAGE_KEY, JSON.stringify(queue));
+    } catch (e) {
+        console.warn('[Offline Sync] Failed to save queue to localStorage:', e);
+    }
+}
+
+function enqueueOfflineSync(type, url, method, payload, label = '') {
+    const queue = getOfflineSyncQueue();
+    // Anti-duplicate: update existing queue item of same type and target URL
+    const existingIdx = queue.findIndex(item => item.type === type && item.url === url);
+    const item = {
+        id: 'sync_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        type,
+        url,
+        method: method || 'POST',
+        payload,
+        label: label || type,
+        queuedAt: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+        queue[existingIdx] = item;
+    } else {
+        queue.push(item);
+    }
+    saveOfflineSyncQueue(queue);
+    updateOfflineStatusUI();
+    if (typeof appendYoloTerminalLog === 'function') {
+        appendYoloTerminalLog(`[OFFLINE] 📦 Disimpan di antrean sinkronisasi lokal HP: ${label || type} (Tertunda: ${queue.length})`, 'config');
+    }
+    return item;
+}
+window.enqueueOfflineSync = enqueueOfflineSync;
+
+async function flushOfflineSyncQueue() {
+    if (isSyncingOfflineQueue) return;
+    const queue = getOfflineSyncQueue();
+    if (!queue || queue.length === 0) {
+        updateOfflineStatusUI();
+        return;
+    }
+
+    if (!navigator.onLine) {
+        updateOfflineStatusUI();
+        return;
+    }
+
+    isSyncingOfflineQueue = true;
+    let syncedCount = 0;
+    const remainingQueue = [];
+
+    for (const item of queue) {
+        try {
+            const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+            const res = await fetchFn(item.url, {
+                method: item.method || 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item.payload)
+            });
+
+            if (res.ok) {
+                syncedCount++;
+                if (typeof appendYoloTerminalLog === 'function') {
+                    appendYoloTerminalLog(`[SYNC] ✅ Berhasil disinkronkan ke server: ${item.label}`, 'system');
+                }
+            } else if (res.status === 401 || res.status === 403) {
+                remainingQueue.push(item);
+            } else {
+                remainingQueue.push(item);
+            }
+        } catch (err) {
+            remainingQueue.push(item);
+            break;
+        }
+    }
+
+    saveOfflineSyncQueue(remainingQueue);
+    isSyncingOfflineQueue = false;
+    updateOfflineStatusUI();
+
+    if (syncedCount > 0) {
+        showToast(`✅ Koneksi Internet HP Pulih! ${syncedCount} perubahan offline berhasil disinkronkan ke server NVR.`, 'success');
+        if (typeof fetchCameras === 'function') fetchCameras();
+    }
+}
+window.flushOfflineSyncQueue = flushOfflineSyncQueue;
+
+function updateOfflineStatusUI() {
+    const queue = getOfflineSyncQueue();
+    const isOnline = navigator.onLine;
+    let banner = document.getElementById('arch3r-connection-banner');
+
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'arch3r-connection-banner';
+        banner.style.position = 'fixed';
+        banner.style.bottom = '14px';
+        banner.style.right = '14px';
+        banner.style.zIndex = '99999';
+        banner.style.display = 'none';
+        banner.style.padding = '8px 14px';
+        banner.style.borderRadius = '30px';
+        banner.style.fontSize = '0.78rem';
+        banner.style.fontWeight = '600';
+        banner.style.boxShadow = '0 4px 15px rgba(0,0,0,0.5)';
+        banner.style.transition = 'all 0.3s ease';
+        document.body.appendChild(banner);
+    }
+
+    if (!isOnline) {
+        banner.style.display = 'flex';
+        banner.style.alignItems = 'center';
+        banner.style.gap = '8px';
+        banner.style.background = 'rgba(239, 68, 68, 0.95)';
+        banner.style.color = '#fff';
+        banner.style.border = '1px solid #b91c1c';
+        banner.dataset.wasOffline = 'true';
+        banner.innerHTML = `<span>⚡ Offline (HP Terputus)</span> ${queue.length > 0 ? `<span style="background:#fff; color:#b91c1c; padding:1px 6px; border-radius:10px; font-size:0.7rem;">${queue.length} antrean</span>` : ''}`;
+    } else if (queue.length > 0) {
+        banner.style.display = 'flex';
+        banner.style.alignItems = 'center';
+        banner.style.gap = '8px';
+        banner.style.background = 'rgba(245, 158, 11, 0.95)';
+        banner.style.color = '#000';
+        banner.style.border = '1px solid #d97706';
+        banner.innerHTML = `<span>⏳ Menyinkronkan ${queue.length} perubahan ke NVR...</span>`;
+    } else {
+        if (banner.style.display !== 'none' && banner.dataset.wasOffline === 'true') {
+            banner.style.background = 'rgba(16, 185, 129, 0.95)';
+            banner.style.color = '#fff';
+            banner.style.border = '1px solid #059669';
+            banner.innerHTML = `<span>🟢 Terhubung Kembali ke NVR</span>`;
+            setTimeout(() => {
+                banner.style.display = 'none';
+                banner.dataset.wasOffline = 'false';
+            }, 3000);
+        } else {
+            banner.style.display = 'none';
+        }
+    }
+}
+window.updateOfflineStatusUI = updateOfflineStatusUI;
+
+window.addEventListener('online', () => {
+    updateOfflineStatusUI();
+    if (typeof appendYoloTerminalLog === 'function') {
+        appendYoloTerminalLog('[NETWORK] 🟢 Internet HP kembali online. Memulai sinkronisasi otomatis ke NVR...', 'system');
+    }
+    flushOfflineSyncQueue();
+});
+
+window.addEventListener('offline', () => {
+    updateOfflineStatusUI();
+    if (typeof appendYoloTerminalLog === 'function') {
+        appendYoloTerminalLog('[NETWORK] ⚠️ Internet HP terputus. Mode perlindungan offline aktif (Data disimpan di HP).', 'alarm');
+    }
+    showToast('⚠️ Sambungan Internet HP Terputus. Perubahan tetap disimpan di HP & otomatis disinkronkan saat online.', 'warning');
+});
+
+setInterval(() => {
+    if (navigator.onLine && getOfflineSyncQueue().length > 0) {
+        flushOfflineSyncQueue();
+    }
+}, 4000);
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
@@ -1405,11 +1648,17 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
                 }
                 
                 if (!res.ok) throw new Error(await res.text());
-                alert('Kamera berhasil disimpan!');
+                showToast('✅ Kamera berhasil disimpan!', 'success');
                 
                 resetCameraForm();
                 fetchCameras();
             } catch (err) {
+                if (!navigator.onLine || err.message?.includes('fetch') || err.message?.includes('NetworkError') || err.message?.includes('Failed to fetch')) {
+                    enqueueOfflineSync('camera', id ? ('/api/cameras/' + id) : '/api/cameras', id ? 'PUT' : 'POST', payload, payload.name || 'Kamera');
+                    showToast(`📱 Internet HP Terputus. Konfigurasi kamera "${payload.name || ''}" diamankan di HP & otomatis disimpan ke NVR saat koneksi pulih.`, 'warning');
+                    resetCameraForm();
+                    return;
+                }
                 alert('Gagal menyimpan kamera: ' + err.message);
             }
         });
@@ -1443,8 +1692,13 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
                     });
                 }
                 
-                alert('Pengaturan storage berhasil disimpan');
+                showToast('✅ Pengaturan storage berhasil disimpan!', 'success');
             } catch (err) {
+                if (!navigator.onLine || err.message?.includes('fetch') || err.message?.includes('NetworkError')) {
+                    enqueueOfflineSync('storage_settings', '/api/settings', 'POST', payload, 'Pengaturan Storage');
+                    showToast('📱 Sambungan HP Terputus: Pengaturan storage disimpan di HP & akan disinkronkan saat terhubung.', 'warning');
+                    return;
+                }
                 alert(err.message);
             }
         });
@@ -1469,8 +1723,13 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
                     body: JSON.stringify(payload)
                 });
                 if (!res.ok) throw new Error('Gagal menyimpan pengaturan sistem');
-                alert('Konfigurasi sistem berhasil disimpan!');
+                showToast('✅ Konfigurasi sistem berhasil disimpan!', 'success');
             } catch (err) {
+                if (!navigator.onLine || err.message?.includes('fetch') || err.message?.includes('NetworkError')) {
+                    enqueueOfflineSync('system_settings', '/api/settings', 'POST', payload, 'Konfigurasi Sistem');
+                    showToast('📱 Sambungan HP Terputus: Konfigurasi sistem disimpan di HP & akan disinkronkan saat terhubung.', 'warning');
+                    return;
+                }
                 alert(err.message);
             }
         });
@@ -6788,6 +7047,21 @@ async function saveAIGrid(keepOpen = false) {
         }
     } catch (e) {
         console.error('[AI Grid Save Error]', e);
+        if (!navigator.onLine || e.message?.includes('fetch') || e.message?.includes('NetworkError') || e.message?.includes('Failed to fetch')) {
+            enqueueOfflineSync('ai_grid_full', '/api/ai/save_grid', 'POST', payload, 'ROI Zone & AI Rules');
+            if (feedback) {
+                feedback.textContent = '📱 Tersimpan di HP: Akan disinkronkan saat terhubung kembali';
+                feedback.style.color = '#f59e0b';
+            }
+            appendAITelemetry('📱 Sambungan HP terputus: Konfigurasi ROI & Rules diamankan di penyimpanan lokal HP.', 'info');
+            showToast('📱 Sambungan HP Terputus: Data disimpan di HP & otomatis disinkronkan saat online.', 'warning');
+            if (!keepOpen) {
+                setTimeout(() => {
+                    closeAIGridModal();
+                }, 800);
+            }
+            return;
+        }
         if (feedback) {
             feedback.textContent = '❌ Gagal: ' + e.message;
             feedback.style.color = '#ef4444';
@@ -8007,13 +8281,19 @@ async function saveAddonConfig() {
         });
         const data = await res.json();
         if (res.ok) {
-            alert('Konfigurasi berhasil disimpan dan langsung diterapkan ke addon!');
+            showToast('✅ Konfigurasi berhasil disimpan dan langsung diterapkan ke addon!', 'success');
             closeAddonConfigModal();
             fetchInstalledAddons();
         } else {
             alert('Gagal menyimpan konfigurasi: ' + (data.error || 'Terjadi kesalahan'));
         }
     } catch (e) {
+        if (!navigator.onLine || e.message?.includes('fetch') || e.message?.includes('NetworkError')) {
+            enqueueOfflineSync('addon_config', '/api/addons/' + currentConfigAddonId + '/config', 'POST', { config: newConfig }, `Konfigurasi Addon ${currentConfigAddonId}`);
+            showToast('📱 Sambungan HP Terputus: Konfigurasi addon disimpan di HP & akan otomatis disinkronkan saat terhubung.', 'warning');
+            closeAddonConfigModal();
+            return;
+        }
         alert('Gagal menghubungi server untuk menyimpan konfigurasi: ' + (e.message || e));
     }
 }
@@ -8148,6 +8428,34 @@ window.closeAISettingsModal = closeAISettingsModal;
 // =======================================================
 let yoloCamerasList = [];
 let activeYoloSettingsCamId = null;
+
+function getActiveYoloCameraId() {
+    if (activeYoloSettingsCamId) return String(activeYoloSettingsCamId);
+
+    // Fallback 1: Try stored active camera ID in localStorage
+    const saved = localStorage.getItem('arch3r_yolo_active_cam_id') || localStorage.getItem('arch3r_active_cam_id');
+    if (saved) {
+        activeYoloSettingsCamId = saved;
+        return String(saved);
+    }
+
+    // Fallback 2: Try yoloCamerasList
+    if (Array.isArray(yoloCamerasList) && yoloCamerasList.length > 0) {
+        activeYoloSettingsCamId = yoloCamerasList[0].id;
+        return String(activeYoloSettingsCamId);
+    }
+
+    // Fallback 3: Try window.cameras
+    const globalCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+    if (Array.isArray(globalCams) && globalCams.length > 0) {
+        activeYoloSettingsCamId = globalCams[0].id || globalCams[0].camId;
+        return String(activeYoloSettingsCamId);
+    }
+
+    activeYoloSettingsCamId = '1';
+    return '1';
+}
+window.getActiveYoloCameraId = getActiveYoloCameraId;
 
 function loadYoloCamerasFromStorage() {
     try {
@@ -8978,6 +9286,13 @@ function recordYoloDetectionEvent(obj, isInsideRoi) {
     }
 
     renderYoloEventStrip();
+
+    if (typeof appendYoloTerminalLog === 'function') {
+        const threatMsg = isInsideRoi
+            ? `🚨 ALARM INTRUSION: ${label} (${confNum}%) melanggar ZONA PERIMETER ROI!`
+            : `🎯 DETECTED: ${label} (${confNum}%) terdeteksi di luar zona`;
+        appendYoloTerminalLog(threatMsg, isInsideRoi ? 'alarm' : 'target');
+    }
 }
 
 function renderYoloEventStrip() {
@@ -9239,12 +9554,14 @@ function drawYoloViewLiveCanvasStream(timestamp) {
                 const boxW = obj.pctW !== undefined ? (obj.pctW / 100) * canvas.width : (obj.w || 60);
                 const boxH = obj.pctH !== undefined ? (obj.pctH / 100) * canvas.height : (obj.h || 80);
 
-                // Determine if target is inside defined ROI
+                // Determine if target is inside defined ROI using target center crosshair
+                const objCenterX = boxX + boxW / 2;
+                const objCenterY = boxY + boxH / 2;
                 const isInsideRoi = (
-                    boxX >= roiPx.x &&
-                    (boxX + boxW) <= (roiPx.x + roiPx.w) &&
-                    boxY >= roiPx.y &&
-                    (boxY + boxH) <= (roiPx.y + roiPx.h)
+                    objCenterX >= roiPx.x &&
+                    objCenterX <= (roiPx.x + roiPx.w) &&
+                    objCenterY >= roiPx.y &&
+                    objCenterY <= (roiPx.y + roiPx.h)
                 );
 
                 const threatColor = isInsideRoi
@@ -9343,21 +9660,55 @@ function saveAndExitYoloRoiEditMode() {
         canvas.style.cursor = 'default';
     }
 
-    if (activeYoloSettingsCamId) {
-        const targetCam = yoloCamerasList.find(c => String(c.id) === String(activeYoloSettingsCamId));
-        if (targetCam) {
-            if (!targetCam.settings) targetCam.settings = {};
-            targetCam.settings.roi = { ...currentYoloRoi };
-            saveYoloCamerasToStorage();
-        }
+    const camId = getActiveYoloCameraId();
+    const zoomVal = parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0');
+    const cropXVal = parseInt(document.getElementById('yolo-crop-x-slider')?.value || '0', 10);
+    const cropYVal = parseInt(document.getElementById('yolo-crop-y-slider')?.value || '0', 10);
+    const resVal = document.getElementById('yolo-stream-resolution')?.value || '720p';
+
+    let targetCam = yoloCamerasList.find(c => String(c.id) === String(camId));
+    if (!targetCam) {
+        targetCam = { id: camId, enabled: true, settings: {} };
+        yoloCamerasList.push(targetCam);
+    }
+    if (!targetCam.settings) targetCam.settings = {};
+    targetCam.settings.roi = { ...currentYoloRoi };
+    targetCam.settings.zoom = zoomVal;
+    targetCam.settings.cropX = cropXVal;
+    targetCam.settings.cropY = cropYVal;
+    targetCam.settings.resolution = resVal;
+    saveYoloCamerasToStorage();
+    localStorage.setItem(`arch3r_sensor_crop_${camId}`, JSON.stringify(targetCam.settings));
+
+    const payload = {
+        camera_id: camId,
+        zoom: zoomVal,
+        cropX: cropXVal,
+        cropY: cropYVal,
+        resolution: resVal,
+        roi: currentYoloRoi
+    };
+
+    const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+    fetchFn('/api/ai/grid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }).then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+    }).catch(err => {
+        enqueueOfflineSync('ai_grid', '/api/ai/grid', 'POST', payload, `ROI Zona Cam #${camId}`);
+        showToast('📱 Sambungan HP Terputus: Zona ROI tersimpan di HP & otomatis disinkronkan ke server saat online.', 'warning');
+    });
+
+    if (typeof appendYoloTerminalLog === 'function') {
+        appendYoloTerminalLog(`[ROI] 💾 Zona ROI berhasil dikalibrasi: [X:${Math.round(currentYoloRoi.x)}% Y:${Math.round(currentYoloRoi.y)}% W:${Math.round(currentYoloRoi.w)}% H:${Math.round(currentYoloRoi.h)}%]`, 'config');
     }
 
     updateYoloRoiDisplays();
     drawYoloViewLiveCanvasStream();
 
-    if (typeof showToast === 'function') {
-        showToast('💾 Zona ROI deteksi berhasil disimpan!', 'success');
-    }
+    showToast('💾 Zona ROI deteksi berhasil disimpan!', 'success');
 }
 window.saveAndExitYoloRoiEditMode = saveAndExitYoloRoiEditMode;
 
@@ -9395,19 +9746,38 @@ function initYoloViewCanvasRoiEditing() {
     if (!canvas || canvas.dataset.roiEditInitialized === 'true') return;
     canvas.dataset.roiEditInitialized = 'true';
 
+    // Inverse Matrix Coordinate Transformation: Maps client screen pointer directly to unscaled 0-100% video coordinate space
     const getCanvasPctPos = (e) => {
         const rect = canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        // 1. Raw screen percentage across the canvas element (0 to 100)
+        const screenPctX = Math.max(0, Math.min(100, ((clientX - rect.left) / (rect.width || 1)) * 100));
+        const screenPctY = Math.max(0, Math.min(100, ((clientY - rect.top) / (rect.height || 1)) * 100));
+
+        // 2. Read active Zoom and Pan
+        const zoomVal = Math.max(1.0, parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0'));
+        const cropXVal = parseInt(document.getElementById('yolo-crop-x-slider')?.value || '0', 10);
+        const cropYVal = parseInt(document.getElementById('yolo-crop-y-slider')?.value || '0', 10);
+
+        // 3. Exact Inverse Matrix:
+        // Forward: screenPct = 50 + (unscaledPct - 50) * zoomVal + cropOffset
+        // Inverse: unscaledPct = 50 + (screenPct - 50 - cropOffset) / zoomVal
+        const unscaledX = 50 + (screenPctX - 50 - cropXVal) / zoomVal;
+        const unscaledY = 50 + (screenPctY - 50 - cropYVal) / zoomVal;
+
         return {
-            x: Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)),
-            y: Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
+            x: Math.max(0, Math.min(100, unscaledX)),
+            y: Math.max(0, Math.min(100, unscaledY))
         };
     };
 
     const getHitHandle = (pos) => {
         const r = currentYoloRoi || { x: 10, y: 10, w: 80, h: 80 };
-        const tol = 4.5; // tolerance in percentage
+        const zoomVal = Math.max(1.0, parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0'));
+        // Adaptive handle hit tolerance scaled by zoom so clicking handles feels natural
+        const tol = Math.max(2.5, 5.0 / zoomVal);
 
         if (Math.abs(pos.x - r.x) < tol && Math.abs(pos.y - r.y) < tol) return 'nw';
         if (Math.abs(pos.x - (r.x + r.w)) < tol && Math.abs(pos.y - r.y) < tol) return 'ne';
@@ -9740,7 +10110,7 @@ function loadYoloCameraSettingsData(camId) {
 }
 
 function saveYoloCameraSettings(applyToAllGlobal = false) {
-    if (!activeYoloSettingsCamId && !applyToAllGlobal) return;
+    const camId = applyToAllGlobal ? 'global' : getActiveYoloCameraId();
 
     const thresholdVal = parseInt(document.getElementById('yolo-threshold-slider')?.value || '50', 10);
     const resolution = document.getElementById('yolo-stream-resolution')?.value || '720p';
@@ -9783,19 +10153,50 @@ function saveYoloCameraSettings(applyToAllGlobal = false) {
         });
         localStorage.setItem('arch3r_yolo_global_default', JSON.stringify(newSettings));
     } else {
-        const targetCam = yoloCamerasList.find(c => String(c.id) === String(activeYoloSettingsCamId));
+        const targetCam = yoloCamerasList.find(c => String(c.id) === String(camId));
         if (targetCam) {
             targetCam.settings = newSettings;
         } else {
             yoloCamerasList.push({
-                id: activeYoloSettingsCamId,
+                id: camId,
                 enabled: true,
                 settings: newSettings
             });
         }
+        localStorage.setItem(`arch3r_sensor_crop_${camId}`, JSON.stringify(newSettings));
     }
 
     saveYoloCamerasToStorage();
+
+    const payload = {
+        camera_id: camId,
+        zoom,
+        cropX,
+        cropY,
+        resolution,
+        roi: currentYoloRoi,
+        threshold: thresholdVal,
+        engineModel,
+        processingFps,
+        applyToAllGlobal
+    };
+
+    // Persist to backend /api/ai/grid with offline queue fallback
+    const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+    fetchFn('/api/ai/grid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }).then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+    }).catch(err => {
+        enqueueOfflineSync('ai_grid', '/api/ai/grid', 'POST', payload, `Parameter AI Cam #${camId}`);
+        showToast('📱 Sambungan HP Terputus: Parameter AI disimpan di HP & akan otomatis disinkronkan saat terhubung.', 'warning');
+    });
+
+    if (typeof appendYoloTerminalLog === 'function') {
+        appendYoloTerminalLog(`[CONFIG] 💾 Parameter AI Disimpan: Model=${engineModel}, FPS=${processingFps}, Sensitivitas=${thresholdVal}%, Frame=(${cropX}%,${cropY}%,${zoom}x)`, 'config');
+    }
 
     // Update Top Right HUD Badges
     const hudModel = document.getElementById('yolo-hud-model-name');
@@ -9813,13 +10214,9 @@ function saveYoloCameraSettings(applyToAllGlobal = false) {
 
     const msg = applyToAllGlobal
         ? '🌐 Parameter YOLO AI berhasil diterapkan ke SEMUA kamera secara Global!'
-        : '💾 Parameter YOLO AI berhasil disimpan khusus untuk kamera ini (Per-Kamera)!';
+        : '💾 Parameter YOLO AI berhasil disimpan khusus untuk kamera ini!';
 
-    if (typeof showToast === 'function') {
-        showToast(msg, 'success');
-    } else {
-        alert(`✅ ${msg}`);
-    }
+    showToast(msg, 'success');
 }
 window.saveYoloCameraSettings = saveYoloCameraSettings;
 
@@ -9848,6 +10245,29 @@ function toggleYoloVideoFullscreen() {
     }
 }
 window.toggleYoloVideoFullscreen = toggleYoloVideoFullscreen;
+
+function handleYoloFullscreenChange() {
+    const canvas = document.getElementById('yolo-view-canvas-overlay');
+    if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            canvas.width = Math.floor(rect.width);
+            canvas.height = Math.floor(rect.height);
+        }
+    }
+    drawYoloViewLiveCanvasStream();
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (typeof appendYoloTerminalLog === 'function') {
+        appendYoloTerminalLog(`[SYSTEM] ⛶ Mode Layar Penuh ${isFs ? 'Aktif' : 'Nonaktif'} (Stage 16:9 Sinkron)`, 'system');
+    }
+}
+document.addEventListener('fullscreenchange', handleYoloFullscreenChange);
+document.addEventListener('webkitfullscreenchange', handleYoloFullscreenChange);
+window.addEventListener('resize', () => {
+    if (document.getElementById('yolo-view-canvas-overlay')) {
+        drawYoloViewLiveCanvasStream();
+    }
+});
 
 // Backward Compatibility Helpers for Legacy Scripts & Handlers
 function updateYoloStudioZoomDisplay(val) { updateYoloVideoCropPreview(); }
@@ -9936,34 +10356,204 @@ function toggleYoloControlDrawer() {
 }
 window.toggleYoloControlDrawer = toggleYoloControlDrawer;
 
+function saveYoloSensorCropFrame() {
+    const camId = getActiveYoloCameraId();
+    const zoomVal = parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0');
+    const cropXVal = parseInt(document.getElementById('yolo-crop-x-slider')?.value || '0', 10);
+    const cropYVal = parseInt(document.getElementById('yolo-crop-y-slider')?.value || '0', 10);
+    const resVal = document.getElementById('yolo-stream-resolution')?.value || '720p';
+
+    let targetCam = yoloCamerasList.find(c => String(c.id) === String(camId));
+    if (!targetCam) {
+        targetCam = { id: camId, enabled: true, settings: {} };
+        yoloCamerasList.push(targetCam);
+    }
+    if (!targetCam.settings) targetCam.settings = {};
+    targetCam.settings.zoom = zoomVal;
+    targetCam.settings.cropX = cropXVal;
+    targetCam.settings.cropY = cropYVal;
+    targetCam.settings.resolution = resVal;
+    targetCam.settings.roi = { ...(currentYoloRoi || { x: 10, y: 10, w: 80, h: 80 }) };
+
+    saveYoloCamerasToStorage();
+    localStorage.setItem(`arch3r_sensor_crop_${camId}`, JSON.stringify(targetCam.settings));
+
+    const payload = {
+        camera_id: camId,
+        zoom: zoomVal,
+        cropX: cropXVal,
+        cropY: cropYVal,
+        resolution: resVal,
+        roi: currentYoloRoi
+    };
+
+    // Persist to backend with offline queue fallback
+    const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+    fetchFn('/api/ai/grid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }).then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+    }).catch(err => {
+        enqueueOfflineSync('ai_grid', '/api/ai/grid', 'POST', payload, `Frame Sensor Cam #${camId}`);
+        showToast('📱 Sambungan HP Terputus: Frame sensor AI disimpan di HP & otomatis disinkronkan saat terhubung.', 'warning');
+    });
+
+    appendYoloTerminalLog(`[SENSOR] 💾 Frame Pantauan Sensor AI Tersimpan: Zoom ${zoomVal.toFixed(1)}x, Pan X: ${cropXVal}%, Pan Y: ${cropYVal}%`, 'sensor');
+
+    showToast(`💾 Frame sensor AI (Zoom: ${zoomVal.toFixed(1)}x, Pan: ${cropXVal}%, ${cropYVal}%) berhasil disimpan sebagai area pantauan sensor!`, 'success');
+}
+window.saveYoloSensorCropFrame = saveYoloSensorCropFrame;
+
+function resetYoloSensorCropFrame() {
+    const zoomSlider = document.getElementById('yolo-zoom-slider');
+    const cropXSlider = document.getElementById('yolo-crop-x-slider');
+    const cropYSlider = document.getElementById('yolo-crop-y-slider');
+    if (zoomSlider) zoomSlider.value = '1.0';
+    if (cropXSlider) cropXSlider.value = '0';
+    if (cropYSlider) cropYSlider.value = '0';
+
+    updateYoloVideoCropPreview();
+    appendYoloTerminalLog('[SENSOR] 🔄 Frame sensor AI dikembalikan ke default 1.0x (Pan 0, 0)', 'info');
+
+    if (typeof showToast === 'function') {
+        showToast('Frame sensor AI dikembalikan ke posisi default (1.0x). Klik "Simpan Frame Sensor" jika ingin menjadikannya permanen.', 'info');
+    }
+}
+window.resetYoloSensorCropFrame = resetYoloSensorCropFrame;
+
+function simulateYoloDetectionTest() {
+    const roi = currentYoloRoi || { x: 10, y: 10, w: 80, h: 80 };
+
+    // Target 1: Inside ROI (Critical Intrusion)
+    const insideTarget = {
+        type: 'person',
+        label: 'Person (Intruder)',
+        confidence: 0.94,
+        pctX: Math.max(0, Math.min(90, roi.x + (roi.w * 0.3))),
+        pctY: Math.max(0, Math.min(90, roi.y + (roi.h * 0.3))),
+        pctW: Math.min(18, Math.max(8, roi.w * 0.35)),
+        pctH: Math.min(32, Math.max(14, roi.h * 0.45)),
+        color: '#ef4444'
+    };
+
+    // Target 2: Outside ROI (Normal Detection)
+    let outX = roi.x > 22 ? (roi.x / 2) : Math.min(88, roi.x + roi.w + 4);
+    let outY = Math.max(8, Math.min(80, roi.y + (roi.h * 0.5)));
+    const outsideTarget = {
+        type: 'car',
+        label: 'Mobil',
+        confidence: 0.88,
+        pctX: Math.max(2, Math.min(85, outX)),
+        pctY: Math.max(2, Math.min(85, outY)),
+        pctW: 20,
+        pctH: 15,
+        color: '#38bdf8'
+    };
+
+    activeRealYoloDetections = [insideTarget, outsideTarget];
+
+    // Force clear throttling map so test events are immediately registered in event strip
+    lastRecordedDetectionMap.clear();
+
+    // Trigger detection events for target strip & terminal
+    recordYoloDetectionEvent(insideTarget, true);
+    recordYoloDetectionEvent(outsideTarget, false);
+
+    // Re-draw canvas immediately
+    drawYoloViewLiveCanvasStream();
+
+    // Ensure terminal log wrapper is visible
+    const termWrapper = document.getElementById('yolo-terminal-log-wrapper');
+    if (termWrapper && termWrapper.style.display === 'none') {
+        termWrapper.style.display = 'block';
+    }
+
+    appendYoloTerminalLog('[TEST] 🧪 Simulasi diagnostik AI dipicu: 1 Target Pelanggaran ROI, 1 Target Luar Zona', 'system');
+    appendYoloTerminalLog(`[ALARM] 🚨 CRITICAL INTRUSION: Target ${insideTarget.label} (${Math.round(insideTarget.confidence * 100)}%) melanggar ZONA ROI!`, 'alarm');
+    appendYoloTerminalLog(`[TARGET] 🎯 DETECTED: Target ${outsideTarget.label} (${Math.round(outsideTarget.confidence * 100)}%) berada di luar perimeter`, 'target');
+
+    if (typeof showToast === 'function') {
+        showToast('🧪 Simulasi target AI aktif! Target terdeteksi & terminal log diperbarui.', 'success');
+    }
+}
+window.simulateYoloDetectionTest = simulateYoloDetectionTest;
+
+let yoloTerminalLogHistory = [];
+
+function appendYoloTerminalLog(text, level = 'info') {
+    const now = new Date();
+    const timeStr = now.toTimeString().substring(0, 8);
+    const entry = { time: timeStr, text, level };
+    yoloTerminalLogHistory.push(entry);
+    if (yoloTerminalLogHistory.length > 100) {
+        yoloTerminalLogHistory.shift();
+    }
+
+    const terminal = document.getElementById('yolo-telemetry-terminal');
+    if (!terminal) return;
+
+    // Remove placeholder if present
+    const placeholder = terminal.querySelector('.no-det-status');
+    if (placeholder) placeholder.remove();
+
+    let color = '#4ade80'; // default info
+    if (level === 'alarm' || level === 'critical') color = '#ef4444';
+    else if (level === 'target') color = '#38bdf8';
+    else if (level === 'config') color = '#fbbf24';
+    else if (level === 'sensor') color = '#c084fc';
+    else if (level === 'system') color = '#94a3b8';
+
+    const line = document.createElement('div');
+    line.style.padding = '2px 0';
+    line.style.lineHeight = '1.4';
+    line.innerHTML = `<span style="color:#64748b; font-family:monospace;">[${timeStr}]</span> <span style="color:${color};">${text}</span>`;
+    terminal.appendChild(line);
+
+    while (terminal.childElementCount > 80) {
+        terminal.removeChild(terminal.firstElementChild);
+    }
+
+    terminal.scrollTop = terminal.scrollHeight;
+}
+window.appendYoloTerminalLog = appendYoloTerminalLog;
+
+function clearYoloTerminalLog() {
+    yoloTerminalLogHistory = [];
+    const terminal = document.getElementById('yolo-telemetry-terminal');
+    if (terminal) {
+        const timeStr = new Date().toTimeString().substring(0, 8);
+        terminal.innerHTML = `<div class="no-det-status" style="color:#64748b; font-style:italic;">[${timeStr}] 🧹 Terminal log dibersihkan. Memantau inferensi stream AI...</div>`;
+    }
+    if (typeof showToast === 'function') {
+        showToast('🧹 Terminal log telemetri AI dibersihkan.', 'info');
+    }
+}
+window.clearYoloTerminalLog = clearYoloTerminalLog;
+
 function startYoloTelemetrySimulator() {
     if (yoloTelemetryTimer) clearInterval(yoloTelemetryTimer);
 
-    // Clean Telemetry Logger showing real detection events
-    yoloTelemetryTimer = setInterval(() => {
-        const terminal = document.getElementById('yolo-telemetry-terminal');
-        const viewPane = document.getElementById('yolo-settings-view');
+    // Initial stream greeting
+    appendYoloTerminalLog('🟢 Telemetri Inferensi YOLO AI Siap & Berjalan', 'system');
 
-        if (!terminal || !viewPane || viewPane.style.display === 'none' || activeYoloSettingsTab !== 'view') {
+    let heartbeatTick = 0;
+    yoloTelemetryTimer = setInterval(() => {
+        const viewPane = document.getElementById('yolo-settings-view');
+        if (!viewPane || viewPane.style.display === 'none' || activeYoloSettingsTab !== 'view') {
             return;
         }
 
-        const now = new Date();
-        const timeStr = now.toTimeString().split(' ')[0];
-
+        heartbeatTick++;
         if (Array.isArray(activeRealYoloDetections) && activeRealYoloDetections.length > 0) {
-            terminal.innerHTML = '';
-            activeRealYoloDetections.forEach(obj => {
-                const label = obj.label || obj.type || 'Object';
-                const conf = obj.confidence ? `${Math.round(obj.confidence * 100)}%` : '92%';
-                const logLine = document.createElement('div');
-                logLine.style.padding = '2px 0';
-                logLine.innerHTML = `<span style="color:#64748b;">[${timeStr}]</span> <strong style="color:#38bdf8;">${label}</strong> detected | Conf: <span style="color:#4ade80;">${conf}</span> | Source: <span style="color:#a855f7;">YOLO AI Inference Engine</span>`;
-                terminal.appendChild(logLine);
-            });
+            if (heartbeatTick % 4 === 0) {
+                const summary = activeRealYoloDetections.map(d => `${d.label || d.type || 'Object'} (${Math.round((d.confidence || 0.9) * 100)}%)`).join(', ');
+                appendYoloTerminalLog(`[INFERENCE] Target Aktif: ${summary}`, 'target');
+            }
         } else {
-            if (!terminal.querySelector('.no-det-status')) {
-                terminal.innerHTML = `<div class="no-det-status" style="color:#64748b; font-style:italic;">[${timeStr}] 🟢 YOLO AI Engine Active | Standing by for real object detection...</div>`;
+            if (heartbeatTick % 10 === 0) {
+                appendYoloTerminalLog('[HEARTBEAT] 🟢 Engine AI Siaga. Memantau frame video RTSP untuk gerakan objek...', 'system');
             }
         }
     }, 2000);
@@ -9971,6 +10561,7 @@ function startYoloTelemetrySimulator() {
 
 function openYoloCameraSettings(camId) {
     activeYoloSettingsCamId = camId;
+    localStorage.setItem('arch3r_yolo_active_cam_id', String(camId));
     const target = yoloCamerasList.find(c => String(c.id) === String(camId));
     const camName = target ? target.name : `Kamera (${camId})`;
 

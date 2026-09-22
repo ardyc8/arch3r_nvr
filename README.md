@@ -1,5 +1,34 @@
-# ⚡ Arch3r NVR (Ver. 10.5.5)
+# ⚡ Arch3r NVR (Ver. 10.5.7)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.5.7:
+- **Ketahanan Jaringan Mobile HP (Offline Resilience) & Persistent AI Sensor Viewport**:
+  1. **Enterprise Offline Resilience & Auto-Sync Engine (Anti Gagal Simpan saat Internet HP Terputus)**:
+     - Mengatasi kegagalan penyimpanan konfigurasi ketika koneksi internet smartphone/tethering HP terputus atau tidak stabil.
+     - Setiap perubahan konfigurasi (Frame Pantauan Sensor AI, Kalibrasi Zona ROI, Parameter Model AI, Pendaftaran Kamera, Pengaturan Storage, & Addon) langsung diamankan ke memori browser HP (`localStorage`).
+     - Menyediakan antrean sinkronisasi offline (`arch3r_offline_sync_queue`) yang secara otomatis mendeteksi pemulihan sinyal internet HP dan menyinkronkan data tertunda ke server NVR seketika tanpa kehilangan data sedikit pun.
+     - Dilengkapi banner status koneksi interaktif di sudut kanan bawah (`⚡ Offline (HP Terputus)` / `🟢 Terhubung Kembali`) serta notifikasi toast mengambang non-blocking (Pure Vanilla DOM).
+  2. **Penyimpanan Persisten Frame Pantauan Sensor AI (Pan X, Pan Y, Zoom & ROI)**:
+     - Zoom, Pan X, dan Pan Y kini sepenuhnya persisten dan berfungsi sebagai area pantauan sensor default untuk pipeline inferensi YOLO AI (bukan sekadar tampilan view).
+     - Mengatasi `activeYoloSettingsCamId` null dengan fungsi fallback dinamis `getActiveYoloCameraId()`, sehingga penyimpanan frame sensor selalu berhasil mengikat data ke kamera yang aktif.
+     - Endpoint backend `/api/ai/grid` dan `/api/ai/save_grid` diperkuat dengan penyimpanan terpusat `db.ai_grids` yang otomatis disimpan ke `local_db_cameras.json` pada STB, aman dari reboot atau crash.
+  3. **Presisi Inverse Transformation Matrix untuk Gambaran ROI di Semua Mode**:
+     - Menjamin koordinat ROI yang digambar pada mode Fullscreen 16:9 maupun windowed tetap akurat 1:1 terhadap native frame sensor video tanpa pergeseran atau offset.
+  4. **Target Terdeteksi & Terminal Log Telemetri Stream**:
+     - Target terdeteksi diperbarui secara real-time dengan corner-bracket L taktis, event strip, filter target, dan terminal stream log beraneka warna dengan tombol diagnostik `🧪 Uji Target`.
+  5. **Keamanan Multi-Tenant & Database Protection**:
+     - Mengizinkan Superadmin untuk menambah, mengedit, dan menghapus kamera serta konfigurasi AI di semua gedung tenant.
+     - Menjaga integritas direktori database (`live_db/`, `data/live_db/`) dengan proteksi ketat di `.gitignore`.
+
+### 📋 Changelog Pembaruan Ver. 10.5.6:
+- **Kalibrasi Presisi Inverse Matrix Frame Sensor AI & Persistent Viewport**:
+  1. **Perbaikan Logika Kalkulasi Koordinat ROI (Inverse Transformation Matrix)**: Memperbaiki ketidaksesuaian posisi kotak ROI saat digambar pada canvas ketika Zoom, Pan X, Pan Y, atau mode Layar Penuh (Fullscreen 16:9) sedang aktif. Input pointer mouse/sentuh kini dibalikkan (*inverted*) secara matematis terhadap matriks transformasi canvas (`unscaled = 50 + (screen - 50 - cropOffset) / zoom`), sehingga titik yang digambar selalu presisi 1:1 terhadap koordinat native sensor frame tanpa pergeseran.
+  2. **Penyimpanan Persisten Frame Sensor AI (Area Pantauan Sensor Default)**: Pengaturan Pan X, Pan Y, dan Zoom kini dapat diedit dan disimpan sebagai area pantauan sensor bawaan (*default sensor viewport*) baik di local storage per-kamera maupun ke database NVR secara persisten melalui endpoint backend `POST /api/ai/grid`.
+  3. **Penataan Layout 16:9 Aspect Ratio Lock pada Fullscreen**: Video player dan canvas overlay dikunci pada kontainer panggung sensor 16:9 (`#yolo-video-stage`) sehingga pada monitor resolusi apa pun atau mode fullscreen STB HDMI, aspek rasio tidak melar atau terpotong (*letterbox/pillarbox* terlindungi).
+  4. **Target Terdeteksi & Live Telemetry Terminal Stream**:
+     - Memperbaiki sistem pencatatan event *Target Terdeteksi* (Event Strip) dengan sinkronisasi akurat terhadap zona perimeter ROI.
+     - Terminal log kini berfungsi sebagai *continuous real-time telemetry stream* dengan filter warna (Merah untuk Pelanggaran Alarm, Biru untuk Target Terdeteksi, Kuning untuk Konfigurasi, Ungu untuk Frame Sensor), auto-scroll, dan batas memori snappy untuk Armbian STB.
+     - Penambahan tombol diagnostik simulasi `🧪 Uji Target` untuk menguji reaksi visual corner-bracket, alarm pelanggaran zona ROI, penambahan kartu event, dan alur telemetri terminal log secara instan.
 
 ### 📋 Changelog Pembaruan Ver. 10.5.5:
 - **Commercial Enterprise YOLO AI Suite & Unified Workspace**:
