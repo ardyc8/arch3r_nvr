@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.3.6 Multi-Tenant Controller & Clean Default YOLO AI Engine
+// script.js - Archer NVR Ver. 10.4.5 Multi-Tenant Controller & Clean Default YOLO AI Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -8430,11 +8430,74 @@ function startYoloLiveCanvasStreamLoop() {
     renderFrame();
 }
 
+function setYoloStreamErrorUI(elementId, isError, errorTitle, errorMsg, errorDetails) {
+    const videoEl = document.getElementById(elementId);
+    if (!videoEl) return;
+    const parent = videoEl.parentElement;
+    if (!parent) return;
+
+    let errorBadge = parent.querySelector('.yolo-stream-error-badge');
+    if (!isError) {
+        if (errorBadge) errorBadge.remove();
+        return;
+    }
+
+    if (!errorBadge) {
+        errorBadge = document.createElement('div');
+        errorBadge.className = 'yolo-stream-error-badge';
+        errorBadge.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 12px 16px;
+            max-width: 88%;
+            text-align: center;
+            color: #f8fafc;
+            font-family: sans-serif;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+            pointer-events: auto;
+        `;
+        parent.appendChild(errorBadge);
+    }
+
+    errorBadge.innerHTML = `
+        <div style="font-size:0.9rem; font-weight:700; color:#f87171; margin-bottom:4px; display:flex; align-items:center; justify-content:center; gap:6px;">
+            <span>⚠️</span> ${errorTitle || 'Gagal Memuat Stream Video'}
+        </div>
+        <div style="font-size:0.78rem; color:#cbd5e1; margin-bottom:6px;">${errorMsg || 'Kamera offline atau RTSP stream terputus.'}</div>
+        <div style="font-size:0.72rem; color:#94a3b8; font-family:monospace; background:rgba(0,0,0,0.5); padding:4px 8px; border-radius:4px; border:1px solid rgba(255,255,255,0.08); word-break:break-all;">${errorDetails || ''}</div>
+        <div style="font-size:0.72rem; color:#38bdf8; margin-top:8px;">💡 Petunjuk: Pastikan RTSP Kamera online & gunakan codec video H.264 di setting kamera.</div>
+    `;
+}
+window.setYoloStreamErrorUI = setYoloStreamErrorUI;
+
 function attachYoloVideoPreview(elementId) {
     const videoEl = document.getElementById(elementId);
     if (!videoEl) return;
 
-    if (!activeYoloSettingsCamId) return;
+    // Reset previous error badge
+    setYoloStreamErrorUI(elementId, false);
+
+    // Auto-select fallback camera if activeYoloSettingsCamId is null
+    if (!activeYoloSettingsCamId) {
+        if (typeof yoloCamerasList !== 'undefined' && Array.isArray(yoloCamerasList) && yoloCamerasList.length > 0) {
+            activeYoloSettingsCamId = yoloCamerasList[0].id;
+        } else if (typeof cameras !== 'undefined' && Array.isArray(cameras) && cameras.length > 0) {
+            activeYoloSettingsCamId = cameras[0].id || cameras[0].camId;
+        }
+    }
+
+    if (!activeYoloSettingsCamId) {
+        console.warn(`[YOLO AI Stream] Cannot attach preview to #${elementId}: No active camera selected.`);
+        setYoloStreamErrorUI(elementId, true, 'Kamera Belum Dipilih', 'Tidak ada kamera aktif yang terhubung ke YOLO AI.', 'Silakan pilih kamera terlebih dahulu dari daftar.');
+        return;
+    }
 
     let targetCam = null;
     if (typeof cameras !== 'undefined' && Array.isArray(cameras)) {
@@ -8445,29 +8508,110 @@ function attachYoloVideoPreview(elementId) {
         if (yCam) targetCam = yCam;
     }
 
-    const token = localStorage.getItem('nvr_auth_token') || '';
+    const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+    const rawRtspUrl = targetCam ? (targetCam.rtsp_url || targetCam.mainStreamUrl || targetCam.streamUrl || '') : '';
+    const mediaMtxPath = targetCam?.mediaMtxPath || targetCam?.id || activeYoloSettingsCamId;
+
     let streamUrl = '';
 
-    if (targetCam) {
-        if (targetCam.mainStreamUrl && (targetCam.mainStreamUrl.startsWith('http://') || targetCam.mainStreamUrl.startsWith('https://') || targetCam.mainStreamUrl.endsWith('.m3u8'))) {
-            streamUrl = targetCam.mainStreamUrl;
-        } else if (targetCam.hlsUrl) {
-            streamUrl = targetCam.hlsUrl;
-        } else {
-            const path = targetCam.mediaMtxPath || targetCam.id || activeYoloSettingsCamId;
-            streamUrl = `/stream/${path}/index.m3u8?token=${encodeURIComponent(token)}`;
+    // Check if raw source is RTSP protocol
+    if (rawRtspUrl && (rawRtspUrl.startsWith('rtsp://') || rawRtspUrl.startsWith('rtsps://'))) {
+        console.log(`[YOLO AI Stream] Detected raw RTSP protocol (${rawRtspUrl}). Browsers do not support direct RTSP rendering. Routing stream through MediaMTX HLS endpoint...`);
+        streamUrl = `/stream/${mediaMtxPath}/index.m3u8?token=${encodeURIComponent(token)}`;
+    } else if (targetCam?.hlsUrl && (targetCam.hlsUrl.startsWith('http://') || targetCam.hlsUrl.startsWith('https://') || targetCam.hlsUrl.startsWith('/'))) {
+        streamUrl = targetCam.hlsUrl;
+        if (!streamUrl.includes('token=') && token) {
+            streamUrl += (streamUrl.includes('?') ? '&' : '?') + `token=${encodeURIComponent(token)}`;
         }
+    } else if (targetCam?.mainStreamUrl && (targetCam.mainStreamUrl.startsWith('http://') || targetCam.mainStreamUrl.startsWith('https://') || targetCam.mainStreamUrl.endsWith('.m3u8'))) {
+        streamUrl = targetCam.mainStreamUrl;
     } else {
-        streamUrl = `/stream/${activeYoloSettingsCamId}/index.m3u8?token=${encodeURIComponent(token)}`;
+        streamUrl = `/stream/${mediaMtxPath}/index.m3u8?token=${encodeURIComponent(token)}`;
     }
 
-    if (typeof initHlsPlayer === 'function') {
-        initHlsPlayer(elementId, streamUrl);
-    } else if (window.Hls && Hls.isSupported()) {
-        const hls = new Hls({ lowLatencyMode: true });
+    console.group(`📡 [YOLO AI Stream Init] Element: #${elementId} | Camera ID: ${activeYoloSettingsCamId}`);
+    console.log(`• Camera Name:`, targetCam ? (targetCam.name || targetCam.id) : 'Unknown Camera');
+    console.log(`• Raw RTSP/Source URL:`, rawRtspUrl || 'N/A');
+    console.log(`• Final HLS Stream URL:`, streamUrl);
+    console.log(`• HLS.js Supported:`, !!(window.Hls && Hls.isSupported()));
+    console.groupEnd();
+
+    // Destroy previous HLS player instance attached to this element ID
+    if (typeof activeHlsPlayers !== 'undefined' && activeHlsPlayers[elementId]) {
+        try { activeHlsPlayers[elementId].destroy(); } catch (e) {}
+        delete activeHlsPlayers[elementId];
+    }
+
+    videoEl.onerror = () => {
+        const err = videoEl.error;
+        console.error(`[YOLO HTML5 Video Element Error] #${elementId}`, err);
+        if (err) {
+            setYoloStreamErrorUI(
+                elementId,
+                true,
+                'HTML5 Media Playback Error',
+                'Browser gagal memproses sumber video stream.',
+                `Code: ${err.code} - ${err.message || 'Media decode failure / Network error'}`
+            );
+        }
+    };
+
+    if (window.Hls && Hls.isSupported()) {
+        const hls = new Hls({
+            lowLatencyMode: true,
+            maxBufferLength: 4,
+            maxMaxBufferLength: 6,
+            enableWorker: true
+        });
+        if (typeof activeHlsPlayers !== 'undefined') {
+            activeHlsPlayers[elementId] = hls;
+        }
         hls.loadSource(streamUrl);
         hls.attachMedia(videoEl);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+
+        hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+            console.log(`[YOLO AI Stream] ✅ Manifest parsed successfully for #${elementId}. Stream Levels:`, data.levels);
+            setYoloStreamErrorUI(elementId, false);
+            videoEl.play().catch(err => {
+                console.warn(`[YOLO AI Stream] Autoplay blocked or deferred for #${elementId}:`, err);
+            });
+        });
+
+        hls.on(Hls.Events.ERROR, (event, data) => {
+            console.warn(`[YOLO AI HLS Event Error] #${elementId}`, data);
+            if (data.fatal) {
+                let errorTitle = 'Gagal Memuat Stream RTSP / HLS';
+                let errorMsg = 'Stream kamera terputus atau URL MediaMTX tidak dapat dijangkau.';
+                let details = `Fatal Error: ${data.type} | Details: ${data.details}`;
+
+                if (data.details === 'manifestIncompatibleCodecsError' || data.details === 'bufferAddCodecError' || (data.reason && data.reason.includes('codec'))) {
+                    errorTitle = '⚠️ Error Codec Inkompatibel (H.265 / HEVC)';
+                    errorMsg = 'Kamera menggunakan codec H.265 yang tidak didukung secara native oleh browser.';
+                    details = `Codec RTSP mismatch: Transcode video RTSP ke H.264 pada setting Kamera / NVR.`;
+                    console.error(`[YOLO AI Codec Error] Camera ${activeYoloSettingsCamId} stream failed due to unsupported H.265 codec.`);
+                }
+
+                setYoloStreamErrorUI(elementId, true, errorTitle, errorMsg, details);
+
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.log(`[YOLO AI Stream] Attempting network recovery for #${elementId}...`);
+                        setTimeout(() => { if (activeHlsPlayers && activeHlsPlayers[elementId]) activeHlsPlayers[elementId].startLoad(); }, 3000);
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.log(`[YOLO AI Stream] Attempting media recovery for #${elementId}...`);
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        hls.destroy();
+                        break;
+                }
+            }
+        });
+    } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+        videoEl.src = streamUrl;
+        videoEl.addEventListener('loadedmetadata', () => {
+            setYoloStreamErrorUI(elementId, false);
             videoEl.play().catch(() => {});
         });
     } else {
@@ -8741,32 +8885,6 @@ function switchYoloSettingsTab(tabName) {
 }
 window.switchYoloSettingsTab = switchYoloSettingsTab;
 
-function attachYoloVideoPreview(elementId) {
-    const videoEl = document.getElementById(elementId);
-    if (!videoEl) return;
-
-    if (!activeYoloSettingsCamId) return;
-    const targetCam = (typeof cameras !== 'undefined' && Array.isArray(cameras)) 
-        ? cameras.find(c => String(c.id) === String(activeYoloSettingsCamId) || String(c.camId) === String(activeYoloSettingsCamId))
-        : null;
-    
-    let streamUrl = '';
-    if (targetCam) {
-        streamUrl = targetCam.hlsUrl || targetCam.streamUrl || `/live/${targetCam.id}/index.m3u8`;
-    }
-
-    if (streamUrl && window.Hls && Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(streamUrl);
-        hls.attachMedia(videoEl);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            videoEl.play().catch(() => {});
-        });
-    } else if (streamUrl) {
-        videoEl.src = streamUrl;
-        videoEl.play().catch(() => {});
-    }
-}
 
 let currentYoloRoi = { x: 10, y: 10, w: 80, h: 80 };
 let isDraggingRoi = false;

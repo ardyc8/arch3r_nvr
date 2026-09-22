@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.4.4",
-  "description": "Arch3r NVR Ver. 10.4.4 - Full-Stack NVR CCTV System featuring Professional YOLO AI Addon Studio with Target Object Classifications, Pan/Crop Offsets, NPU STB Acceleration & Event Triggers.",
+  "name": "Arch3r NVR Ver. 10.4.5",
+  "description": "Arch3r NVR Ver. 10.4.5 - Full-Stack NVR CCTV System featuring YOLO AI Video Preview Stream Initialization, RTSP-to-HLS Auto Transcoding Routing & Codec Diagnostic Handlers.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
