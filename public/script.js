@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.3.1 Multi-Tenant Controller & Clean Default YOLO AI Engine
+// script.js - Archer NVR Ver. 10.3.2 Multi-Tenant Controller & Clean Default YOLO AI Engine
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -4962,29 +4962,32 @@ function renderAIFrame() {
     
     // Live Telemetry Scanning Ticks (Runs continuously while live tab is open)
     aiLiveFrameCounter++;
-    if (aiLiveFrameCounter % 150 === 0) {
-        const camNameStr = (aiCurrentCam && aiCurrentCam.name) ? aiCurrentCam.name : 'Kamera NVR';
-        const evalBadge = document.getElementById('ai-telemetry-eval-badge');
-        const activeZonesCount = (aiZones && aiZones.length > 0) ? aiZones.length : (aiGridRect.w > 0 ? 1 : 0);
-        const curLabel = (aiZones && aiZones[aiActiveZoneIndex]) ? (aiZones[aiActiveZoneIndex].label || `Objek #${aiActiveZoneIndex + 1}`) : 'Area ROI Utama';
+    if (aiLiveFrameCounter % 120 === 0) {
+        const camSelect = document.getElementById('ai-cam-select');
+        const camNameStr = (camSelect && camSelect.options && camSelect.selectedIndex >= 0) 
+            ? camSelect.options[camSelect.selectedIndex].text 
+            : ((aiCurrentCam && aiCurrentCam.name) ? aiCurrentCam.name : 'Kamera NVR');
         
-        if (isVideoPlaying) {
-            if (evalBadge) {
-                evalBadge.innerHTML = '🟢 STATUS: LIVE SCANNING & PEMBACAAN VISI';
-                evalBadge.style.background = 'rgba(34,197,94,0.15)';
-                evalBadge.style.color = '#34d399';
-                evalBadge.style.borderColor = 'rgba(34,197,94,0.3)';
+        const isAiEnabled = document.getElementById('ai-cam-enabled') ? document.getElementById('ai-cam-enabled').checked : true;
+        const imgszVal = document.getElementById('ai-imgsz-select') ? document.getElementById('ai-imgsz-select').value : '320';
+        const confVal = document.getElementById('ai-conf-slider') ? document.getElementById('ai-conf-slider').value : '50';
+
+        const targets = [];
+        if (document.getElementById('yolo-target-person')?.checked) targets.push('Manusia');
+        if (document.getElementById('yolo-target-car')?.checked) targets.push('Mobil');
+        if (document.getElementById('yolo-target-motorcycle')?.checked) targets.push('Motor');
+        if (document.getElementById('yolo-target-bicycle')?.checked) targets.push('Sepeda');
+        const targetStr = targets.length > 0 ? targets.join(', ') : 'Semua Objek';
+        
+        if (isAiEnabled) {
+            if (isVideoPlaying) {
+                appendAITelemetry(`⚡ [YOLOv8 Engine Active] Menganalisis Aliran Stream Live "${camNameStr}" (${imgszVal}x${imgszVal}px @ ${confVal}% min)`, 'scan');
+                appendAITelemetry(`🔍 [Analisis Target] Target Deteksi: [${targetStr}] • Scanning Bounding Box Real-time...`, 'eval');
+            } else {
+                appendAITelemetry(`📡 [YOLOv8 Siaga] Kamera: "${camNameStr}" • Siaga membaca frame video stream RTSP...`, 'system');
             }
-            appendAITelemetry(`👁️ SCAN LIVE [25 FPS]: ${camNameStr} | Objek Aktif: "${curLabel}" (${activeZonesCount} Total ROI)`, 'scan');
-            appendAITelemetry(`📊 ANALISIS FRAME: Feed RTSP Aktif • Scanning Aturan ROI & Evaluasi Dwell...`, 'eval');
         } else {
-            if (evalBadge) {
-                evalBadge.innerHTML = '🎯 STATUS: MENUNGGU VIDEO STREAM';
-                evalBadge.style.background = 'rgba(234,179,8,0.15)';
-                evalBadge.style.color = '#facc15';
-                evalBadge.style.borderColor = 'rgba(234,179,8,0.3)';
-            }
-            appendAITelemetry(`⌛ MENUNGGU STREAM: ${camNameStr} • Siaga membaca feed video...`, 'system');
+            appendAITelemetry(`⏸️ [YOLO AI Nonaktif] Fitur analisis deteksi dijeda pengguna. Centang "Aktifkan YOLO AI" untuk memulai.`, 'eval');
         }
     }
     
@@ -5246,7 +5249,7 @@ function emitLiveTelemetryTick(promptMet, colliding, stationary, minDwell) {
 
 // REAL-TIME TEXT TELEMETRY CONSOLE FUNCTIONS
 function appendAITelemetry(line, type = 'info') {
-    const term = document.getElementById('ai-text-telemetry-log');
+    const term = document.getElementById('ai-telemetry-log') || document.getElementById('ai-text-telemetry-log');
     if (!term) return;
     
     const now = new Date();
@@ -5266,11 +5269,11 @@ function appendAITelemetry(line, type = 'info') {
         color = '#10b981';
         prefix = '✅';
     } else if (type === 'scan') {
-        color = '#94a3b8';
-        prefix = '👁️';
+        color = '#38bdf8';
+        prefix = '⚡';
     } else if (type === 'eval') {
         color = '#f59e0b';
-        prefix = '⏳';
+        prefix = '🔍';
     } else if (type === 'system') {
         color = '#60a5fa';
         prefix = '⚙️';
@@ -5285,13 +5288,13 @@ function appendAITelemetry(line, type = 'info') {
         term.removeChild(term.firstChild);
     }
     
-    if (aiTelemetryAutoScroll) {
+    if (typeof aiTelemetryAutoScroll === 'undefined' || aiTelemetryAutoScroll) {
         term.scrollTop = term.scrollHeight;
     }
 }
 
 function copyAITelemetryLog() {
-    const term = document.getElementById('ai-text-telemetry-log');
+    const term = document.getElementById('ai-telemetry-log') || document.getElementById('ai-text-telemetry-log');
     if (!term) return;
     const text = term.innerText || term.textContent;
     navigator.clipboard.writeText(text).then(() => {
@@ -5302,8 +5305,8 @@ function copyAITelemetryLog() {
 }
 
 function clearAITelemetryLog() {
-    const term = document.getElementById('ai-text-telemetry-log');
-    if (term) term.innerHTML = '';
+    const term = document.getElementById('ai-telemetry-log') || document.getElementById('ai-text-telemetry-log');
+    if (term) term.innerHTML = '<div style="color:#64748b;">[Log dibersihkan - Menunggu data analisis YOLO...]</div>';
 }
 
 function toggleAITelemetryScroll() {
