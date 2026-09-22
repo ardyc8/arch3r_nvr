@@ -436,6 +436,105 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     // 1. AUTHENTICATION & ROLE ROUTING
     // =========================================================================
+    // --- Kiosk Shield & Real-Time TV Remote Controller Engine ---
+    let kioskPollerInterval = null;
+    let lastKioskUpdatedAt = 0;
+    let lastRefreshSeq = 0;
+
+    function applyKioskDisplayMode() {
+        document.body.classList.add('kiosk-display-mode');
+        const sidebar = document.getElementById('sidebar');
+        const topNav = document.querySelector('.top-navbar');
+        const mainContent = document.querySelector('.main-content');
+        const monitorWrapper = document.getElementById('monitorWrapper');
+
+        if (sidebar) sidebar.style.display = 'none';
+        if (topNav) topNav.style.display = 'none';
+        if (mainContent) {
+            mainContent.style.marginLeft = '0';
+            mainContent.style.width = '100vw';
+            mainContent.style.height = '100vh';
+            mainContent.style.padding = '0';
+        }
+        if (monitorWrapper) {
+            monitorWrapper.style.width = '100vw';
+            monitorWrapper.style.height = '100vh';
+        }
+
+        const monitorPane = document.getElementById('view-monitor');
+        if (monitorPane) {
+            document.querySelectorAll('.view-pane').forEach(p => p.classList.remove('active'));
+            monitorPane.classList.add('active');
+        }
+    }
+    window.applyKioskDisplayMode = applyKioskDisplayMode;
+
+    function startKioskRemotePoller() {
+        if (kioskPollerInterval) return;
+        
+        kioskPollerInterval = setInterval(async () => {
+            try {
+                const res = await fetch('/api/addons/hdmi-kiosk/live-state');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (!data.success || !data.liveState) return;
+
+                const st = data.liveState;
+                if (st.updated_at && st.updated_at !== lastKioskUpdatedAt) {
+                    lastKioskUpdatedAt = st.updated_at;
+
+                    // Handle refresh command
+                    if (st.refresh_seq && st.refresh_seq !== lastRefreshSeq) {
+                        lastRefreshSeq = st.refresh_seq;
+                        if (typeof window.refreshAllStreams === 'function') {
+                            window.refreshAllStreams();
+                        }
+                    }
+
+                    // Handle standby / blackout
+                    let blackoutDiv = document.getElementById('kioskBlackoutOverlay');
+                    if (st.blackout) {
+                        if (!blackoutDiv) {
+                            blackoutDiv = document.createElement('div');
+                            blackoutDiv.id = 'kioskBlackoutOverlay';
+                            blackoutDiv.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#475569;font-family:sans-serif;';
+                            blackoutDiv.innerHTML = '<div style="font-size:3.5rem;margin-bottom:0.75rem;">🌙</div><div style="font-size:1.15rem;letter-spacing:1px;color:#64748b;font-weight:600;">ARCH3R NVR MONITOR STANDBY</div><div style="font-size:0.82rem;color:#475569;margin-top:0.4rem;">Layar TV dalam mode hemat daya • Aktifkan kembali lewat HP</div>';
+                            document.body.appendChild(blackoutDiv);
+                        }
+                        blackoutDiv.style.display = 'flex';
+                    } else if (blackoutDiv) {
+                        blackoutDiv.style.display = 'none';
+                    }
+
+                    // Handle preset layout
+                    if (st.preset === 'grid_1' || st.preset === 'single') {
+                        if (typeof window.onChannelDropdownChange === 'function') {
+                            window.onChannelDropdownChange(st.target_cam_id || 'all');
+                        }
+                        if (typeof window.setGridLayout === 'function') {
+                            window.setGridLayout(1);
+                        }
+                    } else if (st.preset === 'grid_4' || st.preset === 'live_grid') {
+                        if (typeof window.onChannelDropdownChange === 'function') {
+                            window.onChannelDropdownChange('all');
+                        }
+                        if (typeof window.setGridLayout === 'function') {
+                            window.setGridLayout(4);
+                        }
+                    } else if (st.preset === 'grid_9' || st.preset === 'live_grid_3x3') {
+                        if (typeof window.onChannelDropdownChange === 'function') {
+                            window.onChannelDropdownChange('all');
+                        }
+                        if (typeof window.setGridLayout === 'function') {
+                            window.setGridLayout(9);
+                        }
+                    }
+                }
+            } catch (_) {}
+        }, 2000);
+    }
+    window.startKioskRemotePoller = startKioskRemotePoller;
+
 async function checkAuth() {
         try {
             const res = await authFetch('/api/auth/status');
@@ -455,6 +554,18 @@ async function checkAuth() {
 
                 authOverlay.style.display = 'none';
 
+                // Jika peran adalah Kiosk Viewer atau URL mengandung parameter Kiosk
+                const isKioskQuery = window.location.search.includes('kiosk=1') || window.location.hash.includes('kiosk');
+                if (currentUserRole === 'kiosk_viewer' || isKioskQuery) {
+                    window.isKioskDisplay = true;
+                    applyKioskDisplayMode();
+                    userApp.style.display = 'none';
+                    adminApp.style.display = 'flex';
+                    initAdminDashboard();
+                    startKioskRemotePoller();
+                    return;
+                }
+
                 if (currentUserRole === 'administrator') {
                     userApp.style.display = 'none';
                     adminApp.style.display = 'flex';
@@ -469,12 +580,74 @@ async function checkAuth() {
                     initMobileUserApp();
                 }
             } else {
+                // Periksa apakah ini antarmuka Kiosk lokal STB (localhost / ?kiosk=1)
+                const isKioskCandidate = window.location.search.includes('kiosk=1') || 
+                                         window.location.hash.includes('kiosk') || 
+                                         window.location.hostname === 'localhost' || 
+                                         window.location.hostname === '127.0.0.1';
+                if (isKioskCandidate) {
+                    try {
+                        const kioskRes = await fetch('/api/kiosk/auth', { method: 'POST' });
+                        if (kioskRes.ok) {
+                            const kData = await kioskRes.json();
+                            if (kData.success && kData.token) {
+                                localStorage.setItem('nvr_auth_token', kData.token);
+                                localStorage.setItem('nvr_role', kData.role);
+                                localStorage.setItem('nvr_username', kData.username);
+                                currentUserRole = kData.role;
+                                currentUsername = kData.username;
+                                window.isKioskDisplay = true;
+
+                                authOverlay.style.display = 'none';
+                                userApp.style.display = 'none';
+                                adminApp.style.display = 'flex';
+                                applyKioskDisplayMode();
+                                initAdminDashboard();
+                                startKioskRemotePoller();
+                                return;
+                            }
+                        }
+                    } catch (kErr) {
+                        console.warn('[KIOSK] Auto-login STB gagal, beralih ke form login:', kErr);
+                    }
+                }
+
                 localStorage.removeItem('nvr_auth_token');
                 authOverlay.style.display = 'flex';
                 adminApp.style.display = 'none';
                 userApp.style.display = 'none';
             }
         } catch (err) {
+            // Periksa apakah ini antarmuka Kiosk lokal STB saat catch
+            const isKioskCandidate = window.location.search.includes('kiosk=1') || 
+                                     window.location.hash.includes('kiosk') || 
+                                     window.location.hostname === 'localhost' || 
+                                     window.location.hostname === '127.0.0.1';
+            if (isKioskCandidate) {
+                try {
+                    const kioskRes = await fetch('/api/kiosk/auth', { method: 'POST' });
+                    if (kioskRes.ok) {
+                        const kData = await kioskRes.json();
+                        if (kData.success && kData.token) {
+                            localStorage.setItem('nvr_auth_token', kData.token);
+                            localStorage.setItem('nvr_role', kData.role);
+                            localStorage.setItem('nvr_username', kData.username);
+                            currentUserRole = kData.role;
+                            currentUsername = kData.username;
+                            window.isKioskDisplay = true;
+
+                            authOverlay.style.display = 'none';
+                            userApp.style.display = 'none';
+                            adminApp.style.display = 'flex';
+                            applyKioskDisplayMode();
+                            initAdminDashboard();
+                            startKioskRemotePoller();
+                            return;
+                        }
+                    }
+                } catch (_) {}
+            }
+
             localStorage.removeItem('nvr_auth_token');
             authOverlay.style.display = 'flex';
             adminApp.style.display = 'none';
@@ -8035,10 +8208,19 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
         const preset = configObj.preset || 'live_grid';
 
         let camOptionsHtml = '<option value="">-- Pilih Kamera Fullscreen --</option>';
-        availableCams.forEach(cam => {
+        let camRemoteBtnsHtml = '';
+        availableCams.forEach((cam, idx) => {
             const isSel = String(cam.id) === String(configObj.target_cam_id) ? 'selected' : '';
             camOptionsHtml += `<option value="${cam.id}" ${isSel}>${cam.name}</option>`;
+            camRemoteBtnsHtml += `
+                <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'single', camId: '${cam.id}' })" style="padding:0.35rem 0.65rem; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; background:#1e293b; border-color:#334155; color:#e2e8f0; border-radius:4px;">
+                    <span>📹</span> ${cam.name || 'Kamera ' + (idx + 1)}
+                </button>
+            `;
         });
+        if (availableCams.length === 0) {
+            camRemoteBtnsHtml = '<span style="font-size:0.75rem; color:#94a3b8;">Belum ada kamera aktif terdaftar.</span>';
+        }
 
         container.innerHTML = `
             <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3);">
@@ -8081,10 +8263,66 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                 </div>
             </div>
 
+            <!-- REMOTE PINTAR LAYAR TV DARI SMARTPHONE (REAL-TIME KIOSK CONTROLLER) -->
+            <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <strong style="color:#38bdf8; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
+                        <span>🎮</span> Remote Pintar Layar TV (HP Controller)
+                    </strong>
+                    <span style="font-size:0.72rem; padding:0.2rem 0.5rem; border-radius:4px; background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.25);">
+                        Bebas Mouse / Keyboard Fisik
+                    </span>
+                </div>
+
+                <div style="margin-bottom:0.75rem;">
+                    <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.35rem; font-weight:600;">Ganti Tata Letak Grid TV:</span>
+                    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0.5rem;">
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_4', camId: 'all' })" style="padding:0.45rem; font-size:0.8rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.3rem;">
+                            <span>🔲</span> Quad (2x2)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_9', camId: 'all' })" style="padding:0.45rem; font-size:0.8rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.3rem;">
+                            <span>▦</span> 9 Kamera (3x3)
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_1', camId: availableCams[0]?.id || 'all' })" style="padding:0.45rem; font-size:0.8rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.3rem;">
+                            <span>⏹️</span> 1 Kamera Full
+                        </button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:0.75rem;">
+                    <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.35rem; font-weight:600;">Alihkan Langsung ke Kamera Tertentu di TV:</span>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:110px; overflow-y:auto; padding:0.25rem 0;">
+                        ${camRemoteBtnsHtml}
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.75rem;">
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'refresh' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
+                        <span>🔄</span> Refresh Layar TV
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleKioskBlackout()" id="btnKioskBlackout" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
+                        <span>🌙</span> Standby / Layar Hitam
+                    </button>
+                </div>
+            </div>
+
             <form id="addonConfigForm">
+                <div style="background:rgba(0,0,0,0.18); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
+                    <label style="display:block; margin-bottom:0.35rem; font-weight:600; font-size:0.88rem; color:var(--text);">
+                        🛡️ Hak Akses Sesi Tampilan TV (RBAC Keamanan):
+                    </label>
+                    <select name="role" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                        <option value="viewer" ${configObj.role !== 'admin' ? 'selected' : ''}>🔒 Kiosk Viewer (Hanya Live Stream Kamera - Terkunci Aman & Anti-Tamper)</option>
+                        <option value="admin" ${configObj.role === 'admin' ? 'selected' : ''}>🔓 Administrator (Akses Operasional Penuh)</option>
+                    </select>
+                    <small style="color:var(--text-muted); display:block; margin-top:0.35rem;">
+                        *Rekomendasi <strong>Kiosk Viewer</strong>: Mencegah siapapun yang mencolok mouse ke STB untuk menghapus rekaman, merusak konfigurasi kamera, atau membuka menu lisensi.
+                    </small>
+                </div>
+
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Preset Tampilan Kiosk:</label>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Preset Tampilan Default Kiosk:</label>
                         <select name="preset" id="kioskPresetSelect" onchange="toggleKioskCamSelector(this.value)" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
                             <option value="live_grid" ${preset === 'live_grid' ? 'selected' : ''}>Grid 4 Kamera (2x2 Quad Live View)</option>
                             <option value="live_grid_3x3" ${preset === 'live_grid_3x3' ? 'selected' : ''}>Grid 9 Kamera (3x3 Live View)</option>
@@ -8139,7 +8377,7 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
 
                 <div>
                     <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">URL Tampilan Lokal (Default Port NVR):</label>
-                    <input type="text" name="display_url" value="${configObj.display_url || 'http://localhost:3000'}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px; font-family:monospace; font-size:0.85rem;">
+                    <input type="text" name="display_url" value="${configObj.display_url || 'http://localhost:3000/?kiosk=1'}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px; font-family:monospace; font-size:0.85rem;">
                 </div>
             </form>
         `;
@@ -8181,6 +8419,38 @@ function toggleKioskCamSelector(val) {
     const box = document.getElementById('kioskSingleCamBox');
     if (box) box.style.display = (val === 'single_cam') ? 'block' : 'none';
 }
+
+async function sendKioskRemoteCmd(payload) {
+    try {
+        const res = await authFetch('/api/addons/hdmi-kiosk/remote-cmd', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast('📡 Perintah remote berhasil diterapkan ke layar TV!', 'info');
+        } else {
+            showToast('Gagal mengirim perintah: ' + (data.error || 'Kesalahan server'), 'error');
+        }
+    } catch (e) {
+        showToast('Gagal menghubungi server.', 'error');
+    }
+}
+window.sendKioskRemoteCmd = sendKioskRemoteCmd;
+
+let isKioskBlackoutActive = false;
+async function toggleKioskBlackout() {
+    isKioskBlackoutActive = !isKioskBlackoutActive;
+    await sendKioskRemoteCmd({ blackout: isKioskBlackoutActive });
+    const btn = document.getElementById('btnKioskBlackout');
+    if (btn) {
+        btn.innerHTML = isKioskBlackoutActive ? '<span>☀️</span> Bangunkan TV (Nyala)' : '<span>🌙</span> Standby / Layar Hitam';
+        btn.style.background = isKioskBlackoutActive ? 'rgba(234, 179, 8, 0.2)' : '';
+        btn.style.color = isKioskBlackoutActive ? '#facc15' : '';
+    }
+}
+window.toggleKioskBlackout = toggleKioskBlackout;
 
 async function testAIYoloAlarm() {
     const camSelect = document.getElementById('addon_cfg_cam_id');

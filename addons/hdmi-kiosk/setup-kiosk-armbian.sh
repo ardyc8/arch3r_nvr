@@ -81,7 +81,7 @@ while true; do
         --enable-zero-copy \
         --autoplay-policy=no-user-gesture-required \
         --check-for-update-interval=31536000 \
-        --app=http://localhost:3000/#monitor
+        --app=http://localhost:3000/?kiosk=1
     sleep 3
 done
 EOF

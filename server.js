@@ -1877,6 +1877,11 @@ function getAuthorizedCamerasForReq(req) {
         }
         return tenantCams;
     }
+
+    // 4. Kiosk Viewer: Read-only live monitor wall for STB TV
+    if (req.userRole === 'kiosk_viewer') {
+        return allCams;
+    }
     
     return allCams;
 }
@@ -5296,6 +5301,119 @@ app.post('/api/addons/hdmi-kiosk/toggle', verifyToken, requireAdmin, (req, res) 
     } else {
         res.json({ success: true, status: hdmiKioskAddon.getStatus() });
     }
+});
+
+// --- Kiosk Auto-Login & Remote Control Hub (Ver 10.6.1) ---
+function isLocalhostRequest(req) {
+    const rawIp = req.socket?.remoteAddress || req.connection?.remoteAddress || '';
+    return rawIp === '127.0.0.1' || 
+           rawIp === '::1' || 
+           rawIp === '::ffff:127.0.0.1';
+}
+
+app.post('/api/kiosk/auth', (req, res) => {
+    // 1. Validasi pemanggil adalah localhost (STB fisik itu sendiri)
+    if (!isLocalhostRequest(req)) {
+        return res.status(403).json({ 
+            error: 'Akses Ditolak: Kiosk auto-login hanya diizinkan untuk antarmuka fisik lokal STB (localhost).' 
+        });
+    }
+
+    // 2. Baca konfigurasi Kiosk dari config.json
+    let kioskConfig = {};
+    if (hdmiKioskAddon && typeof hdmiKioskAddon.loadConfig === 'function') {
+        kioskConfig = hdmiKioskAddon.loadConfig();
+    } else {
+        try {
+            kioskConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'addons/hdmi-kiosk/config.json'), 'utf8'));
+        } catch (_) {}
+    }
+
+    // 3. Tentukan hak akses (default: 'kiosk_viewer' untuk proteksi keamanan maksimal)
+    const assignedRole = (kioskConfig.role === 'admin') ? 'administrator' : 'kiosk_viewer';
+
+    // 4. Verifikasi lisensi / trial sistem
+    const currentSettings = getSettings();
+    const machineId = getMachineId();
+    const installDate = getSecureInstallDate({ super_settings: currentSettings });
+    const trialDaysLeft = 30 - Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24));
+    const licenseCheck = validateLicense(currentSettings.license, currentSettings.email, machineId);
+    const isLicenseActive = licenseCheck.valid || trialDaysLeft > 0;
+
+    // 5. Buat JWT token untuk sesi Kiosk
+    const kioskToken = jwt.sign(
+        {
+            id: 'kiosk-tv-display',
+            username: 'Layar TV Monitor (Kiosk)',
+            role: assignedRole,
+            isKiosk: true,
+            isLicenseActive
+        },
+        JWT_SECRET,
+        { expiresIn: '30d' }
+    );
+
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    res.cookie('arch3r_token', kioskToken, {
+        httpOnly: true,
+        secure: isHttps,
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000
+    });
+
+    res.json({
+        success: true,
+        token: kioskToken,
+        role: assignedRole,
+        username: 'Layar TV Monitor (Kiosk)',
+        isLicenseActive,
+        licenseReason: isLicenseActive ? '' : (licenseCheck.reason || 'Masa uji coba telah habis'),
+        config: kioskConfig
+    });
+});
+
+let kioskLiveState = {
+    preset: 'grid_4',
+    target_cam_id: 'all',
+    refresh_seq: 0,
+    blackout: false,
+    updated_at: Date.now()
+};
+
+app.get('/api/addons/hdmi-kiosk/live-state', (req, res) => {
+    let cfg = {};
+    if (hdmiKioskAddon && typeof hdmiKioskAddon.loadConfig === 'function') {
+        cfg = hdmiKioskAddon.loadConfig();
+    }
+    res.json({
+        success: true,
+        liveState: kioskLiveState,
+        config: cfg
+    });
+});
+
+app.post('/api/addons/hdmi-kiosk/remote-cmd', verifyToken, requireAdmin, (req, res) => {
+    const { action, preset, camId, blackout } = req.body;
+    
+    if (preset) {
+        kioskLiveState.preset = preset;
+    }
+    if (camId !== undefined) {
+        kioskLiveState.target_cam_id = camId;
+    }
+    if (action === 'refresh') {
+        kioskLiveState.refresh_seq = (kioskLiveState.refresh_seq || 0) + 1;
+    }
+    if (typeof blackout === 'boolean') {
+        kioskLiveState.blackout = blackout;
+    }
+    kioskLiveState.updated_at = Date.now();
+
+    res.json({
+        success: true,
+        message: 'Perintah remote berhasil diterapkan ke layar TV',
+        liveState: kioskLiveState
+    });
 });
 
 // ==========================================

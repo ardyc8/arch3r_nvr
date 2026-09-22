@@ -2369,5 +2369,37 @@ body {
     pointer-events: none;
 }
 
+/* --- HDMI Kiosk Shielded Display Mode --- */
+body.kiosk-display-mode {
+    overflow: hidden !important;
+    background: #000 !important;
+}
+body.kiosk-display-mode #sidebar,
+body.kiosk-display-mode .top-navbar,
+body.kiosk-display-mode #btnToggleControls,
+body.kiosk-display-mode .mobile-bottom-nav {
+    display: none !important;
+}
+body.kiosk-display-mode .main-content {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+}
+body.kiosk-display-mode #view-monitor,
+body.kiosk-display-mode #monitorWrapper {
+    width: 100vw !important;
+    height: 100vh !important;
+    padding: 0 !important;
+    background: #000 !important;
+}
+body.kiosk-display-mode #videoGridContainer {
+    padding: 0 !important;
+    background: #000 !important;
+}
+
 
 

@@ -1,5 +1,19 @@
-# ⚡ Arch3r NVR (Ver. 10.6.0)
+# ⚡ Arch3r NVR (Ver. 10.6.1)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.1:
+- **HDMI Kiosk 3-Part Smart Ecosystem: Localhost Auto-Login, Protected Kiosk Viewer RBAC & Smartphone Virtual Remote Control**:
+  1. **Localhost Display Auto-Login (Bebas Input Fisik Keyboard/Mouse)**:
+     - Menghadirkan mekanisme auto-login cerdas via endpoint aman `POST /api/kiosk/auth` khusus untuk koneksi fisik lokal STB (`localhost` / `127.0.0.1` / `?kiosk=1`).
+     - Saat STB booting dan menyalakan layar TV, tampilan langsung masuk ke Grid Live View kamera tanpa terhambat oleh halaman login atau memerlukan periferal mouse/keyboard fisik.
+  2. **Remote Pintar Layar TV Real-Time dari Smartphone**:
+     - Ditambahkan panel Remote Kontrol interaktif di modal pengaturan HDMI Kiosk:
+       - **Ganti Grid TV**: Alihkan tata letak layar TV secara instan antara Quad 4 Kamera (2x2), 9 Kamera (3x3), atau Kamera Tunggal Fullscreen langsung dari HP.
+       - **Kamera Cepat**: Tombol pintas untuk setiap kamera aktif; klik satu kamera di HP langsung menampilkan kamera tersebut di layar TV.
+       - **Refresh & Layar Standby/Hitam (Power Saving)**: Matikan tampilan ke layar hitam hemat daya atau segarkan stream TV dari jarak jauh.
+  3. **Role RBAC Kiosk Viewer (Proteksi Keamanan Anti-Tamper & Lisensi Aman)**:
+     - Mode TV Kiosk secara default menggunakan hak akses terbatas `kiosk_viewer` yang hanya memiliki akses read-only ke stream kamera langsung.
+     - Melindungi integritas sistem dari pihak ketiga: siapapun yang menghubungkan mouse/keyboard ke STB fisik di ruang publik tidak dapat membuka menu pengaturan, mengubah lisensi mesin, maupun menghapus rekaman video.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.0:
 - **HDMI Kiosk Auto-Sudo Launcher Repair & Dynamic Multi-Browser Fallback**:

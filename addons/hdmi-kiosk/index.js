@@ -92,7 +92,7 @@ class HdmiKioskAddon {
         const scriptPath = path.join(kioskDir, 'start-kiosk.sh');
         try {
             const cfg = this.loadConfig();
-            const targetUrl = cfg.display_url || this.appUrl || 'http://localhost:3000/#monitor';
+            const targetUrl = cfg.display_url || 'http://localhost:3000/?kiosk=1';
 
             const scriptContent = `#!/bin/bash
 export DISPLAY=:0
