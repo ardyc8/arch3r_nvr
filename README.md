@@ -1,5 +1,14 @@
-# ⚡ Arch3r NVR (Ver. 10.1.9)
+# ⚡ Arch3r NVR (Ver. 10.5.5)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.5.5:
+- **Commercial Enterprise YOLO AI Suite & Unified Workspace**:
+  1. **Unified Stream & In-Player ROI Studio**: Menghapus sistem multi-tab yang memecah video menjadi dua. Seluruh stream RTSP/HLS live dan pengaturan deteksi zona ROI disatukan dalam satu canvas player berkinerja tinggi, menghemat RAM dan resource hardware decoding pada Linux Armbian STB.
+  2. **Tactical Corner-Bracket Detection Render (Hikvision/Dahua Style)**: Menggantikan bounding box standar dengan visual corner-bracket (L-bracket) taktis profesional, crosshair di titik pusat objek, badge persentase akurasi, serta banner *Perimeter Intrusion Alert* berkedip jika objek melanggar zona ROI.
+  3. **Live Target Event Strip (Sidebar Analytics)**: Feed kartu event deteksi objek real-time di kolom kanan dengan animasi *radar scanner*, klasifikasi warna tingkat ancaman, timestamp presisi, akurasi, dan tombol aksi simpan event. Dilengkapi mekanisme pembatasan (throttling 3.5 detik per kelas objek) untuk mencegah lonjakan CPU STB.
+  4. **Modular Parameters Dialog (`modal-yolo-ai-parameters`)**: Memisahkan konfigurasi sensitivitas, model AI (YOLOv8 Nano/Small/Medium), akselerasi NPU/RKNN, filter kategori target, dan alarm NVR ke dalam modal overlay modular yang dapat diakses cepat melalui tombol toolbar atas.
+  5. **Quick Target Filter Pills & Master Toggle**: Tombol pill interaktif di bawah player untuk memfilter visualisasi target (Manusia, Mobil, Sepeda Motor, Hewan, Semua) dengan status sinkronisasi otomatis.
+  6. **Syntax & Lifecycle Cleanup**: Mengeliminasi duplikasi deklarasi fungsi di `script.js` (`clearAITelemetryLog`, `openAISettingsModal`, `initYoloAiPage`) dan memastikan pembebasan memori video saat menutup kamera setting.
 
 ### 📋 Changelog Pembaruan Ver. 10.1.9:
 - **Refactoring & Penataan Ulang UI Addon YOLO AI Vision (`/addons/yolo-ai`)**:

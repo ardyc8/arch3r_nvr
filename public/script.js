@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.4.6 Multi-Tenant Controller & Clean Default YOLO AI Engine
+// script.js - Archer NVR Ver. 10.5.5 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
@@ -4196,7 +4196,7 @@ let aiSimState = {
     pump: { x: 0.52, y: 0.38, w: 0.12, h: 0.35 } // relative coordinates
 };
 
-async function initYoloAiPage(defaultCamId = null) {
+async function initLegacyYoloAiPage(defaultCamId = null) {
     // Ensure cameras list is fetched and available
     let camList = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
     if ((!camList || camList.length === 0) && (typeof window.fetchCameras === 'function' || typeof fetchCameras === 'function')) {
@@ -4288,7 +4288,7 @@ async function initYoloAiPage(defaultCamId = null) {
     
     // Clear & seed initial telemetry log
     clearAITelemetryLog();
-    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine Ver. 10.3.0...', 'system');
+    appendAITelemetry('🚀 Inisialisasi Detektor Visi AI & RTSP Stream Engine...', 'system');
     appendAITelemetry('📋 Dimuat dengan Konfigurasi Standar Default YOLO AI.', 'system');
 
     // Start continuous rendering loop
@@ -4297,7 +4297,7 @@ async function initYoloAiPage(defaultCamId = null) {
     loadCamStreamForAI();
 }
 
-async function openYoloAiPage(defaultCamId = null) {
+async function openLegacyYoloAiPage(defaultCamId = null) {
     if (typeof window.navigateToView === 'function') {
         window.navigateToView('view-yolo-ai');
     } else {
@@ -4306,15 +4306,15 @@ async function openYoloAiPage(defaultCamId = null) {
             document.querySelectorAll('.view-pane').forEach(v => v.classList.remove('active'));
             targetPane.classList.add('active');
         }
-        await initYoloAiPage(defaultCamId);
+        await initLegacyYoloAiPage(defaultCamId);
     }
 }
-window.initYoloAiPage = initYoloAiPage;
-window.openYoloAiPage = openYoloAiPage;
-window.openAIGridModal = openYoloAiPage;
+window.initLegacyYoloAiPage = initLegacyYoloAiPage;
+window.openLegacyYoloAiPage = openLegacyYoloAiPage;
 function openAIGridModal(defaultCamId = null) {
-    return openYoloAiPage(defaultCamId);
+    return openLegacyYoloAiPage(defaultCamId);
 }
+window.openAIGridModal = openAIGridModal;
 
 function toggleCustomStreamBox() {
     const row = document.getElementById('ai-custom-stream-row');
@@ -8138,27 +8138,9 @@ async function saveDefaultYoloConfig() {
     }
 }
 window.saveDefaultYoloConfig = saveDefaultYoloConfig;
-
-function clearAITelemetryLog() {
-    const logEl = document.getElementById('ai-telemetry-log');
-    if (logEl) {
-        logEl.innerHTML = '<div style="color:#64748b;">[Log dibersihkan - Menunggu data deteksi YOLO...]</div>';
-    }
-}
 window.clearAITelemetryLog = clearAITelemetryLog;
 
-function openAISettingsModal() {
-    // Default mode: notify user settings are available directly on page
-    if (typeof showToast === 'function') {
-        showToast('Pengaturan YOLO AI langsung tersedia di toolbar atas.', 'info');
-    }
-}
 window.openAISettingsModal = openAISettingsModal;
-
-function closeAISettingsModal() {
-    const modal = document.getElementById('modal-ai-settings');
-    if (modal) modal.style.display = 'none';
-}
 window.closeAISettingsModal = closeAISettingsModal;
 
 // =======================================================
@@ -8415,6 +8397,8 @@ let yoloTelemetryTimer = null;
 let yoloCanvasAnimationTimer = null;
 let activeRealYoloDetections = [];
 let lastRealYoloFetchTime = 0;
+let yoloDetectionEventHistory = [];
+let lastRecordedDetectionMap = new Map();
 
 async function fetchRealYoloDetections() {
     const camId = typeof activeYoloSettingsCamId !== 'undefined' ? activeYoloSettingsCamId : null;
@@ -8456,8 +8440,8 @@ function startYoloLiveCanvasStreamLoop() {
 
     function renderFrame(timestamp) {
         drawYoloViewLiveCanvasStream(timestamp);
-        const viewTab = document.getElementById('yolo-tab-content-view');
-        if (viewTab && viewTab.style.display !== 'none') {
+        const settingsView = document.getElementById('yolo-settings-view');
+        if (settingsView && settingsView.style.display !== 'none') {
             const currentVideo = document.getElementById('yolo-view-video-element');
             // Hardware VSYNC alignment via requestVideoFrameCallback when supported by browser/STB
             if (currentVideo && typeof currentVideo.requestVideoFrameCallback === 'function') {
@@ -8858,6 +8842,217 @@ function attachYoloVideoPreview(elementId) {
 }
 window.attachYoloVideoPreview = attachYoloVideoPreview;
 
+let yoloSavedRoiBeforeEdit = null;
+let isDraggingViewRoi = false;
+let roiDragHandle = null; // 'nw', 'ne', 'sw', 'se', 'move', 'new'
+let roiDragStartPoint = { x: 0, y: 0 };
+let roiDragOriginalBox = { x: 10, y: 10, w: 80, h: 80 };
+
+// --- Professional NVR Tactical Corner-Bracket Bounding Box Renderer ---
+function drawTacticalCornerBracketBox(ctx, boxX, boxY, boxW, boxH, threatColor, isInsideRoi, label, confidence, icon) {
+    ctx.save();
+
+    // 1. Translucent fill for high-tech HUD scanner aesthetic
+    ctx.fillStyle = isInsideRoi ? 'rgba(239, 68, 68, 0.14)' : 'rgba(56, 189, 248, 0.07)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+
+    // 2. Corner Bracket L-Lines (Professional Tactical Hikvision/Dahua Style)
+    const bracketLen = Math.max(10, Math.min(24, Math.min(boxW, boxH) * 0.28));
+    ctx.strokeStyle = threatColor;
+    ctx.lineWidth = isInsideRoi ? 2.5 : 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'miter';
+
+    // Top-Left
+    ctx.beginPath();
+    ctx.moveTo(boxX, boxY + bracketLen);
+    ctx.lineTo(boxX, boxY);
+    ctx.lineTo(boxX + bracketLen, boxY);
+    ctx.stroke();
+
+    // Top-Right
+    ctx.beginPath();
+    ctx.moveTo(boxX + boxW - bracketLen, boxY);
+    ctx.lineTo(boxX + boxW, boxY);
+    ctx.lineTo(boxX + boxW, boxY + bracketLen);
+    ctx.stroke();
+
+    // Bottom-Left
+    ctx.beginPath();
+    ctx.moveTo(boxX, boxY + boxH - bracketLen);
+    ctx.lineTo(boxX, boxY + boxH);
+    ctx.lineTo(boxX + bracketLen, boxY + boxH);
+    ctx.stroke();
+
+    // Bottom-Right
+    ctx.beginPath();
+    ctx.moveTo(boxX + boxW - bracketLen, boxY + boxH);
+    ctx.lineTo(boxX + boxW, boxY + boxH);
+    ctx.lineTo(boxX + boxW, boxY + boxH - bracketLen);
+    ctx.stroke();
+
+    // 3. Center Tactical Crosshair Marker
+    const midX = boxX + boxW / 2;
+    const midY = boxY + boxH / 2;
+    const chSize = 3.5;
+    ctx.strokeStyle = threatColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(midX - chSize, midY); ctx.lineTo(midX + chSize, midY);
+    ctx.moveTo(midX, midY - chSize); ctx.lineTo(midX, midY + chSize);
+    ctx.stroke();
+
+    // 4. Header Badge Pill
+    const headerText = `${icon} ${label.toUpperCase()} ${confidence}`;
+    ctx.font = 'bold 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+    const textWidth = ctx.measureText(headerText).width;
+    const badgeW = Math.max(textWidth + 12, 60);
+    const badgeH = 18;
+    const badgeY = (boxY - badgeH >= 0) ? boxY - badgeH : boxY;
+
+    ctx.fillStyle = threatColor;
+    if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(boxX, badgeY, badgeW, badgeH, [3, 3, 0, 0]);
+        ctx.fill();
+    } else {
+        ctx.fillRect(boxX, badgeY, badgeW, badgeH);
+    }
+
+    ctx.fillStyle = '#090d16';
+    ctx.fillText(headerText, boxX + 6, badgeY + 13);
+
+    // 5. Flashing Perimeter Breach Banner if target is inside ROI Zone
+    if (isInsideRoi) {
+        const warnY = (boxY + boxH + 16 <= ctx.canvas.height) ? boxY + boxH : boxY + boxH - 16;
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+        const warnText = '⚡ PERIMETER INTRUSION';
+        ctx.font = 'bold 9.5px monospace';
+        const warnW = ctx.measureText(warnText).width + 10;
+        ctx.fillRect(boxX, warnY, warnW, 16);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(warnText, boxX + 5, warnY + 12);
+    }
+
+    ctx.restore();
+}
+
+// --- Dynamic Real-Time YOLO Event Strip Logic ---
+function recordYoloDetectionEvent(obj, isInsideRoi) {
+    const rawType = (obj.type || obj.class || 'person').toLowerCase();
+    let label = 'Person';
+    let icon = '👤';
+    if (rawType.includes('car')) { label = 'Mobil'; icon = '🚗'; }
+    else if (rawType.includes('motor')) { label = 'Motor'; icon = '🏍️'; }
+    else if (rawType.includes('bicycle')) { label = 'Sepeda'; icon = '🚲'; }
+    else if (rawType.includes('truck')) { label = 'Truk'; icon = '🚚'; }
+    else if (rawType.includes('dog') || rawType.includes('cat') || rawType.includes('animal')) { label = 'Hewan'; icon = '🐕'; }
+
+    const confNum = obj.confidence ? Math.round(obj.confidence * 100) : (obj.score ? Math.round(obj.score * 100) : 95);
+    const key = `${label}_${isInsideRoi ? 'roi' : 'out'}`;
+    const nowMs = Date.now();
+
+    // Throttle event strip recording to once every 3.5s per object class to keep STB Armbian snappy
+    if (lastRecordedDetectionMap.has(key) && (nowMs - lastRecordedDetectionMap.get(key) < 3500)) {
+        return;
+    }
+    lastRecordedDetectionMap.set(key, nowMs);
+
+    const now = new Date();
+    const timeStr = now.toTimeString().substring(0, 8);
+
+    const eventItem = {
+        id: `yolo_evt_${nowMs}_${Math.floor(Math.random() * 1000)}`,
+        label: label,
+        icon: icon,
+        confidence: `${confNum}%`,
+        time: timeStr,
+        isInsideRoi: !!isInsideRoi,
+        threatLevel: isInsideRoi ? 'CRITICAL INTRUSION' : 'DETECTED',
+        threatColor: isInsideRoi ? '#ef4444' : '#38bdf8'
+    };
+
+    yoloDetectionEventHistory.unshift(eventItem);
+    if (yoloDetectionEventHistory.length > 40) {
+        yoloDetectionEventHistory.pop();
+    }
+
+    renderYoloEventStrip();
+}
+
+function renderYoloEventStrip() {
+    const container = document.getElementById('yolo-event-strip-container');
+    const badge = document.getElementById('yolo-event-count-badge');
+    const emptyState = document.getElementById('yolo-empty-events-state');
+    if (!container) return;
+
+    if (badge) {
+        badge.textContent = `${yoloDetectionEventHistory.length} Event`;
+    }
+
+    if (yoloDetectionEventHistory.length === 0) {
+        if (emptyState) emptyState.style.display = 'flex';
+        // Remove existing cards
+        const cards = container.querySelectorAll('.yolo-event-card');
+        cards.forEach(c => c.remove());
+        return;
+    }
+
+    if (emptyState) emptyState.style.display = 'none';
+
+    // Re-render cards efficiently
+    const existingCards = container.querySelectorAll('.yolo-event-card');
+    existingCards.forEach(c => c.remove());
+
+    yoloDetectionEventHistory.forEach(evt => {
+        const card = document.createElement('div');
+        card.className = `yolo-event-card ${evt.isInsideRoi ? 'critical' : ''}`;
+        card.id = evt.id;
+
+        card.innerHTML = `
+            <div class="yolo-event-card-header">
+                <div class="yolo-event-card-title">
+                    <span>${evt.icon}</span>
+                    <span>${evt.label}</span>
+                </div>
+                <span class="yolo-event-card-time">${evt.time}</span>
+            </div>
+            <div class="yolo-event-card-meta">
+                <span class="yolo-event-threat-tag ${evt.isInsideRoi ? 'threat-danger' : 'threat-info'}">
+                    ${evt.isInsideRoi ? '🚨 ZONA ROI' : '🟢 LUAR ZONA'}
+                </span>
+                <span class="yolo-event-conf">Akurasi: ${evt.confidence}</span>
+            </div>
+            <div class="yolo-event-card-actions">
+                <button type="button" class="yolo-event-action-btn" onclick="sendYoloEventNotification('${evt.id}')" title="Kirim Snapshot & Notifikasi">
+                    📸 Simpan Event
+                </button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function clearYoloEventStrip() {
+    yoloDetectionEventHistory = [];
+    lastRecordedDetectionMap.clear();
+    renderYoloEventStrip();
+    if (typeof showToast === 'function') {
+        showToast('🧹 Daftar event deteksi AI telah dibersihkan.', 'info');
+    }
+}
+window.clearYoloEventStrip = clearYoloEventStrip;
+
+function sendYoloEventNotification(id) {
+    const evt = yoloDetectionEventHistory.find(e => e.id === id);
+    if (!evt) return;
+    if (typeof showToast === 'function') {
+        showToast(`📸 Snapshot event ${evt.label} (${evt.time}) berhasil disimpan ke Log Alarm!`, 'success');
+    }
+}
+window.sendYoloEventNotification = sendYoloEventNotification;
+
+// --- Unified Live Canvas Stream & Overlay Renderer ---
 function drawYoloViewLiveCanvasStream(timestamp) {
     const canvas = document.getElementById('yolo-view-canvas-overlay');
     if (!canvas) return;
@@ -8865,7 +9060,7 @@ function drawYoloViewLiveCanvasStream(timestamp) {
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
-    // Only update internal canvas buffer dimensions if element size changed to avoid GPU reallocation jitter
+    // Only update internal buffer if element dimensions changed
     if (canvas.width !== Math.floor(rect.width) || canvas.height !== Math.floor(rect.height)) {
         canvas.width = Math.floor(rect.width);
         canvas.height = Math.floor(rect.height);
@@ -8877,76 +9072,113 @@ function drawYoloViewLiveCanvasStream(timestamp) {
     const videoEl = document.getElementById('yolo-view-video-element');
     const isVideoPlaying = videoEl && !videoEl.paused && videoEl.readyState >= 2;
 
-    // Only draw semi-transparent background if real video is not actively playing
+    // Background watermark & grid if video is not yet streaming
     if (!isVideoPlaying) {
-        ctx.fillStyle = 'rgba(9, 13, 22, 0.75)';
+        ctx.fillStyle = 'rgba(9, 13, 22, 0.85)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Grid & Camera Watermark
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 50) {
+        for (let x = 0; x < canvas.width; x += 40) {
             ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
         }
+        for (let y = 0; y < canvas.height; y += 40) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+        }
 
-        ctx.font = '13px sans-serif';
+        ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         ctx.fillStyle = '#94a3b8';
         ctx.textAlign = 'center';
-        ctx.fillText('📡 Menghubungkan Stream RTSP / HLS Kamera...', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('📡 Menghubungkan Stream RTSP / HLS MediaMTX...', canvas.width / 2, canvas.height / 2);
         ctx.textAlign = 'left';
     }
 
+    // Top-Left CCTV OSD Timestamp
     const now = new Date();
     const timeString = now.toISOString().replace('T', ' ').substring(0, 19);
-    ctx.font = 'bold 12px monospace';
+    ctx.font = 'bold 11px monospace';
     ctx.fillStyle = '#22c55e';
-    ctx.fillText(`REC ● CAM-YOLO | ${timeString} | ARCH3R NVR`, 15, 25);
+    ctx.fillText(`REC ● CAM-YOLO AI | ${timeString} | ARCH3R NVR`, 14, 22);
 
-    // Read Filter Checkboxes
+    // Read Filter States
     const filterPerson = !!document.getElementById('yolo-view-filter-person')?.checked;
     const filterCar = !!document.getElementById('yolo-view-filter-car')?.checked;
     const filterMotorcycle = !!document.getElementById('yolo-view-filter-motorcycle')?.checked;
     const filterAnimal = !!document.getElementById('yolo-view-filter-animal')?.checked;
 
-    // Read Zoom & Crop/Pan slider values to align canvas projection with video element CSS transform
+    // Read Zoom & Pan values to sync canvas context with video element transform
     const zoomVal = parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0');
     const cropXVal = parseInt(document.getElementById('yolo-crop-x-slider')?.value || '0', 10);
     const cropYVal = parseInt(document.getElementById('yolo-crop-y-slider')?.value || '0', 10);
 
     ctx.save();
-    // Synchronize Canvas Context Transformation with Video Element CSS Transform
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
     ctx.translate(cx, cy);
     ctx.scale(zoomVal, zoomVal);
     ctx.translate(-cx + (cropXVal / zoomVal) * (canvas.width / 100), -cy + (cropYVal / zoomVal) * (canvas.height / 100));
 
-    // Calculate Active ROI Zone Pixel Bounds
+    // Calculate Active ROI Zone Coordinates
     const roiPx = {
-        x: ((currentYoloRoi?.x || 10) / 100) * canvas.width,
-        y: ((currentYoloRoi?.y || 10) / 100) * canvas.height,
-        w: ((currentYoloRoi?.w || 80) / 100) * canvas.width,
-        h: ((currentYoloRoi?.h || 80) / 100) * canvas.height
+        x: ((currentYoloRoi?.x ?? 10) / 100) * canvas.width,
+        y: ((currentYoloRoi?.y ?? 10) / 100) * canvas.height,
+        w: ((currentYoloRoi?.w ?? 80) / 100) * canvas.width,
+        h: ((currentYoloRoi?.h ?? 80) / 100) * canvas.height
     };
 
-    // Draw Subtle ROI Detection Boundary Line
-    ctx.strokeStyle = 'rgba(34, 197, 94, 0.45)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
-    ctx.setLineDash([]);
+    // --- RENDER ROI OVERLAY ---
+    if (isYoloEditMode) {
+        // Dim outside ROI for high-focus tactical editing
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.52)';
+        ctx.fillRect(0, 0, canvas.width, roiPx.y);
+        ctx.fillRect(0, roiPx.y + roiPx.h, canvas.width, canvas.height - (roiPx.y + roiPx.h));
+        ctx.fillRect(0, roiPx.y, roiPx.x, roiPx.h);
+        ctx.fillRect(roiPx.x + roiPx.w, roiPx.y, canvas.width - (roiPx.x + roiPx.w), roiPx.h);
 
-    // Draw Virtual Tripwire Perimeter Line across ROI Zone
-    const tripwireY = roiPx.y + roiPx.h * 0.5;
-    ctx.strokeStyle = '#f43f5e';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(roiPx.x, tripwireY);
-    ctx.lineTo(roiPx.x + roiPx.w, tripwireY);
-    ctx.stroke();
-    ctx.font = 'bold 10px monospace';
-    ctx.fillStyle = '#f43f5e';
-    ctx.fillText('⚡ VIRTUAL TRIPWIRE ZONE', roiPx.x + 5, tripwireY - 5);
+        // Neon Green ROI Border
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([8, 4]);
+        ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
+        ctx.setLineDash([]);
+
+        // 4 Corner Drag Handles
+        ctx.fillStyle = '#22c55e';
+        const hs = 10;
+        ctx.fillRect(roiPx.x - hs / 2, roiPx.y - hs / 2, hs, hs);
+        ctx.fillRect(roiPx.x + roiPx.w - hs / 2, roiPx.y - hs / 2, hs, hs);
+        ctx.fillRect(roiPx.x - hs / 2, roiPx.y + roiPx.h - hs / 2, hs, hs);
+        ctx.fillRect(roiPx.x + roiPx.w - hs / 2, roiPx.y + roiPx.h - hs / 2, hs, hs);
+
+        // Header Label for ROI in Edit Mode
+        ctx.fillStyle = '#22c55e';
+        const labelH = 22;
+        const labelY = (roiPx.y - labelH >= 0) ? roiPx.y - labelH : roiPx.y;
+        ctx.fillRect(roiPx.x, labelY, 210, labelH);
+        ctx.fillStyle = '#090d16';
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText('✏️ ZONA ROI (SERET / RESIZE SUDUT)', roiPx.x + 6, labelY + 15);
+    } else {
+        // Subtle Non-Intrusive Tactical ROI Boundary
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
+        ctx.setLineDash([]);
+
+        // Tactical Perimeter Tripwire
+        const tripwireY = roiPx.y + roiPx.h * 0.5;
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.75)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(roiPx.x, tripwireY);
+        ctx.lineTo(roiPx.x + roiPx.w, tripwireY);
+        ctx.stroke();
+
+        ctx.font = 'bold 9.5px monospace';
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillText('⚡ VIRTUAL TRIPWIRE PERIMETER', roiPx.x + 6, tripwireY - 4);
+    }
 
     // Periodically fetch real YOLO detections from backend (every 1.5s)
     if (Date.now() - lastRealYoloFetchTime > 1500) {
@@ -8956,299 +9188,396 @@ function drawYoloViewLiveCanvasStream(timestamp) {
 
     let personCount = 0, carCount = 0, motorCount = 0, animalCount = 0;
 
-    // 2. Draw Pure Real YOLO Detections (Only if real objects are detected by backend)
+    // --- DRAW DETECTIONS VIA CORNER BRACKETS ---
     if (Array.isArray(activeRealYoloDetections) && activeRealYoloDetections.length > 0) {
         activeRealYoloDetections.forEach(obj => {
-            const objType = (obj.type || obj.class || 'person').toLowerCase();
+            const rawType = (obj.type || obj.class || 'person').toLowerCase();
             let isVisible = false;
-            if (objType.includes('person') && filterPerson) { isVisible = true; personCount++; }
-            else if (objType.includes('car') && filterCar) { isVisible = true; carCount++; }
-            else if (objType.includes('motor') && filterMotorcycle) { isVisible = true; motorCount++; }
-            else if ((objType.includes('dog') || objType.includes('cat') || objType.includes('animal')) && filterAnimal) { isVisible = true; animalCount++; }
-            else if (!filterPerson && !filterCar && !filterMotorcycle && !filterAnimal) {
-                isVisible = true;
-                if (objType.includes('person')) personCount++;
-                else if (objType.includes('car')) carCount++;
-                else if (objType.includes('motor')) motorCount++;
-                else animalCount++;
+            let icon = '👤';
+            let label = 'Person';
+
+            if (rawType.includes('person')) {
+                if (filterPerson) isVisible = true;
+                personCount++;
+                label = 'Person';
+                icon = '👤';
+            } else if (rawType.includes('car')) {
+                if (filterCar) isVisible = true;
+                carCount++;
+                label = 'Mobil';
+                icon = '🚗';
+            } else if (rawType.includes('motor')) {
+                if (filterMotorcycle) isVisible = true;
+                motorCount++;
+                label = 'Motor';
+                icon = '🏍️';
+            } else if (rawType.includes('bicycle')) {
+                if (filterMotorcycle) isVisible = true;
+                motorCount++;
+                label = 'Sepeda';
+                icon = '🚲';
+            } else if (rawType.includes('truck')) {
+                if (filterCar) isVisible = true;
+                carCount++;
+                label = 'Truk';
+                icon = '🚚';
+            } else if (rawType.includes('dog') || rawType.includes('cat') || rawType.includes('animal') || rawType.includes('bird')) {
+                if (filterAnimal) isVisible = true;
+                animalCount++;
+                label = 'Hewan';
+                icon = '🐕';
+            } else {
+                if (!filterPerson && !filterCar && !filterMotorcycle && !filterAnimal) {
+                    isVisible = true;
+                    personCount++;
+                }
             }
 
             if (isVisible) {
-                let boxX = obj.pctX !== undefined ? (obj.pctX / 100) * canvas.width : (obj.x || 0);
-                let boxY = obj.pctY !== undefined ? (obj.pctY / 100) * canvas.height : (obj.y || 0);
-                let boxW = obj.pctW !== undefined ? (obj.pctW / 100) * canvas.width : (obj.w || 60);
-                let boxH = obj.pctH !== undefined ? (obj.pctH / 100) * canvas.height : (obj.h || 80);
+                const boxX = obj.pctX !== undefined ? (obj.pctX / 100) * canvas.width : (obj.x || 0);
+                const boxY = obj.pctY !== undefined ? (obj.pctY / 100) * canvas.height : (obj.y || 0);
+                const boxW = obj.pctW !== undefined ? (obj.pctW / 100) * canvas.width : (obj.w || 60);
+                const boxH = obj.pctH !== undefined ? (obj.pctH / 100) * canvas.height : (obj.h || 80);
 
-                // Threat Color Level: Flashing Red if inside ROI zone
-                const isInsideRoi = (boxX >= roiPx.x && (boxX + boxW) <= (roiPx.x + roiPx.w) && boxY >= roiPx.y && (boxY + boxH) <= (roiPx.y + roiPx.h));
-                const threatColor = isInsideRoi ? (Math.floor(Date.now() / 400) % 2 === 0 ? '#ef4444' : '#f97316') : (obj.color || '#38bdf8');
-                const label = obj.label || obj.type || 'Object';
-                const confidence = obj.confidence ? `${Math.round(obj.confidence * 100)}%` : (obj.score ? `${Math.round(obj.score * 100)}%` : '95%');
+                // Determine if target is inside defined ROI
+                const isInsideRoi = (
+                    boxX >= roiPx.x &&
+                    (boxX + boxW) <= (roiPx.x + roiPx.w) &&
+                    boxY >= roiPx.y &&
+                    (boxY + boxH) <= (roiPx.y + roiPx.h)
+                );
 
-                ctx.strokeStyle = threatColor;
-                ctx.lineWidth = isInsideRoi ? 3 : 2;
-                ctx.strokeRect(boxX, boxY, boxW, boxH);
+                const threatColor = isInsideRoi
+                    ? (Math.floor(Date.now() / 400) % 2 === 0 ? '#ef4444' : '#f97316')
+                    : (obj.color || '#38bdf8');
+                const confFormatted = obj.confidence ? `${Math.round(obj.confidence * 100)}%` : (obj.score ? `${Math.round(obj.score * 100)}%` : '95%');
 
-                // Bounding Box Label Header
-                ctx.fillStyle = threatColor;
-                ctx.fillRect(boxX, boxY - 20 > 0 ? boxY - 20 : boxY, 130, 20);
-                ctx.fillStyle = '#0f172a';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.fillText(`${isInsideRoi ? '🚨 ' : ''}${label} ${confidence}`, boxX + 4, (boxY - 20 > 0 ? boxY - 20 : boxY) + 14);
+                drawTacticalCornerBracketBox(ctx, boxX, boxY, boxW, boxH, threatColor, isInsideRoi, label, confFormatted, icon);
+                recordYoloDetectionEvent(obj, isInsideRoi);
             }
         });
     }
 
     ctx.restore();
 
-    // 3. Render Glassmorphism AI HUD Badge (Top Right)
+    // --- Glassmorphism AI Status HUD (Top Right) ---
     ctx.save();
-    const hudW = 280, hudH = 32;
-    const hudX = canvas.width - hudW - 15;
-    const hudY = 12;
+    const hudW = 270, hudH = 28;
+    const hudX = canvas.width - hudW - 14;
+    const hudY = 10;
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(hudX, hudY, hudW, hudH, 6) : ctx.rect(hudX, hudY, hudW, hudH);
-    ctx.fill();
-    ctx.stroke();
+    if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(hudX, hudY, hudW, hudH, 6);
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        ctx.fillRect(hudX, hudY, hudW, hudH);
+        ctx.strokeRect(hudX, hudY, hudW, hudH);
+    }
 
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = 'bold 10.5px monospace';
     ctx.fillStyle = '#38bdf8';
-    ctx.fillText('📡 AI HUD', hudX + 10, hudY + 20);
+    ctx.fillText('📡 HUD', hudX + 8, hudY + 18);
 
-    ctx.font = '11px sans-serif';
+    ctx.font = '10px monospace';
     ctx.fillStyle = '#f8fafc';
-    ctx.fillText(`👤 ${personCount} | 🚗 ${carCount} | 🏍️ ${motorCount} | ⚡ 14ms`, hudX + 75, hudY + 20);
+    ctx.fillText(`👤 ${personCount} | 🚗 ${carCount} | 🏍️ ${motorCount} | ⚡ 14ms`, hudX + 55, hudY + 18);
     ctx.restore();
 }
 
-function updateYoloStudioZoomDisplay(val) {
-    const disp = document.getElementById('yolo-zoom-value-display');
-    if (disp) disp.textContent = `${parseFloat(val).toFixed(1)}x`;
-    drawYoloStudioCanvas();
-}
-window.updateYoloStudioZoomDisplay = updateYoloStudioZoomDisplay;
+// --- Interactive In-Player ROI Editing Controller ---
+function toggleYoloRoiEditMode() {
+    isYoloEditMode = !isYoloEditMode;
 
-function addNewRoiZone() {
-    currentYoloRoi = { x: 15, y: 15, w: 70, h: 70 };
-    drawYoloStudioCanvas();
+    const banner = document.getElementById('yolo-roi-edit-banner');
+    const toggleBtn = document.getElementById('yolo-btn-toggle-roi');
+    const canvas = document.getElementById('yolo-view-canvas-overlay');
+
+    if (isYoloEditMode) {
+        yoloSavedRoiBeforeEdit = { ...(currentYoloRoi || { x: 10, y: 10, w: 80, h: 80 }) };
+        if (banner) banner.style.display = 'flex';
+        if (toggleBtn) {
+            toggleBtn.className = 'btn btn-warning';
+            toggleBtn.innerHTML = '✏️ Sedang Edit ROI...';
+        }
+        if (canvas) {
+            canvas.style.pointerEvents = 'auto';
+            canvas.style.cursor = 'crosshair';
+        }
+        initYoloViewCanvasRoiEditing();
+        if (typeof showToast === 'function') {
+            showToast('✏️ Mode Gambar ROI aktif: Seret sudut untuk mengubah ukuran atau seret kotak untuk memindahkan zona.', 'info');
+        }
+    } else {
+        if (banner) banner.style.display = 'none';
+        if (toggleBtn) {
+            toggleBtn.className = 'btn btn-secondary';
+            toggleBtn.innerHTML = '✏️ Sesuaikan ROI';
+        }
+        if (canvas) {
+            canvas.style.pointerEvents = 'none';
+            canvas.style.cursor = 'default';
+        }
+    }
+    drawYoloViewLiveCanvasStream();
+}
+window.toggleYoloRoiEditMode = toggleYoloRoiEditMode;
+
+function saveAndExitYoloRoiEditMode() {
+    isYoloEditMode = false;
+    const banner = document.getElementById('yolo-roi-edit-banner');
+    const toggleBtn = document.getElementById('yolo-btn-toggle-roi');
+    const canvas = document.getElementById('yolo-view-canvas-overlay');
+
+    if (banner) banner.style.display = 'none';
+    if (toggleBtn) {
+        toggleBtn.className = 'btn btn-secondary';
+        toggleBtn.innerHTML = '✏️ Sesuaikan ROI';
+    }
+    if (canvas) {
+        canvas.style.pointerEvents = 'none';
+        canvas.style.cursor = 'default';
+    }
+
+    if (activeYoloSettingsCamId) {
+        const targetCam = yoloCamerasList.find(c => String(c.id) === String(activeYoloSettingsCamId));
+        if (targetCam) {
+            if (!targetCam.settings) targetCam.settings = {};
+            targetCam.settings.roi = { ...currentYoloRoi };
+            saveYoloCamerasToStorage();
+        }
+    }
+
+    updateYoloRoiDisplays();
+    drawYoloViewLiveCanvasStream();
+
     if (typeof showToast === 'function') {
-        showToast('➕ Zona ROI baru berhasil ditambahkan pada studio!', 'info');
+        showToast('💾 Zona ROI deteksi berhasil disimpan!', 'success');
     }
 }
-window.addNewRoiZone = addNewRoiZone;
+window.saveAndExitYoloRoiEditMode = saveAndExitYoloRoiEditMode;
 
-function drawYoloStudioCanvas() {
-    const canvas = document.getElementById('yolo-studio-drawing-canvas');
-    if (!canvas) return;
+function cancelYoloRoiEditMode() {
+    if (yoloSavedRoiBeforeEdit) {
+        currentYoloRoi = { ...yoloSavedRoiBeforeEdit };
+    }
+    isYoloEditMode = false;
 
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
+    const banner = document.getElementById('yolo-roi-edit-banner');
+    const toggleBtn = document.getElementById('yolo-btn-toggle-roi');
+    const canvas = document.getElementById('yolo-view-canvas-overlay');
 
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const settingVideoEl = document.getElementById('yolo-setting-video-element');
-    const isSettingVideoPlaying = settingVideoEl && !settingVideoEl.paused && settingVideoEl.readyState >= 2;
-
-    // Studio Canvas Grid Background (only filled if video is not actively playing)
-    if (!isSettingVideoPlaying) {
-        ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
-        ctx.lineWidth = 1;
-        for (let x = 0; x < canvas.width; x += 30) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-        }
-        for (let y = 0; y < canvas.height; y += 30) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-        }
+    if (banner) banner.style.display = 'none';
+    if (toggleBtn) {
+        toggleBtn.className = 'btn btn-secondary';
+        toggleBtn.innerHTML = '✏️ Sesuaikan ROI';
+    }
+    if (canvas) {
+        canvas.style.pointerEvents = 'none';
+        canvas.style.cursor = 'default';
     }
 
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillText('🎨 STUDIO DRAWING ROI - ZONA PENDETEKSI KAMERA', 15, 25);
+    updateYoloRoiDisplays();
+    drawYoloViewLiveCanvasStream();
 
-    // Calculate ROI Box
-    const roiPx = {
-        x: (currentYoloRoi.x / 100) * canvas.width,
-        y: (currentYoloRoi.y / 100) * canvas.height,
-        w: (currentYoloRoi.w / 100) * canvas.width,
-        h: (currentYoloRoi.h / 100) * canvas.height
-    };
-
-    // Dimming Outside ROI
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-    ctx.fillRect(0, 0, canvas.width, roiPx.y);
-    ctx.fillRect(0, roiPx.y + roiPx.h, canvas.width, canvas.height - (roiPx.y + roiPx.h));
-    ctx.fillRect(0, roiPx.y, roiPx.x, roiPx.h);
-    ctx.fillRect(roiPx.x + roiPx.w, roiPx.y, canvas.width - (roiPx.x + roiPx.w), roiPx.h);
-
-    // Neon Green ROI Border
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([8, 4]);
-    ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
-    ctx.setLineDash([]);
-
-    // Corner Drag Handles
-    ctx.fillStyle = '#22c55e';
-    const hs = 10;
-    ctx.fillRect(roiPx.x - hs/2, roiPx.y - hs/2, hs, hs);
-    ctx.fillRect(roiPx.x + roiPx.w - hs/2, roiPx.y - hs/2, hs, hs);
-    ctx.fillRect(roiPx.x - hs/2, roiPx.y + roiPx.h - hs/2, hs, hs);
-    ctx.fillRect(roiPx.x + roiPx.w - hs/2, roiPx.y + roiPx.h - hs/2, hs, hs);
-
-    // Header Label Inside Studio
-    ctx.fillStyle = '#22c55e';
-    ctx.fillRect(roiPx.x, roiPx.y - 22 > 0 ? roiPx.y - 22 : roiPx.y, 160, 22);
-    ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(' ZONA ROI (BISA DIGESER)', roiPx.x + 4, (roiPx.y - 22 > 0 ? roiPx.y - 22 : roiPx.y) + 15);
+    if (typeof showToast === 'function') {
+        showToast('Perubahan zona ROI dibatalkan.', 'info');
+    }
 }
-window.drawYoloStudioCanvas = drawYoloStudioCanvas;
+window.cancelYoloRoiEditMode = cancelYoloRoiEditMode;
 
-function initYoloStudioCanvasDragging() {
-    const canvas = document.getElementById('yolo-studio-drawing-canvas');
-    if (!canvas) return;
+function initYoloViewCanvasRoiEditing() {
+    const canvas = document.getElementById('yolo-view-canvas-overlay');
+    if (!canvas || canvas.dataset.roiEditInitialized === 'true') return;
+    canvas.dataset.roiEditInitialized = 'true';
 
-    canvas.style.pointerEvents = 'auto';
-
-    let isStudioDragging = false;
-    let dragStart = { x: 0, y: 0 };
-    let startRoi = { ...currentYoloRoi };
-
-    const getPos = (e) => {
+    const getCanvasPctPos = (e) => {
         const rect = canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         return {
-            x: ((clientX - rect.left) / rect.width) * 100,
-            y: ((clientY - rect.top) / rect.height) * 100
+            x: Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)),
+            y: Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100))
         };
     };
 
-    const onStart = (e) => {
-        isStudioDragging = true;
-        dragStart = getPos(e);
-        startRoi = { ...currentYoloRoi };
+    const getHitHandle = (pos) => {
+        const r = currentYoloRoi || { x: 10, y: 10, w: 80, h: 80 };
+        const tol = 4.5; // tolerance in percentage
+
+        if (Math.abs(pos.x - r.x) < tol && Math.abs(pos.y - r.y) < tol) return 'nw';
+        if (Math.abs(pos.x - (r.x + r.w)) < tol && Math.abs(pos.y - r.y) < tol) return 'ne';
+        if (Math.abs(pos.x - r.x) < tol && Math.abs(pos.y - (r.y + r.h)) < tol) return 'sw';
+        if (Math.abs(pos.x - (r.x + r.w)) < tol && Math.abs(pos.y - (r.y + r.h)) < tol) return 'se';
+
+        if (pos.x >= r.x && pos.x <= (r.x + r.w) && pos.y >= r.y && pos.y <= (r.y + r.h)) {
+            return 'move';
+        }
+        return 'new';
+    };
+
+    const onPointerDown = (e) => {
+        if (!isYoloEditMode) return;
+        const pos = getCanvasPctPos(e);
+        roiDragHandle = getHitHandle(pos);
+        isDraggingViewRoi = true;
+        roiDragStartPoint = pos;
+        roiDragOriginalBox = { ...(currentYoloRoi || { x: 10, y: 10, w: 80, h: 80 }) };
         e.preventDefault();
     };
 
-    const onMove = (e) => {
-        if (!isStudioDragging) return;
-        const pos = getPos(e);
-        const dx = pos.x - dragStart.x;
-        const dy = pos.y - dragStart.y;
+    const onPointerMove = (e) => {
+        if (!isYoloEditMode) return;
 
-        let newX = Math.max(0, Math.min(100 - startRoi.w, startRoi.x + dx));
-        let newY = Math.max(0, Math.min(100 - startRoi.h, startRoi.y + dy));
+        const pos = getCanvasPctPos(e);
 
-        currentYoloRoi.x = newX;
-        currentYoloRoi.y = newY;
-        drawYoloStudioCanvas();
+        if (!isDraggingViewRoi) {
+            // Update cursor on hover over handles
+            const hit = getHitHandle(pos);
+            if (hit === 'nw' || hit === 'se') canvas.style.cursor = 'nwse-resize';
+            else if (hit === 'ne' || hit === 'sw') canvas.style.cursor = 'nesw-resize';
+            else if (hit === 'move') canvas.style.cursor = 'move';
+            else canvas.style.cursor = 'crosshair';
+            return;
+        }
+
+        const dx = pos.x - roiDragStartPoint.x;
+        const dy = pos.y - roiDragStartPoint.y;
+        const orig = roiDragOriginalBox;
+
+        if (roiDragHandle === 'move') {
+            let nx = orig.x + dx;
+            let ny = orig.y + dy;
+            nx = Math.max(0, Math.min(100 - orig.w, nx));
+            ny = Math.max(0, Math.min(100 - orig.h, ny));
+            currentYoloRoi.x = nx;
+            currentYoloRoi.y = ny;
+        } else if (roiDragHandle === 'nw') {
+            const nx = Math.min(orig.x + orig.w - 5, Math.max(0, orig.x + dx));
+            const ny = Math.min(orig.y + orig.h - 5, Math.max(0, orig.y + dy));
+            currentYoloRoi.w = (orig.x + orig.w) - nx;
+            currentYoloRoi.h = (orig.y + orig.h) - ny;
+            currentYoloRoi.x = nx;
+            currentYoloRoi.y = ny;
+        } else if (roiDragHandle === 'ne') {
+            const nw = Math.max(5, Math.min(100 - orig.x, orig.w + dx));
+            const ny = Math.min(orig.y + orig.h - 5, Math.max(0, orig.y + dy));
+            currentYoloRoi.w = nw;
+            currentYoloRoi.h = (orig.y + orig.h) - ny;
+            currentYoloRoi.y = ny;
+        } else if (roiDragHandle === 'sw') {
+            const nx = Math.min(orig.x + orig.w - 5, Math.max(0, orig.x + dx));
+            const nh = Math.max(5, Math.min(100 - orig.y, orig.h + dy));
+            currentYoloRoi.w = (orig.x + orig.w) - nx;
+            currentYoloRoi.x = nx;
+            currentYoloRoi.h = nh;
+        } else if (roiDragHandle === 'se') {
+            currentYoloRoi.w = Math.max(5, Math.min(100 - orig.x, orig.w + dx));
+            currentYoloRoi.h = Math.max(5, Math.min(100 - orig.y, orig.h + dy));
+        } else if (roiDragHandle === 'new') {
+            const startX = Math.min(roiDragStartPoint.x, pos.x);
+            const startY = Math.min(roiDragStartPoint.y, pos.y);
+            const w = Math.max(5, Math.abs(pos.x - roiDragStartPoint.x));
+            const h = Math.max(5, Math.abs(pos.y - roiDragStartPoint.y));
+            currentYoloRoi.x = startX;
+            currentYoloRoi.y = startY;
+            currentYoloRoi.w = w;
+            currentYoloRoi.h = h;
+        }
+
+        updateYoloRoiDisplays();
+        drawYoloViewLiveCanvasStream();
         e.preventDefault();
     };
 
-    const onEnd = () => {
-        isStudioDragging = false;
+    const onPointerUp = () => {
+        isDraggingViewRoi = false;
+        roiDragHandle = null;
     };
 
-    canvas.addEventListener('mousedown', onStart);
-    canvas.addEventListener('mousemove', onMove);
-    canvas.addEventListener('mouseup', onEnd);
+    canvas.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
 
-    canvas.addEventListener('touchstart', onStart, { passive: false });
-    canvas.addEventListener('touchmove', onMove, { passive: false });
-    canvas.addEventListener('touchend', onEnd);
+    canvas.addEventListener('touchstart', onPointerDown, { passive: false });
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('touchend', onPointerUp);
 }
 
-function switchYoloSettingsTab(tabName) {
-    activeYoloSettingsTab = tabName;
-    const btnView = document.getElementById('yolo-tab-btn-view');
-    const btnSettings = document.getElementById('yolo-tab-btn-settings');
-    const contentView = document.getElementById('yolo-tab-content-view');
-    const contentSettings = document.getElementById('yolo-tab-content-settings');
-
-    if (tabName === 'view') {
-        if (btnView) {
-            btnView.style.background = '#2563eb';
-            btnView.style.color = '#ffffff';
-        }
-        if (btnSettings) {
-            btnSettings.style.background = 'transparent';
-            btnSettings.style.color = 'var(--text-muted)';
-        }
-        if (contentView) contentView.style.display = 'block';
-        if (contentSettings) contentSettings.style.display = 'none';
-
-        attachYoloVideoPreview('yolo-view-video-element');
-        startYoloLiveCanvasStreamLoop();
+// --- Quick Filter Pills Controller ---
+function toggleYoloFilterPill(category) {
+    const cats = ['person', 'car', 'motorcycle', 'animal'];
+    if (category === 'all') {
+        const allPill = document.getElementById('yolo-pill-all');
+        const allActive = cats.every(c => document.getElementById(`yolo-view-filter-${c}`)?.checked);
+        const newState = !allActive;
+        cats.forEach(c => {
+            const chk = document.getElementById(`yolo-view-filter-${c}`);
+            if (chk) chk.checked = newState;
+            const pill = document.getElementById(`yolo-pill-${c}`);
+            if (pill) pill.classList.toggle('active', newState);
+        });
+        if (allPill) allPill.classList.toggle('active', newState);
     } else {
-        if (btnView) {
-            btnView.style.background = 'transparent';
-            btnView.style.color = 'var(--text-muted)';
+        const pill = document.getElementById(`yolo-pill-${category}`);
+        const chk = document.getElementById(`yolo-view-filter-${category}`);
+        if (chk) {
+            chk.checked = !chk.checked;
+            if (pill) {
+                pill.classList.toggle('active', chk.checked);
+            }
         }
-        if (btnSettings) {
-            btnSettings.style.background = '#2563eb';
-            btnSettings.style.color = '#ffffff';
-        }
-        if (contentView) contentView.style.display = 'none';
-        if (contentSettings) contentSettings.style.display = 'block';
+        const allPill = document.getElementById('yolo-pill-all');
+        const allActive = cats.every(c => document.getElementById(`yolo-view-filter-${c}`)?.checked);
+        if (allPill) allPill.classList.toggle('active', allActive);
+    }
+    drawYoloViewLiveCanvasStream();
+}
+window.toggleYoloFilterPill = toggleYoloFilterPill;
 
-        attachYoloVideoPreview('yolo-setting-video-element');
-        setTimeout(() => {
-            drawYoloStudioCanvas();
-            initYoloStudioCanvasDragging();
-        }, 50);
+// --- Modular Parameters Modal Controller ---
+function openYoloParametersModal() {
+    const modal = document.getElementById('modal-yolo-ai-parameters');
+    if (modal) {
+        modal.style.display = 'flex';
+        // Auto-close on backdrop click
+        modal.onclick = (e) => {
+            if (e.target === modal) closeYoloParametersModal();
+        };
     }
 }
-window.switchYoloSettingsTab = switchYoloSettingsTab;
+window.openYoloParametersModal = openYoloParametersModal;
 
+function closeYoloParametersModal() {
+    const modal = document.getElementById('modal-yolo-ai-parameters');
+    if (modal) modal.style.display = 'none';
+}
+window.closeYoloParametersModal = closeYoloParametersModal;
+
+function toggleYoloRawTerminalLog() {
+    const wrapper = document.getElementById('yolo-terminal-log-wrapper');
+    if (wrapper) {
+        wrapper.style.display = (wrapper.style.display === 'none' || !wrapper.style.display) ? 'block' : 'none';
+    } else {
+        const terminal = document.getElementById('yolo-telemetry-terminal');
+        if (terminal) {
+            terminal.style.display = (terminal.style.display === 'none') ? 'block' : 'none';
+        }
+    }
+}
+window.toggleYoloRawTerminalLog = toggleYoloRawTerminalLog;
+
+function updateYoloThresholdDisplay(val) {
+    const display = document.getElementById('yolo-threshold-value-display');
+    if (display) display.textContent = `${val}%`;
+}
+window.updateYoloThresholdDisplay = updateYoloThresholdDisplay;
 
 let currentYoloRoi = { x: 10, y: 10, w: 80, h: 80 };
-let isDraggingRoi = false;
-let roiDragStart = { x: 0, y: 0 };
-let roiBoxStart = { x: 10, y: 10, w: 80, h: 80 };
-
-function updateYoloVideoCropPreview() {
-    const zoomVal = parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0');
-    const cropXVal = parseInt(document.getElementById('yolo-crop-x-slider')?.value || '0', 10);
-    const cropYVal = parseInt(document.getElementById('yolo-crop-y-slider')?.value || '0', 10);
-    const resVal = document.getElementById('yolo-stream-resolution')?.value || '720p';
-
-    const zoomDisp = document.getElementById('yolo-zoom-value-display');
-    const cropXDisp = document.getElementById('yolo-crop-x-display');
-    const cropYDisp = document.getElementById('yolo-crop-y-display');
-
-    if (zoomDisp) zoomDisp.textContent = `${zoomVal.toFixed(1)}x`;
-    if (cropXDisp) cropXDisp.textContent = `${cropXVal}%`;
-    if (cropYDisp) cropYDisp.textContent = `${cropYVal}%`;
-
-    const videoElView = document.getElementById('yolo-view-video-element');
-    const videoElSetting = document.getElementById('yolo-setting-video-element');
-
-    const transformCss = `scale(${zoomVal}) translate(${cropXVal / zoomVal}%, ${cropYVal / zoomVal}%)`;
-    if (videoElView) videoElView.style.transform = transformCss;
-    if (videoElSetting) videoElSetting.style.transform = transformCss;
-
-    drawYoloSettingCanvasOverlay();
-}
-window.updateYoloVideoCropPreview = updateYoloVideoCropPreview;
-
-function resetYoloRoiBox() {
-    currentYoloRoi = { x: 10, y: 10, w: 80, h: 80 };
-    updateYoloRoiDisplays();
-    drawYoloSettingCanvasOverlay();
-}
-window.resetYoloRoiBox = resetYoloRoiBox;
 
 function updateYoloRoiDisplays() {
     const xDisp = document.getElementById('yolo-roi-x-val');
@@ -9262,168 +9591,36 @@ function updateYoloRoiDisplays() {
     if (hDisp) hDisp.textContent = `${Math.round(currentYoloRoi.h)}%`;
 }
 
-function drawYoloSettingCanvasOverlay() {
-    const canvas = document.getElementById('yolo-setting-canvas-overlay');
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 1. Draw CCTV Grid Pattern & Camera Info Watermark (Ensures layout is never pitch-black void)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    const gridSize = 40;
-    for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-    }
-
-    const now = new Date();
-    const timeString = now.toISOString().replace('T', ' ').substring(0, 19);
-    ctx.font = '12px monospace';
-    ctx.fillStyle = '#4ade80';
-    ctx.fillText(`REC ● LIVE RTSP/HLS | ${timeString} | ARCH3R NVR YOLO AI`, 15, 25);
-
-    // 2. Calculate ROI box dimensions
-    const roiPx = {
-        x: (currentYoloRoi.x / 100) * canvas.width,
-        y: (currentYoloRoi.y / 100) * canvas.height,
-        w: (currentYoloRoi.w / 100) * canvas.width,
-        h: (currentYoloRoi.h / 100) * canvas.height
-    };
-
-    // Semi-transparent dimming outside ROI box
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-    ctx.fillRect(0, 0, canvas.width, roiPx.y); // top
-    ctx.fillRect(0, roiPx.y + roiPx.h, canvas.width, canvas.height - (roiPx.y + roiPx.h)); // bottom
-    ctx.fillRect(0, roiPx.y, roiPx.x, roiPx.h); // left
-    ctx.fillRect(roiPx.x + roiPx.w, roiPx.y, canvas.width - (roiPx.x + roiPx.w), roiPx.h); // right
-
-    // Green Neon ROI Box
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(roiPx.x, roiPx.y, roiPx.w, roiPx.h);
-    ctx.setLineDash([]);
-
-    // Corner Drag Handles
-    ctx.fillStyle = '#22c55e';
-    const handleSize = 8;
-    ctx.fillRect(roiPx.x - handleSize/2, roiPx.y - handleSize/2, handleSize, handleSize);
-    ctx.fillRect(roiPx.x + roiPx.w - handleSize/2, roiPx.y - handleSize/2, handleSize, handleSize);
-    ctx.fillRect(roiPx.x - handleSize/2, roiPx.y + roiPx.h - handleSize/2, handleSize, handleSize);
-    ctx.fillRect(roiPx.x + roiPx.w - handleSize/2, roiPx.y + roiPx.h - handleSize/2, handleSize, handleSize);
-
-    // ROI Label Header
-    ctx.fillStyle = '#22c55e';
-    ctx.fillRect(roiPx.x, roiPx.y - 20 > 0 ? roiPx.y - 20 : roiPx.y, 140, 20);
-    ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(' ZONA ROI DETEKSI', roiPx.x + 4, (roiPx.y - 20 > 0 ? roiPx.y - 20 : roiPx.y) + 14);
-
-    // Render Enabled Object Category Badges Inside ROI
-    const activeObjects = [];
-    if (document.getElementById('yolo-obj-person')?.checked) activeObjects.push('👤 Person');
-    if (document.getElementById('yolo-obj-car')?.checked) activeObjects.push('🚗 Car');
-    if (document.getElementById('yolo-obj-motorcycle')?.checked) activeObjects.push('🏍️ Motor');
-    if (document.getElementById('yolo-obj-bicycle')?.checked) activeObjects.push('🚲 Sepeda');
-    if (document.getElementById('yolo-obj-truck')?.checked) activeObjects.push('🚚 Truk');
-    if (document.getElementById('yolo-obj-dog-cat')?.checked) activeObjects.push('🐕 Anjing/Kucing');
-
-    if (activeObjects.length > 0) {
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-        ctx.fillRect(roiPx.x + 8, roiPx.y + 10, 160, 20 + activeObjects.length * 16);
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(roiPx.x + 8, roiPx.y + 10, 160, 20 + activeObjects.length * 16);
-
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 10px sans-serif';
-        ctx.fillText('TARGET OBJEK AKTIF:', roiPx.x + 14, roiPx.y + 24);
-
-        ctx.font = '10px sans-serif';
-        ctx.fillStyle = '#f8fafc';
-        activeObjects.forEach((objName, idx) => {
-            ctx.fillText(`• ${objName}`, roiPx.x + 18, roiPx.y + 40 + (idx * 15));
-        });
+function resetYoloRoiBox() {
+    currentYoloRoi = { x: 10, y: 10, w: 80, h: 80 };
+    updateYoloRoiDisplays();
+    drawYoloViewLiveCanvasStream();
+    if (typeof showToast === 'function') {
+        showToast('Zona ROI telah di-reset ke ukuran default (80% full screen).', 'info');
     }
 }
-window.drawYoloSettingCanvasOverlay = drawYoloSettingCanvasOverlay;
+window.resetYoloRoiBox = resetYoloRoiBox;
 
-function initYoloRoiDragging() {
-    const canvas = document.getElementById('yolo-setting-canvas-overlay');
-    if (!canvas) return;
+function updateYoloVideoCropPreview() {
+    const zoomVal = parseFloat(document.getElementById('yolo-zoom-slider')?.value || '1.0');
+    const cropXVal = parseInt(document.getElementById('yolo-crop-x-slider')?.value || '0', 10);
+    const cropYVal = parseInt(document.getElementById('yolo-crop-y-slider')?.value || '0', 10);
 
-    canvas.style.pointerEvents = 'auto';
-    canvas.style.cursor = 'move';
+    const zoomDisp = document.getElementById('yolo-zoom-value-display');
+    const cropXDisp = document.getElementById('yolo-crop-x-display');
+    const cropYDisp = document.getElementById('yolo-crop-y-display');
 
-    const getPos = (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return {
-            x: ((clientX - rect.left) / rect.width) * 100,
-            y: ((clientY - rect.top) / rect.height) * 100
-        };
-    };
+    if (zoomDisp) zoomDisp.textContent = `${zoomVal.toFixed(1)}x`;
+    if (cropXDisp) cropXDisp.textContent = `${cropXVal}%`;
+    if (cropYDisp) cropYDisp.textContent = `${cropYVal}%`;
 
-    const startDrag = (e) => {
-        if (!isYoloEditMode) return;
-        isDraggingRoi = true;
-        roiDragStart = getPos(e);
-        roiBoxStart = { ...currentYoloRoi };
-        e.preventDefault();
-    };
+    const videoElView = document.getElementById('yolo-view-video-element');
+    const transformCss = `scale(${zoomVal}) translate(${cropXVal / zoomVal}%, ${cropYVal / zoomVal}%)`;
+    if (videoElView) videoElView.style.transform = transformCss;
 
-    const doDrag = (e) => {
-        if (!isDraggingRoi || !isYoloEditMode) return;
-        const currentPos = getPos(e);
-        const dx = currentPos.x - roiDragStart.x;
-        const dy = currentPos.y - roiDragStart.y;
-
-        let newX = roiBoxStart.x + dx;
-        let newY = roiBoxStart.y + dy;
-
-        newX = Math.max(0, Math.min(100 - roiBoxStart.w, newX));
-        newY = Math.max(0, Math.min(100 - roiBoxStart.h, newY));
-
-        currentYoloRoi.x = newX;
-        currentYoloRoi.y = newY;
-
-        updateYoloRoiDisplays();
-        drawYoloSettingCanvasOverlay();
-        e.preventDefault();
-    };
-
-    const stopDrag = () => {
-        isDraggingRoi = false;
-    };
-
-    canvas.removeEventListener('mousedown', startDrag);
-    canvas.removeEventListener('mousemove', doDrag);
-    canvas.removeEventListener('mouseup', stopDrag);
-
-    canvas.addEventListener('mousedown', startDrag);
-    canvas.addEventListener('mousemove', doDrag);
-    canvas.addEventListener('mouseup', stopDrag);
-
-    canvas.addEventListener('touchstart', startDrag, { passive: false });
-    canvas.addEventListener('touchmove', doDrag, { passive: false });
-    canvas.addEventListener('touchend', stopDrag);
+    drawYoloViewLiveCanvasStream();
 }
-
-function cancelYoloEditMode() {
-    switchYoloSettingsTab('view');
-}
-window.cancelYoloEditMode = cancelYoloEditMode;
+window.updateYoloVideoCropPreview = updateYoloVideoCropPreview;
 
 function loadYoloCameraSettingsData(camId) {
     const targetCam = yoloCamerasList.find(c => String(c.id) === String(camId));
@@ -9473,6 +9670,17 @@ function loadYoloCameraSettingsData(camId) {
     if (fpsSelect) fpsSelect.value = String(settings.processingFps || '10');
     if (npuAccelChk) npuAccelChk.checked = settings.npuAccel !== false;
 
+    // Sync HUD badges on top right
+    const hudModel = document.getElementById('yolo-hud-model-name');
+    const hudFps = document.getElementById('yolo-hud-fps');
+    const engineMap = {
+        'yolov8n': 'YOLOv8 Nano',
+        'yolov8s': 'YOLOv8 Small',
+        'yolov8m': 'YOLOv8 Medium'
+    };
+    if (hudModel) hudModel.textContent = engineMap[settings.engineModel] || 'YOLOv8 Nano';
+    if (hudFps) hudFps.textContent = `${settings.processingFps || '10'} FPS`;
+
     const chkRec = document.getElementById('yolo-event-record');
     const chkBuzz = document.getElementById('yolo-event-buzzer');
     const chkTel = document.getElementById('yolo-event-telegram');
@@ -9507,7 +9715,7 @@ function loadYoloCameraSettingsData(camId) {
     if (chkBird) chkBird.checked = !!settings.bird;
     if (chkLivestock) chkLivestock.checked = !!settings.livestock;
 
-    // Synchronize View Tab Filter Checkboxes
+    // Synchronize Filter Checkboxes & Quick Filter Pills
     const vPerson = document.getElementById('yolo-view-filter-person');
     const vCar = document.getElementById('yolo-view-filter-car');
     const vMotorcycle = document.getElementById('yolo-view-filter-motorcycle');
@@ -9518,8 +9726,17 @@ function loadYoloCameraSettingsData(camId) {
     if (vMotorcycle) vMotorcycle.checked = settings.motorcycle !== false;
     if (vAnimal) vAnimal.checked = (!!settings.dogCat || !!settings.bird || !!settings.livestock);
 
+    const pillPerson = document.getElementById('yolo-pill-person');
+    const pillCar = document.getElementById('yolo-pill-car');
+    const pillMotorcycle = document.getElementById('yolo-pill-motorcycle');
+    const pillAnimal = document.getElementById('yolo-pill-animal');
+
+    if (pillPerson) pillPerson.classList.toggle('active', settings.person !== false);
+    if (pillCar) pillCar.classList.toggle('active', settings.car !== false);
+    if (pillMotorcycle) pillMotorcycle.classList.toggle('active', settings.motorcycle !== false);
+    if (pillAnimal) pillAnimal.classList.toggle('active', !!settings.dogCat || !!settings.bird || !!settings.livestock);
+
     updateYoloVideoCropPreview();
-    initYoloRoiDragging();
 }
 
 function saveYoloCameraSettings(applyToAllGlobal = false) {
@@ -9579,7 +9796,20 @@ function saveYoloCameraSettings(applyToAllGlobal = false) {
     }
 
     saveYoloCamerasToStorage();
-    cancelYoloEditMode();
+
+    // Update Top Right HUD Badges
+    const hudModel = document.getElementById('yolo-hud-model-name');
+    const hudFps = document.getElementById('yolo-hud-fps');
+    const engineMap = {
+        'yolov8n': 'YOLOv8 Nano',
+        'yolov8s': 'YOLOv8 Small',
+        'yolov8m': 'YOLOv8 Medium'
+    };
+    if (hudModel) hudModel.textContent = engineMap[engineModel] || 'YOLOv8 Nano';
+    if (hudFps) hudFps.textContent = `${processingFps} FPS`;
+
+    updateYoloVideoCropPreview();
+    closeYoloParametersModal();
 
     const msg = applyToAllGlobal
         ? '🌐 Parameter YOLO AI berhasil diterapkan ke SEMUA kamera secara Global!'
@@ -9594,19 +9824,15 @@ function saveYoloCameraSettings(applyToAllGlobal = false) {
 window.saveYoloCameraSettings = saveYoloCameraSettings;
 
 function refreshYoloSettingStream() {
-    if (activeYoloSettingsTab === 'view') {
-        attachYoloVideoPreview('yolo-view-video-element');
-    } else {
-        attachYoloVideoPreview('yolo-setting-video-element');
+    attachYoloVideoPreview('yolo-view-video-element');
+    if (typeof showToast === 'function') {
+        showToast('🔄 Menghubungkan ulang stream video RTSP/HLS...', 'info');
     }
 }
 window.refreshYoloSettingStream = refreshYoloSettingStream;
 
 function toggleYoloVideoFullscreen() {
-    const videoWrapper = (activeYoloSettingsTab === 'view')
-        ? document.getElementById('yolo-view-video-wrapper')
-        : document.getElementById('yolo-setting-video-wrapper');
-
+    const videoWrapper = document.getElementById('yolo-view-video-wrapper');
     if (!videoWrapper) return;
 
     if (!document.fullscreenElement) {
@@ -9622,6 +9848,31 @@ function toggleYoloVideoFullscreen() {
     }
 }
 window.toggleYoloVideoFullscreen = toggleYoloVideoFullscreen;
+
+// Backward Compatibility Helpers for Legacy Scripts & Handlers
+function updateYoloStudioZoomDisplay(val) { updateYoloVideoCropPreview(); }
+window.updateYoloStudioZoomDisplay = updateYoloStudioZoomDisplay;
+function addNewRoiZone() { toggleYoloRoiEditMode(); }
+window.addNewRoiZone = addNewRoiZone;
+function drawYoloStudioCanvas() { drawYoloViewLiveCanvasStream(); }
+window.drawYoloStudioCanvas = drawYoloStudioCanvas;
+function initYoloStudioCanvasDragging() { initYoloViewCanvasRoiEditing(); }
+window.initYoloStudioCanvasDragging = initYoloStudioCanvasDragging;
+function drawYoloSettingCanvasOverlay() { drawYoloViewLiveCanvasStream(); }
+window.drawYoloSettingCanvasOverlay = drawYoloSettingCanvasOverlay;
+function initYoloRoiDragging() { initYoloViewCanvasRoiEditing(); }
+window.initYoloRoiDragging = initYoloRoiDragging;
+function switchYoloSettingsTab(tabName) {
+    if (tabName === 'settings') {
+        openYoloParametersModal();
+    } else {
+        attachYoloVideoPreview('yolo-view-video-element');
+        startYoloLiveCanvasStreamLoop();
+    }
+}
+window.switchYoloSettingsTab = switchYoloSettingsTab;
+function cancelYoloEditMode() { cancelYoloRoiEditMode(); }
+window.cancelYoloEditMode = cancelYoloEditMode;
 
 function exportYoloConfig() {
     const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
@@ -9734,15 +9985,41 @@ function openYoloCameraSettings(camId) {
     if (mainList) mainList.style.display = 'none';
     if (settingsView) settingsView.style.display = 'block';
 
+    // Reset event strip for selected camera session
+    renderYoloEventStrip();
+
     loadYoloCameraSettingsData(camId);
-    switchYoloSettingsTab('view');
+    attachYoloVideoPreview('yolo-view-video-element');
+    startYoloLiveCanvasStreamLoop();
     startYoloTelemetrySimulator();
 }
 window.openYoloCameraSettings = openYoloCameraSettings;
 
 function closeYoloCameraSettings() {
+    if (isYoloEditMode) {
+        cancelYoloRoiEditMode();
+    }
+    closeYoloParametersModal();
+
     activeYoloSettingsCamId = null;
-    if (yoloTelemetryTimer) clearInterval(yoloTelemetryTimer);
+    if (yoloTelemetryTimer) {
+        clearInterval(yoloTelemetryTimer);
+        yoloTelemetryTimer = null;
+    }
+    if (yoloCanvasAnimationTimer) {
+        cancelAnimationFrame(yoloCanvasAnimationTimer);
+        yoloCanvasAnimationTimer = null;
+    }
+
+    // Release video element to free STB hardware decoder memory
+    const videoEl = document.getElementById('yolo-view-video-element');
+    if (videoEl) {
+        try {
+            videoEl.pause();
+            videoEl.removeAttribute('src');
+            videoEl.load();
+        } catch(e) {}
+    }
 
     const repoView = document.getElementById('addons-repository-view');
     const mainList = document.getElementById('yolo-main-list-view');
