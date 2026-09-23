@@ -2431,5 +2431,82 @@ body.kiosk-display-mode .cam-cell {
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
+/* ============================================================== */
+/* MODERN CAMERA MANAGEMENT DASHBOARD */
+/* ============================================================== */
+.camera-table-card {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.cam-tbl-header {
+    background: #1e293b;
+    color: #94a3b8;
+    border-bottom: 1px solid #334155;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.6px;
+}
+
+.cam-tbl-row {
+    border-bottom: 1px solid #1e293b;
+    transition: background 0.15s ease;
+}
+
+.cam-tbl-row:hover {
+    background: rgba(30, 41, 59, 0.4);
+}
+
+.cam-tbl-row:last-child {
+    border-bottom: none;
+}
+
+.cam-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+}
+
+.cam-action-btn.ai {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.3);
+}
+.cam-action-btn.ai:hover {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.cam-action-btn.edit {
+    background: #1e293b;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+.cam-action-btn.edit:hover {
+    background: #334155;
+    color: #ffffff;
+}
+
+.cam-action-btn.delete {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+.cam-action-btn.delete:hover {
+    background: #ef4444;
+    color: #ffffff;
+}
+
 
 

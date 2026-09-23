@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.6.7 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.7.1 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -1203,9 +1203,26 @@ async function updateHardwareStats() {
         const modalCameraList = document.getElementById('modalCameraList');
         if (!modalCameraList) return;
         
+        // Update header camera badge count if present
+        const countBadge = document.getElementById('cameraHeaderCountBadge');
+        if (countBadge) {
+            countBadge.textContent = `${cameras.length} Kamera`;
+        }
+
         modalCameraList.innerHTML = '';
         if (cameras.length === 0) {
-            modalCameraList.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">Belum ada kamera. Tambahkan melalui form di bawah.</p>';
+            modalCameraList.innerHTML = `
+                <div style="padding:3rem 1.5rem; text-align:center; color:#94a3b8;">
+                    <div style="font-size:2.5rem; margin-bottom:0.75rem; opacity:0.8;">📹</div>
+                    <h4 style="margin:0 0 0.4rem 0; color:#f8fafc; font-size:1.05rem;">Belum Ada Kamera Terdaftar</h4>
+                    <p style="margin:0 0 1.25rem 0; font-size:0.85rem; color:#64748b;">
+                        Tambahkan kamera RTSP/ONVIF atau gunakan fitur Scan IP untuk mendeteksi kamera otomatis.
+                    </p>
+                    <button type="button" onclick="window.openCameraModal()" class="btn btn-primary" style="font-size:0.85rem; padding:0.5rem 1.25rem;">
+                        ➕ Tambah Kamera Sekarang
+                    </button>
+                </div>
+            `;
             return;
         }
 
@@ -1215,11 +1232,12 @@ async function updateHardwareStats() {
         table.style.fontSize = '0.85rem';
         table.innerHTML = `
             <thead>
-                <tr style="border-bottom:1px solid var(--border); text-align:left;">
-                    <th style="padding:0.5rem;">Nama Kamera</th>
-                    <th style="padding:0.5rem;">Status Stream</th>
-                    <th style="padding:0.5rem;">Rekam</th>
-                    <th style="padding:0.5rem; text-align:right;">Aksi</th>
+                <tr class="cam-tbl-header">
+                    <th style="padding:0.75rem 1rem; text-align:left;">Nama & URL Stream</th>
+                    <th style="padding:0.75rem 1rem; text-align:center;">Status Stream</th>
+                    <th style="padding:0.75rem 1rem; text-align:center;">Mode Rekam</th>
+                    <th style="padding:0.75rem 1rem; text-align:center;">PTZ</th>
+                    <th style="padding:0.75rem 1rem; text-align:right;">Aksi Manajemen</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -1228,24 +1246,54 @@ async function updateHardwareStats() {
         const tbody = table.querySelector('tbody');
         cameras.forEach(cam => {
             const tr = document.createElement('tr');
-            tr.style.borderBottom = '1px solid var(--border)';
+            tr.className = 'cam-tbl-row';
             const isEnabled = cam.enabled !== false;
             
+            // PTZ badge
+            let ptzBadge = '<span style="color:#64748b; font-size:0.75rem;">Mati</span>';
+            if (cam.ptzProtocol === 'v380_native') {
+                ptzBadge = '<span style="background:rgba(234,179,8,0.15); color:#facc15; padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:600; border:1px solid rgba(234,179,8,0.3);">V380 TCP</span>';
+            } else if (cam.ptzEnabled || cam.hasPtz) {
+                ptzBadge = '<span style="background:rgba(16,185,129,0.15); color:#34d399; padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:600; border:1px solid rgba(16,185,129,0.3);">ONVIF</span>';
+            }
+
+            // Stream status badge
+            const statusBadge = isEnabled
+                ? '<span style="display:inline-flex; align-items:center; gap:0.35rem; background:rgba(16,185,129,0.12); color:#10b981; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; border:1px solid rgba(16,185,129,0.25);"><span style="width:6px; height:6px; background:#10b981; border-radius:50%; box-shadow:0 0 6px #10b981;"></span> Online</span>'
+                : '<span style="display:inline-flex; align-items:center; gap:0.35rem; background:rgba(239,68,68,0.12); color:#ef4444; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; border:1px solid rgba(239,68,68,0.25);"><span style="width:6px; height:6px; background:#ef4444; border-radius:50%;"></span> Nonaktif</span>';
+
+            // Record badge
+            const recBadge = cam.recordMode === 'continuous'
+                ? '<span style="display:inline-flex; align-items:center; gap:0.35rem; background:rgba(245,158,11,0.12); color:#fbbf24; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; border:1px solid rgba(245,158,11,0.25);">🔴 Terus Menerus</span>'
+                : '<span style="color:#64748b; font-size:0.75rem;">Live Saja</span>';
+
             tr.innerHTML = `
-                <td style="padding:0.5rem;">
-                    <div style="font-weight:600;">${cam.name}</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted); word-break:break-all;">${cam.mainStreamUrl || '-'}</div>
+                <td style="padding:0.85rem 1rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span style="font-size:1.1rem;">📹</span>
+                        <div>
+                            <div style="font-weight:600; color:#f8fafc; font-size:0.9rem;">${cam.name}</div>
+                            <div style="font-size:0.75rem; color:#64748b; font-family:monospace; max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${cam.mainStreamUrl || '-'}">
+                                ${cam.mainStreamUrl || '-'}
+                            </div>
+                        </div>
+                    </div>
                 </td>
-                <td style="padding:0.5rem;">
-                    ${isEnabled ? '<span style="color:#10b981;">Online</span>' : '<span style="color:#ef4444;">Offline</span>'}
+                <td style="padding:0.85rem 1rem; text-align:center;">
+                    ${statusBadge}
                 </td>
-                <td style="padding:0.5rem;">
-                    ${cam.recordMode === 'continuous' ? '<span style="color:#f59e0b;">Continuous</span>' : 'Disabled'}
+                <td style="padding:0.85rem 1rem; text-align:center;">
+                    ${recBadge}
                 </td>
-                <td style="padding:0.5rem; text-align:right;">
-                    <button class="btn-sm btn-primary" onclick="openAIGridModal('${cam.id}')" style="margin-right:0.25rem; background:#3b82f6; border-color:#3b82f6;" title="Konfigurasi AI YOLOv8">🤖 AI</button>
-                    <button class="btn-sm btn-secondary" onclick="window.editCamera('${cam.id}')" style="margin-right:0.25rem;">Edit</button>
-                    <button class="btn-sm btn-primary" onclick="window.deleteCamera('${cam.id}')" style="background:#ef4444; border-color:#ef4444;">Hapus</button>
+                <td style="padding:0.85rem 1rem; text-align:center;">
+                    ${ptzBadge}
+                </td>
+                <td style="padding:0.85rem 1rem; text-align:right;">
+                    <div style="display:inline-flex; gap:0.4rem; justify-content:flex-end;">
+                        <button type="button" class="cam-action-btn ai" onclick="openAIGridModal('${cam.id}')" title="Konfigurasi Deteksi AI YOLOv8">🤖 AI</button>
+                        <button type="button" class="cam-action-btn edit" onclick="window.editCamera('${cam.id}')" title="Edit Kamera">✏️ Edit</button>
+                        <button type="button" class="cam-action-btn delete" onclick="window.deleteCamera('${cam.id}')" title="Hapus Kamera">🗑️ Hapus</button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1717,8 +1765,8 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
             switchCameraTab('ctab-general');
         }
 
-        const cForm = document.getElementById('cameraForm');
-        if(cForm) cForm.scrollIntoView({ behavior: 'smooth' });
+        // Buka modal dialog kamera secara mulus
+        window.openCameraModal();
     };
 
     window.deleteCamera = async function(id) {
@@ -1733,6 +1781,40 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         }
     };
     
+    // Modal open/close functions for Camera Form & IP Scanner
+    window.openCameraModal = function() {
+        const modal = document.getElementById('cameraModalOverlay');
+        if (modal) {
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        }
+    };
+
+    window.closeCameraModal = function() {
+        const modal = document.getElementById('cameraModalOverlay');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+        if (typeof closeRtspVideoTest === 'function') closeRtspVideoTest();
+    };
+
+    window.openIpScannerModal = function() {
+        const modal = document.getElementById('scannerModalOverlay');
+        if (modal) {
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        }
+    };
+
+    window.closeIpScannerModal = function() {
+        const modal = document.getElementById('scannerModalOverlay');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+    };
+
     function resetCameraForm() {
         const form = document.getElementById('cameraForm');
         if (form) form.reset();
@@ -1782,15 +1864,61 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         if (btnCancelEdit) btnCancelEdit.style.display = 'none';
     }
 
-    // Wire up cancel edit button
+    // Wire up Camera Modal & Scanner Modal triggers
     setTimeout(() => {
+        const btnOpenAdd = document.getElementById('btnOpenAddCameraModal');
+        if (btnOpenAdd) {
+            btnOpenAdd.onclick = () => {
+                resetCameraForm();
+                window.openCameraModal();
+            };
+        }
+
+        const btnLegacyScroll = document.getElementById('btnScrollToForm');
+        if (btnLegacyScroll) {
+            btnLegacyScroll.onclick = () => {
+                resetCameraForm();
+                window.openCameraModal();
+            };
+        }
+
+        const btnCloseCamModal = document.getElementById('btnCloseCameraModal');
+        if (btnCloseCamModal) {
+            btnCloseCamModal.onclick = () => {
+                window.closeCameraModal();
+            };
+        }
+
+        const btnCancelCamModal = document.getElementById('btnCancelCameraModal');
+        if (btnCancelCamModal) {
+            btnCancelCamModal.onclick = () => {
+                resetCameraForm();
+                window.closeCameraModal();
+            };
+        }
+
+        const btnOpenScan = document.getElementById('btnOpenIpScannerModal');
+        if (btnOpenScan) {
+            btnOpenScan.onclick = () => {
+                window.openIpScannerModal();
+            };
+        }
+
+        const btnCloseScan = document.getElementById('btnCloseIpScannerModal');
+        if (btnCloseScan) {
+            btnCloseScan.onclick = () => {
+                window.closeIpScannerModal();
+            };
+        }
+
         const btnCancelEdit = document.getElementById('btnCancelEdit');
         if(btnCancelEdit) {
             btnCancelEdit.onclick = () => {
                 resetCameraForm();
+                window.closeCameraModal();
             };
         }
-    }, 1000);
+    }, 500);
 
     /* cameraForm submit */
     if (cameraForm) {
@@ -1861,12 +1989,14 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
                 showToast('✅ Kamera berhasil disimpan!', 'success');
                 
                 resetCameraForm();
+                window.closeCameraModal();
                 fetchCameras();
             } catch (err) {
                 if (!navigator.onLine || err.message?.includes('fetch') || err.message?.includes('NetworkError') || err.message?.includes('Failed to fetch')) {
                     enqueueOfflineSync('camera', id ? ('/api/cameras/' + id) : '/api/cameras', id ? 'PUT' : 'POST', payload, payload.name || 'Kamera');
                     showToast(`📱 Internet HP Terputus. Konfigurasi kamera "${payload.name || ''}" diamankan di HP & otomatis disimpan ke NVR saat koneksi pulih.`, 'warning');
                     resetCameraForm();
+                    window.closeCameraModal();
                     return;
                 }
                 alert('Gagal menyimpan kamera: ' + err.message);
@@ -2126,6 +2256,8 @@ async function loadStorageDevices() {
 
                                     const cForm = document.getElementById('cameraForm');
                                     if (cForm) cForm.scrollIntoView({ behavior: 'smooth' });
+                                    window.closeIpScannerModal();
+                                    window.openCameraModal();
                                 });
                             });
                         }
