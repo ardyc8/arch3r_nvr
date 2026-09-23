@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.6.5 - Anti-Flicker HDMI Kiosk, Zero-Corruption X11 Framebuffer, Single-Pass Preset Transitions, and Native MPV Architecture.",
+  "description": "Arch3r NVR Ver. 10.6.6 - Direct DRM HDMI Video Engine, TTY Systemd Permission Fix, Clean ASCII OSD, and Resilient Reconnect Loop.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -47,29 +47,31 @@ PLAYLIST="/opt/arch3r-native/current_playlist.m3u"
 rm -f "$SOCKET" 2>/dev/null || true
 
 # Jika file playlist belum ada, buat default dummy playlist ringan (1 FPS)
+# Jika file playlist belum ada, buat default standby screen ringan (5 FPS)
 if [ ! -f "$PLAYLIST" ]; then
     echo "#EXTM3U" > "$PLAYLIST"
     echo "#EXTINF:-1, Arch3r Standby" >> "$PLAYLIST"
-    echo "lavfi://color=c=black:s=640x360:r=1" >> "$PLAYLIST"
+    echo "avdevice://lavfi:color=c=0x0b132b:s=1280x720:r=5" >> "$PLAYLIST"
 fi
 
 echo "[Arch3r-Native] Menjalankan MPV Hardware Engine..."
 
-# Jalankan MPV dengan akselerasi hardware VPU dan kontrol IPC Unix Socket
-# CATATAN: DILARANG menggunakan --untimed karena menyebabkan CPU 100% loop!
+# Jalankan MPV dengan akselerasi hardware DRM langsung ke HDMI tanpa X11
 exec mpv \
     --idle=yes \
+    --keep-open=always \
+    --force-window=immediate \
     --input-ipc-server="$SOCKET" \
     --profile=low-latency \
     --demuxer-lavf-o=rtsp_transport=tcp \
     --demuxer-readahead-secs=1 \
+    --network-timeout=5 \
+    --stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=3 \
     --hwdec=auto-safe \
-    --vo=gpu,drm,fbdev \
+    --vo=drm,fbdev,gpu \
     --no-audio \
     --fs \
     --cursor-autohide=always \
-    --keep-open=yes \
-    --force-window=immediate \
     --osd-level=1 \
     --osd-font-size=24 \
     --osd-color='#38bdf8' \
@@ -91,7 +93,13 @@ Type=simple
 User=root
 Restart=always
 RestartSec=3
-Environment=DISPLAY=:0
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+Environment=XDG_RUNTIME_DIR=/run/user/0
 ExecStart=/opt/arch3r-native/start-native.sh
 
 [Install]

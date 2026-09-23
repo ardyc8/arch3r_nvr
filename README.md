@@ -1,5 +1,17 @@
-# ⚡ Arch3r NVR (Ver. 10.6.5)
+# ⚡ Arch3r NVR (Ver. 10.6.6)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.6:
+- **Direct DRM/KMS HDMI Video Engine, Hak Akses TTY Systemd & Standby Resilience**:
+  1. **Prioritas Utama Video Output Direct DRM (`--vo=drm,fbdev,gpu`)**:
+     - Mengubah urutan prioritas pemutar video MPV menjadi DRM pertama (`--vo=drm`). Melenyapkan kegagalan rendering akibat MPV mencoba mencari server X11 (`DISPLAY=:0`) yang tidak aktif.
+  2. **Perbaikan Hak Akses TTY di Systemd (`status=4/NOPERMISSION`)**:
+     - Menambahkan konfigurasi `TTYPath=/dev/tty1`, `StandardInput=tty`, `TTYReset=yes`, dan `Environment=XDG_RUNTIME_DIR=/run/user/0` pada `arch3r-native.service`. Memberikan izin penuh kepada MPV untuk mengontrol frame buffer DRM HDMI langsung dari latar belakang (background service).
+  3. **Layar Standby Berwarna & Anti-Exit RTSP**:
+     - Mengganti standby item dummy menjadi `avdevice://lavfi:color=c=0x0b132b:s=1280x720:r=5` (layar biru gelap siaga yang terlihat di TV, bukan hitam kosong, dengan beban CPU 0%).
+     - Menambahkan flag rekoneksi otomatis dan anti-keluar saat kamera offline: `--idle=yes`, `--keep-open=always`, `--force-window=immediate`, `--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=3`.
+  4. **Pembersihan OSD Font Fallback**:
+     - Mengganti seluruh karakter emoji pada teks OSD menjadi format teks ASCII standar (`[KAMERA]`, `[QUAD]`, `[TOUR]`) untuk melenyapkan peringatan `libass glyph fallback` di STB Linux Armbian.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.5:
 - **Pembersihan Framebuffer X11, Anti-Kedip Layar Kiosk & Pencegahan Kerusakan Memori GPU/CMA**:
