@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.6.9 - Universal DRM Auto-Negotiation for Amlogic/Rockchip STBs, Unknown DRM Connector Auto-Detection, and Zero-Terminal HDMI Output.",
+  "description": "Arch3r NVR Ver. 10.7.0 - Native SDL2/OpenGL Display Fallback, Zero-Crash Systemd MPV Service, and Amlogic STB Hardware Acceleration.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

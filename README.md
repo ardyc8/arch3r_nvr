@@ -1,5 +1,11 @@
-# ⚡ Arch3r NVR (Ver. 10.6.9)
+# ⚡ Arch3r NVR (Ver. 10.7.0)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.7.0:
+- **Native SDL2/OpenGL Display Fallback & Zero-Crash Systemd Player**:
+  1. **Penambahan Driver Video Output `sdl` (`--vo=gpu,drm,sdl,fbdev`)**:
+     - Menambahkan driver `sdl` ke rantai output video MPV, memungkinkan bypass hambatan Virtual Terminal (TTY VT Switcher) pada SoC Amlogic Armbian.
+     - Menyelesaikan masalah layar hitam dan mencegah MPV keluar seketika (*dead exit*), sehingga systemd service `arch3r-native.service` tetap menyala aktif (🟢 Running) secara stabil.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.9:
 - **Universal DRM Auto-Negotiation & Unknown-Connector Support (Amlogic Meson DRM)**:

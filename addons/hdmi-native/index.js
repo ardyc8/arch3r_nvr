@@ -296,7 +296,7 @@ exec mpv \\
     --network-timeout=5 \\
     --stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_delay_max=3 \\
     --hwdec=auto-safe \\
-    --vo=drm,fbdev,gpu \\
+    --vo=gpu,drm,sdl,fbdev \\
     --no-audio \\
     --fs \\
     --cursor-autohide=always \\
