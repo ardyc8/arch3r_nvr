@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.7.1 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.7.2 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -1199,6 +1199,94 @@ async function updateHardwareStats() {
         }
     }
 
+    let quickPreviewHlsPlayer = null;
+
+    window.openQuickPreviewModal = function(camId) {
+        const cam = cameras.find(c => c.id === camId);
+        if (!cam) return;
+
+        const modal = document.getElementById('quickPreviewModalOverlay');
+        const nameEl = document.getElementById('quickPreviewCamName');
+        const subtextEl = document.getElementById('quickPreviewCamSubtext');
+        const loadingEl = document.getElementById('quickPreviewLoading');
+        const videoEl = document.getElementById('quickPreviewVideo');
+        const btnEdit = document.getElementById('btnQuickPreviewEdit');
+
+        if (nameEl) nameEl.textContent = cam.name || 'Preview Kamera';
+        if (subtextEl) subtextEl.textContent = cam.mainStreamUrl || (cam.ipAddress ? `IP: ${cam.ipAddress}` : '');
+        if (btnEdit) {
+            btnEdit.onclick = () => {
+                window.closeQuickPreviewModal();
+                window.editCamera(cam.id);
+            };
+        }
+
+        if (modal) {
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+        }
+
+        if (loadingEl) loadingEl.style.display = 'flex';
+
+        if (videoEl) {
+            videoEl.onplaying = () => {
+                if (loadingEl) loadingEl.style.display = 'none';
+            };
+            videoEl.onerror = () => {
+                if (loadingEl) {
+                    loadingEl.innerHTML = `<span style="color:#ef4444; padding:1rem; text-align:center;">❌ Gagal memuat stream RTSP/HLS kamera ini. Pastikan kamera online.</span>`;
+                }
+            };
+
+            const authToken = typeof getAuthToken === 'function' ? getAuthToken() : (localStorage.getItem('nvr_auth_token') || '');
+            const hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http')
+                ? cam.mainStreamUrl
+                : `/stream/${cam.mediaMtxPath || cam.id}/index.m3u8?token=${encodeURIComponent(authToken)}`;
+
+            if (quickPreviewHlsPlayer) {
+                quickPreviewHlsPlayer.destroy();
+                quickPreviewHlsPlayer = null;
+            }
+
+            if (window.Hls && Hls.isSupported()) {
+                quickPreviewHlsPlayer = new Hls({ enableWorker: true, lowLatencyMode: true });
+                quickPreviewHlsPlayer.loadSource(hlsUrl);
+                quickPreviewHlsPlayer.attachMedia(videoEl);
+                quickPreviewHlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoEl.play().catch(() => {});
+                });
+                quickPreviewHlsPlayer.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        if (loadingEl) {
+                            loadingEl.innerHTML = `<span style="color:#ef4444; padding:1rem; text-align:center;">❌ Stream offline atau format tidak didukung browser.</span>`;
+                        }
+                    }
+                });
+            } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+                videoEl.src = hlsUrl;
+                videoEl.play().catch(() => {});
+            }
+        }
+    };
+
+    window.closeQuickPreviewModal = function() {
+        const modal = document.getElementById('quickPreviewModalOverlay');
+        const videoEl = document.getElementById('quickPreviewVideo');
+        if (quickPreviewHlsPlayer) {
+            quickPreviewHlsPlayer.destroy();
+            quickPreviewHlsPlayer = null;
+        }
+        if (videoEl) {
+            videoEl.pause();
+            videoEl.src = '';
+            videoEl.load();
+        }
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+    };
+
     function renderModalCameraList() {
         const modalCameraList = document.getElementById('modalCameraList');
         if (!modalCameraList) return;
@@ -1226,6 +1314,10 @@ async function updateHardwareStats() {
             return;
         }
 
+        // 1. DESKTOP VIEW (Table Rapi)
+        const desktopWrapper = document.createElement('div');
+        desktopWrapper.className = 'cam-desktop-view';
+
         const table = document.createElement('table');
         table.className = 'w-full';
         table.style.borderCollapse = 'collapse';
@@ -1234,19 +1326,22 @@ async function updateHardwareStats() {
             <thead>
                 <tr class="cam-tbl-header">
                     <th style="padding:0.75rem 1rem; text-align:left;">Nama & URL Stream</th>
-                    <th style="padding:0.75rem 1rem; text-align:center;">Status Stream</th>
-                    <th style="padding:0.75rem 1rem; text-align:center;">Mode Rekam</th>
-                    <th style="padding:0.75rem 1rem; text-align:center;">PTZ</th>
-                    <th style="padding:0.75rem 1rem; text-align:right;">Aksi Manajemen</th>
+                    <th style="padding:0.75rem 1rem; text-align:center; width:110px;">Status</th>
+                    <th style="padding:0.75rem 1rem; text-align:center; width:130px;">Mode Rekam</th>
+                    <th style="padding:0.75rem 1rem; text-align:center; width:100px;">PTZ</th>
+                    <th style="padding:0.75rem 1rem; text-align:right; width:180px;">Aksi</th>
                 </tr>
             </thead>
             <tbody></tbody>
         `;
         
         const tbody = table.querySelector('tbody');
-        cameras.forEach(cam => {
-            const tr = document.createElement('tr');
-            tr.className = 'cam-tbl-row';
+
+        // 2. MOBILE VIEW (Card Layout Rapi)
+        const mobileWrapper = document.createElement('div');
+        mobileWrapper.className = 'cam-mobile-cards';
+
+        cameras.forEach((cam, idx) => {
             const isEnabled = cam.enabled !== false;
             
             // PTZ badge
@@ -1267,39 +1362,67 @@ async function updateHardwareStats() {
                 ? '<span style="display:inline-flex; align-items:center; gap:0.35rem; background:rgba(245,158,11,0.12); color:#fbbf24; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:600; border:1px solid rgba(245,158,11,0.25);">🔴 Terus Menerus</span>'
                 : '<span style="color:#64748b; font-size:0.75rem;">Live Saja</span>';
 
+            // --- Fill Desktop Row ---
+            const tr = document.createElement('tr');
+            tr.className = 'cam-tbl-row';
             tr.innerHTML = `
-                <td style="padding:0.85rem 1rem;">
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <span style="font-size:1.1rem;">📹</span>
+                <td style="padding:0.75rem 1rem;">
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <span style="font-size:1.15rem;">📹</span>
                         <div>
-                            <div style="font-weight:600; color:#f8fafc; font-size:0.9rem;">${cam.name}</div>
-                            <div style="font-size:0.75rem; color:#64748b; font-family:monospace; max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${cam.mainStreamUrl || '-'}">
+                            <div style="font-weight:600; color:#f8fafc; font-size:0.88rem;">${cam.name}</div>
+                            <div style="font-size:0.75rem; color:#64748b; font-family:monospace; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${cam.mainStreamUrl || '-'}">
                                 ${cam.mainStreamUrl || '-'}
                             </div>
                         </div>
                     </div>
                 </td>
-                <td style="padding:0.85rem 1rem; text-align:center;">
-                    ${statusBadge}
-                </td>
-                <td style="padding:0.85rem 1rem; text-align:center;">
-                    ${recBadge}
-                </td>
-                <td style="padding:0.85rem 1rem; text-align:center;">
-                    ${ptzBadge}
-                </td>
-                <td style="padding:0.85rem 1rem; text-align:right;">
-                    <div style="display:inline-flex; gap:0.4rem; justify-content:flex-end;">
-                        <button type="button" class="cam-action-btn ai" onclick="openAIGridModal('${cam.id}')" title="Konfigurasi Deteksi AI YOLOv8">🤖 AI</button>
+                <td style="padding:0.75rem 1rem; text-align:center;">${statusBadge}</td>
+                <td style="padding:0.75rem 1rem; text-align:center;">${recBadge}</td>
+                <td style="padding:0.75rem 1rem; text-align:center;">${ptzBadge}</td>
+                <td style="padding:0.75rem 1rem; text-align:right;">
+                    <div style="display:inline-flex; gap:0.35rem; justify-content:flex-end;">
+                        <button type="button" class="cam-action-btn preview" onclick="window.openQuickPreviewModal('${cam.id}')" title="Preview Stream Video">👁️ Preview</button>
                         <button type="button" class="cam-action-btn edit" onclick="window.editCamera('${cam.id}')" title="Edit Kamera">✏️ Edit</button>
                         <button type="button" class="cam-action-btn delete" onclick="window.deleteCamera('${cam.id}')" title="Hapus Kamera">🗑️ Hapus</button>
                     </div>
                 </td>
             `;
             tbody.appendChild(tr);
+
+            // --- Fill Mobile Card ---
+            const card = document.createElement('div');
+            card.className = 'cam-mobile-card';
+            card.innerHTML = `
+                <div class="cam-mobile-card-header">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span style="font-size:1.2rem;">📹</span>
+                        <div>
+                            <div style="font-weight:700; color:#f8fafc; font-size:0.92rem;">${cam.name}</div>
+                            <div style="font-size:0.72rem; color:#64748b; font-family:monospace; word-break:break-all;">
+                                ${cam.ipAddress ? `IP: ${cam.ipAddress}` : (cam.mainStreamUrl ? cam.mainStreamUrl.slice(0, 32) + '...' : '-')}
+                            </div>
+                        </div>
+                    </div>
+                    <div>${statusBadge}</div>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; font-size:0.75rem;">
+                    <span>Mode: ${recBadge}</span>
+                    <span style="color:#475569;">&bull;</span>
+                    <span>PTZ: ${ptzBadge}</span>
+                </div>
+                <div class="cam-mobile-card-actions">
+                    <button type="button" class="cam-action-btn preview" onclick="window.openQuickPreviewModal('${cam.id}')">👁️ Preview</button>
+                    <button type="button" class="cam-action-btn edit" onclick="window.editCamera('${cam.id}')">✏️ Edit</button>
+                    <button type="button" class="cam-action-btn delete" onclick="window.deleteCamera('${cam.id}')">🗑️ Hapus</button>
+                </div>
+            `;
+            mobileWrapper.appendChild(card);
         });
-        
-        modalCameraList.appendChild(table);
+
+        desktopWrapper.appendChild(table);
+        modalCameraList.appendChild(desktopWrapper);
+        modalCameraList.appendChild(mobileWrapper);
     }
 
     function extractRtspCredentials(url) {

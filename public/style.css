@@ -2478,13 +2478,13 @@ body.kiosk-display-mode .cam-cell {
     transition: all 0.15s ease;
 }
 
-.cam-action-btn.ai {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
-    border-color: rgba(59, 130, 246, 0.3);
+.cam-action-btn.preview {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.3);
 }
-.cam-action-btn.ai:hover {
-    background: #2563eb;
+.cam-action-btn.preview:hover {
+    background: #10b981;
     color: #ffffff;
 }
 
@@ -2506,6 +2506,61 @@ body.kiosk-display-mode .cam-cell {
 .cam-action-btn.delete:hover {
     background: #ef4444;
     color: #ffffff;
+}
+
+/* Responsive Adaptive Camera List for Mobile / Portrait */
+.cam-desktop-view {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+}
+
+.cam-mobile-cards {
+    display: none;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+}
+
+.cam-mobile-card {
+    background: #0b1120;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.cam-mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.cam-mobile-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 0.65rem;
+}
+
+.cam-mobile-card-actions .cam-action-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 0.5rem 0.4rem;
+    font-size: 0.82rem;
+}
+
+@media (max-width: 768px) {
+    .cam-desktop-view {
+        display: none !important;
+    }
+    .cam-mobile-cards {
+        display: flex !important;
+    }
 }
 
 

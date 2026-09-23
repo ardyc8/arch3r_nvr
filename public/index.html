@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.7.1 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=10.7.1">
+    <title>Arch3r NVR Ver. 10.7.2 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=10.7.2">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -18,7 +18,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="version_sync.js?v=10.7.1"></script>
+    <script src="version_sync.js?v=10.7.2"></script>
     <style>
         /* Fullscreen Drawing Mode for AI Vision */
         #ai-canvas-container.ai-fullscreen-active {
@@ -400,7 +400,7 @@
                                 <span id="cameraHeaderCountBadge" class="badge" style="background:#2563eb; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:12px;">0 Kamera</span>
                             </div>
                             <p style="color:var(--text-muted); font-size:0.85rem; margin:0.35rem 0 0 0;">
-                                Konfigurasi stream RTSP, ONVIF PTZ, parameter rekaman, dan profil AI YOLOv8.
+                                Konfigurasi stream RTSP, ONVIF PTZ, parameter rekaman, dan penyimpanan.
                             </p>
                         </div>
                         <div style="display:flex; gap:0.6rem; align-items:center;">
@@ -746,6 +746,38 @@
                                 <button type="submit" class="btn btn-primary" style="font-size:0.85rem; padding:0.55rem 1.5rem; font-weight:600;">Simpan & Sinkronkan</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: QUICK CAMERA LIVE PREVIEW -->
+            <div id="quickPreviewModalOverlay" class="ota-modal-overlay">
+                <div class="ota-modal-dialog" style="max-width:680px; width:95vw;">
+                    <div class="ota-modal-header" style="background:#0f172a; border-bottom:1px solid #1e293b; padding:0.85rem 1.2rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:1.1rem;">👁️</span>
+                            <div>
+                                <h3 id="quickPreviewCamName" style="margin:0; font-size:1rem; color:#f8fafc; font-weight:600;">Preview Kamera</h3>
+                                <span id="quickPreviewCamSubtext" style="font-size:0.75rem; color:#94a3b8; font-family:monospace;"></span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="window.closeQuickPreviewModal()" class="btn-sm btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-color:#334155;">✕ Tutup</button>
+                    </div>
+                    <div class="ota-modal-body" style="background:#000000; padding:0; position:relative; overflow:hidden;">
+                        <div style="position:relative; width:100%; aspect-ratio:16/9; max-height:420px; background:#000; display:flex; align-items:center; justify-content:center;">
+                            <video id="quickPreviewVideo" autoplay playsinline controls style="width:100%; height:100%; object-fit:contain;"></video>
+                            <div id="quickPreviewLoading" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(15,23,42,0.9); color:#94a3b8; font-size:0.85rem;">
+                                <div class="spinner" style="width:36px; height:36px; border:3px solid rgba(255,255,255,0.1); border-top-color:#3b82f6; border-radius:50%; margin-bottom:0.75rem;"></div>
+                                <span>Menghubungkan ke stream kamera...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding:0.75rem 1.2rem; background:#0f172a; border-top:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                        <span id="quickPreviewQualityBadge" class="badge" style="background:#1e293b; color:#94a3b8; border:1px solid #334155; font-size:0.75rem; padding:3px 8px;">Auto HLS</span>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button type="button" id="btnQuickPreviewEdit" class="btn-sm btn-secondary" style="font-size:0.8rem; padding:4px 12px;">✏️ Edit Kamera Ini</button>
+                            <button type="button" onclick="window.closeQuickPreviewModal()" class="btn-sm btn-primary" style="font-size:0.8rem; padding:4px 14px;">Tutup</button>
+                        </div>
                     </div>
                 </div>
             </div>
