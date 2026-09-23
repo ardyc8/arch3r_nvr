@@ -176,7 +176,8 @@ class HdmiNativeAddon {
             if (fs.existsSync(drmPath)) {
                 const entries = fs.readdirSync(drmPath);
                 for (const entry of entries) {
-                    if (/HDMI/i.test(entry)) {
+                    // Pindai semua konektor output display (HDMI, Unknown, TV, DSI) selain controller virtual
+                    if (/card[0-9]+-(HDMI|Unknown|TV|DSI|DP)/i.test(entry) || /HDMI/i.test(entry)) {
                         const statusFile = path.join(drmPath, entry, 'status');
                         let status = 'unknown';
                         try {
@@ -206,8 +207,8 @@ class HdmiNativeAddon {
         return {
             connectors,
             currentConfig,
-            autoDetected: autoDetected || 'HDMI-A-1',
-            effectiveConnector: currentConfig === 'auto' ? (autoDetected || 'HDMI-A-1') : currentConfig
+            autoDetected: autoDetected || 'auto',
+            effectiveConnector: currentConfig === 'auto' ? (autoDetected || 'auto') : currentConfig
         };
     }
 
@@ -261,35 +262,30 @@ TARGET_CONNECTOR=""
 if [ -n "$CONFIG_CONNECTOR" ] && [ "$CONFIG_CONNECTOR" != "auto" ]; then
     TARGET_CONNECTOR="$CONFIG_CONNECTOR"
 else
-    # 1. Pindai port HDMI yang statusnya 'connected' di /sys/class/drm/
-    for status_file in /sys/class/drm/*HDMI*/status /sys/class/drm/*hdmi*/status; do
+    # 1. Pindai semua konektor aktif yang statusnya 'connected' (HDMI, Unknown, TV, DSI)
+    for status_file in /sys/class/drm/*/status; do
         if [ -f "$status_file" ] && grep -qi "connected" "$status_file" 2>/dev/null; then
-            TARGET_CONNECTOR=$(basename "$(dirname "$status_file")" | sed -E 's/^card[0-9]+-//')
-            break
-        fi
-    done
-
-    # 2. Fallback jika status file belum terbaca
-    if [ -z "$TARGET_CONNECTOR" ]; then
-        for conn_dir in /sys/class/drm/*HDMI* /sys/class/drm/*hdmi*; do
-            if [ -d "$conn_dir" ]; then
-                TARGET_CONNECTOR=$(basename "$conn_dir" | sed -E 's/^card[0-9]+-//')
+            CONN_CANDIDATE=$(basename "$(dirname "$status_file")" | sed -E 's/^card[0-9]+-//')
+            # Lewati konektor virtual atau render node
+            if [ -n "$CONN_CANDIDATE" ] && [ "$CONN_CANDIDATE" != "drm" ]; then
+                TARGET_CONNECTOR="$CONN_CANDIDATE"
                 break
             fi
-        done
-    fi
-
-    # 3. Default fallback standar STB Amlogic & Rockchip
-    if [ -z "$TARGET_CONNECTOR" ]; then
-        TARGET_CONNECTOR="HDMI-A-1"
-    fi
+        fi
+    done
 fi
 
-echo "[Arch3r-Native] Menjalankan MPV Hardware Engine (Direct DRM: $TARGET_CONNECTOR)..."
+DRM_FLAG=""
+if [ -n "$TARGET_CONNECTOR" ] && [ "$TARGET_CONNECTOR" != "auto" ]; then
+    DRM_FLAG="--drm-connector=$TARGET_CONNECTOR"
+    echo "[Arch3r-Native] Menjalankan MPV Hardware Engine (Direct DRM Connector: $TARGET_CONNECTOR)..."
+else
+    echo "[Arch3r-Native] Menjalankan MPV Hardware Engine (Direct DRM Auto-Negotiate)..."
+fi
 
 # Jalankan MPV dengan akselerasi hardware DRM langsung ke HDMI tanpa X11
 exec mpv \\
-    --drm-connector="$TARGET_CONNECTOR" \\
+    $DRM_FLAG \\
     --idle=yes \\
     --keep-open=always \\
     --force-window=immediate \\

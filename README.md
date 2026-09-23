@@ -1,5 +1,13 @@
-# ⚡ Arch3r NVR (Ver. 10.6.8)
+# ⚡ Arch3r NVR (Ver. 10.6.9)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.9:
+- **Universal DRM Auto-Negotiation & Unknown-Connector Support (Amlogic Meson DRM)**:
+  1. **Dukungan Konektor `Unknown-1` (Amlogic S905x STB)**:
+     - Memperluas pemindai kernel sysfs DRM (`/sys/class/drm/`) untuk mengenali port display berstatus `connected` dengan nama `Unknown-*` atau non-HDMI yang digunakan oleh driver DRM Linux Armbian pada chipset Amlogic.
+  2. **Direct DRM Auto-Negotiation**:
+     - Pada mode Auto-Detect, skrip tidak lagi memaksakan parameter `--drm-connector=HDMI-A-1` yang dapat menyebabkan *fatal crash* jika nama port di STB berbeda.
+     - MPV secara native bernegosiasi langsung dengan kernel DRM Linux untuk memilih display output yang sedang terhubung ke TV secara otomatis tanpa *crash exit*.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.8:
 - **Zero-Terminal Dashboard Management & One-Click MPV Hardware Player Control**:

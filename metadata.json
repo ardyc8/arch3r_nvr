@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.6.8 - Zero-Terminal Dashboard Management, One-Click MPV Hardware Player Control, and Pure Web-Driven HDMI Monitoring.",
+  "description": "Arch3r NVR Ver. 10.6.9 - Universal DRM Auto-Negotiation for Amlogic/Rockchip STBs, Unknown DRM Connector Auto-Detection, and Zero-Terminal HDMI Output.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
