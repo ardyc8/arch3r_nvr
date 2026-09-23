@@ -6,6 +6,7 @@
  * Karakteristik:
  * - Direct Hardware Decoding via Linux VPU / DRM / KMS (Tanpa Chromium / X11).
  * - Konsumsi RAM minimal (<60 MB) & ukuran instalasi super hemat (~25 MB).
+ * - 100% Full GUI / Dashboard Control (Nyalakan / Matikan tanpa akses terminal).
  * - Mendukung Kontrol Smart Paging (Halaman Berikutnya / Sebelumnya / Grid).
  * - Komunikasi Instan melalui MPV IPC Unix Socket (/tmp/mpv-socket).
  * ============================================================================
@@ -325,7 +326,33 @@ exec mpv \\
                 fs.writeFileSync(tempPath, scriptContent, { mode: 0o755 });
             } catch (_) {}
 
-            const applySudoCmd = `sudo mkdir -p /opt/arch3r-native && sudo cp ${tempPath} /opt/arch3r-native/start-native.sh && sudo chmod 755 /opt/arch3r-native/start-native.sh 2>/dev/null || true; sudo sed -i "s/Environment=DISPLAY=:0/StandardInput=tty\\nStandardOutput=journal\\nStandardError=journal\\nTTYPath=\\/dev\\/tty1\\nTTYReset=yes\\nTTYVHangup=yes\\nEnvironment=XDG_RUNTIME_DIR=\\/run\\/user\\/0/g" /etc/systemd/system/arch3r-native.service 2>/dev/null || true; sudo systemctl daemon-reload 2>/dev/null || true`;
+            const serviceUnitContent = `[Unit]
+Description=Arch3r NVR HDMI Native Hardware Player (MPV Engine)
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=root
+Restart=always
+RestartSec=3
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+Environment=XDG_RUNTIME_DIR=/run/user/0
+ExecStart=/opt/arch3r-native/start-native.sh
+
+[Install]
+WantedBy=multi-user.target
+`;
+            const tempServicePath = '/tmp/arch3r-native.service';
+            try {
+                fs.writeFileSync(tempServicePath, serviceUnitContent, { mode: 0o644 });
+            } catch (_) {}
+
+            const applySudoCmd = `sudo mkdir -p /opt/arch3r-native && sudo cp ${tempPath} /opt/arch3r-native/start-native.sh && sudo chmod 755 /opt/arch3r-native/start-native.sh 2>/dev/null || true; if [ ! -f /etc/systemd/system/arch3r-native.service ]; then sudo cp ${tempServicePath} /etc/systemd/system/arch3r-native.service 2>/dev/null || true; else sudo sed -i "s/Environment=DISPLAY=:0/StandardInput=tty\\nStandardOutput=journal\\nStandardError=journal\\nTTYPath=\\/dev\\/tty1\\nTTYReset=yes\\nTTYVHangup=yes\\nEnvironment=XDG_RUNTIME_DIR=\\/run\\/user\\/0/g" /etc/systemd/system/arch3r-native.service 2>/dev/null || true; fi; sudo systemctl daemon-reload 2>/dev/null || true; sudo systemctl enable arch3r-native.service 2>/dev/null || true`;
             exec(applySudoCmd, (cmdErr) => {
                 if (typeof callback === 'function') callback(true, 'Script and service updated');
             });
@@ -351,7 +378,7 @@ exec mpv \\
             // Perbarui script launcher ke versi hemat CPU sebelum start/restart
             this.ensureNativeScript(() => {
                 // Hentikan service kiosk Chromium agar tidak berebut CPU dan output HDMI
-                const cmd = `sudo systemctl stop arch3r-kiosk 2>/dev/null; sudo systemctl disable arch3r-kiosk 2>/dev/null; sudo systemctl ${action} arch3r-native 2>/dev/null || systemctl ${action} arch3r-native 2>/dev/null`;
+                const cmd = `sudo systemctl stop arch3r-kiosk 2>/dev/null; sudo systemctl disable arch3r-kiosk 2>/dev/null; sudo systemctl enable arch3r-native 2>/dev/null; sudo systemctl ${action} arch3r-native 2>/dev/null || systemctl ${action} arch3r-native 2>/dev/null`;
                 exec(cmd, (err, stdout, stderr) => {
                     this.checkHardwareStatus();
                     if (callback) callback(err, { success: !err, stdout, stderr });
@@ -547,13 +574,13 @@ exec mpv \\
                         diag.serviceLogs = stdout4 ? stdout4.trim() : 'Tidak ada log service terbaru.';
 
                         if (!diag.hasMpv) {
-                            diag.recommendation = '⚠️ MPV Player belum terpasang. Jalankan: sudo apt-get install -y mpv socat di terminal STB (Ukuran hanya ~25MB).';
+                            diag.recommendation = '⚠️ MPV Player belum terpasang di sistem Linux STB (Paket: mpv socat).';
                         } else if (!diag.isServiceActive) {
-                            diag.recommendation = 'ℹ️ Service arch3r-native belum berjalan. Nyalakan lewat dashboard atau jalankan: sudo systemctl start arch3r-native.';
+                            diag.recommendation = 'ℹ️ Layanan MPV Native sedang nonaktif. Klik tombol "▶️ Nyalakan Layanan MPV" di atas untuk menampilkan output ke layar TV.';
                         } else if (!diag.isHdmiConnected) {
                             diag.recommendation = 'ℹ️ Kabel HDMI ke TV/Monitor tidak terdeteksi atau TV dalam keadaan mati.';
                         } else {
-                            diag.recommendation = '✅ MPV Hardware Engine siap beroperasi dengan akselerasi VPU langsung ke port HDMI.';
+                            diag.recommendation = '✅ MPV Hardware Engine aktif beroperasi dengan akselerasi VPU langsung ke port HDMI.';
                         }
 
                         if (callback) callback(null, diag);

@@ -1,5 +1,16 @@
-# ⚡ Arch3r NVR (Ver. 10.6.7)
+# ⚡ Arch3r NVR (Ver. 10.6.8)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.8:
+- **Zero-Terminal Dashboard Management & One-Click MPV Hardware Player Control**:
+  1. **100% Kontrol Penuh via Web Dashboard (Bebas Perintah Terminal Manual)**:
+     - Menghilangkan keharusan menjalankan perintah terminal manual (`sudo systemctl start arch3r-native`).
+     - Pengguna cukup mengklik tombol **"▶️ Nyalakan Sekarang ke TV"** atau **"▶️ Nyalakan Layanan MPV"** langsung dari dashboard web Arch3r NVR.
+     - Penambahan banner panduan visual satu-klik pada dialog konfigurasi dan diagnosa bila layanan video HDMI dalam status siaga / mati.
+  2. **Auto-Provisioning Systemd Service Unit**:
+     - Sistem backend secara otomatis membuat file `/etc/systemd/system/arch3r-native.service` lengkap dengan hak akses direct hardware TTY (`TTYPath=/dev/tty1`, `StandardInput=tty`, `XDG_RUNTIME_DIR=/run/user/0`) dan auto-enable saat pertama kali tombol start ditekan di UI dashboard.
+  3. **Penyempurnaan Pesan Diagnosa Ramah Pengguna**:
+     - Memperbarui teks diagnostik rekomendasi agar sepenuhnya berorientasi GUI dan menyediakan tombol aksi langsung di dalam card diagnosa hardware.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.7:
 - **Deteksi Otomatis & Pemilihan Fleksibel Port DRM HDMI (Multi-SoC STB Support)**:

@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.6.7 - Multi-SoC DRM HDMI Port Auto-Detection, Dynamic Sysfs DRM Scanner, and Universal STB Display Configuration.",
+  "description": "Arch3r NVR Ver. 10.6.8 - Zero-Terminal Dashboard Management, One-Click MPV Hardware Player Control, and Pure Web-Driven HDMI Monitoring.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

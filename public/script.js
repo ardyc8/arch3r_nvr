@@ -8602,10 +8602,22 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                             ${isHdmiConn ? '🔌 HDMI Tersambung' : '🔌 HDMI Lepas'}
                         </span>
                         <span style="padding: 0.25rem 0.55rem; border-radius: 4px; font-size: 0.78rem; font-weight: bold; background:${isServiceAct ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isServiceAct ? '#22c55e' : '#ef4444'}; border: 1px solid ${isServiceAct ? '#22c55e' : '#ef4444'};">
-                            ${isServiceAct ? '🟢 Service Aktif' : '⚪ Service Siaga / Mati'}
+                            ${isServiceAct ? '🟢 Layanan Aktif di TV' : '⚪ Layanan Nonaktif / Siaga'}
                         </span>
                     </div>
                 </div>
+
+                ${!isServiceAct ? `
+                <div style="margin-top:0.85rem; padding:0.75rem 1rem; border-radius:6px; background:rgba(2,132,199,0.15); border:1px solid rgba(2,132,199,0.4); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;">
+                    <div>
+                        <strong style="color:#38bdf8; font-size:0.9rem; display:block;">ℹ️ Layanan Video HDMI Sedang Nonaktif</strong>
+                        <span style="color:#cbd5e1; font-size:0.8rem;">Cukup klik tombol di samping untuk langsung menampilkan video kamera di layar TV tanpa perlu terminal.</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="toggleHdmiNativeOutput('start')" style="background:#0284c7; border-color:#38bdf8; font-weight:bold; padding:0.45rem 1rem; font-size:0.85rem; display:flex; align-items:center; gap:0.4rem; box-shadow:0 0 10px rgba(2,132,199,0.5);">
+                        <span>▶️</span> Nyalakan Sekarang ke TV
+                    </button>
+                </div>
+                ` : ''}
 
                 <!-- Kontrol Service Hardware -->
                 <div style="display:flex; gap:0.5rem; margin-top:0.85rem; flex-wrap:wrap;">
@@ -9084,8 +9096,15 @@ async function checkHdmiNativeDiagnostics() {
                         <strong style="color:#38bdf8; font-size:0.8rem;">${d.activeDrmConnector || 'HDMI-A-1'}</strong>
                     </div>
                 </div>
-                <div style="padding:0.5rem 0.75rem; border-radius:4px; background:${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}; border:1px solid ${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}; margin-bottom:0.75rem; font-size:0.8rem;">
-                    <strong>${d.recommendation || ''}</strong>
+                <div style="padding:0.6rem 0.85rem; border-radius:4px; background:${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.1)' : 'rgba(2,132,199,0.1)'}; border:1px solid ${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.3)' : 'rgba(2,132,199,0.3)'}; margin-bottom:0.75rem; font-size:0.82rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                    <div style="flex:1; min-width:200px;">
+                        <strong style="color:${d.recommendation && d.recommendation.startsWith('✅') ? '#4ade80' : '#38bdf8'};">${d.recommendation || ''}</strong>
+                    </div>
+                    ${!d.isServiceActive ? `
+                    <button type="button" class="btn btn-sm btn-primary" onclick="toggleHdmiNativeOutput('start')" style="background:#0284c7; border-color:#0284c7; font-size:0.78rem; padding:0.3rem 0.75rem; display:inline-flex; align-items:center; gap:0.3rem;">
+                        <span>▶️</span> Nyalakan Sekarang
+                    </button>
+                    ` : ''}
                 </div>
                 <div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
