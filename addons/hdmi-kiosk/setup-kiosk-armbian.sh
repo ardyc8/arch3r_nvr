@@ -31,6 +31,8 @@ apt-get install -y --no-install-recommends \
 
 echo "[2/4] Mengonfigurasi hak akses Xwrapper untuk non-console..."
 mkdir -p /etc/X11
+systemctl stop arch3r-native 2>/dev/null || true
+systemctl disable arch3r-native 2>/dev/null || true
 cat << 'EOF' > /etc/X11/Xwrapper.config
 allowed_users=anybody
 needs_root_rights=yes

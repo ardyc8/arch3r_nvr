@@ -1,5 +1,18 @@
-# ⚡ Arch3r NVR (Ver. 10.6.3)
+# ⚡ Arch3r NVR (Ver. 10.6.4)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.4:
+- **Optimalisasi Beban CPU STB (Anti-92% CPU), Eliminasi Untimed Loop & Mutual Exclusion HDMI Services**:
+  1. **Solusi Definitif CPU 92% (MPV Untimed Elimination)**:
+     - Menghapus parameter berbahaya `--untimed` pada peluncur MPV Hardware Player. Flag `--untimed` memaksa engine merender frame tanpa jeda waktu (unbounded FPS loop), membebani CPU hingga 100%.
+     - Mengganti dummy standby playlist unthrottled (`lavfi://color=c=black:s=1920x1080`) menjadi mode hemat energi (`lavfi://color=c=black:s=640x360:r=1` atau `--idle=yes` 0 FPS).
+     - Menambahkan parameter streaming RTSP stabil: `--demuxer-lavf-o=rtsp_transport=tcp` dan `--demuxer-readahead-secs=1` untuk mencegah demuxer packet retry spike.
+  2. **Proteksi Mutual Exclusion Antara Chromium Kiosk & MPV Native**:
+     - Mencegah bentrok proses ganda: saat service `arch3r-native` diaktifkan, sistem secara otomatis mematikan dan menonaktifkan `arch3r-kiosk` (Chromium X11). Sebaliknya, saat `arch3r-kiosk` dijalankan, `arch3r-native` otomatis dimatikan.
+     - Melenyapkan kondisi di mana Chromium (software decoder) dan MPV berjalan bersamaan dan melipatgandakan beban CPU STB.
+  3. **Auto-Repair & Tombol Pembaruan Script MPV di Web**:
+     - Ditambahkan fungsi otomatis `ensureNativeScript` dan tombol **"⚡ Perbarui Script MPV (Hemat CPU)"** di modal diagnostik HDMI Native.
+     - Pengguna dapat memperbarui `/opt/arch3r-native/start-native.sh` ke konfigurasi hemat CPU langsung dengan 1 klik dari HP/web tanpa perlu mengedit terminal secara manual.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.3:
 - **Standalone HDMI Native Hardware Player (MPV Engine), Smart Paging Remote & Hardened Clean Chromium Kiosk**:

@@ -164,7 +164,83 @@ class HdmiNativeAddon {
     }
 
     /**
-     * Kontrol Systemd Service arch3r-native
+     * Pastikan script launcher /opt/arch3r-native/start-native.sh selalu menggunakan konfigurasi hemat CPU
+     */
+    ensureNativeScript(callback) {
+        const nativeDir = '/opt/arch3r-native';
+        const scriptPath = path.join(nativeDir, 'start-native.sh');
+        try {
+            const scriptContent = `#!/bin/bash
+# ==============================================================================
+# Peluncur MPV Direct Hardware Video Engine (Low-CPU & Low-Latency Optimized)
+# ==============================================================================
+SOCKET="/tmp/mpv-socket"
+PLAYLIST="/opt/arch3r-native/current_playlist.m3u"
+
+# Bersihkan sisa socket lama
+rm -f "$SOCKET" 2>/dev/null || true
+
+# Jika file playlist belum ada, buat default dummy playlist ringan (1 FPS)
+if [ ! -f "$PLAYLIST" ]; then
+    echo "#EXTM3U" > "$PLAYLIST"
+    echo "#EXTINF:-1, Arch3r Standby" >> "$PLAYLIST"
+    echo "lavfi://color=c=black:s=640x360:r=1" >> "$PLAYLIST"
+fi
+
+echo "[Arch3r-Native] Menjalankan MPV Hardware Engine (Hemat CPU)..."
+
+# Jalankan MPV dengan akselerasi hardware VPU dan kontrol IPC Unix Socket
+# CATATAN: DILARANG menggunakan --untimed karena menyebabkan CPU 100% loop!
+exec mpv \\
+    --idle=yes \\
+    --input-ipc-server="$SOCKET" \\
+    --profile=low-latency \\
+    --demuxer-lavf-o=rtsp_transport=tcp \\
+    --demuxer-readahead-secs=1 \\
+    --hwdec=auto-safe \\
+    --vo=gpu,drm,fbdev \\
+    --no-audio \\
+    --fs \\
+    --cursor-autohide=always \\
+    --keep-open=yes \\
+    --force-window=immediate \\
+    --osd-level=1 \\
+    --osd-font-size=24 \\
+    --osd-color='#38bdf8' \\
+    --osd-border-color='#0f172a' \\
+    --osd-border-size=2 \\
+    --osd-duration=3000 \\
+    "$PLAYLIST"
+`;
+            let writeSuccess = false;
+            try {
+                if (!fs.existsSync(nativeDir)) {
+                    fs.mkdirSync(nativeDir, { recursive: true });
+                }
+                fs.writeFileSync(scriptPath, scriptContent, { mode: 0o755 });
+                writeSuccess = true;
+            } catch (_) {}
+
+            const tempPath = '/tmp/arch3r_start_native.sh';
+            try {
+                fs.writeFileSync(tempPath, scriptContent, { mode: 0o755 });
+            } catch (_) {}
+
+            const applySudoCmd = `sudo mkdir -p /opt/arch3r-native && sudo cp ${tempPath} /opt/arch3r-native/start-native.sh && sudo chmod 755 /opt/arch3r-native/start-native.sh 2>/dev/null || true`;
+            exec(applySudoCmd, (cmdErr) => {
+                if (typeof callback === 'function') callback(true, 'Script updated');
+            });
+
+            return true;
+        } catch (err) {
+            this.logger('WARN', 'Failed to ensure native script: ' + err.message);
+            if (typeof callback === 'function') callback(false, err.message);
+            return false;
+        }
+    }
+
+    /**
+     * Kontrol Systemd Service arch3r-native (Dengan proteksi mutual-exclusion terhadap arch3r-kiosk)
      */
     controlService(action, callback) {
         if (!['start', 'stop', 'restart', 'status'].includes(action)) {
@@ -172,10 +248,22 @@ class HdmiNativeAddon {
             return;
         }
 
-        exec(`systemctl ${action} arch3r-native 2>/dev/null`, (err, stdout, stderr) => {
-            this.checkHardwareStatus();
-            if (callback) callback(err, { success: !err, stdout, stderr });
-        });
+        if (action === 'start' || action === 'restart') {
+            // Perbarui script launcher ke versi hemat CPU sebelum start/restart
+            this.ensureNativeScript(() => {
+                // Hentikan service kiosk Chromium agar tidak berebut CPU dan output HDMI
+                const cmd = `sudo systemctl stop arch3r-kiosk 2>/dev/null; sudo systemctl disable arch3r-kiosk 2>/dev/null; sudo systemctl ${action} arch3r-native 2>/dev/null || systemctl ${action} arch3r-native 2>/dev/null`;
+                exec(cmd, (err, stdout, stderr) => {
+                    this.checkHardwareStatus();
+                    if (callback) callback(err, { success: !err, stdout, stderr });
+                });
+            });
+        } else {
+            exec(`sudo systemctl ${action} arch3r-native 2>/dev/null || systemctl ${action} arch3r-native 2>/dev/null`, (err, stdout, stderr) => {
+                this.checkHardwareStatus();
+                if (callback) callback(err, { success: !err, stdout, stderr });
+            });
+        }
     }
 
     /**

@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.6.3 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.6.4 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -9061,7 +9061,12 @@ async function checkHdmiNativeDiagnostics() {
                     <strong>${d.recommendation || ''}</strong>
                 </div>
                 <div>
-                    <div style="margin-bottom:0.35rem; font-size:0.75rem; color:#94a3b8;">Log Journalctl arch3r-native:</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+                        <span style="font-size:0.75rem; color:#94a3b8;">Log Journalctl arch3r-native:</span>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="repairHdmiNativeScript()" style="font-size:0.72rem; padding:0.25rem 0.65rem; background:#059669; border-color:#059669; display:flex; align-items:center; gap:0.3rem;">
+                            <span>⚡</span> Perbarui Script MPV (Hemat CPU)
+                        </button>
+                    </div>
                     <pre style="margin:0; padding:0.5rem; background:#000; color:#38bdf8; font-size:0.72rem; border-radius:4px; max-height:140px; overflow-y:auto; white-space:pre-wrap; border:1px solid #1e293b;">${safeLog}</pre>
                 </div>
             `;
@@ -9073,6 +9078,23 @@ async function checkHdmiNativeDiagnostics() {
     }
 }
 window.checkHdmiNativeDiagnostics = checkHdmiNativeDiagnostics;
+
+async function repairHdmiNativeScript() {
+    if (!confirm('Perbarui script launcher MPV di STB (/opt/arch3r-native/start-native.sh) ke konfigurasi hemat CPU (menghapus flag untimed) dan restart service?')) return;
+    try {
+        const res = await authFetch('/api/addons/hdmi-native/repair', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            alert('✅ Berhasil: ' + (data.message || 'Script MPV telah diperbarui ke mode hemat CPU!'));
+            checkHdmiNativeDiagnostics();
+        } else {
+            alert('❌ Gagal: ' + (data.error || 'Terjadi kesalahan saat memperbarui'));
+        }
+    } catch (e) {
+        alert('Gagal menghubungi server: ' + (e.message || e));
+    }
+}
+window.repairHdmiNativeScript = repairHdmiNativeScript;
 
 async function saveAddonConfig() {
     if (!currentConfigAddonId) return;

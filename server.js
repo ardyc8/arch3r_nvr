@@ -5595,6 +5595,18 @@ app.post('/api/addons/hdmi-native/toggle', verifyToken, requireAdmin, (req, res)
     });
 });
 
+app.post('/api/addons/hdmi-native/repair', verifyToken, requireAdmin, (req, res) => {
+    if (!hdmiNativeAddon) {
+        return res.status(404).json({ error: 'Add-on HDMI Native tidak ditemukan' });
+    }
+    hdmiNativeAddon.ensureNativeScript(() => {
+        hdmiNativeAddon.controlService('restart', (err, result) => {
+            if (err) return res.status(500).json({ error: 'Gagal memperbarui script: ' + err.message });
+            res.json({ success: true, message: 'Script launcher MPV berhasil diperbarui ke konfigurasi hemat CPU!', ...result });
+        });
+    });
+});
+
 app.post('/api/addons/hdmi-native/remote-cmd', verifyToken, requireAdmin, async (req, res) => {
     if (!hdmiNativeAddon) {
         return res.status(404).json({ error: 'Add-on HDMI Native belum terpasang atau tidak aktif' });

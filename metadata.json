@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.6.3 - Standalone HDMI Native MPV Player, Smart Paging Remote, Hardened Chromium Kiosk & Clean TV Wall.",
+  "description": "Arch3r NVR Ver. 10.6.4 - CPU Optimization & Mutual Exclusion for HDMI Native/Kiosk, Elimination of Untimed MPV Loop, and Low-Power Standby.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

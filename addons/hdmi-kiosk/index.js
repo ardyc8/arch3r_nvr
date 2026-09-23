@@ -238,7 +238,7 @@ fi
     }
 
     /**
-     * Control OS-level systemd Kiosk service safely via systemctl
+     * Control OS-level systemd Kiosk service safely via systemctl (Mutual exclusion with arch3r-native)
      */
     controlService(action, callback) {
         if (!['start', 'stop', 'restart', 'status'].includes(action)) {
@@ -248,9 +248,17 @@ fi
 
         if (action === 'start' || action === 'restart') {
             this.ensureKioskScript();
+            // Matikan arch3r-native agar tidak bentrok berebut HDMI dan CPU
+            const cmd = `sudo systemctl stop arch3r-native 2>/dev/null; sudo systemctl disable arch3r-native 2>/dev/null; sudo systemctl ${action} arch3r-kiosk 2>/dev/null || systemctl ${action} arch3r-kiosk 2>/dev/null`;
+            exec(cmd, (err, stdout, stderr) => {
+                this.checkSystemdServiceStatus(() => {
+                    if (callback) callback(err, { success: !err, stdout, stderr, isActive: this.isKioskServiceActive });
+                });
+            });
+            return;
         }
 
-        exec(`systemctl ${action} arch3r-kiosk 2>/dev/null`, (err, stdout, stderr) => {
+        exec(`sudo systemctl ${action} arch3r-kiosk 2>/dev/null || systemctl ${action} arch3r-kiosk 2>/dev/null`, (err, stdout, stderr) => {
             this.checkSystemdServiceStatus(() => {
                 if (callback) callback(err, { success: !err, stdout, stderr, isActive: this.isKioskServiceActive });
             });
