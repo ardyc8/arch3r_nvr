@@ -1,5 +1,18 @@
-# ⚡ Arch3r NVR (Ver. 10.6.4)
+# ⚡ Arch3r NVR (Ver. 10.6.5)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.5:
+- **Pembersihan Framebuffer X11, Anti-Kedip Layar Kiosk & Pencegahan Kerusakan Memori GPU/CMA**:
+  1. **Solusi Definitif Layar Kedap-Kedip (Anti-Flicker Single-Pass Transition)**:
+     - Memperbaiki alur transisi `applyKioskStateChanges` di `script.js`: Menghilangkan double-firing yang sebelumnya memicu `videoGrid.innerHTML = ""` dua kali berturut-turut dalam hitungan milidetik.
+     - Menyaring eksekusi render DOM hanya berjalan **tepat satu kali** bila preset layout atau ID kamera sasaran benar-benar berubah.
+     - Menonaktifkan pemanggilan OS `requestFullscreen` di mode Kiosk karena peramban sudah berjalan dalam status 100vw x 100vh (`--kiosk`). Ini melenyapkan fenomena kedip hitam akibat renegosiasi display server X11/HDMI.
+  2. **Pencegahan Layar TV Rusak/Garis/Glitch Setelah Berjalan 5-6 Jam**:
+     - Menghapus flag berbahaya `--in-process-gpu`, `--ignore-gpu-blocklist`, dan `--enable-zero-copy` pada launcher Chromium Kiosk.
+     - **Penyebab Kerusakan Layar Terpecahkan**: Driver GPU Mali Armbian tidak memiliki DMA-BUF sync yang stabil untuk Chromium. Mengaktifkan zero-copy GPU memaksa driver membocorkan memori kernel CMA (Contiguous Memory Area) selama 5-6 jam pemutaran video berkelanjutan, berujung pada kerusakan framebuffer grafis X11 (layar bergaris, statik, warna terdistorsi, atau freeze).
+     - Menggantinya dengan flag stabil 24/7 non-glitch: `--disable-gpu`, `--disable-gpu-compositing`, `--disable-gpu-vsync`, `--renderer-process-limit=2`, dan `--disable-smooth-scrolling`.
+  3. **Rekomendasi Utama Produksi 24/7**:
+     - Sangat direkomendasikan menggunakan **Addon HDMI Native (MPV Player)** (`addons/hdmi-native`) yang terbukti stabil 24/7 tanpa peramban Chromium, konsumsi RAM <50 MB, dan temperatur STB dingin tanpa risiko kebocoran memori grafis.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.4:
 - **Optimalisasi Beban CPU STB (Anti-92% CPU), Eliminasi Untimed Loop & Mutual Exclusion HDMI Services**:

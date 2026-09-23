@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.6.4 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.6.5 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -532,41 +532,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 5. Preset Tata Letak Grid TV (Instan < 50ms)
+        // 5. Preset Tata Letak Grid TV (Instan < 50ms tanpa double-render & bebas kedip)
+        let targetGrid = selectedGridCount;
+        let targetChannel = activeChannel;
+
         if (st.preset === 'grid_1' || st.preset === 'single') {
-            if (typeof window.onChannelDropdownChange === 'function') {
-                window.onChannelDropdownChange(st.target_cam_id || 'all');
-            }
-            if (typeof window.setGridLayout === 'function') {
-                window.setGridLayout(1);
-            }
+            targetGrid = 1;
+            targetChannel = st.target_cam_id || 'all';
         } else if (st.preset === 'grid_4' || st.preset === 'live_grid') {
-            if (typeof window.onChannelDropdownChange === 'function') {
-                window.onChannelDropdownChange('all');
-            }
-            if (typeof window.setGridLayout === 'function') {
-                window.setGridLayout(4);
-            }
+            targetGrid = 4;
+            targetChannel = 'all';
         } else if (st.preset === 'grid_6') {
-            if (typeof window.onChannelDropdownChange === 'function') {
-                window.onChannelDropdownChange('all');
-            }
-            if (typeof window.setGridLayout === 'function') {
-                window.setGridLayout(6);
-            }
+            targetGrid = 6;
+            targetChannel = 'all';
         } else if (st.preset === 'grid_9' || st.preset === 'live_grid_3x3') {
-            if (typeof window.onChannelDropdownChange === 'function') {
-                window.onChannelDropdownChange('all');
-            }
-            if (typeof window.setGridLayout === 'function') {
-                window.setGridLayout(9);
-            }
+            targetGrid = 9;
+            targetChannel = 'all';
         } else if (st.preset === 'grid_16') {
-            if (typeof window.onChannelDropdownChange === 'function') {
-                window.onChannelDropdownChange('all');
-            }
-            if (typeof window.setGridLayout === 'function') {
-                window.setGridLayout(16);
+            targetGrid = 16;
+            targetChannel = 'all';
+        }
+
+        // Jalankan render TEPAT SATU KALI hanya jika layout atau kamera tujuan benar-benar berbeda
+        if (targetGrid !== selectedGridCount || targetChannel !== activeChannel) {
+            selectedGridCount = targetGrid;
+            activeChannel = targetChannel;
+            if (channelSelect) channelSelect.value = targetChannel;
+            if (typeof updateGridDisplay === 'function') {
+                updateGridDisplay();
             }
         }
     }
@@ -2872,6 +2865,11 @@ async function fetchCameras() {
     document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
     window.toggleGridFullscreen = function(gridId) {
+        if (window.isKioskDisplay) {
+            // Pada mode TV Kiosk, jendela peramban sudah 100vw x 100vh (--kiosk).
+            // Memanggil OS fullscreen di X11 Armbian akan memicu renegosiasi mode HDMI (layar kedip hitam).
+            return;
+        }
         const elem = document.getElementById(gridId);
         if (!elem) return;
         const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);

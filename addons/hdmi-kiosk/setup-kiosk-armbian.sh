@@ -94,9 +94,11 @@ while true; do
         --test-type \
         --user-data-dir=/tmp/arch3r_kiosk_chrome \
         --disable-dev-shm-usage \
-        --in-process-gpu \
-        --ignore-gpu-blocklist \
-        --enable-zero-copy \
+        --disable-gpu \
+        --disable-gpu-compositing \
+        --disable-gpu-vsync \
+        --disable-smooth-scrolling \
+        --renderer-process-limit=2 \
         --autoplay-policy=no-user-gesture-required \
         --check-for-update-interval=31536000 \
         --app=http://localhost:3000/?kiosk=1
