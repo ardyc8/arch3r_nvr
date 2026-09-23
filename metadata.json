@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.7.0 - Native SDL2/OpenGL Display Fallback, Zero-Crash Systemd MPV Service, and Amlogic STB Hardware Acceleration.",
+  "name": "Arch3r NVR Ver. 10.7.3",
+  "description": "Arch3r NVR Ver. 10.7.3 - Professional Universal NVR Camera Form, Instant Vendor Presets, and Mobile Optimized Stream Configuration.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

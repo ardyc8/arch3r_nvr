@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.7.2 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=10.7.2">
+    <title>Arch3r NVR Ver. 10.7.3 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=10.7.3">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -18,7 +18,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="version_sync.js?v=10.7.2"></script>
+    <script src="version_sync.js?v=10.7.3"></script>
     <style>
         /* Fullscreen Drawing Mode for AI Vision */
         #ai-canvas-container.ai-fullscreen-active {
@@ -497,253 +497,245 @@
 
             <!-- MODAL: FORM TAMBAH / EDIT KAMERA -->
             <div id="cameraModalOverlay" class="ota-modal-overlay">
-                <div class="ota-modal-dialog" style="max-width:760px; max-height:92vh;">
+                <div class="ota-modal-dialog" style="max-width:760px; max-height:92vh; display:flex; flex-direction:column;">
                     <div class="ota-modal-header" style="background:#0f172a; border-bottom:1px solid #1e293b; padding:1rem 1.25rem;">
                         <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <span style="font-size:1.1rem;">📹</span>
+                            <span style="font-size:1.15rem;">📹</span>
                             <h3 id="formTitle" style="margin:0; font-size:1.05rem; color:#f8fafc; font-weight:600;">Tambah Kamera Baru</h3>
                         </div>
                         <button type="button" id="btnCloseCameraModal" class="btn-sm btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-color:#334155;">✕ Tutup</button>
                     </div>
 
-                    <div class="ota-modal-body" style="background:#0b1120; padding:1.25rem; overflow-y:auto;">
+                    <div class="ota-modal-body" style="background:#0b1120; padding:1.25rem; overflow-y:auto; flex:1;">
                         <button type="button" id="btnCancelEdit" style="display:none;"></button>
-
-                        <div class="cam-inner-tabs" style="margin-bottom:1.25rem;">
-                            <button type="button" class="ctab-btn active" data-target="ctab-general">General</button>
-                            <button type="button" class="ctab-btn" data-target="ctab-streams">Streams</button>
-                            <button type="button" class="ctab-btn" data-target="ctab-storage">Storage</button>
-                            <button type="button" class="ctab-btn" data-target="ctab-ptz">PTZ</button>
-                        </div>
 
                         <form id="cameraForm">
                             <input type="hidden" id="camId">
-                            <div id="ctab-general" class="ctab-pane active">
-                                <div class="form-group row-check" style="margin-bottom:1rem; background:rgba(30,41,59,0.5); padding:0.6rem 0.85rem; border-radius:6px; border:1px solid #1e293b;">
-                                    <input type="checkbox" id="camEnabled" checked>
-                                    <label for="camEnabled" style="font-weight:600; cursor:pointer; color:#f1f5f9;">Aktifkan Kamera Ini di NVR & Live Monitor</label>
+
+                            <!-- Status Aktif / Switch -->
+                            <div class="form-group row-check" style="margin-bottom:1rem; background:rgba(30,41,59,0.5); padding:0.6rem 0.85rem; border-radius:6px; border:1px solid #1e293b; display:flex; align-items:center; justify-content:space-between;">
+                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                    <input type="checkbox" id="camEnabled" checked style="width:17px; height:17px;">
+                                    <label for="camEnabled" style="font-weight:600; cursor:pointer; color:#f1f5f9; margin:0;">Aktifkan Kamera Ini di NVR & Live Grid</label>
                                 </div>
+                                <span style="font-size:0.75rem; color:#94a3b8;">Status Aktif</span>
+                            </div>
+
+                            <!-- BLOK 1: IDENTITAS & KONEKSI KAMERA -->
+                            <div class="cam-form-section">
+                                <div class="cam-form-section-title">
+                                    <span>🌐</span> 1. Identitas & Koneksi Jaringan Kamera
+                                </div>
+
                                 <div class="form-row">
-                                    <div class="form-group flex-1">
-                                        <label>Nama Kamera (cameraName)</label>
+                                    <div class="form-group flex-2">
+                                        <label>Nama Kamera</label>
                                         <input type="text" id="camName" placeholder="Contoh: Kamera Depan / Kasir" required>
                                     </div>
+                                    <div class="form-group flex-2">
+                                        <label>Preset / Merk Kamera (Universal Helper)</label>
+                                        <select id="camVendorPreset" class="form-control" style="font-weight:600; background:#1e293b; color:#38bdf8; border-color:#334155;">
+                                            <option value="onvif_auto">⭐ ONVIF Universal (Hikvision, Dahua, Tapo, Ezviz, Bardi, XM)</option>
+                                            <option value="v380">⚡ Macrovideo V380 / V380 Pro (TCP 8800 + RTSP ch00_1)</option>
+                                            <option value="hikvision">Hikvision / HiLook (/Streaming/Channels/101)</option>
+                                            <option value="dahua">Dahua / Imou (/cam/realmonitor?channel=1&subtype=0)</option>
+                                            <option value="xiongmai">Xiongmai / XM / Netip (/h264/ch1/main/av_stream)</option>
+                                            <option value="custom">🛠️ Custom RTSP URL Manual</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group flex-2">
+                                        <label>IP Address Kamera</label>
+                                        <input type="text" id="camIpAddress" placeholder="Contoh: 192.168.1.100" required>
+                                    </div>
                                     <div class="form-group flex-1">
-                                        <label>Custom ID (Opsional)</label>
-                                        <input type="text" id="camCustomId" placeholder="Contoh: cam_garasi_1">
+                                        <label>Port RTSP</label>
+                                        <input type="number" id="camRtspPort" value="554" placeholder="554">
+                                    </div>
+                                    <div class="form-group flex-1">
+                                        <label>Port ONVIF / Control</label>
+                                        <input type="number" id="camOnvifPort" placeholder="8899 / 80 / 8800">
                                     </div>
                                 </div>
 
-                                <div style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:0.9rem; margin-bottom:1rem;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
-                                        <div>
-                                            <span style="font-size:0.85rem; font-weight:600; color:#60a5fa;">🌐 Konfigurasi IP & Akun Kamera (Auto-Probe Ready)</span>
-                                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">
-                                                Isi IP kamera & Password di bawah, lalu klik <strong>"Auto-Discover / Test ONVIF"</strong> untuk mendeteksi profil resolusi, token PTZ, dan URL stream secara otomatis.
-                                            </div>
-                                        </div>
-                                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                                            <button type="button" id="btnQuickProbe" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#38bdf8; border-color:#0284c7; font-weight:600;">
-                                                🔍 Auto-Discover / ONVIF
-                                            </button>
-                                            <button type="button" id="btnTestRtspVideoQuick" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:4px 10px; color:#10b981; border-color:#059669; font-weight:600;">
-                                                🎬 Test RTSP Video
-                                            </button>
+                                <div class="form-row">
+                                    <div class="form-group flex-1">
+                                        <label>Username Kamera</label>
+                                        <input type="text" id="camUsername" placeholder="admin" value="admin">
+                                    </div>
+                                    <div class="form-group flex-1">
+                                        <label>Password Kamera</label>
+                                        <div class="password-wrapper">
+                                            <input type="password" id="camPassword" placeholder="Password kamera (kosongkan jika tanpa password)">
+                                            <button type="button" class="btn-peek-pwd" data-target="camPassword" title="Lihat Password"><span class="peek-icon">👁️</span></button>
                                         </div>
                                     </div>
-                                    <div class="form-row">
-                                        <div class="form-group flex-2">
-                                            <label>IP Address Kamera</label>
-                                            <input type="text" id="camIpAddress" placeholder="Contoh: 192.168.1.100">
-                                        </div>
-                                        <div class="form-group flex-1">
-                                            <label>ONVIF Port (Opsional / Auto)</label>
-                                            <input type="number" id="camOnvifPort" placeholder="8899 / 80 / 8080 / 8800">
-                                        </div>
-                                        <div class="form-group flex-1">
-                                            <label>RTSP Port</label>
-                                            <input type="number" id="camRtspPort" placeholder="554">
-                                        </div>
+                                </div>
+
+                                <!-- RTSP Stream URLs (Auto-Filled by Preset, but Editable) -->
+                                <div class="form-group" style="margin-top:0.25rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                                        <label style="margin:0; font-size:0.8rem; color:#cbd5e1;">URL Stream RTSP Utama (Main Stream HD)</label>
+                                        <button type="button" id="btnSyncRtspUrl" class="btn-sm btn-secondary" style="font-size:0.72rem; padding:2px 6px; border-color:#334155;">⚡ Susun URL Ulang</button>
                                     </div>
-                                    <div class="form-row">
-                                        <div class="form-group flex-1">
-                                            <label>Username Kamera</label>
-                                            <input type="text" id="camUsername" placeholder="admin">
-                                        </div>
-                                        <div class="form-group flex-1">
-                                            <label>Password Kamera</label>
-                                            <div class="password-wrapper">
-                                                <input type="password" id="camPassword" placeholder="Password kamera">
-                                                <button type="button" class="btn-peek-pwd" data-target="camPassword" title="Lihat Password"><span class="peek-icon">👁️</span></button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div id="quickProbeStatus" style="font-size:0.8rem; margin-top:0.35rem; display:none;"></div>
+                                    <input type="text" id="camMainUrl" placeholder="rtsp://admin:pass@192.168.1.100:554/live/ch00_1" required style="font-family:monospace; font-size:0.82rem;">
                                 </div>
-                            </div>
-                            <div id="ctab-streams" class="ctab-pane">
-                                <div class="form-group">
-                                    <label>Main Stream RTSP URL (HD / 1080p - Rekaman & Single-View)</label>
-                                    <input type="text" id="camMainUrl" placeholder="rtsp://user:pass@192.168.1.100:554/stream1" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Sub Stream RTSP URL (SD / 360p - Multi-Grid Ringan & Hemat Bandwidth)</label>
-                                    <input type="text" id="camSubUrl" placeholder="rtsp://user:pass@192.168.1.100:554/stream2">
-                                </div>
-                                
-                                <div style="margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                                    <button type="button" id="btnTestRtspStream" class="btn btn-secondary" style="color:#10b981; border-color:#059669; font-weight:600; display:inline-flex; align-items:center; gap:0.4rem;">
-                                        <span style="font-size:1.1rem;">🎬</span> Test Connection & Preview Video RTSP
+
+                                <!-- Action Buttons: Test Connection & Probe -->
+                                <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; margin-top:0.75rem;">
+                                    <button type="button" id="btnQuickProbe" class="btn btn-secondary" style="font-size:0.82rem; padding:0.5rem 1rem; color:#38bdf8; border-color:#0284c7; font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">
+                                        <span>🔍</span> Uji Koneksi & Deteksi ONVIF
                                     </button>
-                                    <small style="color:var(--text-muted); font-size:0.75rem;">
-                                        Uji koneksi RTSP & tampilkan video live stream langsung sebelum menyimpan kamera.
-                                    </small>
+                                    <button type="button" id="btnTestRtspStream" class="btn btn-secondary" style="font-size:0.82rem; padding:0.5rem 1rem; color:#10b981; border-color:#059669; font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">
+                                        <span>🎬</span> Live Preview Video
+                                    </button>
+                                    <button type="button" id="btnTestRtspVideoQuick" style="display:none;"></button>
+                                    <button type="button" id="btnTestOnvifProbe" style="display:none;"></button>
                                 </div>
 
-                                <!-- Live RTSP Video Test Preview Box -->
-                                <div id="rtspTestContainer" style="display:none; margin-bottom:1.25rem; background:rgba(15,23,42,0.95); border:1px solid #059669; border-radius:8px; padding:1rem; box-shadow:0 10px 30px rgba(0,0,0,0.6);">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                <div id="quickProbeStatus" style="font-size:0.8rem; margin-top:0.5rem; display:none; padding:0.5rem 0.75rem; background:#070d19; border:1px solid #1e293b; border-radius:6px;"></div>
+                                <div id="ptzProbeStatus" style="display:none;"></div>
+
+                                <!-- Live RTSP Video Test Player Preview Box -->
+                                <div id="rtspTestContainer" style="display:none; margin-top:0.75rem; background:rgba(15,23,42,0.95); border:1px solid #059669; border-radius:8px; padding:0.85rem; box-shadow:0 10px 30px rgba(0,0,0,0.6);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
                                         <div style="display:flex; align-items:center; gap:0.5rem;">
-                                            <span id="rtspTestStatusBadge" class="badge" style="background:#10b981; font-size:0.75rem; padding:3px 8px;">⏳ Testing Stream...</span>
-                                            <strong style="color:#f8fafc; font-size:0.9rem;">Live RTSP Video Test Player</strong>
+                                            <span id="rtspTestStatusBadge" class="badge" style="background:#10b981; font-size:0.72rem; padding:2px 8px;">⏳ Testing Stream...</span>
+                                            <strong style="color:#f8fafc; font-size:0.85rem;">Live RTSP Stream Preview</strong>
                                         </div>
-                                        <button type="button" id="btnCloseRtspTest" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:3px 10px; color:#f43f5e; border-color:#be123c;">✕ Tutup Preview</button>
+                                        <button type="button" id="btnCloseRtspTest" class="btn-sm btn-secondary" style="font-size:0.72rem; padding:2px 8px; color:#f43f5e; border-color:#be123c;">✕ Tutup Preview</button>
                                     </div>
                                     
-                                    <div style="position:relative; width:100%; aspect-ratio:16/9; max-height:260px; background:#000; border-radius:6px; overflow:hidden; border:1px solid #1e293b;">
+                                    <div style="position:relative; width:100%; aspect-ratio:16/9; max-height:240px; background:#000; border-radius:6px; overflow:hidden; border:1px solid #1e293b;">
                                         <video id="videoRtspTestPreview" class="cam-player-video" autoplay muted playsinline controls style="width:100%; height:100%; object-fit:contain;"></video>
-                                        <div id="rtspTestOverlayMsg" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; flex-direction:column; background:rgba(15,23,42,0.95); color:#94a3b8; font-size:0.85rem; padding:1.2rem; text-align:center; z-index:5;">
-                                            <div class="spinner" style="width:32px; height:32px; border:3px solid rgba(255,255,255,0.1); border-top-color:#10b981; border-radius:50%; margin-bottom:0.75rem;"></div>
+                                        <div id="rtspTestOverlayMsg" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; flex-direction:column; background:rgba(15,23,42,0.95); color:#94a3b8; font-size:0.82rem; padding:1rem; text-align:center; z-index:5;">
+                                            <div class="spinner" style="width:28px; height:28px; border:3px solid rgba(255,255,255,0.1); border-top-color:#10b981; border-radius:50%; margin-bottom:0.6rem;"></div>
                                             <span id="rtspTestOverlayText" style="color:#e2e8f0; font-weight:500;">Menghubungkan ke RTSP stream & melakukan analisa codec...</span>
                                         </div>
                                     </div>
 
-                                    <div id="rtspTestDiagnostics" style="margin-top:0.75rem; font-size:0.8rem; color:#cbd5e1; background:rgba(0,0,0,0.4); padding:0.65rem 0.8rem; border-radius:6px; border:1px solid #1e293b; font-family:monospace; white-space:pre-wrap; max-height:120px; overflow-y:auto;"></div>
+                                    <div id="rtspTestDiagnostics" style="margin-top:0.5rem; font-size:0.75rem; color:#cbd5e1; background:rgba(0,0,0,0.4); padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #1e293b; font-family:monospace; white-space:pre-wrap; max-height:100px; overflow-y:auto;"></div>
                                 </div>
+                            </div>
+
+                            <!-- BLOK 2: KONTROL GERAK (PTZ) & PROTOKOL -->
+                            <div class="cam-form-section">
+                                <div class="cam-form-section-title">
+                                    <span>🎮</span> 2. Kontrol Gerak (Pan - Tilt - Zoom)
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group flex-2">
+                                        <label>Protokol Kontrol PTZ</label>
+                                        <select id="camPtzSelect" class="form-control" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; font-weight:600;">
+                                            <option value="no">❌ Nonaktifkan PTZ (Kamera Fixed)</option>
+                                            <option value="yes">✅ ONVIF Universal (Port 8899 / 80 / 2020)</option>
+                                            <option value="v380_native">⚡ Macrovideo V380 Native (Port 8800 Binary Socket)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group flex-2">
+                                        <label>URL / IP Target PTZ (Opsional)</label>
+                                        <input type="text" id="camPtzUrl" placeholder="Kosong = Otomatis ikuti IP Kamera di atas">
+                                    </div>
+                                </div>
+                                <button type="button" id="btnAutoFillPtz" style="display:none;"></button>
+                                <input type="hidden" id="camPtzUser">
+                                <input type="hidden" id="camPtzPass">
+                                <input type="hidden" id="camOnvifProfileToken">
+                            </div>
+
+                            <!-- BLOK 3: MODE REKAMAN & STORAGE -->
+                            <div class="cam-form-section">
+                                <div class="cam-form-section-title">
+                                    <span>💾</span> 3. Mode Rekaman & Penyimpanan
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group flex-1">
+                                        <label>Mode Rekaman NVR</label>
+                                        <select id="camRecordMode" class="form-control" style="font-weight:600;">
+                                            <option value="continuous">🔴 Continuous (Rekam Terus Menerus 24 Jam)</option>
+                                            <option value="disabled">⚪ Disabled (Live Monitor Saja, Tidak Merekam)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group flex-1">
+                                        <label>Batas Masa Simpan (Retensi Hari)</label>
+                                        <input type="number" id="camMaxDays" value="7" min="1" placeholder="Contoh: 7 hari">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- BLOK 4: PENGATURAN LANJUTAN (ACCORDION COLLAPSIBLE) -->
+                            <details id="cameraAdvancedDetails" class="cam-advanced-accordion">
+                                <summary class="cam-advanced-summary">
+                                    <span>⚙️ Pengaturan Lanjutan (Advanced Streams, Audio Codec, Transcode)</span>
+                                    <span class="cam-advanced-chevron">▼</span>
+                                </summary>
                                 
-                                <div class="form-row" style="background:rgba(255,255,255,0.02); border:1px solid #1e293b; border-radius:6px; padding:0.75rem; margin-bottom:1rem;">
-                                    <div class="form-group flex-1" style="margin-bottom:0;">
-                                        <div class="row-check" style="display:flex; align-items:center; gap:0.5rem;">
-                                            <input type="checkbox" id="camAudioEnabled" checked>
-                                            <label for="camAudioEnabled" style="font-weight:600; cursor:pointer;">🔊 Aktifkan RTSP Audio Ingest</label>
+                                <div class="cam-advanced-body">
+                                    <div class="form-row">
+                                        <div class="form-group flex-1">
+                                            <label>Custom Camera ID (Opsional)</label>
+                                            <input type="text" id="camCustomId" placeholder="Kosongkan untuk ID otomatis">
                                         </div>
-                                        <small style="color:var(--text-muted); display:block; margin-top:0.25rem;">
-                                            Sertakan track audio dari kamera untuk live streaming & rekaman file MP4.
-                                        </small>
-                                    </div>
-                                    <div class="form-group flex-1" style="margin-bottom:0;">
-                                        <label>Audio Codec / Transcoding</label>
-                                        <select id="camAudioCodec" class="form-control">
-                                            <option value="aac">AAC 128k (Rekomendasi Standar Web/Browser)</option>
-                                            <option value="copy">Direct Copy (-c:a copy / Passthrough)</option>
-                                            <option value="opus">Opus (WebRTC Ultra-Low Latency)</option>
-                                            <option value="none">Mute / Tanpa Audio (-an)</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Mode Transcode Video</label>
-                                    <select id="camTranscode" class="form-control">
-                                        <option value="auto">Auto-Detect Passthrough (Rekomendasi Hemat CPU STB)</option>
-                                        <option value="copy">Direct Copy (-c:v copy)</option>
-                                        <option value="transcode">Transcode H.264 (Hanya jika stream tidak standar)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div id="ctab-storage" class="ctab-pane">
-                                <div class="form-row">
-                                    <div class="form-group flex-1">
-                                        <label>Mode Rekam</label>
-                                        <select id="camRecordMode" class="form-control">
-                                            <option value="continuous">Continuous (Rekam Terus Menerus)</option>
-                                            <option value="disabled">Disabled (Live Stream Saja)</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group flex-1">
-                                        <label>Durasi Segment (Detik)</label>
-                                        <input type="number" id="camSegmentSec" value="900" min="60" placeholder="900 (15 menit)">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>Custom Storage Folder (Kosongkan untuk mengikuti Storage Global)</label>
-                                    <input type="text" id="camStoragePath" placeholder="Otomatis mengikuti Storage Utama">
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group flex-1">
-                                        <label>Retensi Maksimal (Hari)</label>
-                                        <input type="number" id="camMaxDays" value="7" min="1">
-                                    </div>
-                                    <div class="form-group flex-1">
-                                        <label>Batas Kuota Folder (GB)</label>
-                                        <input type="number" id="camMaxGB" value="10" min="1" step="0.5">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div id="ctab-ptz" class="ctab-pane">
-                                <div class="form-group" style="margin-bottom:1rem;">
-                                    <label style="font-weight:600;">Protokol PTZ & Kontrol Kamera</label>
-                                    <select id="camPtzSelect" class="form-control" style="background:#1e293b; color:#f8fafc; border:1px solid #334155; font-weight:600;">
-                                        <option value="no">❌ Nonaktifkan PTZ</option>
-                                        <option value="yes">✅ ONVIF Universal (Port 8899 / 80 / 2020)</option>
-                                        <option value="v380_native">⚡ Macrovideo V380 Native (Port 8800 Binary Socket)</option>
-                                    </select>
-                                    <small style="color:var(--text-muted); display:block; margin-top:0.25rem;">
-                                        Pilih <strong>ONVIF Universal</strong> untuk kamera standar Profile S, atau <strong>Macrovideo V380 Native</strong> untuk kamera V380 / V380 Pro via direct binary TCP port 8800.
-                                    </small>
-                                </div>
-
-                                <div id="ptzConfigBox" style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:1rem; margin-bottom:1rem;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                                        <span style="font-size:0.85rem; font-weight:600; color:#60a5fa;">Pengaturan Alamat & Akun ONVIF</span>
-                                        <button type="button" id="btnAutoFillPtz" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:3px 8px;">
-                                            ⚡ Ekstrak dari RTSP
-                                        </button>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label>Custom IP / URL ONVIF (Opsional)</label>
-                                        <input type="text" id="camPtzUrl" placeholder="Contoh: 192.168.1.100 atau 192.168.1.100:2020">
-                                        <small style="color:var(--text-muted);">
-                                            Biarkan kosong untuk otomatis menggunakan IP dari RTSP, atau isi jika port ONVIF khusus.
-                                        </small>
+                                        <div class="form-group flex-1">
+                                            <label>Sub Stream RTSP URL (Multi-Grid Ringan SD / 360p)</label>
+                                            <input type="text" id="camSubUrl" placeholder="Contoh: rtsp://user:pass@192.168.1.100:554/live/ch00_0">
+                                        </div>
                                     </div>
 
                                     <div class="form-row">
                                         <div class="form-group flex-1">
-                                            <label>Username ONVIF</label>
-                                            <input type="text" id="camPtzUser" placeholder="admin / akun kamera">
+                                            <label>Mode Transcode Video</label>
+                                            <select id="camTranscode" class="form-control">
+                                                <option value="auto">Auto-Detect Passthrough (Hemat CPU STB)</option>
+                                                <option value="copy">Direct Copy (-c:v copy Passthrough)</option>
+                                                <option value="transcode">Transcode H.264 (Jika format video tidak standar)</option>
+                                            </select>
                                         </div>
                                         <div class="form-group flex-1">
-                                            <label>Password ONVIF</label>
-                                            <div class="password-wrapper">
-                                                <input type="password" id="camPtzPass" placeholder="Password kamera">
-                                                <button type="button" class="btn-peek-pwd" data-target="camPtzPass" title="Lihat Password"><span class="peek-icon">👁️</span></button>
+                                            <label>Durasi Segment File Rekaman (Detik)</label>
+                                            <input type="number" id="camSegmentSec" value="900" min="60" placeholder="900 (15 menit)">
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <div class="form-group flex-1">
+                                            <label>Audio Codec / Transcoding</label>
+                                            <select id="camAudioCodec" class="form-control">
+                                                <option value="aac">AAC 128k (Standar Web & Browser)</option>
+                                                <option value="copy">Direct Copy (-c:a copy)</option>
+                                                <option value="opus">Opus (WebRTC Low-Latency)</option>
+                                                <option value="none">Mute / Tanpa Audio (-an)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group flex-1" style="display:flex; align-items:flex-end; padding-bottom:6px;">
+                                            <div class="row-check" style="display:flex; align-items:center; gap:0.5rem;">
+                                                <input type="checkbox" id="camAudioEnabled" checked style="width:16px; height:16px;">
+                                                <label for="camAudioEnabled" style="font-weight:600; cursor:pointer; margin:0;">🔊 Sertakan Audio Kamera</label>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="form-group">
-                                        <label>ONVIF ProfileToken (Opsional)</label>
-                                        <input type="text" id="camOnvifProfileToken" placeholder="Contoh: Profile_1 / profile0 / MediaProfile000 (Kosong = Auto-Detect)">
-                                        <small style="color:var(--text-muted);">
-                                            Biarkan kosong untuk otomatis dideteksi saat handshake ONVIF SOAP.
-                                        </small>
-                                    </div>
-
-                                    <div style="margin-top:0.75rem; display:flex; gap:0.5rem; align-items:center;">
-                                        <button type="button" id="btnTestOnvifProbe" class="btn-sm btn-secondary" style="display:inline-flex; align-items:center; gap:0.3rem;">
-                                            🔍 Uji Coba Koneksi ONVIF
-                                        </button>
-                                        <span id="ptzProbeStatus" style="font-size:0.8rem; color:var(--text-muted);"></span>
+                                    <div class="form-row">
+                                        <div class="form-group flex-1">
+                                            <label>Custom Storage Folder</label>
+                                            <input type="text" id="camStoragePath" placeholder="Kosong = Ikuti Storage Utama STB">
+                                        </div>
+                                        <div class="form-group flex-1">
+                                            <label>Batas Kuota Folder Kamera (GB)</label>
+                                            <input type="number" id="camMaxGB" value="10" min="1" step="0.5">
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            </details>
 
-                            <div class="form-actions mt-3" style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid #1e293b; padding-top:1rem; margin-top:1rem;">
+                            <!-- Actions Footer -->
+                            <div class="form-actions mt-3" style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid #1e293b; padding-top:1rem; margin-top:1.25rem;">
                                 <button type="button" id="btnCancelCameraModal" class="btn btn-secondary" style="font-size:0.85rem; padding:0.55rem 1.25rem;">Batal</button>
-                                <button type="submit" class="btn btn-primary" style="font-size:0.85rem; padding:0.55rem 1.5rem; font-weight:600;">Simpan & Sinkronkan</button>
+                                <button type="submit" class="btn btn-primary" style="font-size:0.85rem; padding:0.55rem 1.5rem; font-weight:600; box-shadow:0 2px 10px rgba(37,99,235,0.4);">💾 Simpan & Sinkronkan</button>
                             </div>
                         </form>
                     </div>

@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.7.2 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.7.3 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -1425,6 +1425,91 @@ async function updateHardwareStats() {
         modalCameraList.appendChild(mobileWrapper);
     }
 
+    // --- Universal Camera Preset & URL Generator Engine ---
+    function composeRtspStreamUrl(preset, ip, port, user, pass) {
+        if (!ip) return '';
+        const rtspPort = port ? `:${port}` : ':554';
+        const credPart = (user || pass) ? `${encodeURIComponent(user || 'admin')}:${encodeURIComponent(pass || '')}@` : '';
+        
+        switch (preset) {
+            case 'v380':
+                return `rtsp://${credPart}${ip}${rtspPort}/live/ch00_1`;
+            case 'hikvision':
+                return `rtsp://${credPart}${ip}${rtspPort}/Streaming/Channels/101`;
+            case 'dahua':
+                return `rtsp://${credPart}${ip}${rtspPort}/cam/realmonitor?channel=1&subtype=0`;
+            case 'xiongmai':
+                return `rtsp://${credPart}${ip}${rtspPort}/h264/ch1/main/av_stream`;
+            case 'onvif_auto':
+            default:
+                return `rtsp://${credPart}${ip}${rtspPort}/live/ch00_1`;
+        }
+    }
+
+    function composeSubStreamUrl(preset, ip, port, user, pass) {
+        if (!ip) return '';
+        const rtspPort = port ? `:${port}` : ':554';
+        const credPart = (user || pass) ? `${encodeURIComponent(user || 'admin')}:${encodeURIComponent(pass || '')}@` : '';
+        
+        switch (preset) {
+            case 'v380':
+                return `rtsp://${credPart}${ip}${rtspPort}/live/ch00_0`;
+            case 'hikvision':
+                return `rtsp://${credPart}${ip}${rtspPort}/Streaming/Channels/102`;
+            case 'dahua':
+                return `rtsp://${credPart}${ip}${rtspPort}/cam/realmonitor?channel=1&subtype=1`;
+            case 'xiongmai':
+                return `rtsp://${credPart}${ip}${rtspPort}/h264/ch1/sub/av_stream`;
+            case 'onvif_auto':
+            default:
+                return `rtsp://${credPart}${ip}${rtspPort}/live/ch00_0`;
+        }
+    }
+
+    function syncRtspUrlFromInputs(force = false) {
+        const presetEl = document.getElementById('camVendorPreset');
+        const ipEl = document.getElementById('camIpAddress');
+        const portEl = document.getElementById('camRtspPort');
+        const userEl = document.getElementById('camUsername');
+        const passEl = document.getElementById('camPassword');
+        const mainUrlEl = document.getElementById('camMainUrl');
+        const subUrlEl = document.getElementById('camSubUrl');
+        const ptzSelectEl = document.getElementById('camPtzSelect');
+        const onvifPortEl = document.getElementById('camOnvifPort');
+
+        if (!ipEl || !mainUrlEl) return;
+        const preset = presetEl ? presetEl.value : 'onvif_auto';
+        const ip = ipEl.value.trim();
+        const port = portEl ? portEl.value.trim() : '554';
+        const user = userEl ? userEl.value.trim() : 'admin';
+        const pass = passEl ? passEl.value : '';
+
+        if (preset === 'v380') {
+            if (ptzSelectEl && (force || ptzSelectEl.value === 'no')) {
+                ptzSelectEl.value = 'v380_native';
+            }
+            if (onvifPortEl && (!onvifPortEl.value || onvifPortEl.value === '8899')) {
+                onvifPortEl.value = '8800';
+            }
+        } else if (preset === 'onvif_auto') {
+            if (ptzSelectEl && ptzSelectEl.value === 'no') {
+                ptzSelectEl.value = 'yes';
+            }
+            if (onvifPortEl && !onvifPortEl.value) {
+                onvifPortEl.value = '8899';
+            }
+        }
+
+        if (preset !== 'custom' && ip) {
+            if (force || !mainUrlEl.value || mainUrlEl.value.startsWith('rtsp://')) {
+                mainUrlEl.value = composeRtspStreamUrl(preset, ip, port, user, pass);
+            }
+            if (subUrlEl && (force || !subUrlEl.value)) {
+                subUrlEl.value = composeSubStreamUrl(preset, ip, port, user, pass);
+            }
+        }
+    }
+
     function extractRtspCredentials(url) {
         if (!url || typeof url !== 'string') return { host: '', user: '', pass: '' };
         try {
@@ -1433,7 +1518,8 @@ async function updateHardwareStats() {
                 return {
                     user: m[1] ? decodeURIComponent(m[1]) : '',
                     pass: m[2] ? decodeURIComponent(m[2]) : '',
-                    host: m[3] ? m[3] : ''
+                    host: m[3] ? m[3] : '',
+                    port: m[4] ? m[4] : ''
                 };
             }
         } catch(e) {}
@@ -1613,7 +1699,53 @@ async function updateHardwareStats() {
         }
     }
 
-    // Auto extract saat input RTSP berubah
+    // Event listeners untuk auto compile RTSP URL dari IP & Vendor Preset
+    const camVendorPresetSelect = document.getElementById('camVendorPreset');
+    if (camVendorPresetSelect) {
+        camVendorPresetSelect.addEventListener('change', () => {
+            syncRtspUrlFromInputs(true);
+        });
+    }
+
+    const camIpAddressInput = document.getElementById('camIpAddress');
+    if (camIpAddressInput) {
+        camIpAddressInput.addEventListener('input', () => {
+            const currentEditingId = document.getElementById('camId') ? document.getElementById('camId').value : '';
+            if (!currentEditingId) {
+                syncRtspUrlFromInputs(false);
+            }
+        });
+    }
+
+    const camUsernameInput = document.getElementById('camUsername');
+    if (camUsernameInput) {
+        camUsernameInput.addEventListener('input', () => {
+            const currentEditingId = document.getElementById('camId') ? document.getElementById('camId').value : '';
+            if (!currentEditingId) {
+                syncRtspUrlFromInputs(false);
+            }
+        });
+    }
+
+    const camPasswordInput = document.getElementById('camPassword');
+    if (camPasswordInput) {
+        camPasswordInput.addEventListener('input', () => {
+            const currentEditingId = document.getElementById('camId') ? document.getElementById('camId').value : '';
+            if (!currentEditingId) {
+                syncRtspUrlFromInputs(false);
+            }
+        });
+    }
+
+    const btnSyncRtspUrl = document.getElementById('btnSyncRtspUrl');
+    if (btnSyncRtspUrl) {
+        btnSyncRtspUrl.addEventListener('click', () => {
+            syncRtspUrlFromInputs(true);
+            showToast('⚡ URL Stream RTSP telah disusun ulang berdasarkan IP & Preset', 'info');
+        });
+    }
+
+    // Auto extract saat input RTSP diubah secara manual
     const camMainUrlInput = document.getElementById('camMainUrl');
     if (camMainUrlInput) {
         camMainUrlInput.addEventListener('blur', () => {
@@ -1668,11 +1800,10 @@ async function updateHardwareStats() {
             return;
         }
 
-        if (typeof switchCameraTab === 'function') {
-            switchCameraTab('ctab-streams');
+        if (testContainer) {
+            testContainer.style.display = 'block';
+            testContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-
-        if (testContainer) testContainer.style.display = 'block';
         if (badge) {
             badge.style.background = '#3b82f6';
             badge.textContent = '⏳ Testing Stream...';
@@ -1883,9 +2014,21 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         const btnCancelEdit = document.getElementById('btnCancelEdit');
         if(btnCancelEdit) btnCancelEdit.style.display = 'inline-block';
         
-        // Kembalikan form ke tab utama (General) secara default saat buka edit
-        if (typeof switchCameraTab === 'function') {
-            switchCameraTab('ctab-general');
+        // Detect vendor preset based on stream URL or protocol
+        const presetEl = document.getElementById('camVendorPreset');
+        if (presetEl) {
+            const mUrl = cam.mainStreamUrl || '';
+            if (cam.ptzProtocol === 'v380_native' || mUrl.includes('/live/ch00_')) {
+                presetEl.value = 'v380';
+            } else if (mUrl.includes('/Streaming/Channels/')) {
+                presetEl.value = 'hikvision';
+            } else if (mUrl.includes('/cam/realmonitor')) {
+                presetEl.value = 'dahua';
+            } else if (mUrl.includes('/h264/ch1/')) {
+                presetEl.value = 'xiongmai';
+            } else {
+                presetEl.value = 'custom';
+            }
         }
 
         // Buka modal dialog kamera secara mulus
@@ -1977,14 +2120,16 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         if (qStatusEl) { qStatusEl.style.display = 'none'; qStatusEl.innerHTML = ''; }
         if (typeof closeRtspVideoTest === 'function') closeRtspVideoTest();
 
-        if (typeof switchCameraTab === 'function') {
-            switchCameraTab('ctab-general');
-        }
-
         const formTitle = document.getElementById('formTitle');
         if (formTitle) formTitle.textContent = 'Tambah Kamera Baru';
         const btnCancelEdit = document.getElementById('btnCancelEdit');
         if (btnCancelEdit) btnCancelEdit.style.display = 'none';
+
+        const presetEl = document.getElementById('camVendorPreset');
+        if (presetEl) presetEl.value = 'onvif_auto';
+
+        const advDetails = document.getElementById('camAdvancedDetails');
+        if (advDetails) advDetails.open = false;
     }
 
     // Wire up Camera Modal & Scanner Modal triggers
