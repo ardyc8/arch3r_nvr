@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.6.6 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.6.7 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -8696,12 +8696,37 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
 
             <!-- FORM PENGATURAN PARAMETER HARDWARE MPV -->
             <form id="addonConfigForm">
+                <!-- PILIHAN KONEKTOR PORT HDMI DRM -->
+                <div style="background:rgba(2,132,199,0.08); padding:0.9rem 1rem; border-radius:6px; border:1px solid rgba(2,132,199,0.25); margin-bottom:1.25rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                        <label style="font-weight:700; font-size:0.88rem; color:#38bdf8; display:flex; align-items:center; gap:0.4rem;">
+                            <span>📺</span> Konektor DRM HDMI (Port Display TV):
+                        </label>
+                        <span style="font-size:0.72rem; padding:2px 8px; border-radius:4px; background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); font-weight:600;">
+                            Multi-STB Support
+                        </span>
+                    </div>
+                    <select name="drm_connector" id="hdmiNativeDrmConnectorSelect" onchange="toggleCustomDrmInput(this.value)" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.35); border:1px solid var(--border); color:white; border-radius:4px; font-weight:600;">
+                        <option value="auto" ${configObj.drm_connector === 'auto' || !configObj.drm_connector ? 'selected' : ''}>⚡ Otomatis (Auto-Detect Sysfs Port HDMI Aktif)</option>
+                        <option value="HDMI-A-1" ${configObj.drm_connector === 'HDMI-A-1' ? 'selected' : ''}>HDMI-A-1 (Standar STB Amlogic B860H / HG860P / S905 Series)</option>
+                        <option value="HDMI-A-2" ${configObj.drm_connector === 'HDMI-A-2' ? 'selected' : ''}>HDMI-A-2 (STB Rockchip RK3328/RK3399 / Port HDMI Kedua)</option>
+                        <option value="card0-HDMI-A-1" ${configObj.drm_connector === 'card0-HDMI-A-1' ? 'selected' : ''}>card0-HDMI-A-1 (Format Lengkap Kernel Driver)</option>
+                        <option value="custom" ${configObj.drm_connector && !['auto','HDMI-A-1','HDMI-A-2','card0-HDMI-A-1'].includes(configObj.drm_connector) ? 'selected' : ''}>Custom / Input Nama Port DRM Lainnya</option>
+                    </select>
+                    <div id="hdmiNativeCustomDrmBox" style="margin-top:0.6rem; display:${configObj.drm_connector && !['auto','HDMI-A-1','HDMI-A-2','card0-HDMI-A-1'].includes(configObj.drm_connector) ? 'block' : 'none'};">
+                        <input type="text" id="hdmiNativeCustomDrmInput" placeholder="Masukkan nama konektor DRM (misal: HDMI-A-1, DVI-I-1)" value="${configObj.drm_connector && !['auto','HDMI-A-1','HDMI-A-2','card0-HDMI-A-1'].includes(configObj.drm_connector) ? configObj.drm_connector : ''}" style="width:100%; padding:0.5rem 0.65rem; background:rgba(0,0,0,0.35); border:1px solid #38bdf8; color:white; border-radius:4px; font-size:0.85rem;" oninput="syncCustomDrmValue(this.value)">
+                    </div>
+                    <div style="font-size:0.75rem; color:#94a3b8; margin-top:0.35rem;">
+                        Pilih port fisik HDMI pada STB Anda. Mode otomatis akan membaca status kabel langsung dari kernel Linux (kompatibel untuk berbagai tipe STB).
+                    </div>
+                </div>
+
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
                         <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Hardware Video Output (VO):</label>
                         <select name="vo" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                            <option value="gpu" ${configObj.vo === 'gpu' || !configObj.vo ? 'selected' : ''}>gpu (Mali GPU Hardware Render - Direkomendasikan)</option>
-                            <option value="drm" ${configObj.vo === 'drm' ? 'selected' : ''}>drm (Direct Rendering Manager - Murni KMS)</option>
+                            <option value="drm" ${configObj.vo === 'drm' || !configObj.vo ? 'selected' : ''}>drm (Direct Rendering Manager - Murni KMS Langsung TV)</option>
+                            <option value="gpu" ${configObj.vo === 'gpu' ? 'selected' : ''}>gpu (Mali GPU Hardware Render)</option>
                             <option value="xv" ${configObj.vo === 'xv' ? 'selected' : ''}>xv (XVideo Hardware Acceleration)</option>
                             <option value="fbdev" ${configObj.vo === 'fbdev' ? 'selected' : ''}>fbdev (Direct Linux Framebuffer)</option>
                         </select>
@@ -9054,6 +9079,10 @@ async function checkHdmiNativeDiagnostics() {
                         <span style="color:var(--text-muted); font-size:0.72rem; display:block;">Systemd Service:</span>
                         <strong style="color:${d.isServiceActive ? '#22c55e' : '#ef4444'}; font-size:0.8rem;">${d.isServiceActive ? '🟢 Aktif' : '⚪ Mati'}</strong>
                     </div>
+                    <div style="padding:0.4rem 0.6rem; border-radius:4px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);">
+                        <span style="color:var(--text-muted); font-size:0.72rem; display:block;">Konektor DRM HDMI:</span>
+                        <strong style="color:#38bdf8; font-size:0.8rem;">${d.activeDrmConnector || 'HDMI-A-1'}</strong>
+                    </div>
                 </div>
                 <div style="padding:0.5rem 0.75rem; border-radius:4px; background:${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'}; border:1px solid ${d.recommendation && d.recommendation.startsWith('✅') ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}; margin-bottom:0.75rem; font-size:0.8rem;">
                     <strong>${d.recommendation || ''}</strong>
@@ -9093,6 +9122,20 @@ async function repairHdmiNativeScript() {
     }
 }
 window.repairHdmiNativeScript = repairHdmiNativeScript;
+
+function toggleCustomDrmInput(val) {
+    const box = document.getElementById('hdmiNativeCustomDrmBox');
+    if (box) box.style.display = (val === 'custom') ? 'block' : 'none';
+}
+window.toggleCustomDrmInput = toggleCustomDrmInput;
+
+function syncCustomDrmValue(val) {
+    const sel = document.getElementById('hdmiNativeDrmConnectorSelect');
+    if (sel && val) {
+        sel.value = val;
+    }
+}
+window.syncCustomDrmValue = syncCustomDrmValue;
 
 async function saveAddonConfig() {
     if (!currentConfigAddonId) return;

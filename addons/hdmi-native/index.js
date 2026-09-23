@@ -164,11 +164,77 @@ class HdmiNativeAddon {
     }
 
     /**
+     * Pindai dan deteksi port output DRM HDMI pada berbagai tipe SoC STB (Amlogic, Rockchip, Allwinner)
+     */
+    getDrmConnectors() {
+        const drmPath = '/sys/class/drm';
+        const connectors = [];
+        let autoDetected = null;
+
+        try {
+            if (fs.existsSync(drmPath)) {
+                const entries = fs.readdirSync(drmPath);
+                for (const entry of entries) {
+                    if (/HDMI/i.test(entry)) {
+                        const statusFile = path.join(drmPath, entry, 'status');
+                        let status = 'unknown';
+                        try {
+                            if (fs.existsSync(statusFile)) {
+                                status = fs.readFileSync(statusFile, 'utf8').trim();
+                            }
+                        } catch (_) {}
+
+                        const cleanName = entry.replace(/^card[0-9]+-/, '');
+                        connectors.push({
+                            id: cleanName,
+                            fullName: entry,
+                            status: status
+                        });
+
+                        if (status.toLowerCase() === 'connected' && !autoDetected) {
+                            autoDetected = cleanName;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            this.logger('WARN', 'Error scanning DRM connectors: ' + e.message);
+        }
+
+        const currentConfig = (this.config && this.config.drm_connector) || 'auto';
+        return {
+            connectors,
+            currentConfig,
+            autoDetected: autoDetected || 'HDMI-A-1',
+            effectiveConnector: currentConfig === 'auto' ? (autoDetected || 'HDMI-A-1') : currentConfig
+        };
+    }
+
+    /**
+     * Simpan konfigurasi baru dan perbarui script launcher
+     */
+    saveConfig(newConfig, callback) {
+        this.loadConfig();
+        this.config = Object.assign(this.config || {}, newConfig);
+        try {
+            fs.writeFileSync(this.configFile, JSON.stringify(this.config, null, 2), 'utf8');
+            this.ensureNativeScript(() => {
+                if (typeof callback === 'function') callback(null, this.config);
+            });
+        } catch (e) {
+            if (typeof callback === 'function') callback(e, null);
+        }
+    }
+
+    /**
      * Pastikan script launcher /opt/arch3r-native/start-native.sh selalu menggunakan konfigurasi hemat CPU
      */
     ensureNativeScript(callback) {
         const nativeDir = '/opt/arch3r-native';
         const scriptPath = path.join(nativeDir, 'start-native.sh');
+        this.loadConfig();
+        const configuredConnector = (this.config && this.config.drm_connector) ? this.config.drm_connector : 'auto';
+
         try {
             const scriptContent = `#!/bin/bash
 # ==============================================================================
@@ -187,10 +253,42 @@ if [ ! -f "$PLAYLIST" ]; then
     echo "avdevice://lavfi:color=c=0x0b132b:s=1280x720:r=5" >> "$PLAYLIST"
 fi
 
-echo "[Arch3r-Native] Menjalankan MPV Hardware Engine (Direct DRM/KMS)..."
+# Auto-Deteksi Port Konektor DRM HDMI aktif di Linux Armbian (Amlogic, Rockchip, Allwinner, dll)
+CONFIG_CONNECTOR="${configuredConnector}"
+TARGET_CONNECTOR=""
+
+if [ -n "$CONFIG_CONNECTOR" ] && [ "$CONFIG_CONNECTOR" != "auto" ]; then
+    TARGET_CONNECTOR="$CONFIG_CONNECTOR"
+else
+    # 1. Pindai port HDMI yang statusnya 'connected' di /sys/class/drm/
+    for status_file in /sys/class/drm/*HDMI*/status /sys/class/drm/*hdmi*/status; do
+        if [ -f "$status_file" ] && grep -qi "connected" "$status_file" 2>/dev/null; then
+            TARGET_CONNECTOR=$(basename "$(dirname "$status_file")" | sed -E 's/^card[0-9]+-//')
+            break
+        fi
+    done
+
+    # 2. Fallback jika status file belum terbaca
+    if [ -z "$TARGET_CONNECTOR" ]; then
+        for conn_dir in /sys/class/drm/*HDMI* /sys/class/drm/*hdmi*; do
+            if [ -d "$conn_dir" ]; then
+                TARGET_CONNECTOR=$(basename "$conn_dir" | sed -E 's/^card[0-9]+-//')
+                break
+            fi
+        done
+    fi
+
+    # 3. Default fallback standar STB Amlogic & Rockchip
+    if [ -z "$TARGET_CONNECTOR" ]; then
+        TARGET_CONNECTOR="HDMI-A-1"
+    fi
+fi
+
+echo "[Arch3r-Native] Menjalankan MPV Hardware Engine (Direct DRM: $TARGET_CONNECTOR)..."
 
 # Jalankan MPV dengan akselerasi hardware DRM langsung ke HDMI tanpa X11
 exec mpv \\
+    --drm-connector="$TARGET_CONNECTOR" \\
     --idle=yes \\
     --keep-open=always \\
     --force-window=immediate \\
@@ -424,6 +522,7 @@ exec mpv \\
      * Diagnosa status sistem Armbian untuk Addon Native
      */
     getDiagnostics(callback) {
+        const drmInfo = this.getDrmConnectors();
         const diag = {
             hasMpv: false,
             hasSocat: false,
@@ -431,6 +530,9 @@ exec mpv \\
             isServiceActive: false,
             isHdmiConnected: this.isHdmiConnected,
             detectedSysPath: this.detectedSysPath,
+            drmConnectors: drmInfo.connectors,
+            activeDrmConnector: drmInfo.effectiveConnector,
+            drmConfig: drmInfo.currentConfig,
             serviceLogs: '',
             recommendation: ''
         };
@@ -467,6 +569,7 @@ exec mpv \\
     getStatus() {
         this.checkHardwareStatus();
         this.loadConfig();
+        const drmInfo = this.getDrmConnectors();
         return {
             addonName: 'arch3r-addon-hdmi-native',
             version: '1.0.0',
@@ -478,6 +581,9 @@ exec mpv \\
             lastCheckTime: this.lastCheckTime,
             liveState: this.liveState,
             config: this.config || {},
+            drmConnectors: drmInfo.connectors,
+            activeDrmConnector: drmInfo.effectiveConnector,
+            drmConfig: drmInfo.currentConfig,
             footprint: {
                 diskUsageMb: '~25 MB (Super Ringan)',
                 ramUsageMb: '< 60 MB (Hemat RAM)',

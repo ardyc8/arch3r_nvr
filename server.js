@@ -5607,6 +5607,32 @@ app.post('/api/addons/hdmi-native/repair', verifyToken, requireAdmin, (req, res)
     });
 });
 
+app.get('/api/addons/hdmi-native/drm-connectors', verifyToken, (req, res) => {
+    if (!hdmiNativeAddon) {
+        return res.status(404).json({ error: 'Add-on HDMI Native belum terinstal di sistem' });
+    }
+    const drmData = hdmiNativeAddon.getDrmConnectors ? hdmiNativeAddon.getDrmConnectors() : { connectors: [], currentConfig: 'auto', autoDetected: 'HDMI-A-1' };
+    res.json({ success: true, ...drmData });
+});
+
+app.post('/api/addons/hdmi-native/config', verifyToken, requireAdmin, (req, res) => {
+    if (!hdmiNativeAddon) {
+        return res.status(404).json({ error: 'Add-on HDMI Native tidak ditemukan' });
+    }
+    const newCfg = (req.body && req.body.config) ? req.body.config : (req.body || {});
+    hdmiNativeAddon.saveConfig(newCfg, (err, saved) => {
+        if (err) return res.status(500).json({ error: 'Gagal menyimpan konfigurasi: ' + err.message });
+        hdmiNativeAddon.controlService('restart', (svcErr, result) => {
+            res.json({
+                success: true,
+                message: 'Konfigurasi HDMI Native berhasil disimpan dan service MPV di-restart!',
+                config: saved,
+                serviceResult: result
+            });
+        });
+    });
+});
+
 app.post('/api/addons/hdmi-native/remote-cmd', verifyToken, requireAdmin, async (req, res) => {
     if (!hdmiNativeAddon) {
         return res.status(404).json({ error: 'Add-on HDMI Native belum terpasang atau tidak aktif' });

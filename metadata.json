@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.5.3",
-  "description": "Arch3r NVR Ver. 10.6.6 - Direct DRM HDMI Video Engine, TTY Systemd Permission Fix, Clean ASCII OSD, and Resilient Reconnect Loop.",
+  "description": "Arch3r NVR Ver. 10.6.7 - Multi-SoC DRM HDMI Port Auto-Detection, Dynamic Sysfs DRM Scanner, and Universal STB Display Configuration.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

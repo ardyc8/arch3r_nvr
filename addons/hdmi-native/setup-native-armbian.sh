@@ -54,10 +54,37 @@ if [ ! -f "$PLAYLIST" ]; then
     echo "avdevice://lavfi:color=c=0x0b132b:s=1280x720:r=5" >> "$PLAYLIST"
 fi
 
-echo "[Arch3r-Native] Menjalankan MPV Hardware Engine..."
+# Auto-Deteksi Port Konektor DRM HDMI aktif di Linux Armbian (Amlogic, Rockchip, Allwinner, dll)
+TARGET_CONNECTOR=""
+
+# 1. Pindai port HDMI yang statusnya 'connected' di /sys/class/drm/
+for status_file in /sys/class/drm/*HDMI*/status /sys/class/drm/*hdmi*/status; do
+    if [ -f "$status_file" ] && grep -qi "connected" "$status_file" 2>/dev/null; then
+        TARGET_CONNECTOR=$(basename "$(dirname "$status_file")" | sed -E 's/^card[0-9]+-//')
+        break
+    fi
+done
+
+# 2. Fallback: Cari folder konektor HDMI jika status file belum terbaca
+if [ -z "$TARGET_CONNECTOR" ]; then
+    for conn_dir in /sys/class/drm/*HDMI* /sys/class/drm/*hdmi*; do
+        if [ -d "$conn_dir" ]; then
+            TARGET_CONNECTOR=$(basename "$conn_dir" | sed -E 's/^card[0-9]+-//')
+            break
+        fi
+    done
+fi
+
+# 3. Default fallback standar STB Amlogic & Rockchip
+if [ -z "$TARGET_CONNECTOR" ]; then
+    TARGET_CONNECTOR="HDMI-A-1"
+fi
+
+echo "[Arch3r-Native] Menggunakan DRM Connector HDMI: $TARGET_CONNECTOR"
 
 # Jalankan MPV dengan akselerasi hardware DRM langsung ke HDMI tanpa X11
 exec mpv \
+    --drm-connector="$TARGET_CONNECTOR" \
     --idle=yes \
     --keep-open=always \
     --force-window=immediate \

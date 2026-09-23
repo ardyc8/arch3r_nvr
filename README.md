@@ -1,5 +1,19 @@
-# ⚡ Arch3r NVR (Ver. 10.6.6)
+# ⚡ Arch3r NVR (Ver. 10.6.7)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.6.7:
+- **Deteksi Otomatis & Pemilihan Fleksibel Port DRM HDMI (Multi-SoC STB Support)**:
+  1. **Deteksi Otomatis Konektor DRM Kernel (`auto-detect`)**:
+     - Menambahkan pemindai cerdas port display HDMI pada kernel sysfs (`/sys/class/drm/*HDMI*/status`). Sistem secara dinamis mencari konektor dengan status `connected` (terhubung ke TV).
+     - Kompatibel langsung tanpa konfigurasi manual untuk berbagai chip STB populer:
+       - **Amlogic** (S905X, S905X2, S905X3, S905W pada Fiberhome HG860P, ZTE B860H v1/v2/v5, TX3 Mini, dsb) -> port `HDMI-A-1`.
+       - **Rockchip** (RK3328, RK3399, RK3566, dsb) -> port `HDMI-A-1` atau `HDMI-A-2`.
+       - **Allwinner** (H6, H616) dan kartu grafis lainnya.
+  2. **Parameter Pilihan & Pengaturan Konektor DRM di Web UI**:
+     - Menyediakan opsi pemilihan port DRM di formulir pengaturan addon: `Otomatis (Auto-Detect)`, `HDMI-A-1`, `HDMI-A-2`, `card0-HDMI-A-1`, serta input custom jika menggunakan board unik.
+     - Menyediakan endpoint REST API `/api/addons/hdmi-native/drm-connectors` dan `/api/addons/hdmi-native/config` untuk menyimpan konfigurasi dan me-restart MPV service secara otomatis.
+  3. **Diagnosa Status Port DRM Real-Time**:
+     - Menampilkan indikator status konektor DRM aktif di panel diagnosa addon HDMI Native Dashboard.
 
 ### 📋 Changelog Pembaruan Ver. 10.6.6:
 - **Direct DRM/KMS HDMI Video Engine, Hak Akses TTY Systemd & Standby Resilience**:
