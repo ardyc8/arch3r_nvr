@@ -1,5 +1,24 @@
 # Changelog
 
+## [Ver 10.7.4] - 2026-09-24
+### Universal Camera RTSP URL Templates CRUD Database & Edit Credentials Real-Time Sync
+- **Camera Brand RTSP Template Database (Split-DB Architecture):**
+  - **Persistent Split-DB Storage (`local_db_camera_templates.json`)**: Memindahkan pola URL RTSP dari logika statis kode ke database mandiri yang aman terhadap `git pull`, dengan mirroring otomatis ke shadow database.
+  - **CRUD API Endpoints (`/api/camera-templates`)**: Menyediakan REST API lengkap untuk mengambil (`GET`), menambah (`POST`), mengubah (`PUT`), menghapus (`DELETE`), dan mengembalikan ke standar (`POST /reset`) template format URL kamera CCTV.
+  - **Default Universal Presets**: Dilengkapi katalog bawaan siap pakai untuk berbagai vendor terkemuka: **ONVIF Generic, Macrovideo V380, Hikvision / HiLook, Dahua / Imou, Xiongmai / XM, TP-Link Tapo, Bardi / Tuya IPC, Uniview (UNV), dan Ezviz**, lengkap dengan pemetaan port default dan protokol PTZ.
+  - **Modular Addon Marketplace Integration**: Terdaftar sebagai Addon resmi `camera-templates` ("Katalog Template RTSP & IPC Vendor") di Marketplace Addon NVR dengan pintasan langsung ke modal manajemen template.
+- **Interactive Template Management UI Modal (`templateModalOverlay`):**
+  - Tombol akses cepat **"⚙️ Kelola Template"** disematkan langsung di samping dropdown pilihan preset formulir kamera.
+  - Antarmuka manajemen lengkap: melihat daftar template aktif, menambah pola kustom baru, mengedit placeholder token (`{ip}`, `{port}`, `{user}`, `{pass}`), live preview kompilasi URL interaktif, dan tombol reset ke default.
+  - Dropdown preset kamera pada formulir Tambah/Edit Kamera kini otomatis sinkron secara dinamis dengan database template.
+- **Camera Edit Form Fixes & Real-Time Credential Synchronization:**
+  - **Full Credential Resolution**: Mengatasi kendala username & password kamera yang tidak terlihat saat edit kamera dengan hierarki fallback cerdas: DB field `username`/`password` -> `ptzUser`/`ptzPass` -> ekstraksi regex dari string `mainStreamUrl`.
+  - **Auto-Injection Password ke URL RTSP**: Ketika pengguna mengisi atau mengubah password di form (baik saat tambah maupun edit kamera), password secara otomatis ditulis dan disinkronkan ke dalam URL stream RTSP tanpa merusak struktur path manual.
+  - **Real-Time Input Synchronization**: Menghapus batasan yang sebelumnya memblokir pembaruan URL saat mode edit, sehingga pengetikan username, password, IP, dan port langsung tercermin pada URL RTSP secara real-time.
+  - **Dynamic Template Detection**: Saat membuka formulir edit kamera, sistem secara otomatis mencocokkan URL stream terhadap database template untuk memilih preset vendor yang sesuai.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.7.4** pada `package.json`, `metadata.json`, `server.js`, `index.html`, `public/index.html`, `public/script.js`, `README.md`, dan `CHANGELOG.md`.
+
 ## [Ver 9.9.5] - 2026-09-19
 ### Centralized Universal Version Synchronizer & Robust Addons Authentication
 - **Centralized Version Synchronizer Architecture:**

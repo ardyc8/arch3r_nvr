@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.7.3 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.7.4 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -1425,8 +1425,74 @@ async function updateHardwareStats() {
         modalCameraList.appendChild(mobileWrapper);
     }
 
-    // --- Universal Camera Preset & URL Generator Engine ---
+    // --- Universal Camera Preset & URL Generator Engine (v10.7.4) ---
+    let cameraTemplates = [];
+
+    // Helper: Menginjeksi kredensial ke dalam URL RTSP tanpa merusak format path kustom
+    function injectCredentialsIntoRtspUrl(url, user, pass, host, port) {
+        if (!url || typeof url !== 'string' || !url.startsWith('rtsp://')) return url || '';
+        try {
+            const m = url.match(/^(rtsp:\/\/)(?:([^:]+)(?::([^@]+))?@)?([^:\/\s]+)(?::(\d+))?(\/.*)?$/i);
+            if (m) {
+                const scheme = m[1];
+                const finalUser = user || m[2] || 'admin';
+                const finalPass = (pass !== undefined && pass !== null) ? pass : (m[3] || '');
+                const finalHost = host || m[4] || '';
+                const finalPort = port || m[5] || '554';
+                const pathPart = m[6] || '';
+                
+                const authPart = finalPass 
+                    ? `${encodeURIComponent(finalUser)}:${encodeURIComponent(finalPass)}@` 
+                    : (finalUser ? `${encodeURIComponent(finalUser)}@` : '');
+                const portPart = finalPort ? `:${finalPort}` : '';
+                return `${scheme}${authPart}${finalHost}${portPart}${pathPart}`;
+            }
+        } catch(e) {}
+        return url;
+    }
+
+    function extractRtspCredentials(url) {
+        if (!url || typeof url !== 'string') return { host: '', user: '', pass: '', port: '' };
+        try {
+            const m = url.match(/rtsp:\/\/(?:([^:]+)(?::([^@]+))?@)?([^:\/\s]+)(?::(\d+))?/i);
+            if (m) {
+                return {
+                    user: m[1] ? decodeURIComponent(m[1]) : '',
+                    pass: m[2] ? decodeURIComponent(m[2]) : '',
+                    host: m[3] ? m[3] : '',
+                    port: m[4] ? m[4] : ''
+                };
+            }
+        } catch(e) {}
+        return { host: '', user: '', pass: '', port: '' };
+    }
+
+    function compileTemplatePattern(pattern, ip, port, user, pass) {
+        if (!pattern) return '';
+        let res = pattern;
+        const cleanIp = ip || '{ip}';
+        const cleanPort = port || '554';
+        const cleanUser = user || 'admin';
+        const cleanPass = pass !== undefined && pass !== null ? pass : '';
+
+        res = res.replace(/\{ip\}/g, cleanIp);
+        res = res.replace(/\{port\}/g, cleanPort);
+
+        if (cleanPass) {
+            res = res.replace(/\{user\}:\{pass\}@/g, `${encodeURIComponent(cleanUser)}:${encodeURIComponent(cleanPass)}@`);
+        } else {
+            res = res.replace(/\{user\}:\{pass\}@/g, `${encodeURIComponent(cleanUser)}@`);
+        }
+        res = res.replace(/\{user\}/g, encodeURIComponent(cleanUser));
+        res = res.replace(/\{pass\}/g, encodeURIComponent(cleanPass));
+        return res;
+    }
+
     function composeRtspStreamUrl(preset, ip, port, user, pass) {
+        const tmpl = (cameraTemplates || []).find(t => t.id === preset);
+        if (tmpl && tmpl.mainStreamPattern) {
+            return compileTemplatePattern(tmpl.mainStreamPattern, ip, port, user, pass);
+        }
         if (!ip) return '';
         const rtspPort = port ? `:${port}` : ':554';
         const credPart = (user || pass) ? `${encodeURIComponent(user || 'admin')}:${encodeURIComponent(pass || '')}@` : '';
@@ -1440,13 +1506,23 @@ async function updateHardwareStats() {
                 return `rtsp://${credPart}${ip}${rtspPort}/cam/realmonitor?channel=1&subtype=0`;
             case 'xiongmai':
                 return `rtsp://${credPart}${ip}${rtspPort}/h264/ch1/main/av_stream`;
+            case 'tplink_tapo':
+                return `rtsp://${credPart}${ip}${rtspPort}/stream1`;
+            case 'bardi_tuya':
+                return `rtsp://${credPart}${ip}${rtspPort}/live/ch0`;
+            case 'uniview':
+                return `rtsp://${credPart}${ip}${rtspPort}/unicast/c1/s0/live`;
             case 'onvif_auto':
             default:
-                return `rtsp://${credPart}${ip}${rtspPort}/live/ch00_1`;
+                return `rtsp://${credPart}${ip}${rtspPort}/onvif1`;
         }
     }
 
     function composeSubStreamUrl(preset, ip, port, user, pass) {
+        const tmpl = (cameraTemplates || []).find(t => t.id === preset);
+        if (tmpl && tmpl.subStreamPattern) {
+            return compileTemplatePattern(tmpl.subStreamPattern, ip, port, user, pass);
+        }
         if (!ip) return '';
         const rtspPort = port ? `:${port}` : ':554';
         const credPart = (user || pass) ? `${encodeURIComponent(user || 'admin')}:${encodeURIComponent(pass || '')}@` : '';
@@ -1460,9 +1536,54 @@ async function updateHardwareStats() {
                 return `rtsp://${credPart}${ip}${rtspPort}/cam/realmonitor?channel=1&subtype=1`;
             case 'xiongmai':
                 return `rtsp://${credPart}${ip}${rtspPort}/h264/ch1/sub/av_stream`;
+            case 'tplink_tapo':
+                return `rtsp://${credPart}${ip}${rtspPort}/stream2`;
+            case 'bardi_tuya':
+                return `rtsp://${credPart}${ip}${rtspPort}/live/ch1`;
+            case 'uniview':
+                return `rtsp://${credPart}${ip}${rtspPort}/unicast/c1/s1/live`;
             case 'onvif_auto':
             default:
-                return `rtsp://${credPart}${ip}${rtspPort}/live/ch00_0`;
+                return `rtsp://${credPart}${ip}${rtspPort}/onvif2`;
+        }
+    }
+
+    function applyTemplateToUrls(tmpl, force = false) {
+        const ipEl = document.getElementById('camIpAddress');
+        const portEl = document.getElementById('camRtspPort');
+        const userEl = document.getElementById('camUsername');
+        const passEl = document.getElementById('camPassword');
+        const mainUrlEl = document.getElementById('camMainUrl');
+        const subUrlEl = document.getElementById('camSubUrl');
+        const ptzSelectEl = document.getElementById('camPtzSelect');
+        const onvifPortEl = document.getElementById('camOnvifPort');
+
+        if (!mainUrlEl) return;
+        const ip = ipEl ? ipEl.value.trim() : '';
+        const port = (portEl && portEl.value.trim()) ? portEl.value.trim() : (tmpl.defaultPort ? String(tmpl.defaultPort) : '554');
+        const user = (userEl && userEl.value.trim()) ? userEl.value.trim() : 'admin';
+        const pass = passEl ? passEl.value : '';
+
+        // Terapkan port & protokol PTZ bawaan preset
+        if (tmpl.defaultPort && portEl && (!portEl.value || portEl.value === '554')) {
+            portEl.value = tmpl.defaultPort;
+        }
+        if (tmpl.onvifPort && onvifPortEl && (!onvifPortEl.value || onvifPortEl.value === '8899' || onvifPortEl.value === '8800' || onvifPortEl.value === '80')) {
+            onvifPortEl.value = tmpl.onvifPort;
+        }
+        if (ptzSelectEl) {
+            if (tmpl.ptzProtocol === 'v380_native') {
+                ptzSelectEl.value = 'v380_native';
+            } else if (tmpl.ptzProtocol === 'onvif') {
+                if (ptzSelectEl.value === 'no') ptzSelectEl.value = 'yes';
+            }
+        }
+
+        if (force || !mainUrlEl.value || mainUrlEl.value.startsWith('rtsp://')) {
+            mainUrlEl.value = compileTemplatePattern(tmpl.mainStreamPattern, ip, port, user, pass);
+        }
+        if (subUrlEl && (force || !subUrlEl.value || subUrlEl.value.startsWith('rtsp://'))) {
+            subUrlEl.value = compileTemplatePattern(tmpl.subStreamPattern || tmpl.mainStreamPattern, ip, port, user, pass);
         }
     }
 
@@ -1477,30 +1598,36 @@ async function updateHardwareStats() {
         const ptzSelectEl = document.getElementById('camPtzSelect');
         const onvifPortEl = document.getElementById('camOnvifPort');
 
-        if (!ipEl || !mainUrlEl) return;
+        if (!mainUrlEl) return;
         const preset = presetEl ? presetEl.value : 'onvif_auto';
-        const ip = ipEl.value.trim();
+        const ip = ipEl ? ipEl.value.trim() : '';
         const port = portEl ? portEl.value.trim() : '554';
         const user = userEl ? userEl.value.trim() : 'admin';
         const pass = passEl ? passEl.value : '';
 
-        if (preset === 'v380') {
-            if (ptzSelectEl && (force || ptzSelectEl.value === 'no')) {
-                ptzSelectEl.value = 'v380_native';
+        if (preset === 'custom') {
+            // Mode kustom: perbarui kredensial & host tanpa menghilangkan format path manual
+            if (mainUrlEl.value) {
+                mainUrlEl.value = injectCredentialsIntoRtspUrl(mainUrlEl.value, user, pass, ip, port);
             }
-            if (onvifPortEl && (!onvifPortEl.value || onvifPortEl.value === '8899')) {
-                onvifPortEl.value = '8800';
+            if (subUrlEl && subUrlEl.value) {
+                subUrlEl.value = injectCredentialsIntoRtspUrl(subUrlEl.value, user, pass, ip, port);
             }
-        } else if (preset === 'onvif_auto') {
-            if (ptzSelectEl && ptzSelectEl.value === 'no') {
-                ptzSelectEl.value = 'yes';
-            }
-            if (onvifPortEl && !onvifPortEl.value) {
-                onvifPortEl.value = '8899';
-            }
+            return;
         }
 
-        if (preset !== 'custom' && ip) {
+        const tmpl = (cameraTemplates || []).find(t => t.id === preset);
+        if (tmpl) {
+            applyTemplateToUrls(tmpl, force);
+        } else {
+            if (preset === 'v380') {
+                if (ptzSelectEl && (force || ptzSelectEl.value === 'no')) ptzSelectEl.value = 'v380_native';
+                if (onvifPortEl && (!onvifPortEl.value || onvifPortEl.value === '8899')) onvifPortEl.value = '8800';
+            } else if (preset === 'onvif_auto') {
+                if (ptzSelectEl && ptzSelectEl.value === 'no') ptzSelectEl.value = 'yes';
+                if (onvifPortEl && !onvifPortEl.value) onvifPortEl.value = '8899';
+            }
+
             if (force || !mainUrlEl.value || mainUrlEl.value.startsWith('rtsp://')) {
                 mainUrlEl.value = composeRtspStreamUrl(preset, ip, port, user, pass);
             }
@@ -1508,22 +1635,6 @@ async function updateHardwareStats() {
                 subUrlEl.value = composeSubStreamUrl(preset, ip, port, user, pass);
             }
         }
-    }
-
-    function extractRtspCredentials(url) {
-        if (!url || typeof url !== 'string') return { host: '', user: '', pass: '' };
-        try {
-            const m = url.match(/rtsp:\/\/(?:([^:]+)(?::([^@]+))?@)?([^:\/\s]+)(?::(\d+))?/i);
-            if (m) {
-                return {
-                    user: m[1] ? decodeURIComponent(m[1]) : '',
-                    pass: m[2] ? decodeURIComponent(m[2]) : '',
-                    host: m[3] ? m[3] : '',
-                    port: m[4] ? m[4] : ''
-                };
-            }
-        } catch(e) {}
-        return { host: '', user: '', pass: '' };
     }
 
     function autoFillPtzFromRtsp(force = false) {
@@ -1710,30 +1821,28 @@ async function updateHardwareStats() {
     const camIpAddressInput = document.getElementById('camIpAddress');
     if (camIpAddressInput) {
         camIpAddressInput.addEventListener('input', () => {
-            const currentEditingId = document.getElementById('camId') ? document.getElementById('camId').value : '';
-            if (!currentEditingId) {
-                syncRtspUrlFromInputs(false);
-            }
+            syncRtspUrlFromInputs(false);
+        });
+    }
+
+    const camRtspPortInput = document.getElementById('camRtspPort');
+    if (camRtspPortInput) {
+        camRtspPortInput.addEventListener('input', () => {
+            syncRtspUrlFromInputs(false);
         });
     }
 
     const camUsernameInput = document.getElementById('camUsername');
     if (camUsernameInput) {
         camUsernameInput.addEventListener('input', () => {
-            const currentEditingId = document.getElementById('camId') ? document.getElementById('camId').value : '';
-            if (!currentEditingId) {
-                syncRtspUrlFromInputs(false);
-            }
+            syncRtspUrlFromInputs(false);
         });
     }
 
     const camPasswordInput = document.getElementById('camPassword');
     if (camPasswordInput) {
         camPasswordInput.addEventListener('input', () => {
-            const currentEditingId = document.getElementById('camId') ? document.getElementById('camId').value : '';
-            if (!currentEditingId) {
-                syncRtspUrlFromInputs(false);
-            }
+            syncRtspUrlFromInputs(false);
         });
     }
 
@@ -1744,6 +1853,201 @@ async function updateHardwareStats() {
             showToast('⚡ URL Stream RTSP telah disusun ulang berdasarkan IP & Preset', 'info');
         });
     }
+
+    // --- Database Template Kamera Management UI Handlers ---
+    async function fetchCameraTemplates() {
+        try {
+            const res = await authFetch('/api/camera-templates');
+            if (!res.ok) throw new Error('Gagal memuat template');
+            const data = await res.json();
+            if (data.templates && Array.isArray(data.templates)) {
+                cameraTemplates = data.templates;
+                populateCameraTemplateDropdown();
+                renderTemplateList();
+            }
+        } catch (e) {
+            console.warn('[Camera Templates] Fetch error:', e.message);
+        }
+    }
+
+    function populateCameraTemplateDropdown(selectedId = null) {
+        const sel = document.getElementById('camVendorPreset');
+        if (!sel) return;
+        const currentVal = selectedId || sel.value || 'onvif_auto';
+        sel.innerHTML = '';
+
+        cameraTemplates.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            sel.appendChild(opt);
+        });
+
+        const optCustom = document.createElement('option');
+        optCustom.value = 'custom';
+        optCustom.textContent = '🛠️ Custom RTSP URL Manual';
+        sel.appendChild(optCustom);
+
+        if ([...sel.options].some(o => o.value === currentVal)) {
+            sel.value = currentVal;
+        } else {
+            sel.value = 'custom';
+        }
+    }
+
+    window.openCameraTemplateModal = function() {
+        const modal = document.getElementById('templateModalOverlay');
+        if (modal) {
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+            fetchCameraTemplates();
+            hideTemplateEditor();
+        }
+    };
+
+    window.closeCameraTemplateModal = function() {
+        const modal = document.getElementById('templateModalOverlay');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        }
+    };
+
+    function renderTemplateList() {
+        const container = document.getElementById('templateListContainer');
+        const badge = document.getElementById('templateCountBadge');
+        if (badge) badge.textContent = `${cameraTemplates.length} Template Terdaftar`;
+        if (!container) return;
+
+        if (cameraTemplates.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:2rem; color:#94a3b8;">Belum ada template tersimpan. Klik "Tambah Template Baru" atau "Reset Standar".</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        cameraTemplates.forEach(t => {
+            const card = document.createElement('div');
+            card.style.background = '#0f172a';
+            card.style.border = '1px solid #1e293b';
+            card.style.borderRadius = '8px';
+            card.style.padding = '0.85rem 1rem';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.gap = '0.45rem';
+
+            const headerRow = document.createElement('div');
+            headerRow.style.display = 'flex';
+            headerRow.style.justifyContent = 'space-between';
+            headerRow.style.alignItems = 'center';
+            headerRow.style.flexWrap = 'wrap';
+            headerRow.style.gap = '0.5rem';
+
+            headerRow.innerHTML = `
+                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                    <strong style="color:#f8fafc; font-size:0.92rem;">${t.name}</strong>
+                    <span style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.7rem; padding:1px 6px; border-radius:4px; border:1px solid rgba(56,189,248,0.3); font-weight:600;">${t.vendor || 'Universal'}</span>
+                    <span style="background:rgba(16,185,129,0.15); color:#34d399; font-size:0.7rem; padding:1px 6px; border-radius:4px; border:1px solid rgba(16,185,129,0.3);">RTSP :${t.defaultPort || 554}</span>
+                    ${t.onvifPort ? `<span style="background:rgba(168,85,247,0.15); color:#c084fc; font-size:0.7rem; padding:1px 6px; border-radius:4px; border:1px solid rgba(168,85,247,0.3);">ONVIF :${t.onvifPort}</span>` : ''}
+                    <span style="font-size:0.7rem; color:#94a3b8; font-family:monospace;">[${t.ptzProtocol || 'onvif'}]</span>
+                </div>
+                <div style="display:flex; gap:0.4rem;">
+                    <button type="button" class="btn-sm btn-secondary" onclick="window.editTemplate('${t.id}')" style="font-size:0.75rem; padding:3px 8px; color:#38bdf8; border-color:#0284c7;">✏️ Edit</button>
+                    <button type="button" class="btn-sm btn-secondary" onclick="window.deleteTemplate('${t.id}')" style="font-size:0.75rem; padding:3px 8px; color:#ef4444; border-color:#991b1b;">🗑️ Hapus</button>
+                </div>
+            `;
+
+            const patternRow = document.createElement('div');
+            patternRow.style.fontSize = '0.78rem';
+            patternRow.style.display = 'flex';
+            patternRow.style.flexDirection = 'column';
+            patternRow.style.gap = '2px';
+            patternRow.innerHTML = `
+                <div><span style="color:#64748b;">Main Stream:</span> <code style="color:#38bdf8; background:#070d19; padding:2px 6px; border-radius:4px; border:1px solid #1e293b; font-size:0.78rem; word-break:break-all;">${t.mainStreamPattern}</code></div>
+                ${t.subStreamPattern ? `<div><span style="color:#64748b;">Sub Stream:</span> <code style="color:#94a3b8; background:#070d19; padding:2px 6px; border-radius:4px; border:1px solid #1e293b; font-size:0.78rem; word-break:break-all;">${t.subStreamPattern}</code></div>` : ''}
+                ${t.notes ? `<div style="color:#94a3b8; font-size:0.72rem; margin-top:2px;">💬 <em>${t.notes}</em></div>` : ''}
+            `;
+
+            card.appendChild(headerRow);
+            card.appendChild(patternRow);
+            container.appendChild(card);
+        });
+    }
+
+    function showTemplateEditor(tmpl = null) {
+        const card = document.getElementById('templateEditorCard');
+        if (!card) return;
+        card.style.display = 'block';
+
+        const idInput = document.getElementById('tmplEditId');
+        const nameInput = document.getElementById('tmplName');
+        const vendorInput = document.getElementById('tmplVendor');
+        const portInput = document.getElementById('tmplDefaultPort');
+        const onvifInput = document.getElementById('tmplOnvifPort');
+        const ptzSelect = document.getElementById('tmplPtzProtocol');
+        const mainInput = document.getElementById('tmplMainPattern');
+        const subInput = document.getElementById('tmplSubPattern');
+        const notesInput = document.getElementById('tmplNotes');
+        const titleEl = document.getElementById('templateEditorTitle');
+
+        if (tmpl) {
+            if (titleEl) titleEl.textContent = `✏️ Edit Template: ${tmpl.name}`;
+            if (idInput) idInput.value = tmpl.id;
+            if (nameInput) nameInput.value = tmpl.name || '';
+            if (vendorInput) vendorInput.value = tmpl.vendor || '';
+            if (portInput) portInput.value = tmpl.defaultPort || 554;
+            if (onvifInput) onvifInput.value = tmpl.onvifPort || '';
+            if (ptzSelect) ptzSelect.value = tmpl.ptzProtocol || 'onvif';
+            if (mainInput) mainInput.value = tmpl.mainStreamPattern || '';
+            if (subInput) subInput.value = tmpl.subStreamPattern || '';
+            if (notesInput) notesInput.value = tmpl.notes || '';
+        } else {
+            if (titleEl) titleEl.textContent = '➕ Tambah Template Vendor Baru';
+            if (idInput) idInput.value = '';
+            if (nameInput) nameInput.value = '';
+            if (vendorInput) vendorInput.value = '';
+            if (portInput) portInput.value = '554';
+            if (onvifInput) onvifInput.value = '';
+            if (ptzSelect) ptzSelect.value = 'onvif';
+            if (mainInput) mainInput.value = 'rtsp://{user}:{pass}@{ip}:{port}/live/ch0';
+            if (subInput) subInput.value = 'rtsp://{user}:{pass}@{ip}:{port}/live/ch1';
+            if (notesInput) notesInput.value = '';
+        }
+        updateTemplateLivePreview();
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function hideTemplateEditor() {
+        const card = document.getElementById('templateEditorCard');
+        if (card) card.style.display = 'none';
+    }
+
+    function updateTemplateLivePreview() {
+        const previewEl = document.getElementById('tmplLivePreview');
+        const mainInput = document.getElementById('tmplMainPattern');
+        if (!previewEl || !mainInput) return;
+        const pat = mainInput.value.trim() || 'rtsp://{user}:{pass}@{ip}:{port}/live/ch0';
+        previewEl.textContent = compileTemplatePattern(pat, '192.168.1.100', '554', 'admin', '12345');
+    }
+
+    window.editTemplate = function(id) {
+        const tmpl = (cameraTemplates || []).find(t => t.id === id);
+        if (tmpl) showTemplateEditor(tmpl);
+    };
+
+    window.deleteTemplate = async function(id) {
+        const tmpl = (cameraTemplates || []).find(t => t.id === id);
+        const name = tmpl ? tmpl.name : id;
+        if (!confirm(`Hapus template kamera "${name}" dari database?`)) return;
+
+        try {
+            const res = await authFetch(`/api/camera-templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Gagal menghapus template');
+            showToast('✅ Template berhasil dihapus', 'success');
+            await fetchCameraTemplates();
+        } catch (e) {
+            alert('Gagal menghapus template: ' + e.message);
+        }
+    };
 
     // Auto extract saat input RTSP diubah secara manual
     const camMainUrlInput = document.getElementById('camMainUrl');
@@ -1943,16 +2247,27 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         const camCustomIdEl = document.getElementById('camCustomId');
         if (camCustomIdEl) camCustomIdEl.value = cam.id;
         
+        // Resolusi kredensial lengkap: fallback dari username/password DB -> ptzUser/ptzPass -> RTSP URL
+        const creds = extractRtspCredentials(cam.mainStreamUrl || '');
+        const resolvedUser = (cam.username !== undefined && cam.username !== null && cam.username !== '') 
+            ? cam.username 
+            : (cam.ptzUser || creds.user || 'admin');
+        const resolvedPass = (cam.password !== undefined && cam.password !== null && cam.password !== '') 
+            ? cam.password 
+            : ((cam.ptzPass !== undefined && cam.ptzPass !== null) ? cam.ptzPass : (creds.pass || ''));
+        const resolvedIp = cam.ipAddress || creds.host || '';
+        const resolvedPort = cam.rtspPort || creds.port || '554';
+
         const ipEl = document.getElementById('camIpAddress');
-        if (ipEl) ipEl.value = cam.ipAddress || '';
+        if (ipEl) ipEl.value = resolvedIp;
         const opEl = document.getElementById('camOnvifPort');
         if (opEl) opEl.value = cam.onvifPort || '';
         const rpEl = document.getElementById('camRtspPort');
-        if (rpEl) rpEl.value = cam.rtspPort || '';
+        if (rpEl) rpEl.value = resolvedPort;
         const uEl = document.getElementById('camUsername');
-        if (uEl) uEl.value = cam.ptzUser || '';
+        if (uEl) uEl.value = resolvedUser;
         const pEl = document.getElementById('camPassword');
-        if (pEl) pEl.value = cam.ptzPass || '';
+        if (pEl) pEl.value = resolvedPass;
 
         const camPtzSelectEl = document.getElementById('camPtzSelect');
         if (camPtzSelectEl) {
@@ -1964,13 +2279,13 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         }
 
         const camPtzUrlEl = document.getElementById('camPtzUrl');
-        if (camPtzUrlEl) camPtzUrlEl.value = cam.ptzUrl || '';
+        if (camPtzUrlEl) camPtzUrlEl.value = cam.ptzUrl || resolvedIp;
 
         const camPtzUserEl = document.getElementById('camPtzUser');
-        if (camPtzUserEl) camPtzUserEl.value = cam.ptzUser || '';
+        if (camPtzUserEl) camPtzUserEl.value = resolvedUser;
 
         const camPtzPassEl = document.getElementById('camPtzPass');
-        if (camPtzPassEl) camPtzPassEl.value = cam.ptzPass || '';
+        if (camPtzPassEl) camPtzPassEl.value = resolvedPass;
 
         const camOnvifProfEl = document.getElementById('camOnvifProfileToken');
         if (camOnvifProfEl) camOnvifProfEl.value = cam.onvifProfileToken || '';
@@ -1986,8 +2301,19 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         const qStatusEl = document.getElementById('quickProbeStatus');
         if (qStatusEl) { qStatusEl.style.display = 'none'; qStatusEl.innerHTML = ''; }
 
-        document.getElementById('camMainUrl').value = cam.mainStreamUrl || '';
-        document.getElementById('camSubUrl').value = cam.subStreamUrl || '';
+        // Pastikan RTSP Main Stream URL menyertakan password jika tersimpan
+        let mainUrlVal = cam.mainStreamUrl || '';
+        if (mainUrlVal && resolvedPass && !mainUrlVal.includes(':' + encodeURIComponent(resolvedPass) + '@') && !mainUrlVal.includes(':' + resolvedPass + '@')) {
+            mainUrlVal = injectCredentialsIntoRtspUrl(mainUrlVal, resolvedUser, resolvedPass, resolvedIp, resolvedPort);
+        }
+        document.getElementById('camMainUrl').value = mainUrlVal;
+
+        let subUrlVal = cam.subStreamUrl || '';
+        if (subUrlVal && resolvedPass && !subUrlVal.includes(':' + encodeURIComponent(resolvedPass) + '@') && !subUrlVal.includes(':' + resolvedPass + '@')) {
+            subUrlVal = injectCredentialsIntoRtspUrl(subUrlVal, resolvedUser, resolvedPass, resolvedIp, resolvedPort);
+        }
+        document.getElementById('camSubUrl').value = subUrlVal;
+
         document.getElementById('camEnabled').checked = cam.enabled !== false;
         
         const recMode = document.getElementById('camRecordMode');
@@ -2014,21 +2340,30 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         const btnCancelEdit = document.getElementById('btnCancelEdit');
         if(btnCancelEdit) btnCancelEdit.style.display = 'inline-block';
         
-        // Detect vendor preset based on stream URL or protocol
+        // Deteksi template vendor dari database atau URL pattern
         const presetEl = document.getElementById('camVendorPreset');
         if (presetEl) {
-            const mUrl = cam.mainStreamUrl || '';
-            if (cam.ptzProtocol === 'v380_native' || mUrl.includes('/live/ch00_')) {
-                presetEl.value = 'v380';
-            } else if (mUrl.includes('/Streaming/Channels/')) {
-                presetEl.value = 'hikvision';
-            } else if (mUrl.includes('/cam/realmonitor')) {
-                presetEl.value = 'dahua';
-            } else if (mUrl.includes('/h264/ch1/')) {
-                presetEl.value = 'xiongmai';
-            } else {
-                presetEl.value = 'custom';
+            let matchedId = 'custom';
+            const mUrl = mainUrlVal || '';
+            for (const t of cameraTemplates) {
+                if (t.id === 'v380' && (cam.ptzProtocol === 'v380_native' || mUrl.includes('/live/ch00_'))) {
+                    matchedId = 'v380'; break;
+                }
+                const patternPath = (t.mainStreamPattern || '').split('/{ip}')[1] || (t.mainStreamPattern || '').split(':{port}')[1] || '';
+                if (patternPath && mUrl.includes(patternPath.replace(/^\//, ''))) {
+                    matchedId = t.id; break;
+                }
             }
+            if (matchedId === 'custom') {
+                if (mUrl.includes('/Streaming/Channels/')) matchedId = 'hikvision';
+                else if (mUrl.includes('/cam/realmonitor')) matchedId = 'dahua';
+                else if (mUrl.includes('/h264/ch1/')) matchedId = 'xiongmai';
+                else if (mUrl.includes('/stream1')) matchedId = 'tplink_tapo';
+                else if (mUrl.includes('/live/ch0')) matchedId = 'bardi_tuya';
+                else if (mUrl.includes('/unicast/c1/s0')) matchedId = 'uniview';
+                else if (mUrl.includes('/onvif1')) matchedId = 'onvif_auto';
+            }
+            presetEl.value = matchedId;
         }
 
         // Buka modal dialog kamera secara mulus
@@ -2132,7 +2467,7 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         if (advDetails) advDetails.open = false;
     }
 
-    // Wire up Camera Modal & Scanner Modal triggers
+    // Wire up Camera Modal & Scanner Modal & Template Management triggers
     setTimeout(() => {
         const btnOpenAdd = document.getElementById('btnOpenAddCameraModal');
         if (btnOpenAdd) {
@@ -2186,6 +2521,114 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
                 window.closeCameraModal();
             };
         }
+
+        // --- Database Template UI Triggers ---
+        const btnManageTemplates = document.getElementById('btnManageTemplates');
+        if (btnManageTemplates) {
+            btnManageTemplates.onclick = () => {
+                window.openCameraTemplateModal();
+            };
+        }
+
+        const btnOpenNewTmpl = document.getElementById('btnOpenNewTemplateForm');
+        if (btnOpenNewTmpl) {
+            btnOpenNewTmpl.onclick = () => {
+                showTemplateEditor(null);
+            };
+        }
+
+        const btnCancelTmpl1 = document.getElementById('btnCancelTemplateEditor');
+        if (btnCancelTmpl1) {
+            btnCancelTmpl1.onclick = () => {
+                hideTemplateEditor();
+            };
+        }
+
+        const btnCancelTmpl2 = document.getElementById('btnCancelTemplateEditor2');
+        if (btnCancelTmpl2) {
+            btnCancelTmpl2.onclick = () => {
+                hideTemplateEditor();
+            };
+        }
+
+        const btnResetTmpl = document.getElementById('btnResetTemplatesDefault');
+        if (btnResetTmpl) {
+            btnResetTmpl.onclick = async () => {
+                if (!confirm('Kembalikan semua template kamera ke setelan standar bawaan universal (Hikvision, Dahua, V380, XM, Tapo, Bardi, UNV)?')) return;
+                try {
+                    const res = await authFetch('/api/camera-templates/reset', { method: 'POST' });
+                    if (!res.ok) throw new Error('Gagal mereset template');
+                    const data = await res.json();
+                    showToast('✅ Database template berhasil direset ke standar', 'success');
+                    await fetchCameraTemplates();
+                } catch(e) {
+                    alert('Gagal mereset: ' + e.message);
+                }
+            };
+        }
+
+        const tmplForm = document.getElementById('templateEditorForm');
+        if (tmplForm) {
+            tmplForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const editId = document.getElementById('tmplEditId') ? document.getElementById('tmplEditId').value.trim() : '';
+                const name = document.getElementById('tmplName') ? document.getElementById('tmplName').value.trim() : '';
+                const vendor = document.getElementById('tmplVendor') ? document.getElementById('tmplVendor').value.trim() : '';
+                const port = document.getElementById('tmplDefaultPort') ? parseInt(document.getElementById('tmplDefaultPort').value, 10) : 554;
+                const onvifPort = document.getElementById('tmplOnvifPort') ? parseInt(document.getElementById('tmplOnvifPort').value, 10) : undefined;
+                const ptzProtocol = document.getElementById('tmplPtzProtocol') ? document.getElementById('tmplPtzProtocol').value : 'onvif';
+                const mainStreamPattern = document.getElementById('tmplMainPattern') ? document.getElementById('tmplMainPattern').value.trim() : '';
+                const subStreamPattern = document.getElementById('tmplSubPattern') ? document.getElementById('tmplSubPattern').value.trim() : '';
+                const notes = document.getElementById('tmplNotes') ? document.getElementById('tmplNotes').value.trim() : '';
+
+                if (!name || !mainStreamPattern) {
+                    alert('Nama template dan pola Main Stream wajib diisi!');
+                    return;
+                }
+
+                const payload = {
+                    name, vendor, defaultPort: port, onvifPort, ptzProtocol,
+                    mainStreamPattern, subStreamPattern, notes
+                };
+
+                try {
+                    let res;
+                    if (editId) {
+                        res = await authFetch(`/api/camera-templates/${encodeURIComponent(editId)}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    } else {
+                        res = await authFetch('/api/camera-templates', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    }
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || 'Gagal menyimpan template');
+                    }
+
+                    showToast('✅ Template kamera berhasil disimpan ke database!', 'success');
+                    hideTemplateEditor();
+                    await fetchCameraTemplates();
+                } catch(err) {
+                    alert(err.message);
+                }
+            };
+        }
+
+        // Live Preview binding for template pattern editing
+        const tmplMainInput = document.getElementById('tmplMainPattern');
+        if (tmplMainInput) {
+            tmplMainInput.addEventListener('input', updateTemplateLivePreview);
+        }
+
+        // Muat template kamera pada inisialisasi awal
+        fetchCameraTemplates();
     }, 500);
 
     /* cameraForm submit */
@@ -2203,6 +2646,15 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
             const rtspPort = document.getElementById('camRtspPort') ? document.getElementById('camRtspPort').value.trim() : '';
             const username = document.getElementById('camUsername') ? document.getElementById('camUsername').value.trim() : '';
             const password = document.getElementById('camPassword') ? document.getElementById('camPassword').value : '';
+
+            let finalMainUrl = document.getElementById('camMainUrl') ? document.getElementById('camMainUrl').value.trim() : '';
+            let finalSubUrl = document.getElementById('camSubUrl') ? document.getElementById('camSubUrl').value.trim() : '';
+            if (finalMainUrl && password && !finalMainUrl.includes(':' + encodeURIComponent(password) + '@') && !finalMainUrl.includes(':' + password + '@')) {
+                finalMainUrl = injectCredentialsIntoRtspUrl(finalMainUrl, username, password, ipAddress, rtspPort);
+            }
+            if (finalSubUrl && password && !finalSubUrl.includes(':' + encodeURIComponent(password) + '@') && !finalSubUrl.includes(':' + password + '@')) {
+                finalSubUrl = injectCredentialsIntoRtspUrl(finalSubUrl, username, password, ipAddress, rtspPort);
+            }
 
             const payload = {
                 id: document.getElementById('camCustomId') ? document.getElementById('camCustomId').value.trim() : undefined,
@@ -2224,10 +2676,10 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
                 audioEnabled: document.getElementById('camAudioEnabled') ? document.getElementById('camAudioEnabled').checked : true,
                 hasAudio: document.getElementById('camAudioEnabled') ? document.getElementById('camAudioEnabled').checked : true,
                 audioCodec: document.getElementById('camAudioCodec') ? document.getElementById('camAudioCodec').value : 'aac',
-                mainStreamUrl: document.getElementById('camMainUrl').value,
-                mainStreamUri: document.getElementById('camMainUrl').value,
-                subStreamUrl: document.getElementById('camSubUrl').value,
-                subStreamUri: document.getElementById('camSubUrl').value,
+                mainStreamUrl: finalMainUrl,
+                mainStreamUri: finalMainUrl,
+                subStreamUrl: finalSubUrl,
+                subStreamUri: finalSubUrl,
                 enabled: document.getElementById('camEnabled').checked,
                 recordMode: document.getElementById('camRecordMode') ? document.getElementById('camRecordMode').value : 'disabled',
                 maxStorageDays: document.getElementById('camMaxDays') ? parseInt(document.getElementById('camMaxDays').value) : 7,
@@ -8641,6 +9093,35 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
     if (!container) return;
 
     const availableCams = window.cameras || [];
+
+    // --- SPESIFIKASI: Katalog Template RTSP & IPC Vendor Addon ---
+    if (addonId === 'camera-templates' || addonId === 'camera_templates') {
+        container.innerHTML = `
+            <div style="margin-bottom: 1.25rem; padding: 1.2rem; border-radius: 8px; background: rgba(2, 132, 199, 0.08); border: 1px solid rgba(2, 132, 199, 0.3);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                    <div>
+                        <strong style="color:#38bdf8; font-size:1.05rem; display:block;">📑 Katalog Template RTSP & IPC Vendor Database</strong>
+                        <span style="font-size:0.85rem; color:var(--text-muted);">Database Split-DB untuk manajemen pola URL streaming universal kamera CCTV</span>
+                    </div>
+                    <span style="padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:rgba(34,197,94,0.15); color:#22c55e; border: 1px solid #22c55e;">
+                        🟢 Modul Aktif (${cameraTemplates.length || 9} Preset)
+                    </span>
+                </div>
+                <p style="font-size:0.85rem; color:#cbd5e1; margin-top:0.75rem; line-height:1.5;">
+                    Addon ini menyediakan manajemen database CRUD untuk template URL RTSP kamera IP universal (Hikvision, Dahua, V380, XM, Tapo, Bardi, UNV, Ezviz, dll). Anda dapat menambahkan pola baru, mengedit placeholder <code>{ip}</code>, <code>{port}</code>, <code>{user}</code>, <code>{pass}</code>, atau mengembalikan ke standar kapan saja.
+                </p>
+                <div style="margin-top:1rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-primary" onclick="closeAddonConfigModal(); window.openCameraTemplateModal();" style="display:flex; align-items:center; gap:0.4rem; font-weight:600;">
+                        <span>⚙️</span> Buka & Kelola Database Template
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeAddonConfigModal();" style="font-size:0.85rem;">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        `;
+        return;
+    }
 
     // --- 1. SPESIFIKASI: AI YOLOv8 Human Detection Addon ---
     if (addonId === 'ai_yolo' || addonId === 'ai-yolo') {

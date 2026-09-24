@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.7.3",
-  "description": "Arch3r NVR Ver. 10.7.3 - Professional Universal NVR Camera Form, Instant Vendor Presets, and Mobile Optimized Stream Configuration.",
+  "name": "Arch3r NVR Ver. 10.7.4",
+  "description": "Arch3r NVR Ver. 10.7.4 - Camera Brand RTSP Template CRUD Database, Dynamic Preset Engine, and Complete Camera Edit Credentials Synchronization.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

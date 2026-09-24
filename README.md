@@ -1,5 +1,19 @@
-# ⚡ Arch3r NVR (Ver. 10.7.0)
+# ⚡ Arch3r NVR (Ver. 10.7.4)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.7.4:
+- **Universal Camera RTSP URL Templates CRUD Database & Edit Credentials Real-Time Sync**:
+  1. **Database Template Kamera Split-DB (`local_db_camera_templates.json`)**:
+     - Memindahkan pola URL RTSP dari logika statis kode ke database mandiri yang aman terhadap `git pull` dan didukung shadow database backup.
+     - REST API CRUD lengkap: `GET`, `POST`, `PUT /api/camera-templates/:id`, `DELETE /api/camera-templates/:id`, dan `POST /api/camera-templates/reset`.
+     - Katalog bawaan universal: **ONVIF Generic, Macrovideo V380, Hikvision / HiLook, Dahua / Imou, Xiongmai / XM, TP-Link Tapo, Bardi / Tuya IPC, Uniview (UNV), dan Ezviz**.
+  2. **Antarmuka Manajemen Template Kamera Interaktif (`templateModalOverlay`)**:
+     - Tombol pintasan **"⚙️ Kelola Template"** pada formulir input kamera.
+     - Modal CRUD lengkap dengan penambahan vendor baru, pengeditan pola URL, token placeholder (`{ip}`, `{port}`, `{user}`, `{pass}`), live preview kompilasi URL, dan reset default.
+  3. **Perbaikan Formulir Edit Kamera & Sinkronisasi Kredensial Real-Time**:
+     - Username & password kamera kini terbaca dan tampil utuh di form edit kamera berkat hierarki resolusi (DB -> PTZ -> URL extraction).
+     - Password kamera otomatis disuntikkan (*injected*) ke dalam URL stream RTSP saat form dibuka, saat mengetik, maupun saat disimpan.
+     - Menghubungkan template kamera sebagai Addon resmi `camera-templates` di Marketplace.
 
 ### 📋 Changelog Pembaruan Ver. 10.7.0:
 - **Native SDL2/OpenGL Display Fallback & Zero-Crash Systemd Player**:

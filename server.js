@@ -1533,6 +1533,109 @@ function getSecureInstallDate(currentDbObj = null) {
     return oldestDate;
 }
 
+// --- Universal Camera RTSP URL Templates (Pre-seeded DB) ---
+const DEFAULT_CAMERA_TEMPLATES = [
+    {
+        id: 'onvif_auto',
+        name: '⭐ ONVIF Universal (Hikvision, Dahua, Tapo, Ezviz, Bardi, XM)',
+        vendor: 'ONVIF Generic',
+        defaultPort: 554,
+        onvifPort: 8899,
+        ptzProtocol: 'onvif',
+        mainStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/onvif1',
+        subStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/onvif2',
+        notes: 'Format standar universal kamera ONVIF profile 1 (HD) & profile 2 (Sub).'
+    },
+    {
+        id: 'v380',
+        name: '⚡ Macrovideo V380 / V380 Pro (TCP 8800 + RTSP ch00_1)',
+        vendor: 'Macrovideo / V380',
+        defaultPort: 554,
+        onvifPort: 8800,
+        ptzProtocol: 'v380_native',
+        mainStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/live/ch00_1',
+        subStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/live/ch00_0',
+        notes: 'Kamera V380 TCP Port 8800 & RTSP channel 00_1 (Main) / 00_0 (Sub).'
+    },
+    {
+        id: 'hikvision',
+        name: 'Hikvision / HiLook (/Streaming/Channels/101)',
+        vendor: 'Hikvision / HiLook',
+        defaultPort: 554,
+        onvifPort: 80,
+        ptzProtocol: 'onvif',
+        mainStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/Streaming/Channels/101',
+        subStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/Streaming/Channels/102',
+        notes: 'Format URL resmi RTSP kamera Hikvision & HiLook IPC / DVR / NVR.'
+    },
+    {
+        id: 'dahua',
+        name: 'Dahua / Imou (/cam/realmonitor?channel=1&subtype=0)',
+        vendor: 'Dahua / Imou',
+        defaultPort: 554,
+        onvifPort: 80,
+        ptzProtocol: 'onvif',
+        mainStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/cam/realmonitor?channel=1&subtype=0',
+        subStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/cam/realmonitor?channel=1&subtype=1',
+        notes: 'Format resmi RTSP Dahua & smart camera Imou (subtype 0 = Main, subtype 1 = Sub).'
+    },
+    {
+        id: 'xiongmai',
+        name: 'Xiongmai / XM / Netip (/h264/ch1/main/av_stream)',
+        vendor: 'Xiongmai (XM)',
+        defaultPort: 554,
+        onvifPort: 8899,
+        ptzProtocol: 'onvif',
+        mainStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/h264/ch1/main/av_stream',
+        subStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/h264/ch1/sub/av_stream',
+        notes: 'IP Camera board Xiongmai/XM port ONVIF 8899.'
+    },
+    {
+        id: 'tplink_tapo',
+        name: 'TP-Link Tapo (C200 / C210 / C310 / stream1)',
+        vendor: 'TP-Link Tapo',
+        defaultPort: 554,
+        onvifPort: 2020,
+        ptzProtocol: 'onvif',
+        mainStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/stream1',
+        subStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/stream2',
+        notes: 'Kamera TP-Link Tapo via akun Camera Account di aplikasi Tapo.'
+    },
+    {
+        id: 'bardi_tuya',
+        name: 'Bardi / Tuya Smart IPC (/live/ch0)',
+        vendor: 'Bardi / Tuya',
+        defaultPort: 554,
+        onvifPort: 8899,
+        ptzProtocol: 'onvif',
+        mainStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/live/ch0',
+        subStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/live/ch1',
+        notes: 'Kamera Bardi / Tuya IPC yang mendukung ONVIF/RTSP LAN streaming.'
+    },
+    {
+        id: 'uniview',
+        name: 'Uniview / UNV (/unicast/c1/s0/live)',
+        vendor: 'Uniview',
+        defaultPort: 554,
+        onvifPort: 80,
+        ptzProtocol: 'onvif',
+        mainStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/unicast/c1/s0/live',
+        subStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/unicast/c1/s1/live',
+        notes: 'Kamera CCTV Uniview / UNV NVR.'
+    },
+    {
+        id: 'ezviz',
+        name: 'Ezviz Smart IPC (/h264/ch1/main/av_stream)',
+        vendor: 'Ezviz',
+        defaultPort: 554,
+        onvifPort: 80,
+        ptzProtocol: 'onvif',
+        mainStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/h264/ch1/main/av_stream',
+        subStreamPattern: 'rtsp://{user}:{pass}@{ip}:{port}/h264/ch1/sub/av_stream',
+        notes: 'Password adalah Verification Code (6 huruf kapital di label bawah kamera).'
+    }
+];
+
 function getDefaultDb() {
     return {
         super_settings: {
@@ -1559,6 +1662,7 @@ function getDefaultDb() {
         system_logs: [],
         addons: [],
         uninstalled_addons: [],
+        camera_templates: JSON.parse(JSON.stringify(DEFAULT_CAMERA_TEMPLATES)),
         recording_path: ''
     };
 }
@@ -1576,6 +1680,7 @@ function getNvrDb() {
     const fRecordings = path.join(dataDir, 'local_db_recordings.json');
     const fLogs = path.join(dataDir, 'local_db_logs.json');
     const fAddons = path.join(dataDir, 'local_db_addons.json');
+    const fTemplates = path.join(dataDir, 'local_db_camera_templates.json');
     
     function tryParse(fPath) {
         if (!fs.existsSync(fPath)) return null;
@@ -1673,6 +1778,13 @@ function getNvrDb() {
         data.uninstalled_addons = [];
     }
 
+    const s_templates = tryParse(fTemplates);
+    if (s_templates && Array.isArray(s_templates.camera_templates) && s_templates.camera_templates.length > 0) {
+        data.camera_templates = s_templates.camera_templates;
+    } else {
+        data.camera_templates = JSON.parse(JSON.stringify(DEFAULT_CAMERA_TEMPLATES));
+    }
+
     // =========================================================================
     // 🛡️ ANTI-WIPE HEALING ENGINE (Protects against Git Pull & System Overwrites)
     // =========================================================================
@@ -1764,6 +1876,9 @@ function scheduleDbSave() {
             addons: cachedDb.addons || [],
             uninstalled_addons: cachedDb.uninstalled_addons || []
         };
+        const payloadTemplates = {
+            camera_templates: cachedDb.camera_templates || DEFAULT_CAMERA_TEMPLATES
+        };
 
         // 1. Primary Live Storage (data/live_db/)
         atomicWrite(path.join(dataDir, 'local_db_settings.json'), payloadSettings);
@@ -1772,6 +1887,7 @@ function scheduleDbSave() {
         atomicWrite(path.join(dataDir, 'local_db_recordings.json'), payloadRecordings);
         atomicWrite(path.join(dataDir, 'local_db_logs.json'), payloadLogs);
         if (payloadAddons) atomicWrite(path.join(dataDir, 'local_db_addons.json'), payloadAddons);
+        atomicWrite(path.join(dataDir, 'local_db_camera_templates.json'), payloadTemplates);
 
         // 2. External Persistent Shadow Storage (Immune to Git Pull & Git Reset)
         if (systemDbDir && systemDbDir !== dataDir) {
@@ -1780,6 +1896,7 @@ function scheduleDbSave() {
                 atomicWrite(path.join(systemDbDir, 'local_db_accounts.json'), payloadAccounts);
                 atomicWrite(path.join(systemDbDir, 'local_db_cameras.json'), payloadCameras);
                 if (payloadAddons) atomicWrite(path.join(systemDbDir, 'local_db_addons.json'), payloadAddons);
+                atomicWrite(path.join(systemDbDir, 'local_db_camera_templates.json'), payloadTemplates);
             } catch(e) {
                 console.error('[SHADOW-DB] External mirror write error:', e.message);
             }
@@ -3158,8 +3275,20 @@ app.get('/api/cameras', verifyToken, (req, res) => {
         const mainStat = (cameraStatuses[c.id] && cameraStatuses[c.id].main) || { status: c.enabled ? 'online' : 'offline', error: null };
         const subStat = (cameraStatuses[c.id] && cameraStatuses[c.id].sub) || { status: c.enabled ? 'online' : 'offline', error: null };
         const isRecording = !!ffProcesses[c.id];
+
+        // Resolusi kredensial kamera lengkap (fallback dari RTSP URL atau ptzUser)
+        const credsMatch = (c.mainStreamUrl || '').match(/rtsp:\/\/(?:([^:]+)(?::([^@]+))?@)?/i);
+        const urlUser = credsMatch && credsMatch[1] ? decodeURIComponent(credsMatch[1]) : '';
+        const urlPass = credsMatch && credsMatch[2] ? decodeURIComponent(credsMatch[2]) : '';
+        const resolvedUser = (c.username !== undefined && c.username !== null && c.username !== '') ? c.username : (c.ptzUser || urlUser || 'admin');
+        const resolvedPass = (c.password !== undefined && c.password !== null && c.password !== '') ? c.password : ((c.ptzPass !== undefined && c.ptzPass !== null) ? c.ptzPass : urlPass);
+
         return {
             ...c,
+            username: resolvedUser,
+            password: resolvedPass,
+            ptzUser: c.ptzUser || resolvedUser,
+            ptzPass: (c.ptzPass !== undefined && c.ptzPass !== null) ? c.ptzPass : resolvedPass,
             isRecording,
             mediaMtxPath: safeId,
             mediaMtxSubPath: hasDistinctSub ? `${safeId}_sub` : safeId,
@@ -3302,6 +3431,8 @@ app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
         ptzEnabled: finalPtzEnabled,
         ptzProtocol: ptzProtocol || (finalPtzEnabled ? 'onvif' : 'none'),
         ptzUrl: effectivePtzUrl,
+        username: effectivePtzUser || username || 'admin',
+        password: effectivePtzPass || password || '',
         ptzUser: effectivePtzUser,
         ptzPass: effectivePtzPass,
         onvifProfileToken: finalProfileToken,
@@ -3394,6 +3525,8 @@ app.put('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
         ptzEnabled: finalPtzEnabled,
         ptzProtocol: ptzProtocol !== undefined ? ptzProtocol : (targetCam.ptzProtocol || (finalPtzEnabled ? 'onvif' : 'none')),
         ptzUrl: effectivePtzUrl,
+        username: (username !== undefined ? username : (effectivePtzUser || targetCam.username || 'admin')),
+        password: (password !== undefined ? password : (effectivePtzPass !== undefined ? effectivePtzPass : (targetCam.password || ''))),
         ptzUser: effectivePtzUser,
         ptzPass: effectivePtzPass,
         onvifProfileToken: finalProfileToken,
@@ -3440,6 +3573,116 @@ app.post('/api/cameras/:id/restart', verifyToken, requireAdministrator, (req, re
         }
         res.json({ success: true, message: `Stream kamera ${cam.name} disinkronkan ke MediaMTX.` });
     }, 500);
+});
+
+// ==========================================
+// CAMERA RTSP TEMPLATES CRUD API (v10.7.4)
+// ==========================================
+app.get('/api/camera-templates', verifyToken, (req, res) => {
+    try {
+        const dbData = getNvrDb();
+        const templates = (dbData.camera_templates && dbData.camera_templates.length > 0)
+            ? dbData.camera_templates
+            : DEFAULT_CAMERA_TEMPLATES;
+        res.json({ success: true, templates });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/camera-templates', verifyToken, requireAdministrator, (req, res) => {
+    try {
+        const { name, vendor, defaultPort, onvifPort, ptzProtocol, mainStreamPattern, subStreamPattern, notes } = req.body;
+        if (!name || !mainStreamPattern) {
+            return res.status(400).json({ error: 'Nama dan Pola URL Main Stream wajib diisi' });
+        }
+        const dbData = getNvrDb();
+        if (!dbData.camera_templates) dbData.camera_templates = [...DEFAULT_CAMERA_TEMPLATES];
+
+        const rawId = req.body.id || name.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+        let newId = rawId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+        if (!newId || dbData.camera_templates.some(t => t.id === newId)) {
+            newId = `${newId || 'tmpl'}_${Date.now()}`;
+        }
+
+        const newTmpl = {
+            id: newId,
+            name: name.trim(),
+            vendor: (vendor || name).trim(),
+            defaultPort: parseInt(defaultPort, 10) || 554,
+            onvifPort: onvifPort ? parseInt(onvifPort, 10) : undefined,
+            ptzProtocol: ptzProtocol || 'onvif',
+            mainStreamPattern: mainStreamPattern.trim(),
+            subStreamPattern: subStreamPattern ? subStreamPattern.trim() : '',
+            notes: notes ? notes.trim() : ''
+        };
+
+        dbData.camera_templates.push(newTmpl);
+        saveNvrDb(dbData);
+        sysLog('INFO', `[Camera Templates] Template baru ditambahkan: ${newTmpl.name}`, 'CAMERA');
+        res.json({ success: true, template: newTmpl });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.put('/api/camera-templates/:id', verifyToken, requireAdministrator, (req, res) => {
+    try {
+        const { name, vendor, defaultPort, onvifPort, ptzProtocol, mainStreamPattern, subStreamPattern, notes } = req.body;
+        const dbData = getNvrDb();
+        if (!dbData.camera_templates) dbData.camera_templates = [...DEFAULT_CAMERA_TEMPLATES];
+
+        const index = dbData.camera_templates.findIndex(t => t.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'Template tidak ditemukan' });
+
+        const prev = dbData.camera_templates[index];
+        dbData.camera_templates[index] = {
+            ...prev,
+            name: name ? name.trim() : prev.name,
+            vendor: vendor !== undefined ? vendor.trim() : prev.vendor,
+            defaultPort: defaultPort !== undefined ? (parseInt(defaultPort, 10) || 554) : prev.defaultPort,
+            onvifPort: onvifPort !== undefined ? (onvifPort ? parseInt(onvifPort, 10) : undefined) : prev.onvifPort,
+            ptzProtocol: ptzProtocol !== undefined ? ptzProtocol : prev.ptzProtocol,
+            mainStreamPattern: mainStreamPattern ? mainStreamPattern.trim() : prev.mainStreamPattern,
+            subStreamPattern: subStreamPattern !== undefined ? subStreamPattern.trim() : prev.subStreamPattern,
+            notes: notes !== undefined ? notes.trim() : prev.notes
+        };
+
+        saveNvrDb(dbData);
+        sysLog('INFO', `[Camera Templates] Template diupdate: ${dbData.camera_templates[index].name}`, 'CAMERA');
+        res.json({ success: true, template: dbData.camera_templates[index] });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.delete('/api/camera-templates/:id', verifyToken, requireAdministrator, (req, res) => {
+    try {
+        const dbData = getNvrDb();
+        if (!dbData.camera_templates) dbData.camera_templates = [...DEFAULT_CAMERA_TEMPLATES];
+
+        const index = dbData.camera_templates.findIndex(t => t.id === req.params.id);
+        if (index === -1) return res.status(404).json({ error: 'Template tidak ditemukan' });
+
+        const removed = dbData.camera_templates.splice(index, 1);
+        saveNvrDb(dbData);
+        sysLog('INFO', `[Camera Templates] Template dihapus: ${removed[0].name}`, 'CAMERA');
+        res.json({ success: true, message: 'Template berhasil dihapus' });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+app.post('/api/camera-templates/reset', verifyToken, requireAdministrator, (req, res) => {
+    try {
+        const dbData = getNvrDb();
+        dbData.camera_templates = JSON.parse(JSON.stringify(DEFAULT_CAMERA_TEMPLATES));
+        saveNvrDb(dbData);
+        sysLog('WARN', `[Camera Templates] Database template di-reset ke default bawaan`, 'CAMERA');
+        res.json({ success: true, templates: dbData.camera_templates, message: 'Database template berhasil direset ke standar bawaan' });
+    } catch(e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 
