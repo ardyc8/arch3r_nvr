@@ -1,5 +1,21 @@
-# ⚡ Arch3r NVR (Ver. 10.7.5)
+# ⚡ Arch3r NVR (Ver. 10.7.7)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.7.7:
+- **Professional OSD Stream State Overlay Engine & Universal V380/ONVIF Audio Transcoding**:
+  1. **Professional Video Player OSD State Overlay Engine (Live & Playback)**:
+     - Menyediakan indikator visual On-Screen Display (OSD) interaktif di dalam kanvas video (`.state-overlay`) menggantikan layar hitam hampa (*blank black screen*).
+     - Menampilkan status transisi aliran yang jelas dan profesional: **"⚡ Menghubungkan..."** (inisialisasi WebRTC/RTSP), **"⏳ Buffering..."** (menunggu paket data), **"❌ Aliran Terputus"** (kamera offline / sinyal RTSP hilang), dan transisi instan ke status live saat video aktif.
+     - Mengintegrasikan OSD pada panel pemutaran rekaman (`#pbStateOverlay`): **"⚡ Memuat Rekaman..."**, **"🔍 Mencari Titik Rekaman..."** saat scrubbing timeline, dan **"❌ Gagal Memutar Rekaman"** saat berkas terganggu.
+  2. **Optimalisasi FFmpeg FastStart & Eliminasi Latensi Playback**:
+     - Menambahkan parameter `-segment_format_options movflags=+faststart` pada perekaman berkas MP4 kontinyu.
+     - Memindahkan metadata indeks atom `moov` ke awal berkas (*beginning of file*) saat segmentasi selesai, menghilangkan delay 2-5 detik saat memulai putar rekaman atau melompat (*seeking*) di timeline browser.
+  3. **Universal Audio Transcoding untuk V380, ONVIF Generic & Xiongmai**:
+     - Mengatasi kendala ketiadaan audio pada kamera selain Ezviz (seperti V380, Xiongmai, Tapo, ONVIF Generic) yang umumnya memancarkan audio G.711u / PCMU / PCMA 8000Hz mono yang tidak didukung langsung oleh browser dalam kontainer MP4 standar.
+     - Menyediakan pipeline audio auto-transcoding FFmpeg ke AAC standar (`-c:a aac -b:a 64k -ar 16000 -ac 1 -af "aresample=async=1"`) dengan resample asinkron anti-drift yang sangat hemat resource CPU Armbian STB.
+     - Menambahkan tombol interaktif toggle suara (`🔊` / `🔇`) pada setiap cell kamera grid monitor dengan kontrol unmute per-kamera.
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.7.7** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/script.js`, `README.md`, dan `CHANGELOG.md`.
 
 ### 📋 Changelog Pembaruan Ver. 10.7.5:
 - **Fix Admin About NVR View (DOM Hierarchy Correction & Real-Time Sync)**:

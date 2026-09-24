@@ -2915,6 +2915,7 @@ function syncMediaMtxConfig() {
                 lines.push(`    source: "${mainUrl}"`);
                 lines.push(`    sourceProtocol: tcp`);
                 lines.push(`    sourceAnyPortEnable: yes`);
+                lines.push(`    sourceOnDemand: no`);
                 activeCount++;
             }
 
@@ -2923,6 +2924,7 @@ function syncMediaMtxConfig() {
                 lines.push(`    source: "${subUrl}"`);
                 lines.push(`    sourceProtocol: tcp`);
                 lines.push(`    sourceAnyPortEnable: yes`);
+                lines.push(`    sourceOnDemand: no`);
                 activeCount++;
             }
         });
@@ -3040,12 +3042,14 @@ function spawnRecordingFFmpeg(cam) {
         } else if (cam.audioCodec === 'opus') {
             audioArgs = ['-c:a', 'libopus', '-b:a', '64k'];
         } else {
-            // Default AAC 128k - Standard kompatibel dengan browser HTML5 Web Player & Audio playback
-            audioArgs = isDemo ? ['-c:a', 'aac', '-b:a', '128k'] : ['-c:a', 'aac', '-b:a', '128k', '-ar', '44100'];
+            // Default AAC transcode: Sangat optimal & kompatibel untuk kamera V380, ONVIF generic, Xiongmai (G.711u/PCMU/PCMA) ke browser HTML5
+            audioArgs = isDemo 
+                ? ['-c:a', 'aac', '-b:a', '128k'] 
+                : ['-c:a', 'aac', '-b:a', '64k', '-ar', '16000', '-ac', '1', '-af', 'aresample=async=1'];
         }
     }
 
-    // Perintah copy video stream ringan dengan transcode audio standar MP4 khusus untuk perekaman lokal/USB
+    // Perintah copy video stream ringan dengan transcode audio standar MP4 + faststart moov atom khusus untuk perekaman lokal/USB
     const args = [
         '-y',
         '-loglevel', 'warning',
@@ -3056,6 +3060,7 @@ function spawnRecordingFFmpeg(cam) {
         '-f', 'segment',
         '-segment_time', segSec.toString(),
         '-segment_format', 'mp4',
+        '-segment_format_options', 'movflags=+faststart',
         '-reset_timestamps', '1',
         '-strftime', '1',
         path.join(recBase, "%Y-%m-%d_%H-%M-%S.mp4")

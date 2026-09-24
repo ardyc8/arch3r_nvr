@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.7.5",
-  "description": "Arch3r NVR Ver. 10.7.5 - Fixed Admin About System Info View, DOM Hierarchy Correction, and Real-Time License Status Synchronization.",
+  "name": "Arch3r NVR Ver. 10.7.7",
+  "description": "Arch3r NVR Ver. 10.7.7 - Professional OSD Stream State Overlay Engine (Connecting, Buffering, Offline, Error), Multi-Camera Audio Unmute Controls, and Universal V380 G.711/PCM Audio Auto-Transcoding Support.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

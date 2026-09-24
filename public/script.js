@@ -3768,12 +3768,123 @@ async function fetchCameras() {
     window.destroyHlsPlayers = destroyHlsPlayers;
     window.activeHlsPlayers = activeHlsPlayers;
 
+    // --- PROFESSIONAL STREAM & PLAYBACK OSD STATE OVERLAY ENGINE ---
+    function setStreamState(videoId, state, message, detail) {
+        const overlay = document.getElementById('overlay_' + videoId);
+        if (!overlay) return;
+        const titleEl = document.getElementById('title_' + videoId);
+        const descEl = document.getElementById('desc_' + videoId);
+        const spinEl = document.getElementById('spin_' + videoId);
+
+        if (state === 'live' || state === 'ready') {
+            overlay.classList.add('hidden');
+            if (spinEl) spinEl.style.display = 'none';
+        } else if (state === 'connecting') {
+            overlay.classList.remove('hidden');
+            if (spinEl) spinEl.style.display = 'block';
+            if (titleEl) {
+                titleEl.style.color = '#38bdf8';
+                titleEl.innerHTML = '<span style="display:inline-block; animation:pulse 1.5s infinite;">⚡</span> Menghubungkan...';
+            }
+            if (descEl) descEl.textContent = detail || message || 'Memulai koneksi WebRTC / RTSP...';
+        } else if (state === 'buffering') {
+            overlay.classList.remove('hidden');
+            if (spinEl) spinEl.style.display = 'block';
+            if (titleEl) {
+                titleEl.style.color = '#f59e0b';
+                titleEl.innerHTML = '⏳ Buffering...';
+            }
+            if (descEl) descEl.textContent = detail || message || 'Memuat paket video...';
+        } else if (state === 'offline' || state === 'error') {
+            overlay.classList.remove('hidden');
+            if (spinEl) spinEl.style.display = 'none';
+            if (titleEl) {
+                titleEl.style.color = '#ef4444';
+                titleEl.innerHTML = '❌ Aliran Terputus';
+            }
+            if (descEl) descEl.textContent = detail || message || 'Kamera offline atau koneksi RTSP gagal';
+        }
+    }
+    window.setStreamState = setStreamState;
+
+    function setPlaybackState(state, message, detail) {
+        const overlay = document.getElementById('pbStateOverlay');
+        if (!overlay) return;
+        const titleEl = document.getElementById('pbStateTitle');
+        const descEl = document.getElementById('pbStateDesc');
+        const spinEl = document.getElementById('pbStateSpinner');
+
+        if (state === 'playing' || state === 'ready') {
+            overlay.classList.add('hidden');
+            if (spinEl) spinEl.style.display = 'none';
+        } else if (state === 'loading') {
+            overlay.classList.remove('hidden');
+            if (spinEl) spinEl.style.display = 'block';
+            if (titleEl) {
+                titleEl.style.color = '#38bdf8';
+                titleEl.innerHTML = '⚡ Memuat Rekaman...';
+            }
+            if (descEl) descEl.textContent = detail || message || 'Menghubungkan ke disk penyimpanan...';
+        } else if (state === 'buffering' || state === 'seeking') {
+            overlay.classList.remove('hidden');
+            if (spinEl) spinEl.style.display = 'block';
+            if (titleEl) {
+                titleEl.style.color = '#f59e0b';
+                titleEl.innerHTML = state === 'seeking' ? '🔍 Mencari Titik Rekaman...' : '⏳ Buffering Rekaman...';
+            }
+            if (descEl) descEl.textContent = detail || message || 'Mempersiapkan frame video...';
+        } else if (state === 'error') {
+            overlay.classList.remove('hidden');
+            if (spinEl) spinEl.style.display = 'none';
+            if (titleEl) {
+                titleEl.style.color = '#ef4444';
+                titleEl.innerHTML = '❌ Gagal Memutar Rekaman';
+            }
+            if (descEl) descEl.textContent = detail || message || 'File rekaman tidak dapat diakses atau rusak.';
+        }
+    }
+    window.setPlaybackState = setPlaybackState;
+
+    window.toggleCellAudio = function(videoId, btn) {
+        const video = document.getElementById(videoId);
+        if (!video) return;
+
+        // Senyapkan kamera lain agar audio tidak bertabrakan
+        document.querySelectorAll('.cam-player-video').forEach(v => {
+            if (v.id !== videoId) {
+                v.muted = true;
+                const otherBtn = document.getElementById('btnAudio_' + v.id);
+                if (otherBtn) {
+                    otherBtn.textContent = '🔇';
+                    otherBtn.style.background = 'rgba(15, 23, 42, 0.75)';
+                }
+            }
+        });
+
+        if (video.muted) {
+            video.muted = false;
+            video.volume = 1.0;
+            if (btn) {
+                btn.textContent = '🔊';
+                btn.style.background = 'rgba(16, 185, 129, 0.9)';
+            }
+            video.play().catch(() => {});
+        } else {
+            video.muted = true;
+            if (btn) {
+                btn.textContent = '🔇';
+                btn.style.background = 'rgba(15, 23, 42, 0.75)';
+            }
+        }
+    };
+
     // WebRTC WHEP Ultra-Low Latency Player (~0.1s delay) with Auto Fallback to HLS
     async function playUltraStream(elementId, hlsUrl, streamPath, onReady, onError) {
         const video = (typeof elementId === 'string') ? document.getElementById(elementId) : elementId;
         if (!video) return null;
 
         const id = video.id || (typeof elementId === 'string' ? elementId : 'video_' + Math.random().toString(36).substr(2, 9));
+        setStreamState(id, 'connecting', 'Menghubungkan WebRTC...', streamPath);
 
         if (activeHlsPlayers[id]) {
             try { activeHlsPlayers[id].destroy(); } catch (e) {}
@@ -3801,7 +3912,9 @@ async function fetchCameras() {
 
                 pc.ontrack = (event) => {
                     if (event.track) stream.addTrack(event.track);
-                    video.play().catch(() => {});
+                    video.play().then(() => {
+                        setStreamState(id, 'live');
+                    }).catch(() => {});
                 };
 
                 const offer = await pc.createOffer();
@@ -3830,6 +3943,7 @@ async function fetchCameras() {
                             const answerSdp = await res.text();
                             await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
                             connected = true;
+                            setStreamState(id, 'live');
                             if (typeof onReady === 'function') onReady(pc);
                             return pc;
                         }
@@ -3851,6 +3965,7 @@ async function fetchCameras() {
         }
 
         // Fallback otomatis ke HLS jika WebRTC belum siap atau tidak tersedia
+        setStreamState(id, 'connecting', 'Beralih ke HLS Stream...', 'Menyiapkan fragmen video...');
         return initHlsPlayer(video, hlsUrl, onReady, onError);
     }
     window.playUltraStream = playUltraStream;
@@ -3995,17 +4110,37 @@ async function fetchCameras() {
                     
                     cell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
-                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill; pointer-events:none;"></video>
+                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill;"></video>
                             
-                            <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; gap:5px;">
-                                ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
+                            <div id="overlay_${videoId}" class="state-overlay">
+                                <div class="state-spinner" id="spin_${videoId}"></div>
+                                <h4 id="title_${videoId}" style="color:#38bdf8;">Menghubungkan...</h4>
+                                <p id="desc_${videoId}">Memulai koneksi WebRTC / RTSP...</p>
                             </div>
-                            <div class="cam-title-bar">
+
+                            <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:5px; align-items:center;">
+                                ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
+                                <span class="badge" style="font-size:0.65rem; padding:2px 5px; background:rgba(0,0,0,0.6);">${curQuality}</span>
+                            </div>
+                            <div class="cam-title-bar" style="z-index:14;">
                                 ${cam.name || ('Kamera ' + (i + 1))}
                             </div>
+                            <button id="btnAudio_${videoId}" class="cam-audio-toggle" title="Nyalakan / Matikan Suara Kamera" onclick="event.stopPropagation(); window.toggleCellAudio('${videoId}', this);">
+                                🔇
+                            </button>
                         </div>
                     `;
-                    inits.push(() => { if (cam.enabled !== false) playUltraStream(videoId, hlsUrl, streamPath); });
+                    inits.push(() => {
+                        const vidEl = document.getElementById(videoId);
+                        if (vidEl) {
+                            vidEl.addEventListener('loadstart', () => window.setStreamState(videoId, 'connecting', 'Menghubungkan...'));
+                            vidEl.addEventListener('waiting', () => window.setStreamState(videoId, 'buffering', 'Buffering Aliran...'));
+                            vidEl.addEventListener('playing', () => window.setStreamState(videoId, 'live'));
+                            vidEl.addEventListener('stalled', () => window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...'));
+                            vidEl.addEventListener('error', () => window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus'));
+                        }
+                        if (cam.enabled !== false) playUltraStream(videoId, hlsUrl, streamPath);
+                    });
                 } else {
                     cell.className = "cam-cell empty-cell";
                     cell.id = "cell_empty_" + i;
@@ -4049,17 +4184,37 @@ async function fetchCameras() {
                     
                     mCell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
-                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill; pointer-events:none;"></video>
+                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill;"></video>
                             
-                            <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; gap:5px;">
-                                ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
+                            <div id="overlay_${videoId}" class="state-overlay">
+                                <div class="state-spinner" id="spin_${videoId}"></div>
+                                <h4 id="title_${videoId}" style="color:#38bdf8;">Menghubungkan...</h4>
+                                <p id="desc_${videoId}">Memulai koneksi WebRTC / RTSP...</p>
                             </div>
-                            <div class="cam-title-bar">
+
+                            <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:5px; align-items:center;">
+                                ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
+                                <span class="badge" style="font-size:0.65rem; padding:2px 5px; background:rgba(0,0,0,0.6);">${curQuality}</span>
+                            </div>
+                            <div class="cam-title-bar" style="z-index:14;">
                                 ${cam.name || ('Kamera ' + (i + 1))}
                             </div>
+                            <button id="btnAudio_${videoId}" class="cam-audio-toggle" title="Nyalakan / Matikan Suara Kamera" onclick="event.stopPropagation(); window.toggleCellAudio('${videoId}', this);">
+                                🔇
+                            </button>
                         </div>
                     `;
-                    inits.push(() => { if (cam.enabled !== false) playUltraStream(videoId, hlsUrl, streamPath); });
+                    inits.push(() => {
+                        const vidEl = document.getElementById(videoId);
+                        if (vidEl) {
+                            vidEl.addEventListener('loadstart', () => window.setStreamState(videoId, 'connecting', 'Menghubungkan...'));
+                            vidEl.addEventListener('waiting', () => window.setStreamState(videoId, 'buffering', 'Buffering Aliran...'));
+                            vidEl.addEventListener('playing', () => window.setStreamState(videoId, 'live'));
+                            vidEl.addEventListener('stalled', () => window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...'));
+                            vidEl.addEventListener('error', () => window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus'));
+                        }
+                        if (cam.enabled !== false) playUltraStream(videoId, hlsUrl, streamPath);
+                    });
                 } else {
                     mCell.className = "cam-cell empty-cell";
                     mCell.id = "m_cell_empty_" + i;
@@ -4292,13 +4447,19 @@ let recordingsMap = {};
         const token = getAuthToken();
         const videoSrc = `/api/recordings/${encodeURIComponent(currentPlaybackCam)}/${encodeURIComponent(currentPlaybackDate)}/${encodeURIComponent(chunk.filename)}${token ? '?token=' + encodeURIComponent(token) : ''}`;
         
+        setPlaybackState('loading', 'Memuat Rekaman...', `${camName} (${timePart})`);
         playbackPlayer.src = videoSrc;
         playbackPlayer.load();
         
         playbackPlayer.onloadedmetadata = () => {
             if (offsetSec > playbackPlayer.duration) offsetSec = 0;
             playbackPlayer.currentTime = offsetSec;
-            playbackPlayer.play().catch(e => console.log('Autoplay handled:', e));
+            playbackPlayer.play().then(() => {
+                setPlaybackState('playing');
+            }).catch(e => {
+                console.log('Autoplay handled:', e);
+                setPlaybackState('playing');
+            });
         };
         
         const btnPbPlay = document.getElementById('btnPbPlay');
@@ -4341,6 +4502,30 @@ let recordingsMap = {};
     });
 
     if (playbackPlayer) {
+        playbackPlayer.addEventListener('loadstart', () => {
+            setPlaybackState('loading', 'Memuat Rekaman...', 'Menyiapkan aliran video dari disk...');
+        });
+
+        playbackPlayer.addEventListener('seeking', () => {
+            setPlaybackState('seeking', 'Mencari Titik Rekaman...', 'Melompat ke detik yang dipilih...');
+        });
+
+        playbackPlayer.addEventListener('waiting', () => {
+            setPlaybackState('buffering', 'Buffering Rekaman...', 'Memuat paket data rekaman...');
+        });
+
+        playbackPlayer.addEventListener('playing', () => {
+            setPlaybackState('playing');
+        });
+
+        playbackPlayer.addEventListener('canplay', () => {
+            setPlaybackState('playing');
+        });
+
+        playbackPlayer.addEventListener('error', (e) => {
+            setPlaybackState('error', 'Gagal Memutar Rekaman', 'File rekaman tidak dapat dimuat atau codec tidak kompatibel.');
+        });
+
         playbackPlayer.addEventListener('timeupdate', () => {
             if (isDraggingScrubber) return; 
             const curSec = (currentFileStartSec || 0) + playbackPlayer.currentTime;
@@ -5128,7 +5313,7 @@ let allLogsCache = [];
             if (res.ok) {
                 const data = await res.json();
                 
-                if (elVersion) elVersion.textContent = 'Versi ' + (data.appVersion || '10.7.5');
+                if (elVersion) elVersion.textContent = 'Versi ' + (data.appVersion || '10.7.7');
                 if (elMachineId) elMachineId.textContent = data.machineId || '-';
                 if (elEmail) elEmail.textContent = data.registeredEmail || '-';
                 
@@ -5154,13 +5339,13 @@ let allLogsCache = [];
                     }
                 }
             } else {
-                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.5';
+                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.7';
                 if (elStatus && elStatus.textContent.includes('Memuat')) elStatus.innerHTML = '<span style="color:#10b981; font-weight:600;">Sistem Aktif</span>';
                 if (elDays && elDays.textContent.includes('Memuat')) elDays.textContent = 'Mode Produksi Lokal';
             }
         } catch(e) {
             console.error('Gagal memuat info About', e);
-            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.5';
+            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.7';
         }
     }
     window.fetchAboutInfo = fetchAboutInfo;

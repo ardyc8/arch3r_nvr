@@ -1,5 +1,25 @@
 # Changelog
 
+## [Ver 10.7.7] - 2026-09-24
+### Professional OSD Stream State Overlay Engine & Universal V380/ONVIF Audio Transcoding
+- **Professional Video Player OSD State Overlay Engine (`public/script.js` & `public/style.css`):**
+  - **Eliminasi Layar Hitam Polos (*No More Blank Screens*)**: Menghadirkan sistem indikator visual On-Screen Display (OSD) interaktif di atas kanvas video stream baik pada tampilan live grid desktop, mobile grid, maupun player playback.
+  - **Status Aliran Real-Time yang Informatif**:
+    - **`⚡ Menghubungkan...`**: Ditampilkan saat browser menginisialisasi sesi WebRTC WHEP atau memuat playlist HLS kamera.
+    - **`⏳ Buffering...`**: Ditampilkan otomatis saat aliran terhambat, menunggu paket video, atau saat seeking.
+    - **`❌ Aliran Terputus`**: Ditampilkan dengan jelas saat kamera offline, koneksi jaringan putus, atau RTSP gagal, menggantikan layar hitam mati tanpa penjelasan.
+    - **Transisi Mulus**: Overlay otomatis tersembunyi secara halus begitu video frame pertama mulai terputar (`playing` event).
+- **Optimalisasi Perekaman FFmpeg FastStart & Akselerasi Playback (`server.js`):**
+  - **Penempatan Metadata `moov` di Awal Berkas**: Menambahkan argumen `-segment_format_options movflags=+faststart` pada segmentasi perekaman MP4 kontinyu FFmpeg.
+  - **Instant Seeking & Zero-Delay Playback**: Mengeliminasi jeda "lelet" 2-5 detik saat memulai pemutaran klip atau menggeser scrubber timeline karena browser kini dapat langsung membaca metadata durasi dan keyframe tanpa perlu mengunduh bagian akhir berkas terlebih dahulu.
+  - **Status OSD Playback (`#pbStateOverlay`)**: Mengaktifkan overlay pada panel playback untuk memberikan konfirmasi visual saat memuat klip (`⚡ Memuat Rekaman...`) dan saat melompat detik (`🔍 Mencari Titik Rekaman...`).
+- **Universal Audio Transcoding untuk Kamera Non-Ezviz (V380, XM, ONVIF Generic):**
+  - **Identifikasi Penyebab Ketiadaan Suara**: Kamera Ezviz secara bawaan memancarkan audio dengan format AAC yang didukung langsung oleh browser. Sedangkan kamera V380, Xiongmai, Tapo, dan generic ONVIF umumnya memancarkan audio G.711u (PCMU) atau PCMA 8000Hz mono yang tidak dapat didekode oleh browser HTML5 jika disimpan murni di kontainer MP4 standar.
+  - **High-Efficiency Resampling & Transcoding (`server.js`)**: Mengonfigurasi FFmpeg untuk mentranscode audio input (termasuk G.711u/PCMU) ke format AAC standar web (`-c:a aac -b:a 64k -ar 16000 -ac 1 -af "aresample=async=1"`), menghasilkan berkas rekaman dengan suara jernih dan anti-desinkronisasi tanpa membebani prosesor Armbian STB.
+  - **Interactive Cell Audio Toggle (`public/script.js` & `public/index.html`)**: Menyediakan tombol pengaktif suara interaktif (`🔊` / `🔇`) pada setiap sel kamera live grid monitor untuk kemudahan mendengarkan audio secara langsung dengan mekanisme auto-mute pada kamera lain.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.7.7** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/script.js`, `README.md`, dan `CHANGELOG.md`.
+
 ## [Ver 10.7.5] - 2026-09-24
 ### Fix Admin About NVR View (DOM Hierarchy Correction & Real-Time Sync)
 - **DOM Hierarchy & Structural Fix (`public/index.html`):**

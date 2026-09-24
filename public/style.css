@@ -172,9 +172,14 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 .cam-player-video, .cam-player-frame { width: 100%; height: 100%; object-fit: contain; background: #000; position: absolute; top: 0; left: 0; }
 .cam-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; padding: 0.5rem; display: flex; flex-direction: column; justify-content: space-between; z-index: 5; }
 .cam-title { background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color: rgba(255,255,255,0.9); display: inline-block; align-self: flex-start; }
-.state-overlay { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; text-align: center; padding: 1rem; }
-.state-overlay h4 { margin: 0 0 0.5rem 0; font-size: 0.9rem; }
-.state-overlay p { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
+.state-overlay { position: absolute; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; text-align: center; padding: 0.75rem; pointer-events: none; transition: opacity 0.25s ease; }
+.state-overlay.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+.state-overlay h4 { margin: 0 0 0.35rem 0; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; }
+.state-overlay p { margin: 0; font-size: 0.72rem; color: #94a3b8; max-width: 90%; line-height: 1.3; }
+.state-spinner { width: 22px; height: 22px; border: 2.5px solid rgba(56, 189, 248, 0.25); border-top-color: #38bdf8; border-radius: 50%; animation: stateSpin 0.8s linear infinite; margin-bottom: 0.5rem; }
+@keyframes stateSpin { to { transform: rotate(360deg); } }
+.cam-audio-toggle { position: absolute; bottom: 8px; right: 8px; z-index: 15; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; backdrop-filter: blur(4px); transition: all 0.2s; }
+.cam-audio-toggle:hover { background: rgba(56, 189, 248, 0.85); border-color: #38bdf8; transform: scale(1.1); }
 
 /* CAMERA FORM SECTION */
 .camera-form-section { background: var(--surface); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); }
