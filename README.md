@@ -1,5 +1,16 @@
-# ⚡ Arch3r NVR (Ver. 10.7.4)
+# ⚡ Arch3r NVR (Ver. 10.7.5)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.7.5:
+- **Fix Admin About NVR View (DOM Hierarchy Correction & Real-Time Sync)**:
+  1. **Perbaikan Hierarki DOM & Penghapusan Orphan Tag (`public/index.html`)**:
+     - Menghapus tag penutup `</div>` liar sebelum `#view-about` yang menyebabkan kontainer aplikasi utama tertutup prematur, menyelesaikan masalah halaman kosong (*blank screen*) saat menu *About NVR* dibuka.
+     - Memastikan elemen `#view-about` tersarang sempurna di dalam `<main class="main-content">` pada kontainer `#adminApp`.
+  2. **Navigasi & Akses Cepat yang Lebih Mudah Ditemukan**:
+     - Memperbaiki `navigateToView('view-about')` agar langsung memicu `fetchAboutInfo()` secara real-time saat pengguna mengklik menu *About NVR*.
+     - Menyediakan *Quick Link Banner* interaktif di dalam formulir *Sistem & Jaringan* (`view-setting-system`) yang langsung mengarahkan pengguna ke halaman *About NVR*.
+     - Memperluas izin endpoint `/api/about` agar dapat diakses oleh seluruh pengguna terotentikasi dan memberikan fallback graceful pada tampilan.
+     - Menyempurnakan pembacaan container layout agar kompatibel dengan `#adminApp` maupun `#mainApp`.
 
 ### 📋 Changelog Pembaruan Ver. 10.7.4:
 - **Universal Camera RTSP URL Templates CRUD Database & Edit Credentials Real-Time Sync**:

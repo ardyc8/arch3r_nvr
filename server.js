@@ -2028,7 +2028,7 @@ function requireSuperadmin(req, res, next) {
 }
 
 function requireAdministrator(req, res, next) {
-    if (req.userRole !== 'administrator' && req.userRole !== 'superadmin') {
+    if (req.userRole !== 'administrator' && req.userRole !== 'superadmin' && req.userRole !== 'admin') {
         return res.status(403).json({ error: 'Akses Ditolak: Memerlukan hak akses Administrator (Pemilik Gedung) atau Superadmin' });
     }
     next();
@@ -2259,7 +2259,7 @@ app.get('/admin', (req, res) => {
 // --- Superadmin APIs (Lisensi, Relay P2P, Buat Akun Administrator) ---
 
 
-app.get('/api/about', verifyToken, requireAdmin, (req, res) => {
+app.get('/api/about', verifyToken, (req, res) => {
     const currentSettings = getSettings();
     const machineId = getMachineId();
     const installDate = getSecureInstallDate({ super_settings: currentSettings });

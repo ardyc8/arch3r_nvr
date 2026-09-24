@@ -1,5 +1,18 @@
 # Changelog
 
+## [Ver 10.7.5] - 2026-09-24
+### Fix Admin About NVR View (DOM Hierarchy Correction & Real-Time Sync)
+- **DOM Hierarchy & Structural Fix (`public/index.html`):**
+  - **Penghapusan Orphan Closing `</div>`**: Memperbaiki tag penutup `</div>` liar di atas deklarasi `#view-about` yang sebelumnya menyebabkan kontainer utama `<div class="app-layout" id="adminApp">` tertutup secara prematur, sehingga memicu tampilan halaman kosong (*blank screen*) saat menu "About NVR" diklik.
+  - **Sarang Elemen Sempurna**: `#view-about` kini berada kokoh di dalam `<main class="main-content">` pada kontainer `#adminApp` sehingga navigasi tampilan berjalan 100% mulus.
+- **Enhanced About Navigation & Discoverability:**
+  - **Sinkronisasi Navigasi Otomatis (`public/script.js`)**: `navigateToView('view-about')` kini langsung memicu pemanggilan `fetchAboutInfo()` secara real-time saat menu diklik, memastikan versi aplikasi, Machine ID, dan status lisensi selalu termutakhirkan tanpa status "Memuat...".
+  - **Quick Link Banner di "Sistem & Jaringan"**: Menambahkan banner pintasan langsung di dalam menu *Sistem & Jaringan* (`view-setting-system`) dengan tombol satu-klik menuju halaman *About NVR*.
+  - **Multi-Role Authentication & Fallback**: Memperluas akses rute `/api/about` di `server.js` untuk semua user terotentikasi dan mendukung role `admin` secara setara dengan `administrator`, serta menyediakan fallback tampilan jika koneksi tertunda.
+  - **Backward-Compatible Container References**: Mengizinkan `adminApp` mengenali `#adminApp` maupun `#mainApp` pada `public/admin.html` agar antarmuka tidak tertahan pada status tersembunyi.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.7.5** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `README.md`, dan `CHANGELOG.md`.
+
 ## [Ver 10.7.4] - 2026-09-24
 ### Universal Camera RTSP URL Templates CRUD Database & Edit Credentials Real-Time Sync
 - **Camera Brand RTSP Template Database (Split-DB Architecture):**

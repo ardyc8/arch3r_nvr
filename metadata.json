@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.7.4",
-  "description": "Arch3r NVR Ver. 10.7.4 - Camera Brand RTSP Template CRUD Database, Dynamic Preset Engine, and Complete Camera Edit Credentials Synchronization.",
+  "name": "Arch3r NVR Ver. 10.7.5",
+  "description": "Arch3r NVR Ver. 10.7.5 - Fixed Admin About System Info View, DOM Hierarchy Correction, and Real-Time License Status Synchronization.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
