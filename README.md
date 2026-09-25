@@ -1,5 +1,18 @@
-# ⚡ Arch3r NVR (Ver. 10.8.0)
+# ⚡ Arch3r NVR (Ver. 10.8.1)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.8.1:
+- **Direct GitHub Branch Live OTA Pipeline, Raw Package & Changelog Inspector**:
+  1. **Live Branch Tracking Tanpa Release Manual**:
+     - Sistem OTA STB kini memantau berkas `package.json` dan `CHANGELOG.md` langsung pada branch `main` GitHub via CDN `raw.githubusercontent.com`.
+     - Pengembang cukup melakukan `git push origin main` dari ruang kerja, dan STB klien akan langsung mendeteksi ketersediaan versi baru secara instan tanpa perlu membuat rilis manual di GitHub.
+  2. **Multi-Branch Auto-Resolution & Zero Rate Limit**:
+     - Deteksi multi-branch cerdas (`main` dan fallback `master`) menjamin kestabilan deteksi repositori.
+     - Bebas dari limitasi 60 request/jam GitHub REST API berkat jalur raw CDN berkecepatan tinggi (< 200ms).
+  3. **Real-Time Remote Changelog Inspector**:
+     - Judul pembaruan dan rincian catatan rilis yang tampil di antarmuka dialog pembaruan STB disinkronkan secara langsung dari branch remote GitHub.
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.1** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/version_sync.js`, `public/script.js`, `README.md`, dan `CHANGELOG.md` mematuhi protokol Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.8.0:
 - **Strict Gitignore Hardening for License Generator & Security Protocol Enforcement**:

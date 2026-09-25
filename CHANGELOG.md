@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 10.8.1] - 2026-09-25
+### Direct GitHub Branch Live OTA Pipeline, Raw Package & Changelog Inspector
+- **Direct GitHub Branch Live OTA Pipeline (`server.js`):**
+  - **Live Branch Tracking Tanpa Release Manual**: Sistem OTA di STB kini langsung memantau berkas `package.json` dan `CHANGELOG.md` pada branch `main` repositori GitHub via CDN `raw.githubusercontent.com`. Pengembang tidak lagi diwajibkan membuat tag rilis manual di GitHub untuk memicu deteksi update.
+  - **Auto Candidate Branch Fallback**: Mendukung deteksi multi-branch cerdas (`main` dan fallback `master`), memastikan STB langsung menemukan pembaruan seketika setelah `git push origin main`.
+  - **Real-Time Remote CHANGELOG Inspector**: Catatan rilis dan judul pembaruan pada antarmuka "Periksa Pembaruan" langsung disinkronkan dari berkas `CHANGELOG.md` remote GitHub secara real-time.
+  - **Zero Rate Limit Protection**: Mengalihkan ketergantungan dari GitHub REST API (yang dibatasi 60 req/jam) ke jalur CDN raw yang cepat (< 200ms) dan andal untuk lingkungan STB.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.1** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/version_sync.js`, `public/script.js`, `README.md`, dan `CHANGELOG.md` sesuai protokol Semantic Versioning Strict.
+
 ## [Ver 10.8.0] - 2026-09-25
 ### Strict Gitignore Hardening for License Server Generator & Security Protocol Enforcement
 - **Repository Security Hardening & Gitignore Protection (`.gitignore`):**

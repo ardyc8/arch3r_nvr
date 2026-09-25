@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.8.0",
-  "description": "Arch3r NVR Ver. 10.8.0 - Multi-Category OTA System Update Pipeline (Safe, Normal, Hard), Dynamic CHANGELOG Parser, ECDSA Asymmetric License Engine & Persistent OS Vault.",
+  "name": "Arch3r NVR Ver. 10.8.1",
+  "description": "Arch3r NVR Ver. 10.8.1 - Direct GitHub Branch Live OTA Pipeline, Raw Package & Changelog Inspector, Safe Multi-Category System Updater.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

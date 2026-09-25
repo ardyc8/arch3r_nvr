@@ -5334,13 +5334,13 @@ let allLogsCache = [];
                     }
                 }
             } else {
-                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.0';
+                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.1';
                 if (elStatus && elStatus.textContent.includes('Memuat')) elStatus.innerHTML = '<span style="color:#10b981; font-weight:600;">Sistem Aktif</span>';
                 if (elDays && elDays.textContent.includes('Memuat')) elDays.textContent = 'Mode Produksi Lokal';
             }
         } catch(e) {
             console.error('Gagal memuat info About', e);
-            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.0';
+            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.1';
         }
     }
     window.fetchAboutInfo = fetchAboutInfo;
@@ -5439,9 +5439,17 @@ let allLogsCache = [];
 
             if (badge) {
                 const isNew = data.update_available || data.isUpdateAvailable;
-                const curVer = data.current_version || window.APP_VERSION || '10.8.0';
-                const latVer = data.latest_version || window.APP_VERSION || '10.8.0';
-                badge.innerHTML = `v${curVer} ${isNew ? '• Ada Update v' + latVer : '• Versi Terbaru'}`;
+                const curVer = data.current_version || window.APP_VERSION || '10.8.1';
+                const latVer = data.latest_version || window.APP_VERSION || '10.8.1';
+                let label = '• Versi Terbaru';
+                if (isNew) {
+                    if (data.commits_ahead && data.commits_ahead > 0 && curVer === latVer) {
+                        label = `• Ada ${data.commits_ahead} Commit Baru`;
+                    } else {
+                        label = `• Ada Update v${latVer}`;
+                    }
+                }
+                badge.innerHTML = `v${curVer} ${label}`;
                 badge.style.background = isNew ? '#f59e0b' : '#10b981';
             }
 
