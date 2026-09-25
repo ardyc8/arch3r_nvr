@@ -5334,19 +5334,81 @@ let allLogsCache = [];
                     }
                 }
             } else {
-                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.8';
+                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.9';
                 if (elStatus && elStatus.textContent.includes('Memuat')) elStatus.innerHTML = '<span style="color:#10b981; font-weight:600;">Sistem Aktif</span>';
                 if (elDays && elDays.textContent.includes('Memuat')) elDays.textContent = 'Mode Produksi Lokal';
             }
         } catch(e) {
             console.error('Gagal memuat info About', e);
-            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.8';
+            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.9';
         }
     }
     window.fetchAboutInfo = fetchAboutInfo;
 
     // --- ADMIN OTA SYSTEM & LINUX PIPELINE ---
     let adminUpdateData = null;
+    let currentOtaMode = 'safe';
+
+    window.selectOtaMode = function(mode) {
+        currentOtaMode = mode;
+        const cardSafe = document.getElementById('otaModeCardSafe');
+        const cardNormal = document.getElementById('otaModeCardNormal');
+        const cardHard = document.getElementById('otaModeCardHard');
+
+        const chkBackup = document.getElementById('chkOtaBackup');
+        const chkGitPull = document.getElementById('chkOtaGitPull');
+        const chkNpmInstall = document.getElementById('chkOtaNpmInstall');
+        const chkPm2Restart = document.getElementById('chkOtaPm2Restart');
+        const chkCleanCache = document.getElementById('chkOtaCleanCache');
+        const chkGitReset = document.getElementById('chkOtaGitReset');
+        const chkReboot = document.getElementById('chkOtaReboot');
+
+        // Reset visual cards
+        [cardSafe, cardNormal, cardHard].forEach(card => {
+            if (card) {
+                card.style.borderColor = 'var(--border)';
+                card.style.background = 'rgba(255,255,255,0.02)';
+            }
+        });
+
+        if (mode === 'safe') {
+            if (cardSafe) {
+                cardSafe.style.borderColor = '#10b981';
+                cardSafe.style.background = 'rgba(16,185,129,0.08)';
+            }
+            if (chkBackup) chkBackup.checked = true;
+            if (chkGitPull) chkGitPull.checked = true;
+            if (chkNpmInstall) chkNpmInstall.checked = true;
+            if (chkPm2Restart) chkPm2Restart.checked = true;
+            if (chkCleanCache) chkCleanCache.checked = false;
+            if (chkGitReset) chkGitReset.checked = false;
+            if (chkReboot) chkReboot.checked = false;
+        } else if (mode === 'normal') {
+            if (cardNormal) {
+                cardNormal.style.borderColor = '#2563eb';
+                cardNormal.style.background = 'rgba(37,99,235,0.08)';
+            }
+            if (chkBackup) chkBackup.checked = true;
+            if (chkGitPull) chkGitPull.checked = true;
+            if (chkNpmInstall) chkNpmInstall.checked = true;
+            if (chkPm2Restart) chkPm2Restart.checked = true;
+            if (chkCleanCache) chkCleanCache.checked = false;
+            if (chkGitReset) chkGitReset.checked = false;
+            if (chkReboot) chkReboot.checked = false;
+        } else if (mode === 'hard') {
+            if (cardHard) {
+                cardHard.style.borderColor = '#ef4444';
+                cardHard.style.background = 'rgba(239,68,68,0.08)';
+            }
+            if (chkBackup) chkBackup.checked = true;
+            if (chkGitPull) chkGitPull.checked = false; // Hard reset replaces normal git pull
+            if (chkGitReset) chkGitReset.checked = true;
+            if (chkCleanCache) chkCleanCache.checked = true;
+            if (chkNpmInstall) chkNpmInstall.checked = true;
+            if (chkPm2Restart) chkPm2Restart.checked = true;
+            if (chkReboot) chkReboot.checked = false;
+        }
+    };
 
     window.toggleAdminOtaChangelog = function() {
         const box = document.getElementById('adminOtaChangelogContainer');
@@ -5377,8 +5439,8 @@ let allLogsCache = [];
 
             if (badge) {
                 const isNew = data.update_available || data.isUpdateAvailable;
-                const curVer = data.current_version || window.APP_VERSION || '9.9.6';
-                const latVer = data.latest_version || window.APP_VERSION || '9.9.6';
+                const curVer = data.current_version || window.APP_VERSION || '10.7.9';
+                const latVer = data.latest_version || window.APP_VERSION || '10.7.9';
                 badge.innerHTML = `v${curVer} ${isNew ? '• Ada Update v' + latVer : '• Versi Terbaru'}`;
                 badge.style.background = isNew ? '#f59e0b' : '#10b981';
             }
@@ -5414,6 +5476,10 @@ let allLogsCache = [];
         if (modal) {
             modal.style.setProperty('display', 'flex', 'important');
             modal.classList.add('active');
+            // Default ke safe mode jika belum terpilih
+            if (typeof window.selectOtaMode === 'function') {
+                window.selectOtaMode(currentOtaMode || 'safe');
+            }
         }
     };
 
@@ -5431,22 +5497,40 @@ let allLogsCache = [];
         const terminalLog = document.getElementById('otaTerminalLog');
         const spinner = document.getElementById('otaExecutionSpinner');
 
+        const chkBackup = document.getElementById('chkOtaBackup')?.checked ?? true;
+        const chkGitPull = document.getElementById('chkOtaGitPull')?.checked ?? true;
+        const chkNpmInstall = document.getElementById('chkOtaNpmInstall')?.checked ?? true;
+        const chkPm2Restart = document.getElementById('chkOtaPm2Restart')?.checked ?? true;
+        const chkCleanCache = document.getElementById('chkOtaCleanCache')?.checked ?? false;
+        const chkGitReset = document.getElementById('chkOtaGitReset')?.checked ?? false;
+        const chkReboot = document.getElementById('chkOtaReboot')?.checked ?? false;
+
         const steps = {
-            backup: document.getElementById('chkOtaBackup')?.checked ?? true,
-            git_pull: document.getElementById('chkOtaGitPull')?.checked ?? true,
-            npm_install: document.getElementById('chkOtaNpmInstall')?.checked ?? true,
-            pm2_restart: document.getElementById('chkOtaPm2Restart')?.checked ?? true,
-            git_reset_hard: document.getElementById('chkOtaGitReset')?.checked ?? false,
-            clean_npm_cache: document.getElementById('chkOtaCleanCache')?.checked ?? false,
-            reboot: document.getElementById('chkOtaReboot')?.checked ?? false
+            mode: currentOtaMode,
+            backup: chkBackup,
+            backup_db: chkBackup,
+            git_stash: currentOtaMode === 'safe',
+            git_pull: chkGitPull,
+            git_reset: chkGitReset,
+            git_reset_hard: chkGitReset,
+            clean_cache: chkCleanCache,
+            clean_npm_cache: chkCleanCache,
+            npm_install: chkNpmInstall,
+            pm2_restart: chkPm2Restart,
+            reboot: chkReboot,
+            reboot_linux: chkReboot
         };
 
-        if (!steps.git_pull && !steps.git_reset_hard && !steps.npm_install && !steps.pm2_restart && !steps.reboot) {
+        if (!steps.git_pull && !steps.git_reset && !steps.npm_install && !steps.pm2_restart && !steps.reboot) {
             alert("Harap pilih setidaknya satu langkah pembaruan untuk dieksekusi.");
             return;
         }
 
-        if (!confirm("Konfirmasi eksekusi alur pembaruan sistem pilihan Anda sekarang?")) {
+        const confirmMsg = currentOtaMode === 'hard'
+            ? "PERINGATAN: Anda memilih Mode Hard / Clean Reset. Lisensi dan data penting Anda tetap aman dilindungi OS Vault. Lanjutkan eksekusi sekarang?"
+            : "Konfirmasi eksekusi alur pembaruan sistem (" + currentOtaMode.toUpperCase() + " UPDATE) pilihan Anda sekarang?";
+
+        if (!confirm(confirmMsg)) {
             return;
         }
 
@@ -5458,7 +5542,7 @@ let allLogsCache = [];
         }
 
         if (terminalLog) {
-            terminalLog.textContent = `[ARCH3R-OTA] Memulai alur pembaruan sistem...\n[ARCH3R-OTA] Waktu: ${new Date().toLocaleString()}\n`;
+            terminalLog.textContent = `[ARCH3R-OTA] Memulai alur pembaruan sistem (Mode: ${currentOtaMode.toUpperCase()})...\n[ARCH3R-OTA] Waktu: ${new Date().toLocaleString()}\n`;
         }
 
         try {

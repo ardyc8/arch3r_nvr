@@ -9,6 +9,14 @@ public/streams/
 *.log
 nvr.db.json
 keygen.js
+keygen*.js
+keygen*.cjs
+master_keygen.*
+*.vault
+*.pem
+private_key*.pem
+license_vault/
+licenses.json
 
 # Build Binaries
 archer-nvr-arm64

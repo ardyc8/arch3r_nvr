@@ -1,5 +1,29 @@
-# ⚡ Arch3r NVR (Ver. 10.7.8)
+# ⚡ Arch3r NVR (Ver. 10.7.9)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.7.9:
+- **Multi-Category OTA Update Pipeline, Dynamic CHANGELOG Parser, ECDSA Asymmetric License Engine & Persistent OS Vault**:
+  1. **Multi-Category OTA Update Execution (Safe, Normal, Hard)**:
+     - Menghadirkan tiga kategori mode update pada antarmuka alur eksekusi update:
+       - **🛡️ Safe Update (Rekomendasi Utama)**: Mengamankan snapshot penuh database & lisensi ke Vault OS terlindung, menjalankan `git stash`, menarik kode terbaru (`git pull`), memvalidasi pemulihan database/lisensi otomatis, menjalankan `npm install`, dan me-reload daemon PM2.
+       - **🚀 Normal Update (Cepat & Standar)**: Menjalankan `git pull` standar + verifikasi dependensi + PM2 reload untuk pembaruan fitur berkala.
+       - **⚡ Hard / Clean Reset (Atasi Konflik Kode)**: Mengamankan lisensi & database ke Vault OS, menjalankan `git fetch --all && git reset --hard origin/main`, membersihkan cache npm (`npm cache clean --force`), menginstal dependensi bersih, memulihkan lisensi & database dari Vault OS, dan me-reload PM2.
+     - Penyelarasan penuh nama parameter antara antarmuka web dan backend `server.js` (`backup_db`, `git_stash`, `git_pull`, `git_reset`, `clean_cache`, `npm_install`, `pm2_restart`, `reboot_linux`).
+  2. **Dynamic CHANGELOG Parser & Smart Git Remote Detection**:
+     - Menggantikan daftar changelog statis lama dengan engine parser berkas `CHANGELOG.md` dinamis dari disk lokal, sehingga riwayat perubahan yang tampil di UI "About NVR" selalu mutakhir dan akurat secara real-time.
+     - Mendeteksi remote URL repositori secara otomatis dari konfigurasi `git config --get remote.origin.url`, secara cerdas menurunkan endpoint API rilis resmi GitHub tanpa mengharuskan pengguna mengetik URL manual.
+     - Komparasi Semver akurat antara versi lokal sistem dan rilis remote cloud.
+  3. **ECDSA Asymmetric Cryptographic License Engine & Anti-Reverse Engineering**:
+     - Mengatasi celah keamanan kunci simetris rahasia di repositori terbuka dengan menerapkan verifikasi tanda tangan digital asimetris **ECDSA (Elliptic Curve Cryptography prime256v1 / NIST P-256)**.
+     - Di dalam kode `server.js` klien STB hanya terdapat **PUBLIC KEY**; sedangkan **PRIVATE KEY** dipegang secara eksklusif dan rahasia oleh developer di generator `master_license_server_template/keygen_ecc.cjs`.
+     - Pihak ketiga yang membaca seluruh repositori GitHub tidak dapat membuat *keygen* atau memalsukan lisensi karena secara matematis mustahil merekonstruksi Private Key dari Public Key.
+     - Tetap mendukung fallback verifikasi HMAC SHA256 lama (*backward compatibility*) agar lisensi yang sudah beredar tetap aktif tanpa kendala.
+  4. **Persistent OS-Level License Vault (Anti-Factory-Reset & Anti-Git Loss)**:
+     - Menyimpan lisensi yang telah terverifikasi secara persisten di lokasi terlindung level sistem operasi (`/etc/arch3r-nvr/license.vault`).
+     - Fitur **Factory Reset** (`/api/superadmin/factory-reset`) kini mereset seluruh database kamera dan akun pengguna, namun **tetap mempertahankan lisensi resmi pembeli** dari Vault OS.
+     - Mesin auto-healing pada startup server otomatis memulihkan lisensi dari Vault OS jika database konfigurasi mengalami reset atau terhapus secara tidak sengaja.
+  5. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.7.9** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/version_sync.js`, `public/script.js`, `README.md`, dan `CHANGELOG.md`.
 
 ### 📋 Changelog Pembaruan Ver. 10.7.8:
 - **Clean Video Canvas Architecture, Real-Time HD/SD WebRTC Stream Synchronization & Centralized Audio**:

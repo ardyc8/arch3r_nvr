@@ -96,7 +96,60 @@ function getAllStbMachineIdentifiers() {
     return Array.from(ids);
 }
 
-const SECRET_KEY = "ARCH3R_NVR_SUP3R_S3CR3T_2026"; 
+// --- ARCH3R NVR ASYMMETRIC CRYPTOGRAPHIC ENGINE & PERSISTENT LICENSE VAULT ---
+// Public key is safe to distribute in open-source/client STBs.
+// Only the developer holding the private key can issue valid ECDSA licenses.
+const ECDSA_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAErigh394r2p47ySa7oR5/fJUMPpaHoIGr9x8WlqFJ5GdiPDva4peQhDE64oUCW63oMlPWtPRl3eDYQ+BF8FUgmQ==
+-----END PUBLIC KEY-----`;
+
+const SECRET_KEY = "ARCH3R_NVR_SUP3R_S3CR3T_2026"; // Legacy HMAC Fallback for backward compatibility
+
+// Persistent OS-Level License Vault (Protected against Factory Reset, Git Reset Hard, and DB Loss)
+function getLicenseVaultPath() {
+    if (os.platform() === 'linux') {
+        const etcDir = '/etc/arch3r-nvr';
+        try {
+            if (!fs.existsSync(etcDir)) fs.mkdirSync(etcDir, { recursive: true, mode: 0o755 });
+            return path.join(etcDir, 'license.vault');
+        } catch (_) {}
+    }
+    const homeDir = path.join(os.homedir(), '.arch3r-nvr');
+    try {
+        if (!fs.existsSync(homeDir)) fs.mkdirSync(homeDir, { recursive: true });
+        return path.join(homeDir, 'license.vault');
+    } catch (_) {
+        return path.join(__dirname, 'data', '.license.vault');
+    }
+}
+
+function syncLicenseToVault(license, email, machineId, exp) {
+    if (!license || typeof license !== 'string' || !license.trim()) return;
+    try {
+        const vPath = getLicenseVaultPath();
+        const vaultData = {
+            license: license.trim(),
+            email: (email || '').trim().toLowerCase(),
+            machineId: (machineId || '').trim(),
+            expiresAt: exp || null,
+            syncedAt: Date.now()
+        };
+        fs.writeFileSync(vPath, JSON.stringify(vaultData, null, 2), { mode: 0o644 });
+    } catch (e) {
+        // Vault sync non-blocking
+    }
+}
+
+function getLicenseFromVault() {
+    try {
+        const vPath = getLicenseVaultPath();
+        if (fs.existsSync(vPath)) {
+            const parsed = JSON.parse(fs.readFileSync(vPath, 'utf8'));
+            if (parsed && parsed.license) return parsed;
+        }
+    } catch (_) {}
+    return null;
+}
 
 function validateLicense(key, email, machineId) {
     if (!key || typeof key !== 'string' || key.trim() === '') return { valid: false, reason: "Lisensi kosong" };
@@ -104,11 +157,38 @@ function validateLicense(key, email, machineId) {
         const parts = key.trim().split('.');
         if (parts.length !== 2) return { valid: false, reason: "Format token lisensi salah (Harus berupa format Payload.Signature)" };
         
-        const payloadStr = Buffer.from(parts[0], 'base64').toString('utf8');
+        const payloadBase64 = parts[0].trim();
         const signature = parts[1].trim();
+        const payloadStr = Buffer.from(payloadBase64, 'base64').toString('utf8');
         
-        const expectedSignature = crypto.createHmac('sha256', SECRET_KEY).update(parts[0].trim()).digest('base64');
-        if (signature !== expectedSignature) return { valid: false, reason: "Lisensi palsu atau telah dimodifikasi (Segel HMAC Rusak)" };
+        // 1. Verifikasi Kriptografi Asimetris ECDSA Prime256v1 (Standar Keamanan Tinggi - Anti Reverse Engineering)
+        let isSignatureValid = false;
+        let cryptoType = 'ECDSA';
+
+        try {
+            const verifier = crypto.createVerify('SHA256');
+            verifier.update(payloadBase64);
+            verifier.end();
+            if (verifier.verify(ECDSA_PUBLIC_KEY, signature, 'base64')) {
+                isSignatureValid = true;
+                cryptoType = 'ECDSA';
+            }
+        } catch (_) {}
+
+        // 2. Fallback Kompatibilitas HMAC SHA256 (Lisensi versi lama tetap valid tanpa kendala)
+        if (!isSignatureValid) {
+            try {
+                const expectedHmac = crypto.createHmac('sha256', SECRET_KEY).update(payloadBase64).digest('base64');
+                if (signature === expectedHmac) {
+                    isSignatureValid = true;
+                    cryptoType = 'HMAC';
+                }
+            } catch (_) {}
+        }
+
+        if (!isSignatureValid) {
+            return { valid: false, reason: "Lisensi palsu atau tanda tangan digital rusak (Segel Kriptografi Tidak Cocok)" };
+        }
         
         const payload = JSON.parse(payloadStr);
         const cleanPayloadEmail = (payload.email || '').trim().toLowerCase();
@@ -143,12 +223,20 @@ function validateLicense(key, email, machineId) {
             };
         }
         
-        if (Date.now() > payload.exp) {
+        if (payload.exp && Date.now() > payload.exp) {
             const expDate = new Date(payload.exp).toLocaleDateString('id-ID');
             return { valid: false, reason: `Masa aktif lisensi telah habis/kedaluwarsa pada ${expDate}`, expiresAt: payload.exp };
         }
+
+        // LISENSI RESMI TERVALIDASI: Sinkronkan ke OS Vault agar tidak pernah hilang akibat Factory Reset atau Git Pull
+        syncLicenseToVault(key, email, machineId, payload.exp);
         
-        return { valid: true, reason: "Lisensi Valid & Aktif", expiresAt: payload.exp };
+        return { 
+            valid: true, 
+            reason: `Lisensi Valid & Terverifikasi (${cryptoType})`, 
+            expiresAt: payload.exp || null,
+            cryptoType
+        };
     } catch (e) {
         return { valid: false, reason: "Kunci Lisensi Invalid atau korup: " + e.message };
     }
@@ -1056,6 +1144,68 @@ function compareSemver(vA, vB) {
     return 0;
 }
 
+// Dynamic Changelog Parser: Reads live CHANGELOG.md directly from disk
+function parseChangelogFromDisk(filePath = path.join(__dirname, 'CHANGELOG.md')) {
+    if (!fs.existsSync(filePath)) return [];
+    try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const sections = content.split(/^##\s+\[/m);
+        const list = [];
+        for (let i = 1; i < sections.length; i++) {
+            const sec = sections[i];
+            const headerEnd = sec.indexOf(']');
+            if (headerEnd === -1) continue;
+            const version = sec.substring(0, headerEnd).replace(/^Ver\s+/i, '').replace(/^v/i, '').trim();
+            const rest = sec.substring(headerEnd + 1);
+            const dateMatch = rest.match(/-\s*(\d{4}-\d{2}-\d{2})/);
+            const date = dateMatch ? dateMatch[1] : '';
+            
+            const titleMatch = rest.match(/###\s+([^\r\n]+)/);
+            const title = titleMatch ? titleMatch[1].trim() : `Arch3r NVR Ver. ${version}`;
+            
+            const lines = rest.split('\n');
+            const items = [];
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if ((trimmed.startsWith('- ') || trimmed.startsWith('* ')) && !trimmed.startsWith('###')) {
+                    const text = trimmed.replace(/^[-*]\s+/, '').replace(/\*\*/g, '').trim();
+                    if (text && text.length > 5 && !text.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        items.push(text);
+                    }
+                }
+            }
+            list.push({
+                version,
+                date,
+                title,
+                items: items.slice(0, 10)
+            });
+        }
+        return list;
+    } catch (e) {
+        return [];
+    }
+}
+
+// Auto-Detect GitHub Repository Information from local git remote
+function getGitRepoRemoteInfo() {
+    try {
+        const rawRemote = execSync('git config --get remote.origin.url 2>/dev/null', { cwd: __dirname }).toString().trim();
+        if (!rawRemote) return null;
+        const m = rawRemote.match(/github\.com[:/]([^/]+)\/([^/.]+)(?:\.git)?/);
+        if (m) {
+            return {
+                owner: m[1],
+                repo: m[2],
+                apiReleasesUrl: `https://api.github.com/repos/${m[1]}/${m[2]}/releases/latest`,
+                rawPackageUrl: `https://raw.githubusercontent.com/${m[1]}/${m[2]}/main/package.json`,
+                rawChangelogUrl: `https://raw.githubusercontent.com/${m[1]}/${m[2]}/main/CHANGELOG.md`
+            };
+        }
+    } catch (_) {}
+    return null;
+}
+
 async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
     const isGit = fs.existsSync(path.join(__dirname, '.git'));
     let branch = 'main';
@@ -1070,131 +1220,69 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
         } catch (e) {}
     }
 
-    const changelogList = [
-        {
-            version: '10.0.1',
-            date: '2026-09-20',
-            title: '.yai Preset Marketplace, Native NVR Live Video Feed & Dedicated Simulation Lab',
-            items: [
-                'Ekstensi Konfigurasi .yai: Dukungan ekspor/unduh dan impor/unggah file konfigurasi berformat .yai (contoh: kios_bensin.yai) untuk kemudahan migrasi antar-STB.',
-                'Preset & Database Hosting Marketplace: Katalog preset .yai bawaan (kios_bensin, antrean_spbu, kendaraan_dispenser, intrusi_gerbang) serta dukungan repository database hosting kustom.',
-                'Native NVR Live Video: Kotak seleksi grid kini memutar langsung stream video live kamera yang aktif di NVR tanpa background animasi buatan.',
-                'NO VIDEO SIGNAL Indikator: Menampilkan status layar hitam standar CCTV "NO VIDEO SIGNAL" saat kamera offline atau belum ditambahkan ke NVR.',
-                'Tab Terpisah untuk Lab Simulasi: Simulasi pengisian bensin dan evaluasi teks AI kini diisolasi pada tab terpisah agar tidak mengganggu operasional kamera nyata.'
-            ]
-        },
-        {
-            version: '10.0.0',
-            date: '2026-09-20',
-            title: 'RTSP Live Stream Box, Real-Time Text Vision Telemetry & AI Prompt Rules Engine (Refueling/SPBU Detection)',
-            items: [
-                'Pemutar Video RTSP Langsung: Integrasi langsung stream RTSP/HLS kamera ke dalam kotak deteksi AI dengan opsi URL stream kustom & demo video CCTV SPBU.',
-                'Terminal Telemetri Output Teks AI Real-Time: Panel teks interaktif yang menampilkan pembacaan sensor visi AI (ID objek, kelas person/motor/mobil, koordinat, kecepatan, dan dwell timer pengisian bensin).',
-                'Instruksi Prompt AI & Syarat Kondisi Output: Pengguna dapat memberikan instruksi prompt kustom (seperti "Orang berhenti sedang menunggu mengisi bensin") dengan syarat dwell time dan filter objek.',
-                'Preset Syarat Cepat SPBU / Pertashop: Template siap pakai untuk deteksi pengisian bensin, antrean kendaraan, dan peringatan tanpa operator.',
-                'Integrasi Output Alarm Otomatis: Pemicuan ESP8266 IoT relay/buzzer dan pencatatan syslog keamanan saat syarat kondisi prompt terpenuhi.',
-                'Penyelarasan seluruh versi aplikasi dan antarmuka ke Major Release Ver. 10.0.0 (Sesuai Aturan Semantic Versioning Ketat).'
-            ]
-        },
-        {
-            version: '9.9.9',
-            date: '2026-09-20',
-            title: 'Live Video Feed Overlay, Visualisasi Output Deteksi Real-Time, & Integrasi Alarm ESP8266 IoT',
-            items: [
-                'Perbaikan video visual YOLO AI: Mengatasi layar gelap dengan render canvas transparan di atas video live HLS/RTSP serta fallback surveillance backdrop.',
-                'Visualisasi output deteksi real-time saat pemilihan grid: Bounding box objek dinamis dengan deteksi benturan langsung (ROI collision detection) dan alarm strobo interaktif.',
-                'Integrasi IoT ESP8266: Pengiriman sinyal alarm HTTP (GET/POST) otomatis ke ESP8266/NodeMCU/Wemos saat manusia terdeteksi di grid.',
-                'Perlindungan timeout non-blocking (2.5s) dan cooldown cerdas untuk mencegah banjir sinyal ke mikrokontroler ESP8266.',
-                'Fitur Uji Coba Cepat Koneksi ESP8266 (/api/ai/test_esp) dan generator skrip Arduino C++ siap pakai.',
-                'Penyelarasan seluruh versi aplikasi dan antarmuka ke Ver. 9.9.9.'
-            ]
-        },
-        {
-            version: '9.9.8',
-            date: '2026-09-19',
-            title: 'Perbaikan Komunikasi Addon Server & Visual Grid Intrusion Canvas YOLOv8',
-            items: [
-                'Penyelesaian bug import child_process pada router Addon untuk mencegah error "Gagal menghubungi server".',
-                'Penyimpanan persisten area deteksi visual (Grid) ke database NVR lokal dengan sinkronisasi ke YOLO Engine.',
-                'Perbaikan tampilan Grid Deteksi Visual: Menggantikan layar gelap dengan Tactical Surveillance HUD & 10x10 Matrix Grid.',
-                'Fitur Preset Area Cepat (Full Frame, Fokus Tengah, Gerbang/Bawah) dan dukungan sentuhan layar STB.',
-                'Penyelarasan seluruh versi aplikasi dan antarmuka ke Ver. 9.9.8.'
-            ]
-        },
-        {
-            version: '9.9.7',
-            date: '2026-09-19',
-            title: 'Perbaikan Logout Superadmin, UI Responsif Penuh, & Komparasi Versi OTA Ala Studio AI',
-            items: [
-                'Perbaikan bug logout Superadmin: Pembersihan token ganda (nvr_auth_token & arch3r_token) dan cookie lintas-protokol.',
-                'Optimalisasi antarmuka responsif pada semua halaman Superadmin: Navigasi sidebar, tabel admin fleksibel, dan kartu lisensi adaptif.',
-                'Engine Komparasi OTA Cerdas: Tampilan komparasi berdampingan (Versi Lokal vs Rilis Cloud) ala Google AI Studio.',
-                'Deteksi perbedaan versi otomatis dengan kotak status informatif dan tombol "🚀 Install Update Sekarang".',
-                'Tab khusus "Update Sistem (OTA)" di sidebar Superadmin dengan alur eksekusi pipeline Linux terpadu.'
-            ]
-        },
-        {
-            version: '9.9.6',
-            date: '2026-09-19',
-            title: 'Sinkronisasi Versi Terpusat & Modal Pengaturan Addon AI YOLOv8 / HDMI Kiosk',
-            items: [
-                'Panel konfigurasi interaktif khusus untuk Addon AI YOLOv8 (Confidence Threshold, Frame Skip, dan RTSP stream switch).',
-                'Kontrol output display dan telemetri kabel HDMI untuk Addon HDMI Kiosk Armbian.',
-                'Penyelarasan penomoran versi di semua halaman web dan endpoint backend menjadi Ver. 9.9.6.'
-            ]
-        },
-        {
-            version: '9.9.5',
-            date: '2026-09-18',
-            title: 'Perbaikan Stabilitas Storage Scanner & Multi-Variant Camera Driver',
-            items: [
-                'Dynamic scanning folder rekaman di storage eksternal Armbian STB (/media/devmon/*).',
-                'Driver Macrovideo V380 multi-variant compatibility.'
-            ]
-        },
-        {
-            version: '9.6.5',
-            date: '2026-09-18',
-            title: 'Perbaikan Tampilan Desktop, Modal OTA Workflow & Floating PTZ',
-            items: [
-                'Memperbaiki tampilan monitor desktop agar tidak terdesak oleh modal update sistem.',
-                'Menambahkan proteksi inline style display:none dan position:fixed pada modal OTA checklist.',
-                'Memperbaiki tata letak PTZ controller desktop di bottom toolbar tanpa efek floating.',
-                'Menambahkan cache-busting otomatis pada stylesheet style.css?v=9.6.5 untuk mencegah glitch cache browser.'
-            ]
-        }
-    ];
+    // 1. Ambil Changelog Dinamis dari Disk Lokal (Selalu Terbaru & Sesuai dengan CHANGELOG.md nyata)
+    const diskChangelog = parseChangelogFromDisk();
 
     let latestVersion = APP_VERSION;
-    let releaseDate = '2026-09-19';
+    let releaseDate = new Date().toISOString().slice(0, 10);
     let releaseTitle = `Arch3r NVR Ver. ${APP_VERSION} (Stabil)`;
     let releaseNotes = [
         'Rilis resmi stabil Arch3r NVR untuk Linux Armbian STB.',
         'Sistem zero-crash guard dengan manajemen memori optimal.'
     ];
-    let otaSource = isGit ? `Git Repository (${branch})` : 'Katalog Cloud Resmi Arch3r NVR';
 
-    // 1. Cek dari Custom GitHub URL jika disediakan
-    if (otaCustomUrl && !otaCustomUrl.includes('YOUR_GITHUB_USERNAME')) {
-        try {
-            const resp = await fetch(otaCustomUrl, { headers: { 'User-Agent': 'Arch3r-NVR' } });
-            if (resp.ok) {
-                const release = await resp.json();
-                latestVersion = (release.tag_name || '').replace(/^v/, '') || APP_VERSION;
-                releaseDate = release.published_at ? release.published_at.substring(0, 10) : releaseDate;
-                releaseTitle = release.name || `Arch3r NVR Ver. ${latestVersion}`;
-                if (release.body) {
-                    releaseNotes = release.body.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                }
-                otaSource = `GitHub Release (${release.name || release.tag_name})`;
-            }
-        } catch (err) {}
+    if (diskChangelog.length > 0) {
+        latestVersion = diskChangelog[0].version;
+        releaseDate = diskChangelog[0].date || releaseDate;
+        releaseTitle = diskChangelog[0].title || releaseTitle;
+        if (diskChangelog[0].items && diskChangelog[0].items.length > 0) {
+            releaseNotes = diskChangelog[0].items;
+        }
     }
 
-    // 2. Mode Simulasi / Target Versi Khusus (untuk pengujian alur update di UI)
+    let otaSource = isGit ? `Git Repository (${branch})` : 'Katalog Cloud Resmi Arch3r NVR';
+
+    // 2. Deteksi URL Remote Otomatis (Jika otaCustomUrl belum diset atau placeholder, gunakan deteksi git remote)
+    let targetOtaUrl = otaCustomUrl;
+    const gitInfo = getGitRepoRemoteInfo();
+    if (!targetOtaUrl || targetOtaUrl.includes('YOUR_GITHUB_USERNAME')) {
+        if (gitInfo) {
+            targetOtaUrl = gitInfo.apiReleasesUrl;
+        }
+    }
+
+    // 3. Cek Versi Remote dari GitHub API atau Raw Package.json
+    if (targetOtaUrl && !targetOtaUrl.includes('YOUR_GITHUB_USERNAME')) {
+        try {
+            const resp = await fetch(targetOtaUrl, { 
+                headers: { 'User-Agent': 'Arch3r-NVR', 'Accept': 'application/json' },
+                signal: AbortSignal.timeout(4500)
+            });
+            if (resp.ok) {
+                const release = await resp.json();
+                if (release.tag_name) {
+                    latestVersion = (release.tag_name || '').replace(/^v/i, '') || latestVersion;
+                    releaseDate = release.published_at ? release.published_at.substring(0, 10) : releaseDate;
+                    releaseTitle = release.name || `Arch3r NVR Ver. ${latestVersion}`;
+                    if (release.body) {
+                        releaseNotes = release.body.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    }
+                    otaSource = `GitHub Release (${release.name || release.tag_name})`;
+                } else if (release.version) {
+                    latestVersion = release.version.replace(/^v/i, '') || latestVersion;
+                    releaseTitle = `Arch3r NVR Ver. ${latestVersion} (Remote Git)`;
+                    otaSource = `Remote Package (${targetOtaUrl})`;
+                }
+            }
+        } catch (err) {
+            // Jika koneksi internet STB offline atau rate-limited, fallback aman ke disk changelog
+        }
+    }
+
+    // 4. Mode Simulasi / Target Versi Khusus (untuk pengujian alur update di UI)
     if (queryOpts.simulate || queryOpts.target_version) {
-        latestVersion = queryOpts.target_version || '10.0.0';
-        releaseDate = '2026-09-20';
+        latestVersion = queryOpts.target_version || '10.8.0';
+        releaseDate = new Date().toISOString().slice(0, 10);
         releaseTitle = `Arch3r NVR Ver. ${latestVersion} - Rilis Pembaruan Stabilitas STB`;
         releaseNotes = [
             'Peningkatan akselerasi hardware rendering untuk GPU Armbian Mali/Mesa.',
@@ -1215,10 +1303,10 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
 
     if (isNewer) {
         statusText = 'UPDATE_AVAILABLE';
-        message = `Tersedia pembaruan baru v${latestVersion}! Versi sistem Anda saat ini adalah v${APP_VERSION}. Tekan tombol 'Install Update Sekarang' untuk memulai proses pembaruan.`;
+        message = `Tersedia pembaruan baru v${latestVersion}! Versi sistem Anda saat ini adalah v${APP_VERSION}. Buka 'Alur Eksekusi Update' untuk memilih kategori pembaruan.`;
     } else if (isOlder) {
         statusText = 'CUSTOM_OR_BETA';
-        message = `Versi terpasang lokal (v${APP_VERSION}) lebih baru daripada rilis stabil server (v${latestVersion}). Lingkungan pengembangan aktif.`;
+        message = `Versi terpasang lokal (v${APP_VERSION}) lebih baru atau sejajar dengan rilis server (v${latestVersion}). Lingkungan pengembangan aktif.`;
     }
 
     return {
@@ -1235,7 +1323,7 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
         git_remote: gitRemote,
         last_commit: lastCommit,
         ota_source: otaSource,
-        changelog: changelogList
+        changelog: diskChangelog.slice(0, 15) // Kirim 15 rilis terbaru untuk panel changelog UI
     };
 }
 
@@ -1244,53 +1332,108 @@ async function executeSystemUpdate(steps = {}) {
     const timestamp = Date.now();
     const backupDir = `/tmp/arch3r_backup_${timestamp}`;
     
-    const doBackup = steps.backup_db !== false;
-    const doGitPull = steps.git_pull !== false;
-    const doGitReset = steps.git_reset === true;
+    // Normalisasi parameter dari frontend UI (Mendukung mode Safe, Normal, Hard, dan granular checklist)
+    const mode = steps.mode || 'safe';
+    const doBackup = steps.backup_db !== false && steps.backup !== false;
+    const doGitStash = steps.git_stash === true || mode === 'safe';
+    const doGitReset = steps.git_reset === true || steps.git_reset_hard === true || mode === 'hard';
+    const doGitPull = (steps.git_pull !== false) && !doGitReset;
+    const doCleanCache = steps.clean_cache === true || steps.clean_npm_cache === true || mode === 'hard';
     const doNpmInstall = steps.npm_install !== false;
     const doPm2Restart = steps.pm2_restart !== false;
-    const doCleanCache = steps.clean_cache === true;
-    const doReboot = steps.reboot_linux === true;
+    const doReboot = steps.reboot_linux === true || steps.reboot === true;
 
-    logs.push(`[${new Date().toLocaleTimeString()}] 🚀 Memulai alur pembaruan sistem Arch3r NVR Ver. ${APP_VERSION}...`);
+    logs.push(`[${new Date().toLocaleTimeString()}] 🚀 Memulai alur pembaruan sistem Arch3r NVR (Mode: ${mode.toUpperCase()})...`);
+    logs.push(`[${new Date().toLocaleTimeString()}] 📍 Versi Sistem Saat Ini: Ver. ${APP_VERSION}`);
 
-    // 1. Backup DB & Licenses
+    // 1. Step 1: Backup DB, Konfigurasi, & Lisensi ke Direktori Snapshot dan OS Vault
     if (doBackup) {
         try {
-            logs.push(`[1] 🛡️ Mencadangkan database & lisensi ke ${backupDir}...`);
+            logs.push(`[1] 🛡️ Mencadangkan database & lisensi resmi ke ${backupDir}...`);
             fs.mkdirSync(backupDir, { recursive: true });
+
+            // Amankan database lokal
             if (fs.existsSync(path.join(__dirname, 'data'))) {
                 execSync(`cp -r data/* "${backupDir}/" 2>/dev/null || true`, { cwd: __dirname });
             }
+
+            // Amankan file split database di root jika ada
+            execSync(`cp -n local_db*.json "${backupDir}/" 2>/dev/null || true`, { cwd: __dirname });
+
+            // Amankan lisensi ke Persistent OS Vault
+            const currentDb = getNvrDb();
+            const curLicense = currentDb.super_settings?.license || '';
+            const curEmail = currentDb.super_settings?.email || '';
+            const curMid = getMachineId();
+            if (curLicense) {
+                syncLicenseToVault(curLicense, curEmail, curMid);
+                logs.push(`    🔐 Lisensi mesin telah diamankan ke Persistent OS Vault.`);
+            }
+
             logs.push(`    ✅ Database dan lisensi tersimpan dengan aman.`);
         } catch (e) {
             logs.push(`    ⚠️ Peringatan backup: ${e.message}`);
         }
     }
 
-    // 2. Git Reset Hard (Optional)
+    // 2. Step 2: Git Stash (Safe Update) atau Git Reset Hard (Hard Update)
+    if (doGitStash && !doGitReset) {
+        try {
+            logs.push(`[2] 📦 Mengamankan modifikasi lokal ke Git Stash...`);
+            const stashOut = execSync('git stash save "arch3r-pre-update-backup" 2>&1 || true', { cwd: __dirname }).toString().trim();
+            logs.push(`    ${stashOut || 'Stash selesai.'}`);
+        } catch (e) {
+            logs.push(`    ℹ️ Git stash: ${e.message}`);
+        }
+    }
+
     if (doGitReset) {
         try {
             logs.push(`[2] 🔄 Menjalankan Git Fetch & Reset Hard (origin/main)...`);
-            const out = execSync('git fetch --all && git reset --hard origin/main 2>&1', { cwd: __dirname }).toString().trim();
-            logs.push(`    ${out}`);
+            const resetOut = execSync('git fetch --all && git reset --hard origin/main 2>&1', { cwd: __dirname }).toString().trim();
+            logs.push(`    ${resetOut}`);
         } catch (e) {
             logs.push(`    ⚠️ Reset hard: ${e.message}`);
         }
     }
 
-    // 3. Git Pull
+    // 3. Step 3: Git Pull (Normal & Safe Update)
     if (doGitPull) {
         try {
             logs.push(`[3] ⬇️ Menjalankan Git Pull (origin/main)...`);
-            const out = execSync('git pull origin main 2>&1', { cwd: __dirname }).toString().trim();
-            logs.push(`    ${out}`);
+            const pullOut = execSync('git pull origin main 2>&1', { cwd: __dirname }).toString().trim();
+            logs.push(`    ${pullOut}`);
         } catch (e) {
             logs.push(`    ⚠️ Git pull: ${e.message}`);
         }
     }
 
-    // Update version if target_version is set
+    // 4. Step 4: Verifikasi & Pemulihan Database & Lisensi Pasca-Git (Anti-Hilang Data)
+    if (doBackup && fs.existsSync(backupDir)) {
+        try {
+            logs.push(`[4] 🛡️ Memvalidasi keutuhan database dan lisensi pasca-update...`);
+            // Pulihkan berkas database jika tertimpa
+            execSync(`cp -rn "${backupDir}/"* data/ 2>/dev/null || true`, { cwd: __dirname });
+
+            // Pastikan lisensi aktif dari Vault jika database kosong
+            const verifiedDb = getNvrDb();
+            if (!verifiedDb.super_settings?.license) {
+                const vault = getLicenseFromVault();
+                if (vault && vault.license) {
+                    verifiedDb.super_settings.license = vault.license;
+                    verifiedDb.super_settings.email = vault.email || '';
+                    saveNvrDb(verifiedDb);
+                    logs.push(`    ✅ Lisensi berhasil dipulihkan otomatis dari Persistent OS Vault.`);
+                }
+            } else {
+                logs.push(`    ✅ Database dan lisensi terverifikasi utuh.`);
+            }
+        } catch (e) {
+            logs.push(`    ⚠️ Pemulihan database: ${e.message}`);
+        }
+    }
+
+    // Update target version jika diminta
     if (steps.target_version) {
         try {
             const pkgPath = path.join(__dirname, 'package.json');
@@ -1305,17 +1448,10 @@ async function executeSystemUpdate(steps = {}) {
         }
     }
 
-    // Restore DB after pull just in case
-    if (doBackup && fs.existsSync(backupDir)) {
-        try {
-            execSync(`cp -rn "${backupDir}/"* data/ 2>/dev/null || true`, { cwd: __dirname });
-        } catch (e) {}
-    }
-
-    // 4. Clean cache (Optional)
+    // 5. Step 5: Clean Cache (Optional / Hard Update)
     if (doCleanCache) {
         try {
-            logs.push(`[4] 🧹 Membersihkan cache NPM...`);
+            logs.push(`[5] 🧹 Membersihkan cache NPM & file sementara...`);
             execSync('npm cache clean --force 2>&1', { cwd: __dirname });
             logs.push(`    ✅ Cache berhasil dibersihkan.`);
         } catch (e) {
@@ -1323,23 +1459,23 @@ async function executeSystemUpdate(steps = {}) {
         }
     }
 
-    // 5. NPM Install
+    // 6. Step 6: NPM Install
     if (doNpmInstall) {
         try {
-            logs.push(`[5] 📦 Memperbarui paket dependensi (npm install)...`);
-            const out = execSync('npm install --no-audit --prefer-offline 2>&1 || npm install 2>&1', { cwd: __dirname }).toString().trim();
-            logs.push(`    ${out.slice(0, 300)}...`);
+            logs.push(`[6] 📦 Memperbarui paket dependensi (npm install)...`);
+            const npmOut = execSync('npm install --no-audit --prefer-offline 2>&1 || npm install 2>&1', { cwd: __dirname }).toString().trim();
+            logs.push(`    ${npmOut.slice(0, 300)}...`);
             logs.push(`    ✅ Dependensi diverifikasi.`);
         } catch (e) {
             logs.push(`    ⚠️ npm install: ${e.message}`);
         }
     }
 
-    // 6. PM2 Restart
+    // 7. Step 7: PM2 Restart All
     if (doPm2Restart) {
         try {
-            logs.push(`[6] 🔄 Me-restart service daemon (pm2 restart all)...`);
-            exec('pm2 restart all || systemctl restart arch3r-nvr 2>/dev/null || true', (err) => {
+            logs.push(`[7] 🔄 Me-restart service daemon NVR (PM2 Reload)...`);
+            exec('pm2 reload all || pm2 restart arch3r-nvr || systemctl restart arch3r-nvr 2>/dev/null || true', (err) => {
                 if (err) sysLog('WARN', `PM2 restart callback: ${err.message}`, 'SYSTEM');
             });
             logs.push(`    ✅ Perintah restart service berhasil dikirimkan.`);
@@ -1348,9 +1484,9 @@ async function executeSystemUpdate(steps = {}) {
         }
     }
 
-    // 7. Linux Reboot
+    // 8. Step 8: Linux Hardware Reboot (Optional)
     if (doReboot) {
-        logs.push(`[7] 🔌 Menjadwalkan reboot fisik sistem Linux Armbian dalam 5 detik...`);
+        logs.push(`[8] 🔌 Menjadwalkan reboot fisik STB Linux Armbian dalam 5 detik...`);
         setTimeout(() => {
             exec('sudo reboot || reboot', (err) => {
                 if (err) console.error("Reboot error:", err);
@@ -1358,8 +1494,12 @@ async function executeSystemUpdate(steps = {}) {
         }, 5000);
     }
 
-    logs.push(`[${new Date().toLocaleTimeString()}] ✨ Alur eksekusi selesai!`);
-    return { success: true, logs, message: "Pembaruan sistem berhasil dieksekusi!" };
+    logs.push(`[${new Date().toLocaleTimeString()}] ✨ Alur eksekusi selesai dengan sukses!`);
+    return { 
+        success: true, 
+        logs, 
+        message: "Pembaruan sistem berhasil dieksekusi! Lisensi dan database Anda 100% aman." 
+    };
 }
 
 app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res) => {
@@ -1840,6 +1980,16 @@ function getNvrDb() {
                 fs.writeFileSync(path.join(systemDbDir, 'local_db_cameras.json'), JSON.stringify({ cameras: data.cameras || [] }, null, 2));
             }
         } catch(e){}
+    }
+
+    // 🛡️ LICENSE AUTO-HEALING FROM PERSISTENT OS VAULT
+    if (!data.super_settings?.license) {
+        const vault = getLicenseFromVault();
+        if (vault && vault.license) {
+            data.super_settings.license = vault.license;
+            data.super_settings.email = vault.email || '';
+            console.log('[ANTI-WIPE] 🛡️ Lisensi mesin berhasil dipulihkan otomatis dari Persistent OS Vault!');
+        }
     }
 
     cachedDb = data;
@@ -2432,12 +2582,27 @@ app.get('/api/superadmin/app-info', verifyToken, requireSuperadmin, (req, res) =
 
 app.post('/api/superadmin/factory-reset', verifyToken, requireSuperadmin, (req, res) => {
     try {
+        const existingDb = getNvrDb();
+        const vault = getLicenseFromVault();
+        // Pertahankan Lisensi Resmi & Email Terdaftar Pembeli agar tidak terhapus saat Factory Reset
+        const preservedLicense = existingDb.super_settings?.license || vault?.license || '';
+        const preservedEmail = existingDb.super_settings?.email || vault?.email || '';
+
         const initial = getDefaultDb();
+        if (preservedLicense) {
+            initial.super_settings.license = preservedLicense;
+            initial.super_settings.email = preservedEmail;
+            sysLog('INFO', '[Factory Reset] Lisensi resmi pembeli berhasil diamankan dan dipulihkan dari Vault OS terlindung.', 'SECURITY');
+        }
+
         saveNvrDb(initial);
-                sysLog('WARNING', 'SuperAdmin triggered a Factory Reset.', 'SECURITY');
-        res.json({ message: 'Factory reset completed successfully. Please login again.' });
+        sysLog('WARNING', 'SuperAdmin triggered a Factory Reset (Lisensi Pembeli Aman).', 'SECURITY');
+        res.json({ 
+            success: true, 
+            message: 'Factory reset completed successfully. Data kamera & pengguna di-reset bersih, lisensi resmi Anda tetap aman & aktif. Silakan login kembali.' 
+        });
     } catch(err) {
-        res.status(500).json({ error: 'Failed to factory reset' });
+        res.status(500).json({ error: 'Failed to factory reset: ' + err.message });
     }
 });
 

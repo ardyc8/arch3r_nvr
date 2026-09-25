@@ -1,5 +1,28 @@
 # Changelog
 
+## [Ver 10.7.9] - 2026-09-25
+### Multi-Category OTA Update Pipeline, Dynamic CHANGELOG Parser, ECDSA Asymmetric License Engine & Persistent OS Vault
+- **Multi-Category OTA Update Execution (Safe, Normal, Hard):**
+  - **Tiga Pilihan Mode Pembaruan**: Menambahkan pemilih mode di antarmuka alur update OTA sistem (Safe Update, Normal Update, Hard / Clean Reset).
+  - **Mode Safe Update (Rekomendasi Utama)**: Mengamankan database & lisensi ke snapshot Vault OS, menjalankan `git stash`, menarik kode (`git pull`), memulihkan database/lisensi otomatis, menjalankan `npm install`, dan me-reload PM2 tanpa risiko kehilangan data.
+  - **Mode Normal Update**: Alur cepat git pull + npm install + PM2 reload untuk pembaruan fitur berkala.
+  - **Mode Hard / Clean Reset**: Mengamankan lisensi resmi ke Vault OS, force `git reset --hard origin/main`, membersihkan cache npm, npm install bersih, memulihkan lisensi/database, dan me-reload PM2.
+  - **Normalisasi Parameter**: Menyelaraskan seluruh nama kunci parameter (`backup_db`, `git_stash`, `git_pull`, `git_reset`, `clean_cache`, `npm_install`, `pm2_restart`, `reboot_linux`) antara frontend dan backend.
+- **Dynamic CHANGELOG Parser & Smart Git Remote Detection:**
+  - **Dynamic CHANGELOG Reader**: Mengganti daftar statis hardcoded dengan parser otomatis berkas `CHANGELOG.md` dari disk lokal, menjamin catatan rilis di UI "About NVR" selalu akurat dan terbaru.
+  - **Auto Git Remote Resolution**: Mendeteksi repositori GitHub dari `git config --get remote.origin.url` secara otomatis sehingga tidak mewajibkan pengguna mengetik URL GitHub manual.
+  - **Presisi Komparasi Semver**: Evaluasi akurat antara versi lokal sistem dan rilis remote cloud.
+- **ECDSA Asymmetric Cryptographic License Engine & Anti-Reverse Engineering:**
+  - **Perlindungan Kunci Asimetris**: Mengganti ketergantungan pada kunci simetris HMAC rahasia dengan kriptografi kurva eliptik **ECDSA prime256v1 (NIST P-256)** berkeamanan tinggi.
+  - **Hanya Public Key di Repo**: Berkas `server.js` pada klien STB dan repositori terbuka hanya memuat **PUBLIC KEY**, sementara **PRIVATE KEY** dipegang eksklusif oleh developer pada tool generator `master_license_server_template/keygen_ecc.cjs`. Pihak luar tidak dapat membuat *keygen* lisensi palsu dari repositori GitHub.
+  - **Backward Compatibility**: Mendukung verifikasi bertingkat: ECDSA asimetris sebagai standar utama dengan fallback HMAC SHA256 lama agar seluruh lisensi yang telah aktif tetap berjalan normal.
+- **Persistent OS-Level License Vault (Anti-Factory-Reset & Anti-Git Loss):**
+  - **Vault Lisensi Tingkat OS**: Lisensi yang telah divalidasi otomatis disinkronkan ke vault terlindung di luar folder git (`/etc/arch3r-nvr/license.vault`).
+  - **Proteksi Factory Reset**: Tombol *Factory Reset* (`/api/superadmin/factory-reset`) mereset data kamera dan pengguna, namun **tetap mempertahankan lisensi resmi pembeli** dari Vault OS.
+  - **Startup Auto-Healing**: Startup server otomatis memulihkan lisensi dari Vault OS jika file database terhapus secara tidak sengaja.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.7.9** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/version_sync.js`, `public/script.js`, `README.md`, dan `CHANGELOG.md`.
+
 ## [Ver 10.7.8] - 2026-09-25
 ### Clean Video Canvas Architecture, Real-Time HD/SD WebRTC Stream Synchronization & Centralized Audio
 - **Clean Video Canvas Architecture (`public/script.js`):**

@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.7.8",
-  "description": "Arch3r NVR Ver. 10.7.8 - Clean Video Canvas Architecture, Real-Time HD/SD WebRTC Stream Synchronization, and Centralized PTZ/Player Audio Controls.",
+  "name": "Arch3r NVR Ver. 10.7.9",
+  "description": "Arch3r NVR Ver. 10.7.9 - Multi-Category OTA System Update Pipeline (Safe, Normal, Hard), Dynamic CHANGELOG Parser, ECDSA Asymmetric License Engine & Persistent OS Vault.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
