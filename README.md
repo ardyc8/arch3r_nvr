@@ -1,5 +1,16 @@
-# ⚡ Arch3r NVR (Ver. 10.7.9)
+# ⚡ Arch3r NVR (Ver. 10.8.0)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.8.0:
+- **Strict Gitignore Hardening for License Generator & Security Protocol Enforcement**:
+  1. **Isolasi Folder Master Generator Lisensi (`.gitignore`)**:
+     - Mendaftarkan direktori `master_license_server_template/` dan seluruh berkas di dalamnya ke dalam `.gitignore` secara permanen untuk mematuhi Protokol Keamanan Pasal 5 & 8.
+     - Memastikan skrip pembuat lisensi pihak pengembang (Private Key rahasia, generator mandiri `keygen_ecc.cjs`, dan template server lisensi master) tidak pernah dapat ter-push atau bocor ke repositori publik GitHub pengguna.
+  2. **Prosedur Pembersihan & Standar Pembuatan Lisensi Resmi**:
+     - Menyediakan panduan pembersihan cache git (`git rm -r --cached master_license_server_template`) jika direktori master sempat terlacak di masa lalu.
+     - Menstandarisasi alur pembuatan lisensi resmi berbasis ECDSA: dijalankan secara offline dan privat di laptop/workstation pengembang menggunakan Machine ID STB klien tanpa melibatkan server klien.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.0** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/version_sync.js`, `public/script.js`, `README.md`, dan `CHANGELOG.md` sesuai Semantic Versioning Strict (maksimal digit 9, rollover 10.7.9 -> 10.8.0).
 
 ### 📋 Changelog Pembaruan Ver. 10.7.9:
 - **Multi-Category OTA Update Pipeline, Dynamic CHANGELOG Parser, ECDSA Asymmetric License Engine & Persistent OS Vault**:

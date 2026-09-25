@@ -17,6 +17,8 @@ master_keygen.*
 private_key*.pem
 license_vault/
 licenses.json
+master_license_server_template/
+master_license_server_template/*
 
 # Build Binaries
 archer-nvr-arm64

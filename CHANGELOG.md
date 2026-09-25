@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 10.8.0] - 2026-09-25
+### Strict Gitignore Hardening for License Server Generator & Security Protocol Enforcement
+- **Repository Security Hardening & Gitignore Protection (`.gitignore`):**
+  - **Isolasi Folder Master Generator Lisensi**: Mendaftarkan `master_license_server_template/` dan seluruh isinya ke dalam `.gitignore` secara permanen sesuai Protokol Pengembangan Arch3r NVR (Pasal 5 & 8).
+  - **Pencegahan Kebocoran Kunci Rahasia**: Memastikan skrip pembuat lisensi pihak pengembang (Private Key, skrip keygen mandiri, dan template server verifikasi) tidak pernah dapat ter-push atau terekspos ke repositori publik GitHub.
+- **Asymmetric License Generation Architecture Guide & Documentation:**
+  - Dokumentasi prosedur pembersihan riwayat cache git jika berkas master sempat terlacak (`git rm -r --cached master_license_server_template`).
+  - Standarisasi tata cara pembuatan lisensi resmi ECDSA secara offline di laptop/workstation pribadi pengembang berbasis Machine ID klien.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.0** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/version_sync.js`, `public/script.js`, `README.md`, dan `CHANGELOG.md` sesuai Semantic Versioning Strict (digit patch maksimal 9, rollover 10.7.9 -> 10.8.0).
+
 ## [Ver 10.7.9] - 2026-09-25
 ### Multi-Category OTA Update Pipeline, Dynamic CHANGELOG Parser, ECDSA Asymmetric License Engine & Persistent OS Vault
 - **Multi-Category OTA Update Execution (Safe, Normal, Hard):**
