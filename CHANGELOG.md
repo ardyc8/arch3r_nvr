@@ -1,5 +1,21 @@
 # Changelog
 
+## [Ver 10.7.8] - 2026-09-25
+### Clean Video Canvas Architecture, Real-Time HD/SD WebRTC Stream Synchronization & Centralized Audio
+- **Clean Video Canvas Architecture (`public/script.js`):**
+  - **Eliminasi Tombol Floating Audio Redundan**: Menghapus tombol floating audio (`cam-audio-toggle`) dari seluruh kanvas sel kamera grid desktop maupun mobile. Sel video CCTV kini bersih murni menampilkan stream video tanpa distorsi elemen tombol yang tumpang tindih.
+- **Centralized Audio Controls (`public/script.js` & `public/index.html`):**
+  - **Pemusatan Kontrol Suara**: Seluruh interaksi audio kini terpusat pada bilah kendali terpadu (**Unified PTZ / Player Control Bar**), yaitu tombol mute/unmute (`🔊 Audio` / `btnPlayerAudioMute`) dan slider volume (`playerVolumeSlider`).
+  - **Dukungan Dual-Layout Desktop & Mobile**: `toggleSelectedMute()` dan `setSelectedVolume()` kini mengenali elemen video baik pada `#cell_{id}` (desktop) maupun `#m_cell_{id}` (mobile).
+  - **Proteksi Audio Eksklusif**: Mengaktifkan suara pada kamera terpilih secara otomatis membisukan kamera lainnya untuk mencegah interferensi suara.
+- **Real-Time HD/SD WebRTC & HLS Stream Synchronization (`public/script.js`):**
+  - **Penyelarasan Nilai Awal**: Memastikan `camStreamQualities[cam.id]` terinisialisasi secara sinkron dengan mode grid (SD saat multi-grid dengan sub-stream aktif, HD saat single view) sehingga teks tombol kontrol toolbar dan badge sel video tidak pernah bertentangan.
+  - **Pergantian Kualitas WebRTC Dinamis**: `toggleSelectedQuality()` kini memanggil `playUltraStream()` dengan pembersihan sesi WebRTC lama secara menyeluruh (`destroyHlsPlayers`, `close` peer connection lama), sehingga browser segera menyambung ke jalur WebRTC WHEP yang baru (`camId` untuk HD, `camId_sub` untuk SD) tanpa tertahan di stream lama.
+  - **Validasi Sub-Stream**: Menyediakan notifikasi informatif jika kamera yang dipilih tidak memiliki konfigurasi URL Sub-Stream terpisah.
+  - **Two-Way Reactive Badge Sync**: Badge kualitas di pojok kanvas sel (`#badge_quality_{id}` & `#m_badge_quality_{id}`) dan tombol toolbar (`#playerQualityLabel`) diperbarui secara instan dua arah.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.7.8** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/script.js`, `README.md`, dan `CHANGELOG.md`.
+
 ## [Ver 10.7.7] - 2026-09-24
 ### Professional OSD Stream State Overlay Engine & Universal V380/ONVIF Audio Transcoding
 - **Professional Video Player OSD State Overlay Engine (`public/script.js` & `public/style.css`):**

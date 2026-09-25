@@ -1,5 +1,21 @@
-# ⚡ Arch3r NVR (Ver. 10.7.7)
+# ⚡ Arch3r NVR (Ver. 10.7.8)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.7.8:
+- **Clean Video Canvas Architecture, Real-Time HD/SD WebRTC Stream Synchronization & Centralized Audio**:
+  1. **Pembersihan Kanvas Video (Zero Redundant Overlay Buttons)**:
+     - Menghapus tombol floating audio (`cam-audio-toggle`) dari seluruh kanvas sel kamera grid desktop maupun mobile.
+     - Kanvas video CCTV kini kembali bersih, murni, dan tidak terhalang elemen kontrol redundan.
+  2. **Pemusatan Kontrol Suara (Centralized Audio in PTZ & Player Toolbar)**:
+     - Mengintegrasikan fungsi mute/unmute (`window.toggleSelectedMute`) dan slider volume (`window.setSelectedVolume`) di bilah kontrol terpadu PTZ agar langsung mengendalikan kamera yang sedang aktif dipilih (*cell focus*).
+     - Menambahkan proteksi eksklusif per-kamera: mengaktifkan suara pada satu kamera secara otomatis membisukan kamera lain untuk mencegah tumpang tindih audio.
+  3. **Sinkronisasi Sempurna Aliran Kualitas HD/SD Real-Time**:
+     - Memperbaiki konflik inisialisasi default antara tampilan grid dan tombol kontrol toolbar sehingga status kualitas selalu selaras sejak pertama kali dimuat.
+     - Memperbarui fungsi pergantian kualitas (`toggleSelectedQuality`) untuk menutup sesi WebRTC lama secara bersih dan menginisialisasi ulang aliran WebRTC WHEP / HLS (`playUltraStream`) dengan jalur stream baru (`camId` untuk HD, `camId_sub` untuk SD).
+     - Menambahkan validasi keberadaan Sub-Stream sebelum pergantian kualitas dilakukan.
+     - Menyinkronkan teks badge kualitas di pojok kanvas sel (`badge_quality_...`) dan tombol toolbar secara dua arah (*two-way reactive synchronization*).
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.7.8** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/script.js`, `README.md`, dan `CHANGELOG.md`.
 
 ### 📋 Changelog Pembaruan Ver. 10.7.7:
 - **Professional OSD Stream State Overlay Engine & Universal V380/ONVIF Audio Transcoding**:

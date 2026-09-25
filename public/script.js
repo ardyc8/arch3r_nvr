@@ -3378,6 +3378,12 @@ async function fetchCameras() {
                 btnQuality.classList.remove('is-sd');
             }
         }
+        if (effectiveId) {
+            const bDesk = document.getElementById('badge_quality_' + effectiveId);
+            if (bDesk) bDesk.textContent = q;
+            const bMob = document.getElementById('m_badge_quality_' + effectiveId);
+            if (bMob) bMob.textContent = q;
+        }
     }
     window.updateQualityButtonUI = updateQualityButtonUI;
 
@@ -3387,39 +3393,46 @@ async function fetchCameras() {
             alert('Pilih kamera di layar terlebih dahulu.');
             return;
         }
-        
+
+        const cam = cameras.find(c => c.id === targetId);
+        if (!cam) return;
+
+        const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
+        if (!hasDistinctSub) {
+            alert('Kamera ini tidak memiliki konfigurasi Sub-Stream terpisah (hanya 1 aliran utama HD).');
+            return;
+        }
+
         const cur = window.camStreamQualities[targetId] || 'HD';
         const next = (cur === 'HD') ? 'SD' : 'HD';
         window.camStreamQualities[targetId] = next;
-        
+
         updateQualityButtonUI(targetId);
-        
-        // Find video element and switch source dynamically
-        const cam = cameras.find(c => c.id === targetId);
-        if (!cam) return;
-        
+
+        // Path stream yang tepat berdasarkan kualitas baru
+        const streamPath = (next === 'SD')
+            ? (cam.mediaMtxSubPath || ((cam.mediaMtxPath || cam.id) + '_sub'))
+            : (cam.mediaMtxPath || cam.id);
+
         let hlsUrl = '';
         if (next === 'SD') {
             if (cam.subStreamUrl && cam.subStreamUrl.startsWith('http')) {
                 hlsUrl = cam.subStreamUrl;
-            } else if (cam.subStreamUrl && cam.subStreamUrl.trim() !== '') {
-                hlsUrl = '/stream/' + (cam.mediaMtxPath || cam.id) + '_sub/index.m3u8?token=' + encodeURIComponent(getAuthToken());
             } else {
-                hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+                hlsUrl = '/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken());
             }
         } else {
-            hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + (cam.mediaMtxPath || cam.id) + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+            hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') 
+                ? cam.mainStreamUrl 
+                : ('/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
         }
 
+        // Beralih stream secara dinamis di video element via playUltraStream (menutup WebRTC lama & membuat sesi baru)
         const cell = document.getElementById('cell_' + targetId) || document.getElementById('m_cell_' + targetId);
         if (cell) {
             const video = cell.querySelector('video');
             if (video && video.id) {
-                if (activeHlsPlayers[video.id]) {
-                    activeHlsPlayers[video.id].destroy();
-                    delete activeHlsPlayers[video.id];
-                }
-                initHlsPlayer(video.id, hlsUrl);
+                playUltraStream(video.id, hlsUrl, streamPath);
             }
         }
     };
@@ -3546,19 +3559,25 @@ async function fetchCameras() {
     window.toggleSelectedMute = function() {
         const targetId = selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : (cameras[0]?.id));
         if (!targetId) return;
-        const cell = document.getElementById('cell_' + targetId);
+        const cell = document.getElementById('cell_' + targetId) || document.getElementById('m_cell_' + targetId);
         const video = cell ? cell.querySelector('video') : null;
         const icon = document.getElementById('playerMuteIcon');
         const btn = document.getElementById('btnPlayerAudioMute');
         const sliderVol = document.getElementById('selectedCamVolume');
         if (video) {
             video.muted = !video.muted;
+            if (!video.muted) {
+                // Senyapkan kamera lain agar audio terfokus ke kamera yang dipilih
+                document.querySelectorAll('.cam-player-video').forEach(v => {
+                    if (v !== video) v.muted = true;
+                });
+                if (!video.volume || video.volume === 0) video.volume = 1.0;
+                video.play().catch(() => {});
+            }
             if (icon) icon.textContent = video.muted ? '🔇' : '🔊';
             if (btn && !icon) btn.textContent = video.muted ? '🔇 Bisu' : '🔊 Suara';
-            if (sliderVol && video.muted) {
-                sliderVol.value = 0;
-            } else if (sliderVol && !video.muted) {
-                sliderVol.value = Math.round((video.volume || 1) * 100);
+            if (sliderVol) {
+                sliderVol.value = video.muted ? 0 : Math.round((video.volume || 1) * 100);
             }
         }
     };
@@ -3566,18 +3585,25 @@ async function fetchCameras() {
     window.setSelectedVolume = function(val) {
         const targetId = selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : (cameras[0]?.id));
         if (!targetId) return;
-        const cell = document.getElementById('cell_' + targetId);
+        const cell = document.getElementById('cell_' + targetId) || document.getElementById('m_cell_' + targetId);
         const video = cell ? cell.querySelector('video') : null;
+        const icon = document.getElementById('playerMuteIcon');
         const btn = document.getElementById('btnPlayerAudioMute');
         if (video) {
             const numVal = parseInt(val, 10);
             video.volume = Math.max(0, Math.min(1, numVal / 100));
             if (numVal > 0) {
+                document.querySelectorAll('.cam-player-video').forEach(v => {
+                    if (v !== video) v.muted = true;
+                });
                 video.muted = false;
-                if (btn) btn.textContent = '🔊 Suara';
+                video.play().catch(() => {});
+                if (icon) icon.textContent = '🔊';
+                if (btn && !icon) btn.textContent = '🔊 Suara';
             } else {
                 video.muted = true;
-                if (btn) btn.textContent = '🔇 Bisu';
+                if (icon) icon.textContent = '🔇';
+                if (btn && !icon) btn.textContent = '🔇 Bisu';
             }
         }
     };
@@ -3845,37 +3871,8 @@ async function fetchCameras() {
     }
     window.setPlaybackState = setPlaybackState;
 
-    window.toggleCellAudio = function(videoId, btn) {
-        const video = document.getElementById(videoId);
-        if (!video) return;
-
-        // Senyapkan kamera lain agar audio tidak bertabrakan
-        document.querySelectorAll('.cam-player-video').forEach(v => {
-            if (v.id !== videoId) {
-                v.muted = true;
-                const otherBtn = document.getElementById('btnAudio_' + v.id);
-                if (otherBtn) {
-                    otherBtn.textContent = '🔇';
-                    otherBtn.style.background = 'rgba(15, 23, 42, 0.75)';
-                }
-            }
-        });
-
-        if (video.muted) {
-            video.muted = false;
-            video.volume = 1.0;
-            if (btn) {
-                btn.textContent = '🔊';
-                btn.style.background = 'rgba(16, 185, 129, 0.9)';
-            }
-            video.play().catch(() => {});
-        } else {
-            video.muted = true;
-            if (btn) {
-                btn.textContent = '🔇';
-                btn.style.background = 'rgba(15, 23, 42, 0.75)';
-            }
-        }
+    window.toggleCellAudio = function(videoId) {
+        window.toggleSelectedMute();
     };
 
     // WebRTC WHEP Ultra-Low Latency Player (~0.1s delay) with Auto Fallback to HLS
@@ -4089,9 +4086,11 @@ async function fetchCameras() {
                     
                     // Dual Stream Auto Switch: SD for multi-grid if distinct subStream exists, HD for single-view
                     const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
-                    const userQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
-                    const defaultQuality = (count > 1 && hasDistinctSub) ? 'SD' : 'HD';
-                    const curQuality = userQuality || defaultQuality;
+                    let curQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
+                    if (!curQuality) {
+                        curQuality = (count > 1 && hasDistinctSub) ? 'SD' : 'HD';
+                        window.camStreamQualities[cam.id] = curQuality;
+                    }
                     let hlsUrl = '';
                     const streamPath = (curQuality === 'SD' && hasDistinctSub)
                         ? (cam.mediaMtxSubPath || ((cam.mediaMtxPath || cam.id) + '_sub'))
@@ -4120,14 +4119,11 @@ async function fetchCameras() {
 
                             <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:5px; align-items:center;">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                <span class="badge" style="font-size:0.65rem; padding:2px 5px; background:rgba(0,0,0,0.6);">${curQuality}</span>
+                                <span id="badge_quality_${cam.id}" class="badge" style="font-size:0.65rem; padding:2px 5px; background:rgba(0,0,0,0.6);">${curQuality}</span>
                             </div>
                             <div class="cam-title-bar" style="z-index:14;">
                                 ${cam.name || ('Kamera ' + (i + 1))}
                             </div>
-                            <button id="btnAudio_${videoId}" class="cam-audio-toggle" title="Nyalakan / Matikan Suara Kamera" onclick="event.stopPropagation(); window.toggleCellAudio('${videoId}', this);">
-                                🔇
-                            </button>
                         </div>
                     `;
                     inits.push(() => {
@@ -4163,9 +4159,11 @@ async function fetchCameras() {
                     mCell.onclick = () => window.selectCellForPtz(cam.id);
                     
                     const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
-                    const userQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
-                    const defaultQuality = (count > 1 && hasDistinctSub) ? 'SD' : 'HD';
-                    const curQuality = userQuality || defaultQuality;
+                    let curQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
+                    if (!curQuality) {
+                        curQuality = (count > 1 && hasDistinctSub) ? 'SD' : 'HD';
+                        window.camStreamQualities[cam.id] = curQuality;
+                    }
                     let hlsUrl = '';
                     const streamPath = (curQuality === 'SD' && hasDistinctSub)
                         ? (cam.mediaMtxSubPath || ((cam.mediaMtxPath || cam.id) + '_sub'))
@@ -4194,14 +4192,11 @@ async function fetchCameras() {
 
                             <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:5px; align-items:center;">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                <span class="badge" style="font-size:0.65rem; padding:2px 5px; background:rgba(0,0,0,0.6);">${curQuality}</span>
+                                <span id="m_badge_quality_${cam.id}" class="badge" style="font-size:0.65rem; padding:2px 5px; background:rgba(0,0,0,0.6);">${curQuality}</span>
                             </div>
                             <div class="cam-title-bar" style="z-index:14;">
                                 ${cam.name || ('Kamera ' + (i + 1))}
                             </div>
-                            <button id="btnAudio_${videoId}" class="cam-audio-toggle" title="Nyalakan / Matikan Suara Kamera" onclick="event.stopPropagation(); window.toggleCellAudio('${videoId}', this);">
-                                🔇
-                            </button>
                         </div>
                     `;
                     inits.push(() => {
@@ -5313,7 +5308,7 @@ let allLogsCache = [];
             if (res.ok) {
                 const data = await res.json();
                 
-                if (elVersion) elVersion.textContent = 'Versi ' + (data.appVersion || '10.7.7');
+                if (elVersion) elVersion.textContent = 'Versi ' + (data.appVersion || '10.7.8');
                 if (elMachineId) elMachineId.textContent = data.machineId || '-';
                 if (elEmail) elEmail.textContent = data.registeredEmail || '-';
                 
@@ -5339,13 +5334,13 @@ let allLogsCache = [];
                     }
                 }
             } else {
-                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.7';
+                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.8';
                 if (elStatus && elStatus.textContent.includes('Memuat')) elStatus.innerHTML = '<span style="color:#10b981; font-weight:600;">Sistem Aktif</span>';
                 if (elDays && elDays.textContent.includes('Memuat')) elDays.textContent = 'Mode Produksi Lokal';
             }
         } catch(e) {
             console.error('Gagal memuat info About', e);
-            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.7';
+            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.7.8';
         }
     }
     window.fetchAboutInfo = fetchAboutInfo;
