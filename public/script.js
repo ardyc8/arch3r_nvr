@@ -5369,13 +5369,13 @@ let allLogsCache = [];
                     }
                 }
             } else {
-                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.5';
+                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.6';
                 if (elStatus && elStatus.textContent.includes('Memuat')) elStatus.innerHTML = '<span style="color:#10b981; font-weight:600;">Sistem Aktif</span>';
                 if (elDays && elDays.textContent.includes('Memuat')) elDays.textContent = 'Mode Produksi Lokal';
             }
         } catch(e) {
             console.error('Gagal memuat info About', e);
-            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.5';
+            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.6';
         }
     }
     window.fetchAboutInfo = fetchAboutInfo;
@@ -5474,8 +5474,8 @@ let allLogsCache = [];
 
             if (badge) {
                 const isNew = data.update_available || data.isUpdateAvailable;
-                const curVer = data.current_version || window.APP_VERSION || '10.8.5';
-                const latVer = data.latest_version || window.APP_VERSION || '10.8.5';
+                const curVer = data.current_version || window.APP_VERSION || '10.8.6';
+                const latVer = data.latest_version || window.APP_VERSION || '10.8.6';
                 let label = '• Versi Terbaru';
                 if (isNew) {
                     if (data.commits_ahead && data.commits_ahead > 0 && curVer === latVer) {

@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.8.5",
-  "description": "Arch3r NVR Ver. 10.8.5 - Proportional Viewport Distribution, Zero-Gap Mobile Layout, Uniform Menu Padding & Anti-Clipping Guard.",
+  "name": "Arch3r NVR Ver. 10.8.6",
+  "description": "Arch3r NVR Ver. 10.8.6 - Classic 10.7.5 Responsive UI Layout Restored, Clean Monitor Grid Alignment & Anti-Cutoff Viewport.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

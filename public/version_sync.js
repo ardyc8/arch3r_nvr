@@ -1,6 +1,6 @@
 // version_sync.js - Arch3r NVR Centralized Dynamic Version & Viewport Synchronizer
 (function () {
-    const CURRENT_STATIC_VERSION = '10.8.5';
+    const CURRENT_STATIC_VERSION = '10.8.6';
     window.APP_VERSION = CURRENT_STATIC_VERSION;
 
     // Dynamic Viewport Height Engine to prevent bottom cut-off across all mobile phones & desktops

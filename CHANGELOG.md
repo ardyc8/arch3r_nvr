@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 10.8.6] - 2026-09-25
+### Restoring Clean Classic 10.7.5 Responsive UI Layout, Natural Monitor Grid & Anti-Cutoff Guard
+- **Pemulihan Tata Letak Klasik Ver. 10.7.5 (Classic Clean Layout Restoration):**
+  - **Eliminasi Seluruh Override CSS Kaku**: Menghapus deklarasi aspect-ratio yang memaksa serta batasan flexbox berlebih yang memicu kekacauan posisi kanvas kamera dan menu.
+  - **Live Monitor Alami & Proporsional**: Mengembalikan `#videoGridContainer` dan `.video-grid` ke arsitektur standar Ver 10.7.5 (`flex: 1; min-height: 0; align-items: stretch;`) sehingga kanvas CCTV tampil utuh di bagian atas layar HP tanpa celah kosong dan tanpa mendesak panel kontrol ke bawah.
+  - **Bilah Kontrol Bawah Bebas Terpotong**: Menyesuaikan `#topControlContainer` dengan scrolling sentuh dan padding pelindung `safe-area-inset-bottom`, menjamin seluruh tombol kontrol dapat diakses dengan mudah tanpa pernah terpotong oleh bilah browser HP.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.6** pada seluruh komponen sistem (`package.json`, `metadata.json`, `index.html`, `public/index.html`, `public/admin.html`, `public/superadmin.html`, `public/version_sync.js`, `public/script.js`, `public/style.css`, `README.md`, dan `CHANGELOG.md`) mematuhi aturan Semantic Versioning Strict.
+
 ## [Ver 10.8.5] - 2026-09-25
 ### Proportional Viewport Distribution, Zero-Gap Mobile Layout, Uniform Menu Padding & Anti-Clipping Guard
 - **Proportional Viewport & Grid Distribution (HP & Desktop):**

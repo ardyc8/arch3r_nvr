@@ -1,5 +1,15 @@
-# ⚡ Arch3r NVR (Ver. 10.8.5)
+# ⚡ Arch3r NVR (Ver. 10.8.6)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.8.6:
+- **Restoring Clean Classic 10.7.5 Responsive UI Layout, Natural Monitor Grid & Anti-Cutoff Guard**:
+  1. **Pemulihan Tata Letak Klasik Ver. 10.7.5 (Classic Clean Layout Restoration)**:
+     - Menghapus semua deklarasi CSS override yang rumit dan kaku (seperti pembatasan aspect ratio dan kalkulasi tinggi yang memaksa) yang merusak tata letak sebelumnya.
+     - Mengembalikan `#videoGridContainer` dan `.video-grid` ke arsitektur standar Ver 10.7.5 (`flex: 1; min-height: 0; align-items: stretch;`) sehingga kanvas CCTV tampil utuh di bagian atas layar HP tanpa celah kosong dan tanpa mendesak panel kontrol ke bawah.
+  2. **Bilah Kontrol Bawah Bebas Terpotong**:
+     - Menyesuaikan `#topControlContainer` dengan scrolling sentuh dan padding pelindung `safe-area-inset-bottom`, menjamin seluruh tombol kontrol dapat diakses dengan mudah tanpa pernah terpotong oleh bilah browser HP.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.6** pada seluruh komponen sistem (`package.json`, `metadata.json`, `index.html`, `public/index.html`, `public/admin.html`, `public/superadmin.html`, `public/version_sync.js`, `public/script.js`, `public/style.css`, `README.md`, dan `CHANGELOG.md`) mematuhi aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.8.5:
 - **Proportional Viewport Distribution, Zero-Gap Mobile Layout, Uniform Menu Padding & Anti-Clipping Guard**:
