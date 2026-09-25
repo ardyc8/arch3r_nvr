@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 10.8.5] - 2026-09-25
+### Proportional Viewport Distribution, Zero-Gap Mobile Layout, Uniform Menu Padding & Anti-Clipping Guard
+- **Proportional Viewport & Grid Distribution (HP & Desktop):**
+  - **Keseimbangan Distribusi Layar Monitor**: Mengoreksi container `#videoGridContainer` dengan `flex: 1 1 0; display: flex; align-items: stretch;` dan `#topControlContainer` dengan `flex: 0 0 auto; max-height: 48dvh;` sehingga kanvas kamera mengisi bagian atas layar secara penuh tanpa celah kosong (*gap void*) dan bilah kontrol bawah duduk proporsional.
+  - **Eliminasi Celah Atas & Bawah di Semua Menu**: Menyelaraskan seluruh `.view-pane`, `.content-wrapper`, dan `.main-content` agar semua menu (Kamera, Storage, Users, Sistem, Akun, Logs, Addons, About) memiliki padding atas dan bawah yang seragam, tidak bertumpuk di bawah header atau terpotong di bagian bawah.
+- **Universal Mobile & Tablet Responsiveness:**
+  - Menghapus aturan aspect ratio kaku pada outer container yang sebelumnya mendistorsi tinggi layar pada HP portrait.
+  - Memastikan seluruh menu navigasi, modal form penambahan kamera, scanner IP, dan panel pengaturan dapat digulir dengan mulus hingga ke elemen paling bawah dengan perlindungan `safe-area-inset-bottom`.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.5** pada seluruh komponen sistem (`package.json`, `metadata.json`, `index.html`, `public/index.html`, `public/admin.html`, `public/superadmin.html`, `public/version_sync.js`, `public/script.js`, `public/style.css`, `README.md`, dan `CHANGELOG.md`) mematuhi aturan Semantic Versioning Strict.
+
 ## [Ver 10.8.4] - 2026-09-25
 ### Clean Responsive Viewport Engine, Zero-Gap Top Monitor Alignment & Proportional Mobile Layout
 - **Zero-Gap Top Monitor Alignment & Proportional Video Canvas:**

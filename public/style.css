@@ -1,4 +1,4 @@
-/* style.css - Arch3r NVR Ver. 10.8.4 Theme & Universal Responsive Multi-Tenant System */
+/* style.css - Arch3r NVR Ver. 10.8.5 Theme & Universal Responsive Multi-Tenant System */
 @import "tailwindcss";
 
 :root {
@@ -1313,7 +1313,7 @@ html, body {
     #view-monitor {
         flex: 1 1 0 !important;
         min-height: 0 !important;
-        height: auto !important;
+        height: 100% !important;
         max-height: 100% !important;
         display: flex !important;
         flex-direction: column !important;
@@ -1333,26 +1333,32 @@ html, body {
         overflow: hidden !important;
         background: var(--bg-main) !important;
         padding: 0 !important;
+        margin: 0 !important;
         box-sizing: border-box !important;
         position: relative !important;
     }
     
     #videoGridContainer {
         position: relative !important;
-        flex: 0 0 auto !important;
+        flex: 1 1 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: none !important;
         width: 100% !important;
-        aspect-ratio: 16/9 !important;
-        max-height: 42vh !important;
-        max-height: calc(var(--app-height, 100dvh) * 0.42) !important;
+        aspect-ratio: unset !important;
         background: #000 !important;
-        display: block !important;
-        padding: 2px !important;
+        display: flex !important;
+        align-items: stretch !important;
+        justify-content: stretch !important;
+        padding: 4px !important;
         box-sizing: border-box !important;
         overflow: hidden !important;
     }
 
     #topControlContainer {
-        flex: 1 1 0 !important;
+        flex: 0 0 auto !important;
+        max-height: 48dvh !important;
+        max-height: calc(var(--app-height, 100dvh) * 0.48) !important;
         min-height: 0 !important;
         height: auto !important;
         width: 100% !important;
@@ -1368,15 +1374,16 @@ html, body {
     }
 
     .video-grid {
-        align-content: stretch !important;
-        align-items: stretch !important;
+        align-content: center !important;
+        justify-content: center !important;
+        align-items: center !important;
         height: 100% !important;
         max-height: 100% !important;
         min-height: 0 !important;
         width: 100% !important;
         padding: 0 !important;
         display: grid !important;
-        gap: 2px !important;
+        gap: 4px !important;
         box-sizing: border-box !important;
     }
 
@@ -1390,14 +1397,14 @@ html, body {
         height: 100% !important;
         max-height: 100% !important;
         min-height: 0 !important;
-        aspect-ratio: unset !important;
-        margin: 0 !important;
+        aspect-ratio: 16/9 !important;
+        margin: auto !important;
     }
 
     .video-grid.grid-4 {
         grid-template-columns: repeat(2, 1fr) !important;
         grid-template-rows: repeat(2, 1fr) !important;
-        gap: 2px !important;
+        gap: 4px !important;
     }
 
     .video-grid.grid-4 .cam-cell {
@@ -1405,13 +1412,14 @@ html, body {
         height: 100% !important;
         max-height: 100% !important;
         min-height: 0 !important;
-        aspect-ratio: unset !important;
+        aspect-ratio: 16/9 !important;
+        margin: auto !important;
     }
 
     .video-grid.grid-9 {
         grid-template-columns: repeat(3, 1fr) !important;
         grid-template-rows: repeat(3, 1fr) !important;
-        gap: 2px !important;
+        gap: 3px !important;
     }
 
     .video-grid.grid-9 .cam-cell {
@@ -1419,7 +1427,8 @@ html, body {
         height: 100% !important;
         max-height: 100% !important;
         min-height: 0 !important;
-        aspect-ratio: unset !important;
+        aspect-ratio: 16/9 !important;
+        margin: auto !important;
     }
 
     .video-grid.grid-16 {
@@ -1433,7 +1442,8 @@ html, body {
         height: 100% !important;
         max-height: 100% !important;
         min-height: 0 !important;
-        aspect-ratio: unset !important;
+        aspect-ratio: 16/9 !important;
+        margin: auto !important;
     }
 
     .cam-cell {
@@ -2913,7 +2923,7 @@ body.kiosk-display-mode .cam-cell {
 }
 
 /* ==========================================================================
-   UNIVERSAL DYNAMIC ZERO-OVERFLOW RESPONSIVE ARCHITECTURE (VER. 10.8.4)
+   UNIVERSAL DYNAMIC ZERO-OVERFLOW RESPONSIVE ARCHITECTURE (VER. 10.8.5)
    Optimized for all mobile phones (HP Android & iOS) and Desktop resolutions
    ========================================================================== */
 
