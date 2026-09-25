@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.8.3",
-  "description": "Arch3r NVR Ver. 10.8.3 - Universal Dynamic Viewport 100dvh Engine, Zero-Overflow Mobile & Desktop Responsive Monitor, Scrollable Settings Views & Auto-Fitting Layout.",
+  "name": "Arch3r NVR Ver. 10.8.4",
+  "description": "Arch3r NVR Ver. 10.8.4 - Clean Responsive Viewport Engine, Zero-Gap Top Monitor Alignment, Proportional Video Canvas & Scroll-Guarded Mobile Controls.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

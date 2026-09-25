@@ -1,5 +1,19 @@
 # Changelog
 
+## [Ver 10.8.4] - 2026-09-25
+### Clean Responsive Viewport Engine, Zero-Gap Top Monitor Alignment & Proportional Mobile Layout
+- **Zero-Gap Top Monitor Alignment & Proportional Video Canvas:**
+  - **Eliminasi Ruang Kosong Hitam di Bagian Atas**: Memperbaiki kanvas video monitor pada HP (orientasi portrait) agar menempel rapi tepat di bawah bilah mobile header tanpa menyisakan ruang kosong hitam yang luas di bagian atas.
+  - **Aspek Rasio Proporsional 16:9 (`aspect-ratio: 16/9`)**: Mengatur container grid video HP menjadi `flex: 0 0 auto; width: 100%; aspect-ratio: 16/9; max-height: 42vh;` sehingga kamera ditampilkan utuh, tajam, dan proporsional tanpa distorsi atau letterbox berlebih.
+- **Scroll-Guarded Mobile Controls & Anti-Clipping Bottom Bar:**
+  - **Penempatan Bilah Kontrol Terpadu Alami**: Bilah kontrol bawah (`#topControlContainer` berisi pemilih channel, tombol layout 1x1 s/d 4x4, refresh, fullscreen, dan kartu PTZ) kini mengalir alami langsung di bawah video dan mengisi ruang sisa layar.
+  - **Scrolling Internal & Safe-Area Padding**: Mengaktifkan `flex: 1 1 0; overflow-y: auto; -webkit-overflow-scrolling: touch;` dengan proteksi safe-area inset (`padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 0.85rem))`), memastikan seluruh tombol kontrol dan dial PTZ dapat digulir dan disentuh dengan mudah tanpa pernah terpotong oleh bilah bawah browser HP.
+- **Root Layout Normalization & Body Flex Bug Elimination:**
+  - Menghapus aturan `display: flex; position: fixed; inset: 0;` pada tag `html` dan `body`, mengembalikan aliran layout standar browser yang stabil pada seluruh perangkat HP dan layar desktop/laptop.
+  - Sinkronisasi mode landscape HP agar video grid otomatis melebar penuh (`flex: 1 1 0; height: auto;`) dan bilah navigasi bawah tetap ringkas.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.4** pada seluruh komponen sistem (`package.json`, `metadata.json`, `index.html`, `public/index.html`, `public/admin.html`, `public/superadmin.html`, `public/version_sync.js`, `public/script.js`, `public/style.css`, `README.md`, dan `CHANGELOG.md`) mematuhi aturan Semantic Versioning Strict.
+
 ## [Ver 10.8.3] - 2026-09-25
 ### Universal Dynamic Viewport 100dvh Engine & Zero-Overflow Responsive Multi-Device Architecture
 - **Dynamic Viewport Height (100dvh & CSS Variable Engine):**

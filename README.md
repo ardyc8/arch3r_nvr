@@ -1,5 +1,19 @@
-# ⚡ Arch3r NVR (Ver. 10.8.3)
+# ⚡ Arch3r NVR (Ver. 10.8.4)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.8.4:
+- **Clean Responsive Viewport Engine, Zero-Gap Top Monitor Alignment & Proportional Mobile Layout**:
+  1. **Eliminasi Ruang Kosong Atas (Zero-Gap Top Alignment)**:
+     - Mengoreksi penataan kanvas video grid live monitor pada perangkat HP (smartphone portrait) agar berada tepat di bawah bilah judul mobile tanpa ada celah atau ruang kosong hitam yang berlebih di bagian atas.
+     - Menetapkan rasio proporsional 16:9 (`aspect-ratio: 16/9; width: 100%;`) pada container video grid HP sehingga kamera langsung tampil penuh, jelas, dan proporsional di bagian atas layar.
+  2. **Bilah Kontrol Bawah & PTZ Responsif Anti-Terpotong (Scroll-Guarded Mobile Controls)**:
+     - Bilah kendali bawah (`#topControlContainer`: pemilih channel, paginasi, tombol layout 1x1/2x2/3x3/4x4, refresh, fullscreen, dan kartu PTZ) kini mengalir alami langsung di bawah video dan mengisi sisa ruang layar secara proporsional.
+     - Dilengkapi scrolling internal yang mulus (`overflow-y: auto; -webkit-overflow-scrolling: touch;`) serta padding pelindung safe-area inset (`padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 0.85rem))`), menjamin seluruh tombol aksi hingga paling bawah dapat diakses sempurna dan tidak pernah terpotong oleh bilah navigasi HP.
+  3. **Penataan Ulang Root Layout & Eliminasi Bug Display Flex Body**:
+     - Menghapus aturan `display: flex; position: fixed; inset: 0;` yang tidak tepat pada `html` dan `body`, mengembalikan aliran DOM standar yang stabil dan bebas glitch pada browser HP (Chrome Mobile, Safari iOS) maupun browser desktop.
+     - Sinkronisasi mode landscape HP agar video grid otomatis melebar penuh (`flex: 1 1 0; height: auto;`) dan bilah navigasi bawah tetap ringkas.
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.4** pada seluruh komponen sistem (`package.json`, `metadata.json`, `index.html`, `public/index.html`, `public/admin.html`, `public/superadmin.html`, `public/version_sync.js`, `public/script.js`, `public/style.css`, `README.md`, dan `CHANGELOG.md`) mematuhi aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.8.3:
 - **Universal Dynamic Viewport 100dvh Engine & Zero-Overflow Responsive Multi-Device Architecture**:
