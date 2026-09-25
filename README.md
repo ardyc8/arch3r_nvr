@@ -1,5 +1,19 @@
-# ⚡ Arch3r NVR (Ver. 10.8.1)
+# ⚡ Arch3r NVR (Ver. 10.8.3)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.8.3:
+- **Universal Dynamic Viewport 100dvh Engine & Zero-Overflow Responsive Multi-Device Architecture**:
+  1. **Dynamic Viewport Height & Zero-Overflow Engine**:
+     - Menerapkan unit viewport dinamis modern (`100dvh` & `--app-height`) secara universal pada seluruh hirarki layout (`html`, `body`, `.app-layout`, `.main-content`, modal overlay, dan dialog), meniadakan masalah antarmuka terpotong atau tertutup oleh bilah navigasi bawah (bottom navigation bar) maupun address bar pada HP Android dan iOS.
+     - Memperbaiki fleksibilitas flexbox (`flex: 1 1 0; min-height: 0; height: auto;`) pada `#view-monitor`, `#monitorWrapper`, dan `#videoGridContainer`, memastikan panel kontrol navigasi dan PTZ selalu terlihat pas di layar monitor HP dan desktop tanpa terdorong keluar layar.
+  2. **Scrollable Settings Views & Safe-Area Inset Guard**:
+     - Mengaktifkan scrolling vertikal mulus pada seluruh halaman pengaturan (`.view-pane.active` untuk Kamera, Storage, Users, Sistem, Akun, Logs, Addons, About) sehingga pengguna di HP dan desktop dapat menggulir hingga ke tombol aksi terbawah tanpa ada yang terpotong.
+     - Penambahan padding dinamis `env(safe-area-inset-bottom)` untuk perlindungan terhadap home gesture bar pada smartphone modern.
+  3. **Auto-Fitting Camera Grid & Mobile Playback Drawer**:
+     - Grid kamera 1x1, 2x2, 3x3, dan 4x4 kini menggunakan template `minmax(0, 1fr)` adaptif yang proporsional di segala orientasi HP (portrait & landscape) maupun layar PC desktop.
+     - Daftar klip video di halaman Playback otomatis berubah menjadi drawer samping lateral yang rapi pada layar mobile (< 768px), menjaga tampilan video player rekaman tetap maksimal.
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.3** pada `package.json`, `metadata.json`, `index.html`, `public/index.html`, `public/admin.html`, `public/superadmin.html`, `public/version_sync.js`, `public/script.js`, `public/style.css`, `README.md`, dan `CHANGELOG.md` mematuhi aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.8.1:
 - **Direct GitHub Branch Live OTA Pipeline, Raw Package & Changelog Inspector**:

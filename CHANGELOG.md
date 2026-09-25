@@ -1,5 +1,20 @@
 # Changelog
 
+## [Ver 10.8.3] - 2026-09-25
+### Universal Dynamic Viewport 100dvh Engine & Zero-Overflow Responsive Multi-Device Architecture
+- **Dynamic Viewport Height (100dvh & CSS Variable Engine):**
+  - **Eliminasi Pemotongan Layar ke Bawah**: Menerapkan dynamic viewport height (`100dvh` & `--app-height`) pada `html`, `body`, `.app-layout`, `.main-content`, dan seluruh dialog modal, menjamin antarmuka tidak pernah terpotong atau tertutup oleh bilah navigasi bawah (bottom navigation bar) maupun address bar browser HP Android dan iOS.
+  - **Pencegahan Overflow Flexbox**: Mengoreksi perhitungan tinggi container anak flexbox (`flex: 1 1 0; min-height: 0; height: auto;`) pada `.view-pane`, `#view-monitor`, `#monitorWrapper`, dan `#videoGridContainer` sehingga bilah kontrol bawah dan navigasi PTZ selalu tampil utuh dan pas di layar.
+- **Scrollable Settings Views & Zero-Clipping Content Architecture:**
+  - **Dukungan Scroll Penuh Halaman Pengaturan**: Membuka scrolling vertikal halus (`overflow-y: auto !important; -webkit-overflow-scrolling: touch;`) pada seluruh halaman konfigurasi (Manajemen Kamera RTSP, Pengaturan Storage/HDD, Manajemen User Klien, Sistem & Jaringan, Keamanan Akun, Log Sistem, Addons, dan Tentang NVR) sehingga pengguna dapat menggulir hingga ke tombol paling bawah tanpa ada yang terpotong.
+  - **Safe-Area Inset Bottom Guard**: Menambahkan padding dinamis berbasis `env(safe-area-inset-bottom)` pada seluruh kartu dan footer form agar elemen aksi bawah tidak tertutupi oleh gesture bar atau home bar perangkat modern.
+- **Responsive Live View & Mobile Playback Optimizations:**
+  - **Auto-Fitting Video Grid**: Grid kamera (1x1, 2x2, 3x3, 4x4) kini menggunakan `minmax(0, 1fr)` dinamis untuk baris dan kolom yang selalu menyesuaikan proporsi ruang video di HP portrait, HP landscape, tablet, maupun layar monitor desktop tanpa memotong sel kamera.
+  - **Slide-Over Drawer Klip Rekaman Mobile**: Pada layar HP (< 768px), daftar klip video di halaman Playback otomatis bertransformasi menjadi panel geser drawer lateral dengan backdrop blur halus, menjaga rasio player rekaman tetap maksimal dan nyaman ditonton.
+  - **Proporsi Kontrol PTZ & Tombol Optik**: Menyelaraskan ukuran dial D-Pad PTZ dan tombol zoom/fokus pada layar sempit (< 480px) agar tetap ergonomis dan hemat ruang vertikal.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.3** pada `package.json`, `metadata.json`, `index.html`, `public/index.html`, `public/admin.html`, `public/superadmin.html`, `public/version_sync.js`, `public/script.js`, `public/style.css`, `README.md`, dan `CHANGELOG.md` mematuhi aturan Semantic Versioning Strict.
+
 ## [Ver 10.8.1] - 2026-09-25
 ### Direct GitHub Branch Live OTA Pipeline, Raw Package & Changelog Inspector
 - **Direct GitHub Branch Live OTA Pipeline (`server.js`):**

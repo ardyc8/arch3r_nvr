@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.7.4 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=10.7.4">
+    <title>Arch3r NVR Ver. 10.8.3 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=10.8.3">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -252,8 +252,11 @@
 
                             <!-- Row 3: PTZ Control Panel Card with Optics & Player Media Controls -->
                             <div id="ptzControlPanelCard" class="nvr-ptz-card">
-                                <div class="nvr-ptz-header">
+                                <div class="nvr-ptz-header" onclick="window.togglePtzCard()" style="cursor:pointer;" title="Klik untuk Tampilkan / Sembunyikan Panel PTZ & Player">
                                     <span>🎮 Kontrol PTZ & Player: <strong id="topActiveCamLabel" style="color:var(--accent-blue);">Pilih di grid</strong></span>
+                                    <button id="btnTogglePtzCard" class="btn-sm btn-secondary" onclick="event.stopPropagation(); window.togglePtzCard();" style="font-size:11px; padding:2px 8px; border-radius:4px; display:inline-flex; align-items:center; gap:4px; border:1px solid var(--border); background:var(--surface-dark);" title="Buka / Tutup Panel PTZ">
+                                        <span id="ptzToggleIcon">▼</span> <span id="ptzToggleText">Tutup</span>
+                                    </button>
                                 </div>
                                 <div class="nvr-ptz-divider"></div>
                                 <div class="nvr-ptz-body">

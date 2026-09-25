@@ -3713,6 +3713,41 @@ async function fetchCameras() {
         }
     };
 
+    window.togglePtzCard = function() {
+        const card = document.getElementById('ptzControlPanelCard');
+        const icon = document.getElementById('ptzToggleIcon');
+        const text = document.getElementById('ptzToggleText');
+        if (!card) return;
+        const isCollapsed = card.classList.contains('is-collapsed');
+        if (isCollapsed) {
+            card.classList.remove('is-collapsed');
+            if (icon) icon.textContent = '▼';
+            if (text) text.textContent = 'Tutup';
+            try { localStorage.setItem('nvr_ptz_collapsed', 'false'); } catch(_) {}
+        } else {
+            card.classList.add('is-collapsed');
+            if (icon) icon.textContent = '▲';
+            if (text) text.textContent = 'Buka PTZ';
+            try { localStorage.setItem('nvr_ptz_collapsed', 'true'); } catch(_) {}
+        }
+    };
+
+    // Auto-initialize PTZ collapsed state (collapsed by default on mobile < 1024px to maximize camera screen)
+    try {
+        const savedPtzState = localStorage.getItem('nvr_ptz_collapsed');
+        const shouldCollapse = savedPtzState === 'true' || (savedPtzState === null && window.innerWidth < 1024);
+        if (shouldCollapse) {
+            const card = document.getElementById('ptzControlPanelCard');
+            const icon = document.getElementById('ptzToggleIcon');
+            const text = document.getElementById('ptzToggleText');
+            if (card) {
+                card.classList.add('is-collapsed');
+                if (icon) icon.textContent = '▲';
+                if (text) text.textContent = 'Buka PTZ';
+            }
+        }
+    } catch (_) {}
+
     // Fullscreen state listener and class synchronizer
     function handleFullscreenChange() {
         const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
@@ -5334,13 +5369,13 @@ let allLogsCache = [];
                     }
                 }
             } else {
-                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.1';
+                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.3';
                 if (elStatus && elStatus.textContent.includes('Memuat')) elStatus.innerHTML = '<span style="color:#10b981; font-weight:600;">Sistem Aktif</span>';
                 if (elDays && elDays.textContent.includes('Memuat')) elDays.textContent = 'Mode Produksi Lokal';
             }
         } catch(e) {
             console.error('Gagal memuat info About', e);
-            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.1';
+            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.3';
         }
     }
     window.fetchAboutInfo = fetchAboutInfo;
@@ -5439,8 +5474,8 @@ let allLogsCache = [];
 
             if (badge) {
                 const isNew = data.update_available || data.isUpdateAvailable;
-                const curVer = data.current_version || window.APP_VERSION || '10.8.1';
-                const latVer = data.latest_version || window.APP_VERSION || '10.8.1';
+                const curVer = data.current_version || window.APP_VERSION || '10.8.3';
+                const latVer = data.latest_version || window.APP_VERSION || '10.8.3';
                 let label = '• Versi Terbaru';
                 if (isNew) {
                     if (data.commits_ahead && data.commits_ahead > 0 && curVer === latVer) {
