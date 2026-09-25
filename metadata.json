@@ -1,6 +1,6 @@
 {
-  "name": "Arch3r NVR Ver. 10.8.6",
-  "description": "Arch3r NVR Ver. 10.8.6 - Classic 10.7.5 Responsive UI Layout Restored, Clean Monitor Grid Alignment & Anti-Cutoff Viewport.",
+  "name": "Arch3r NVR Ver. 10.8.1",
+  "description": "Arch3r NVR Ver. 10.8.1 - Direct GitHub Branch Live OTA Pipeline, Raw Package & Changelog Inspector, Safe Multi-Category System Updater.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

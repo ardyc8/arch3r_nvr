@@ -1,4 +1,4 @@
-/* style.css - Arch3r NVR Ver. 10.8.6 Theme & Universal Responsive Multi-Tenant System */
+/* style.css - Archer NVR Ver. 9.9.6 Theme & Responsive Multi-Tenant System */
 @import "tailwindcss";
 
 :root {
@@ -17,26 +17,10 @@
     --sidebar-width: 280px;
     --header-height: 60px;
     --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --app-height: 100dvh;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body {
-    font-family: var(--font-ui);
-    background-color: var(--bg-main);
-    color: var(--text-main);
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    height: var(--app-height, 100dvh);
-    max-height: 100dvh;
-    max-height: var(--app-height, 100dvh);
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    -webkit-text-size-adjust: 100%;
-}
+body { font-family: var(--font-ui); background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -45,38 +29,8 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
 /* AUTH OVERLAY */
-.auth-overlay {
-    position: fixed;
-    inset: 0;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.92);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px)) max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
-    box-sizing: border-box;
-}
-.auth-card {
-    background: var(--surface);
-    padding: 2rem;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 400px;
-    max-height: calc(100dvh - 2rem);
-    max-height: calc(var(--app-height, 100dvh) - 2rem);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    border: 1px solid var(--border);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-    margin: auto;
-    box-sizing: border-box;
-}
+.auth-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+.auth-card { background: var(--surface); padding: 2rem; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
 .form-group { margin-bottom: 1rem; }
 .form-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem; }
 .form-control, .form-group input, .form-group select { width: 100%; padding: 0.75rem; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; font-size: 0.95rem; }
@@ -93,18 +47,7 @@ html, body {
 .btn-peek-pwd:hover { opacity: 0.8; }
 
 /* LAYOUT */
-.app-layout {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    height: var(--app-height, 100dvh);
-    max-height: 100dvh;
-    max-height: var(--app-height, 100dvh);
-    overflow: hidden;
-    box-sizing: border-box;
-    position: relative;
-}
+.app-layout { display: flex; width: 100vw; height: 100vh; }
 
 /* SIDEBAR */
 .sidebar { 
@@ -114,7 +57,7 @@ html, body {
     display: flex; 
     flex-direction: column; 
     overflow-y: auto; 
-    overflow-x: hidden; 
+    overflow-x: hidden;
     transition: transform 0.3s ease; 
     z-index: 100; 
     flex-shrink: 0; 
@@ -170,118 +113,45 @@ html, body {
 .nav-subitem.active { color: var(--accent-blue); font-weight: 600; }
 
 /* MAIN CONTENT */
-.main-content { 
-    flex: 1 1 auto; 
-    display: flex; 
-    flex-direction: column; 
-    background: var(--bg-main); 
-    overflow: hidden; 
-    position: relative; 
-    width: 100%; 
-    min-width: 0; 
-    height: 100%; 
-    max-height: 100%; 
-    min-height: 0; 
-    box-sizing: border-box; 
-}
-.mobile-header { 
-    display: none; 
-    height: calc(44px + env(safe-area-inset-top, 0px)); 
-    min-height: calc(44px + env(safe-area-inset-top, 0px)); 
-    padding-top: env(safe-area-inset-top, 0px); 
-    flex-shrink: 0; 
-    background: var(--surface); 
-    border-bottom: 1px solid var(--border); 
-    align-items: center; 
-    padding-left: 0.85rem; 
-    padding-right: 0.85rem; 
-    gap: 0.75rem; 
-    z-index: 50; 
-    box-sizing: border-box; 
-}
+.main-content { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); overflow: hidden; position: relative; width: 100%; min-width: 0; }
+.mobile-header { display: none; height: var(--header-height); min-height: var(--header-height); flex-shrink: 0; background: var(--surface); border-bottom: 1px solid var(--border); align-items: center; padding: 0 1rem; gap: 1rem; z-index: 50; }
 .btn-icon { background: transparent; border: none; color: var(--text-main); font-size: 1.25rem; cursor: pointer; }
 
-/* VIEW PANES - ZERO OVERFLOW & SCROLLABLE SETTINGS ARCHITECTURE */
-.view-pane { 
-    display: none; 
-    flex: 1 1 0; 
-    overflow: hidden; 
-    width: 100%; 
-    height: auto; 
-    max-height: 100%; 
-    min-height: 0; 
-    position: relative; 
-    opacity: 0; 
-    transition: opacity 0.2s ease; 
-    box-sizing: border-box; 
-}
-.view-content { 
-    flex: 1 1 0; 
-    min-height: 0; 
-    height: 100%; 
-    overflow-y: auto; 
-    overflow-x: hidden; 
-    width: 100%; 
-    box-sizing: border-box; 
-    padding-bottom: max(3rem, calc(env(safe-area-inset-bottom, 0px) + 2rem)) !important; 
-    -webkit-overflow-scrolling: touch; 
-}
-.view-pane.active { 
-    display: flex; 
-    flex-direction: column; 
-    opacity: 1; 
-    position: relative; 
-    z-index: 10; 
-    flex: 1 1 0; 
-    min-height: 0; 
-    height: auto; 
-    max-height: 100%; 
-    width: 100%; 
-    overflow: hidden; 
-    box-sizing: border-box; 
-}
-
-/* Ensure Settings, Users, Storage, Logs, Addons, and About scroll smoothly to bottom */
-.view-pane.active:not(#view-monitor):not(#view-playback):not(#view-live) {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding-bottom: max(3.5rem, calc(env(safe-area-inset-bottom, 0px) + 2.5rem)) !important;
-}
+/* VIEW PANES */
+.view-pane { display: none; flex: 1; overflow-y: auto; overflow-x: hidden; width: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0; transition: opacity 0.3s ease; }
+.view-content { flex: 1; overflow-y: auto; width: 100%; box-sizing: border-box; }
+.view-pane.active { display: flex; flex-direction: column; opacity: 1; position: relative; z-index: 10; height: 100%; min-height: 0; }
 
 /* GRID & LIVE VIEW */
-.grid-wrapper { width: 100%; height: 100%; padding: 2px; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; flex: 1 1 0; }
+.grid-wrapper { width: 100%; height: 100%; padding: 4px; box-sizing: border-box; }
 .video-grid {
     width: 100%;
     height: 100%;
     min-height: 0;
     min-width: 0;
-    max-height: 100%;
     display: grid;
-    gap: 3px;
-    align-content: stretch;
-    align-items: stretch;
+    gap: 4px;
     box-sizing: border-box;
 }
 .video-grid.grid-1 {
-    grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: minmax(0, 1fr) !important;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
 }
 .video-grid.grid-4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 .video-grid.grid-6 {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
 }
 .video-grid.grid-9 {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
 }
 .video-grid.grid-16 {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(4, minmax(0, 1fr));
 }
 .cam-cell {
     background: #000;
@@ -292,12 +162,10 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    max-width: 100% !important;
-    max-height: 100% !important;
-    width: 100% !important;
-    height: 100% !important;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
     box-sizing: border-box;
 }
 .cam-cell.active-focus { border-color: var(--accent-blue); box-shadow: 0 0 0 2px var(--accent-blue); }
@@ -350,13 +218,13 @@ html, body {
 .storage-info-box { background: var(--surface-dark); border: 1px solid var(--border); padding: 0.85rem; border-radius: 6px; }
 
 /* MOBILE PWA MODE (FOR USER ROLE) */
-.mobile-app-layout { display: flex; flex-direction: column; width: 100%; width: 100vw; width: 100dvw; height: 100%; height: 100vh; height: 100dvh; max-height: 100dvh; background: var(--bg-main); overflow: hidden; position: relative; box-sizing: border-box; }
-.mobile-topbar { height: calc(50px + env(safe-area-inset-top, 0px)); padding-top: env(safe-area-inset-top, 0px); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding-left: 1rem; padding-right: 1rem; flex-shrink: 0; z-index: 50; box-sizing: border-box; }
+.mobile-app-layout { display: flex; flex-direction: column; width: 100vw; height: 100vh; background: var(--bg-main); overflow: hidden; position: relative; }
+.mobile-topbar { height: 56px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; flex-shrink: 0; z-index: 50; }
 .mobile-topbar .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 1rem; }
-.mobile-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important; -webkit-overflow-scrolling: touch; box-sizing: border-box; }
-.mobile-view { display: none; padding: 1rem; min-height: 100%; box-sizing: border-box; }
+.mobile-content { flex: 1; overflow-y: auto; padding-bottom: 70px; -webkit-overflow-scrolling: touch; }
+.mobile-view { display: none; padding: 1rem; min-height: 100%; }
 .mobile-view.active { display: block; }
-.mobile-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: calc(56px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 1000; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); box-sizing: border-box; }
+.mobile-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 64px; background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 1000; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); }
 .mobile-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); text-decoration: none; font-size: 0.72rem; cursor: pointer; border: none; background: transparent; transition: color 0.2s; }
 .mobile-nav-item .icon { font-size: 1.25rem; margin-bottom: 2px; }
 .mobile-nav-item.active { color: var(--accent-blue); font-weight: 600; }
@@ -481,18 +349,11 @@ html, body {
     display: flex !important;
     position: relative;
     width: 100%;
-    flex: 0 0 auto !important;
-    max-height: 48vh;
-    max-height: 48dvh;
-    overflow-y: auto;
-    overflow-x: hidden;
     background: var(--surface);
     z-index: 10;
     border-top: 1px solid var(--border);
     border-bottom: none;
-    box-sizing: border-box;
-    padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
 }
 
 /* In Normal mode, topControlPanel is naturally open and part of the document flow */
@@ -791,26 +652,9 @@ html, body {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 8px;
-    margin: 4px 10px 8px 10px;
-    padding: 6px 12px;
+    margin: 6px 12px 10px 12px;
+    padding: 8px 14px;
     box-shadow: 0 4px 14px rgba(0,0,0,0.3);
-    transition: all 0.2s ease;
-}
-
-.nvr-ptz-card.is-collapsed {
-    padding: 4px 10px !important;
-    margin-top: 2px !important;
-    margin-bottom: 3px !important;
-    background: rgba(17, 24, 39, 0.85) !important;
-}
-
-.nvr-ptz-card.is-collapsed .nvr-ptz-body,
-.nvr-ptz-card.is-collapsed .nvr-ptz-divider {
-    display: none !important;
-}
-
-.nvr-ptz-card.is-collapsed .nvr-ptz-header {
-    margin-bottom: 0 !important;
 }
 
 .nvr-ptz-header {
@@ -821,7 +665,6 @@ html, body {
     font-weight: 600;
     color: var(--text-main);
     margin-bottom: 6px;
-    user-select: none;
 }
 
 .nvr-ptz-divider {
@@ -1231,18 +1074,14 @@ html, body {
     }
 }
 
-/* Definitive Bug Fixes & Universal Zero-Overflow Viewport */
-html, body {
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    height: var(--app-height, 100dvh);
-    max-height: 100dvh;
-    max-height: var(--app-height, 100dvh);
+/* Definitive Bug Fixes */
+body {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
 }
 
 @media (max-width: 1024px), (orientation: landscape) and (max-height: 700px) {
@@ -1251,9 +1090,7 @@ html, body {
         top: 0 !important;
         bottom: 0 !important;
         left: 0 !important;
-        height: 100% !important;
-        height: 100dvh !important;
-        max-height: 100dvh !important;
+        height: 100vh !important;
         z-index: 1000 !important;
         transform: translateX(-100%) !important;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -1283,17 +1120,14 @@ html, body {
         top: 0 !important;
         z-index: 100 !important;
         width: 100%;
-        height: calc(44px + env(safe-area-inset-top, 0px)) !important;
-        min-height: calc(44px + env(safe-area-inset-top, 0px)) !important;
-        padding-top: env(safe-area-inset-top, 0px) !important;
+        height: 44px !important;
+        min-height: 44px !important;
         background: var(--surface) !important;
         border-bottom: 1px solid var(--border) !important;
         align-items: center !important;
-        padding-left: 0.75rem !important;
-        padding-right: 0.75rem !important;
+        padding: 0 0.75rem !important;
         gap: 0.75rem !important;
         flex-shrink: 0 !important;
-        box-sizing: border-box !important;
     }
 
     #btnMobileMenu {
@@ -1309,167 +1143,103 @@ html, body {
         border-radius: 4px !important;
     }
     
-    /* Mobile Monitor & Layout - 10.7.5 Clean Standard */
+    /* Mobile / Landscape Monitor Optimization */
     #view-monitor {
-        flex: 1;
-        min-height: 0;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        width: 100%;
-        box-sizing: border-box;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
     }
 
     #monitorWrapper {
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
-        height: 100%;
-        width: 100%;
-        overflow: hidden;
-        background: var(--bg-main);
-        padding: 0;
-        margin: 0;
-        box-sizing: border-box;
-        position: relative;
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        width: 100% !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        background: var(--bg-main) !important;
     }
     
     #videoGridContainer {
-        position: relative;
-        flex: 1;
-        min-height: 0;
-        height: 100%;
-        width: 100%;
-        background: #000;
-        display: flex;
-        align-items: stretch;
-        justify-content: stretch;
-        padding: 4px;
-        box-sizing: border-box;
-        overflow: hidden;
+        flex: 0 0 auto !important;
+        width: 100% !important;
+        background: #000 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 3px !important;
+        box-sizing: border-box !important;
     }
 
     #topControlContainer {
-        flex-shrink: 0;
-        max-height: 50vh;
-        width: 100%;
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-        background: var(--surface);
-        border-top: 1px solid var(--border);
-        border-bottom: none;
-        z-index: 20;
-        box-sizing: border-box;
-        padding-bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
+        flex: 0 0 auto !important;
+        width: 100% !important;
+        background: var(--surface) !important;
+        border-top: 1px solid var(--border) !important;
+        border-bottom: none !important;
+        z-index: 20 !important;
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
     }
 
     .video-grid {
-        align-content: stretch;
-        align-items: stretch;
-        height: 100%;
-        min-height: 0;
-        width: 100%;
-        padding: 0;
-        display: grid;
-        gap: 3px;
-        box-sizing: border-box;
+        align-content: start !important;
+        align-items: start !important;
+        height: auto !important;
+        width: 100% !important;
+        padding: 0 !important;
+        display: grid !important;
+        gap: 3px !important;
     }
 
     .video-grid.grid-1 {
-        grid-template-columns: 1fr;
-        grid-template-rows: 1fr;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: auto !important;
     }
 
     .video-grid.grid-1 .cam-cell {
-        width: 100%;
-        height: 100%;
-        margin: 0;
+        aspect-ratio: 16/9 !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        margin: 0 auto !important;
     }
 
     .video-grid.grid-4 {
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(2, 1fr);
-        gap: 3px;
+        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-rows: repeat(2, auto) !important;
+        gap: 3px !important;
     }
 
     .video-grid.grid-4 .cam-cell {
-        width: 100%;
-        height: 100%;
+        aspect-ratio: 16/9 !important;
+        width: 100% !important;
+        height: auto !important;
     }
 
     .video-grid.grid-9 {
-        grid-template-columns: repeat(3, 1fr);
-        grid-template-rows: repeat(3, 1fr);
-        gap: 2px;
+        grid-template-columns: repeat(3, 1fr) !important;
+        grid-template-rows: repeat(3, auto) !important;
+        gap: 2px !important;
     }
 
     .video-grid.grid-9 .cam-cell {
-        width: 100%;
-        height: 100%;
+        aspect-ratio: 16/9 !important;
+        width: 100% !important;
+        height: auto !important;
     }
 
     .video-grid.grid-16 {
-        grid-template-columns: repeat(4, 1fr);
-        grid-template-rows: repeat(4, 1fr);
-        gap: 2px;
+        grid-template-columns: repeat(4, 1fr) !important;
+        grid-template-rows: repeat(4, auto) !important;
+        gap: 2px !important;
     }
 
     .video-grid.grid-16 .cam-cell {
-        width: 100%;
-        height: 100%;
-    }
-
-    .cam-cell {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #000;
-        position: relative;
-        overflow: hidden;
-        width: 100%;
-        height: 100%;
-        min-width: 0;
-        min-height: 0;
-        box-sizing: border-box;
-    }
-
-    .cam-cell video {
+        aspect-ratio: 16/9 !important;
         width: 100% !important;
-        height: 100% !important;
-        object-fit: contain !important;
+        height: auto !important;
     }
-
-    .nvr-ptz-card {
-        margin: 4px 6px !important;
-        padding: 5px 8px !important;
-    }
-
-    .nvr-ptz-dial {
-        width: 104px !important;
-        height: 104px !important;
-    }
-
-    .nvr-ptz-arrow-btn {
-        width: 28px !important;
-        height: 28px !important;
-        font-size: 10px !important;
-    }
-
-    .nvr-ptz-center-circle {
-        width: 28px !important;
-        height: 28px !important;
-        top: 38px !important;
-        left: 38px !important;
-        font-size: 10px !important;
-    }
-
-    .nvr-ptz-up { top: 4px !important; left: 38px !important; }
-    .nvr-ptz-down { bottom: 4px !important; left: 38px !important; }
-    .nvr-ptz-left { left: 4px !important; top: 38px !important; }
-    .nvr-ptz-right { right: 4px !important; top: 38px !important; }
 
     /* Fullscreen Mode on Mobile & Desktop */
     :fullscreen #videoGridContainer,
@@ -1536,61 +1306,59 @@ html, body {
 }
 
 /* Landscape Mode Optimization for Phones & Tablets */
-@media (max-height: 600px) and (orientation: landscape) {
+@media (max-height: 540px) and (orientation: landscape) {
     #videoGridContainer {
-        flex: 1 1 0 !important;
+        flex: 1 1 auto !important;
         width: 100% !important;
-        min-height: 0 !important;
-        height: auto !important;
+        min-height: 220px !important;
         max-height: none !important;
     }
     .video-grid {
         width: 100% !important;
         height: 100% !important;
-        min-height: 0 !important;
-        max-height: 100% !important;
-        gap: 2px !important;
+        min-height: 220px !important;
     }
-    .cam-cell {
+    .video-grid.grid-1 .cam-cell {
         width: 100% !important;
         height: 100% !important;
-        min-height: 0 !important;
-        max-height: 100% !important;
+        min-height: 200px !important;
+        aspect-ratio: 16/9 !important;
+        max-height: none !important;
+    }
+    .video-grid.grid-4 .cam-cell,
+    .video-grid.grid-9 .cam-cell,
+    .video-grid.grid-16 .cam-cell {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 130px !important;
+        aspect-ratio: 16/9 !important;
+        max-height: none !important;
     }
     .control-main-row {
-        padding: 0.2rem 0.4rem !important;
-        gap: 0.3rem !important;
+        padding: 0.25rem 0.5rem !important;
+        gap: 0.35rem !important;
     }
     #channelBarRow {
-        padding: 0.2rem 0.4rem !important;
+        padding: 0.2rem 0.5rem !important;
     }
 }
 
 /* OTA UPDATE MODAL & WORKFLOW */
 .ota-modal-overlay {
     position: fixed !important;
-    inset: 0 !important;
     top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    width: 100% !important;
     width: 100vw !important;
-    width: 100dvw !important;
-    height: 100% !important;
     height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    max-height: var(--app-height, 100dvh) !important;
-    background: rgba(0, 0, 0, 0.85) !important;
+    background: rgba(0, 0, 0, 0.8) !important;
     backdrop-filter: blur(4px) !important;
     display: none;
     align-items: center !important;
     justify-content: center !important;
     z-index: 99999 !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding: max(0.75rem, env(safe-area-inset-top, 0px)) max(0.75rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    padding: 1rem !important;
     box-sizing: border-box !important;
 }
 .ota-modal-overlay.active {
@@ -1603,16 +1371,13 @@ html, body {
     border-radius: 10px;
     width: 100%;
     max-width: 650px;
-    max-height: calc(100dvh - 2rem);
-    max-height: calc(var(--app-height, 100dvh) - 2rem);
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
     overflow: hidden;
     position: relative;
     z-index: 100000;
-    margin: auto;
-    box-sizing: border-box;
 }
 .ota-modal-header {
     padding: 1rem 1.25rem;
@@ -1780,37 +1545,22 @@ html, body {
 
 @media (max-width: 1024px) {
     .app-layout {
-        height: 100%;
-        height: 100dvh;
-        height: var(--app-height, 100dvh);
-        max-height: 100dvh;
-        max-height: var(--app-height, 100dvh);
+        height: 100vh;
         overflow: hidden;
     }
     .main-content {
         height: 100%;
-        max-height: 100%;
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        min-height: 0;
-        flex: 1 1 0;
     }
     .view-pane.active {
         display: flex;
         flex-direction: column;
-        flex: 1 1 0;
+        flex: 1;
+        height: 100%;
         min-height: 0;
-        height: auto;
-        max-height: 100%;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .view-pane.active:not(#view-monitor):not(#view-playback):not(#view-live) {
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        -webkit-overflow-scrolling: touch !important;
-        padding-bottom: max(3.5rem, calc(env(safe-area-inset-bottom, 0px) + 2.5rem)) !important;
+        overflow-y: auto;
     }
     .mobile-header {
         position: sticky;
@@ -1823,36 +1573,23 @@ html, body {
 @media (max-width: 1024px) and (orientation: landscape) {
     .view-content {
         padding: 0.75rem !important;
-        padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px)) !important;
+        padding-bottom: 2rem !important;
     }
     .mobile-header {
-        height: calc(38px + env(safe-area-inset-top, 0px));
-        min-height: calc(38px + env(safe-area-inset-top, 0px));
-        padding-top: env(safe-area-inset-top, 0px);
+        height: 48px;
+        min-height: 48px;
     }
-    #videoGridContainer {
-        flex: 1 1 0 !important;
-        width: 100% !important;
+    /* Fix grid so videos aren't squished flat in landscape */
+    .video-grid.grid-4, .video-grid.grid-9, .video-grid.grid-16 {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+        grid-auto-rows: min-content;
         height: auto !important;
-        aspect-ratio: unset !important;
-        max-height: none !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    #topControlContainer {
-        flex: 0 0 auto !important;
-        max-height: 38dvh !important;
-        max-height: calc(var(--app-height, 100dvh) * 0.38) !important;
-    }
-    .video-grid {
-        height: 100% !important;
-        max-height: 100% !important;
-        min-height: 0 !important;
+        align-content: start;
     }
     .cam-cell {
-        min-height: 0 !important;
-        height: 100% !important;
+        aspect-ratio: 16/9;
+        min-height: unset;
+        height: auto;
     }
 }
 
@@ -2903,124 +2640,5 @@ body.kiosk-display-mode .cam-cell {
     background: rgba(11, 17, 32, 0.5);
 }
 
-/* ==========================================================================
-   UNIVERSAL DYNAMIC ZERO-OVERFLOW RESPONSIVE ARCHITECTURE (VER. 10.8.5)
-   Optimized for all mobile phones (HP Android & iOS) and Desktop resolutions
-   ========================================================================== */
 
-/* 1. PLAYBACK VIEW RESPONSIVE FIT */
-#view-playback {
-    flex: 1 1 0 !important;
-    height: auto !important;
-    max-height: 100% !important;
-    min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-}
 
-#view-playback > div {
-    flex: 1 1 0 !important;
-    min-height: 0 !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-}
-
-@media (max-width: 768px) {
-    /* Mobile Playback Drawer */
-    #pbClipSidebar {
-        position: absolute !important;
-        top: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        width: min(320px, 85vw) !important;
-        max-width: 85vw !important;
-        z-index: 60 !important;
-        box-shadow: -8px 0 30px rgba(0, 0, 0, 0.85) !important;
-        border-left: 1px solid var(--border) !important;
-        backdrop-filter: blur(14px) !important;
-        -webkit-backdrop-filter: blur(14px) !important;
-    }
-
-    /* Compact Controls on Small Phones */
-    .nvr-ptz-card {
-        margin: 2px 4px 4px 4px !important;
-        padding: 4px 6px !important;
-    }
-
-    .nvr-ptz-top-panels {
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
-        gap: 6px !important;
-        width: 100% !important;
-    }
-
-    .nvr-optics-box, 
-    .nvr-media-box {
-        min-width: 130px !important;
-        flex: 1 1 130px !important;
-    }
-
-    .nvr-ptz-dial {
-        width: 96px !important;
-        height: 96px !important;
-    }
-
-    .nvr-ptz-arrow-btn {
-        width: 26px !important;
-        height: 26px !important;
-        font-size: 10px !important;
-    }
-
-    .nvr-ptz-center-circle {
-        width: 26px !important;
-        height: 26px !important;
-        top: 35px !important;
-        left: 35px !important;
-        font-size: 10px !important;
-    }
-
-    .nvr-ptz-up { top: 3px !important; left: 35px !important; }
-    .nvr-ptz-down { bottom: 3px !important; left: 35px !important; }
-    .nvr-ptz-left { left: 3px !important; top: 35px !important; }
-    .nvr-ptz-right { right: 3px !important; top: 35px !important; }
-}
-
-/* 2. AUTO-FIT SCROLLABLE CONTENT & CARDS (ZERO BOTTOM CLIPPING) */
-.content-wrapper {
-    width: 100%;
-    max-width: 1100px;
-    margin: 0 auto;
-    box-sizing: border-box;
-    padding-bottom: max(3.5rem, calc(env(safe-area-inset-bottom, 0px) + 2rem)) !important;
-}
-
-/* 3. ENSURE ALL MODALS FIT SCREEN ON SMALL MOBILES & KEYBOARDS */
-.modal-body,
-.ota-modal-body {
-    max-height: calc(var(--app-height, 100dvh) - 130px) !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-}
-
-/* 4. SUPERADMIN CONSOLE ADAPTABILITY */
-#saDashboard .main-content {
-    flex: 1 1 0 !important;
-    height: 100% !important;
-    max-height: 100% !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-}
-
-#saDashboard .view-pane.active {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding-bottom: max(3.5rem, calc(env(safe-area-inset-bottom, 0px) + 2rem)) !important;
-}
