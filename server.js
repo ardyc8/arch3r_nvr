@@ -2727,8 +2727,8 @@ app.get('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) =
     res.json(dbData.super_settings || getDefaultDb().super_settings);
 });
 
-// --- API UPDATE SISTEM (OTA & GIT) ---
-app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, res) => {
+// --- API UPDATE SISTEM (OTA & GIT) - SYNCHRONIZED FOR SUPERADMIN & ADMINISTRATOR ---
+const handleSystemUpdateRoute = async (req, res) => {
     const updateType = req.body.type; // 'check' atau 'execute'
 
     if (updateType === 'check') {
@@ -2747,7 +2747,8 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
 
     if (updateType === 'execute') {
         try {
-            sysLog('INFO', `[Superadmin] Memulai eksekusi pembaruan sistem OTA/Git...`, 'SYSTEM');
+            const callerRole = req.userRole || 'admin';
+            sysLog('INFO', `[${callerRole.toUpperCase()}] Memulai eksekusi pembaruan sistem OTA/Git...`, 'SYSTEM');
             const steps = req.body.steps || {};
             const result = await executeSystemUpdate(steps);
             return res.json(result);
@@ -2758,7 +2759,11 @@ app.post('/api/superadmin/update', verifyToken, requireSuperadmin, async (req, r
     }
 
     return res.status(400).json({ error: 'Parameter type tidak valid (check/execute).' });
-});
+};
+
+app.post('/api/superadmin/update', verifyToken, requireAdministrator, handleSystemUpdateRoute);
+app.post('/api/system/update', verifyToken, requireAdministrator, handleSystemUpdateRoute);
+app.post('/api/admin/update', verifyToken, requireAdministrator, handleSystemUpdateRoute);
 
 app.post('/api/superadmin/change-credentials', verifyToken, requireSuperadmin, (req, res) => {
     const { newUsername, newPassword } = req.body;

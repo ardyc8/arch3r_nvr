@@ -1,5 +1,18 @@
 # Changelog
 
+## [Ver 10.8.4] - 2026-09-25
+### Unified Superadmin & Admin About OTA Live Sync Engine, Fixed Password Peek Layout & Safe Pipeline Execution
+- **Perbaikan Tombol Mata Melayang (Floating Eye Icon Fix) pada Superadmin OTA (`public/superadmin.html` & `public/style.css`):**
+  - **Password Wrapper Containerization**: Membungkus input GitHub PAT Token (`#otaGithubToken`) dan tombol peek (`.btn-peek-pwd`) ke dalam kontainer `<div class="password-wrapper">` dengan `position: relative; width: 100%; display: flex; align-items: center;`.
+  - **CSS Scoping Hardening**: Mempertegas aturan styling `.password-wrapper` dan `.btn-peek-pwd` pada `public/style.css` sehingga tombol mata selalu terkunci rapi di sisi kanan dalam input field dan tidak pernah melayang keluar atau menimpa elemen lain.
+- **Sinkronisasi Total Logika Update OTA Antara Superadmin & Admin About (`server.js`, `public/script.js`, `public/admin.html`, `public/index.html`):**
+  - **Role Permission Normalization**: Mengubah middleware endpoint `/api/superadmin/update`, `/api/system/update`, dan `/api/admin/update` di `server.js` dari sebelumnya `requireSuperadmin` menjadi `requireAdministrator`, sehingga akun Administrator Gedung dapat memeriksa dan mengeksekusi pembaruan OTA tanpa error 403 Forbidden.
+  - **Live Git & Branch Sync di Admin About**: Logika pengecekan rilis, perbandingan SemVer, perbandingan Commit SHA GitHub, dan rendering kartu Catatan Rilis (Changelog) pada menu Admin About kini 100% identik dan tersinkronisasi dengan engine Superadmin.
+  - **Auto-Sync saat Buka Menu About**: Fungsi `fetchAboutInfo()` kini secara otomatis memicu `checkAdminOtaUpdate({ silent: true })` di latar belakang agar status badge dan daftar changelog langsung segar saat halaman dibuka.
+  - **Separasi URL Update Aman**: Form input URL Repositori GitHub dan PAT Token tetap dilindungi secara eksklusif hanya untuk Superadmin (`super_settings`), sedangkan Admin Gedung dapat langsung mengeksekusi alur pembaruan terproteksi (*Safe/Normal/Hard Update*) yang telah disiapkan.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.4** pada seluruh komponen sistem sesuai aturan Semantic Versioning.
+
 ## [Ver 10.8.3] - 2026-09-25
 ### Restored Crisp Zero-Gap View Layout (v10.7.5 Style), Pure Vanilla CSS & Compact Spacing
 - **Eliminasi Celah Atas (Top Gap Fix) di Semua Halaman Selain Live Monitor (`public/style.css` & `public/index.html`):**

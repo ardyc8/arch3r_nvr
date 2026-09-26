@@ -3713,41 +3713,6 @@ async function fetchCameras() {
         }
     };
 
-    window.togglePtzCard = function() {
-        const card = document.getElementById('ptzControlPanelCard');
-        const icon = document.getElementById('ptzToggleIcon');
-        const text = document.getElementById('ptzToggleText');
-        if (!card) return;
-        const isCollapsed = card.classList.contains('is-collapsed');
-        if (isCollapsed) {
-            card.classList.remove('is-collapsed');
-            if (icon) icon.textContent = '▼';
-            if (text) text.textContent = 'Tutup';
-            try { localStorage.setItem('nvr_ptz_collapsed', 'false'); } catch(_) {}
-        } else {
-            card.classList.add('is-collapsed');
-            if (icon) icon.textContent = '▲';
-            if (text) text.textContent = 'Buka PTZ';
-            try { localStorage.setItem('nvr_ptz_collapsed', 'true'); } catch(_) {}
-        }
-    };
-
-    // Auto-initialize PTZ collapsed state (collapsed by default on mobile < 1024px to maximize camera screen)
-    try {
-        const savedPtzState = localStorage.getItem('nvr_ptz_collapsed');
-        const shouldCollapse = savedPtzState === 'true' || (savedPtzState === null && window.innerWidth < 1024);
-        if (shouldCollapse) {
-            const card = document.getElementById('ptzControlPanelCard');
-            const icon = document.getElementById('ptzToggleIcon');
-            const text = document.getElementById('ptzToggleText');
-            if (card) {
-                card.classList.add('is-collapsed');
-                if (icon) icon.textContent = '▲';
-                if (text) text.textContent = 'Buka PTZ';
-            }
-        }
-    } catch (_) {}
-
     // Fullscreen state listener and class synchronizer
     function handleFullscreenChange() {
         const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
@@ -5343,7 +5308,7 @@ let allLogsCache = [];
             if (res.ok) {
                 const data = await res.json();
                 
-                if (elVersion) elVersion.textContent = 'Versi ' + (data.appVersion || '10.7.8');
+                if (elVersion) elVersion.textContent = 'Versi ' + (data.appVersion || window.APP_VERSION || '10.8.4');
                 if (elMachineId) elMachineId.textContent = data.machineId || '-';
                 if (elEmail) elEmail.textContent = data.registeredEmail || '-';
                 
@@ -5369,13 +5334,18 @@ let allLogsCache = [];
                     }
                 }
             } else {
-                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.6';
+                if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi ' + (window.APP_VERSION || '10.8.4');
                 if (elStatus && elStatus.textContent.includes('Memuat')) elStatus.innerHTML = '<span style="color:#10b981; font-weight:600;">Sistem Aktif</span>';
                 if (elDays && elDays.textContent.includes('Memuat')) elDays.textContent = 'Mode Produksi Lokal';
             }
         } catch(e) {
             console.error('Gagal memuat info About', e);
-            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi 10.8.6';
+            if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi ' + (window.APP_VERSION || '10.8.4');
+        }
+
+        // Auto check OTA update for admin about view
+        if (typeof window.checkAdminOtaUpdate === 'function') {
+            window.checkAdminOtaUpdate({ silent: true });
         }
     }
     window.fetchAboutInfo = fetchAboutInfo;
@@ -5458,10 +5428,11 @@ let allLogsCache = [];
         }
     };
 
-    window.checkAdminOtaUpdate = async function() {
+    window.checkAdminOtaUpdate = async function(options = {}) {
+        const isSilent = !!options.silent;
         const btn = document.getElementById('btnAdminCheckOta');
         const badge = document.getElementById('adminOtaStatusBadge');
-        if (btn) btn.textContent = "⏳ Memeriksa...";
+        if (btn && !isSilent) btn.textContent = "⏳ Memeriksa...";
 
         try {
             const res = await authFetch('/api/superadmin/update', {
@@ -5472,10 +5443,16 @@ let allLogsCache = [];
             const data = await res.json();
             adminUpdateData = data;
 
+            const isNew = !!(data.update_available || data.isUpdateAvailable);
+            const curVer = data.current_version || window.APP_VERSION || '10.8.4';
+            const latVer = data.latest_version || window.APP_VERSION || '10.8.4';
+
+            if (isNew) {
+                window._otaTargetVersion = latVer;
+                window._otaTargetTitle = data.release_title || 'Pembaruan Sistem';
+            }
+
             if (badge) {
-                const isNew = data.update_available || data.isUpdateAvailable;
-                const curVer = data.current_version || window.APP_VERSION || '10.8.6';
-                const latVer = data.latest_version || window.APP_VERSION || '10.8.6';
                 let label = '• Versi Terbaru';
                 if (isNew) {
                     if (data.commits_ahead && data.commits_ahead > 0 && curVer === latVer) {
@@ -5491,9 +5468,12 @@ let allLogsCache = [];
             const changelogList = document.getElementById('adminOtaChangelogList');
             if (changelogList && Array.isArray(data.changelog)) {
                 changelogList.innerHTML = data.changelog.map(c => `
-                    <div style="background:rgba(255,255,255,0.03); padding:0.65rem 0.85rem; border-radius:6px; border-left:3px solid #3b82f6;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <strong style="color:#93c5fd; font-size:0.85rem;">v${c.version} - ${c.title || 'Pembaruan Sistem'}</strong>
+                    <div style="background:rgba(255,255,255,0.03); padding:0.65rem 0.85rem; border-radius:6px; border-left:3px solid ${c.version === latVer && isNew ? '#10b981' : '#3b82f6'};">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:0.35rem;">
+                            <strong style="color:${c.version === latVer && isNew ? '#34d399' : '#93c5fd'}; font-size:0.85rem;">
+                                v${c.version} - ${c.title || 'Pembaruan Sistem'}
+                                ${c.version === latVer && isNew ? '<span class="badge" style="background:#10b981; color:#fff; font-size:0.68rem; margin-left:4px;">RILIS BARU</span>' : ''}
+                            </strong>
                             <span style="font-size:0.75rem; color:var(--text-muted);">${c.date || ''}</span>
                         </div>
                         <ul style="margin:0; padding-left:1.2rem; font-size:0.78rem; color:#cbd5e1; line-height:1.4;">
@@ -5510,7 +5490,9 @@ let allLogsCache = [];
         } catch (err) {
             console.error("[Admin OTA Check Error]", err);
             if (btn) btn.textContent = "❌ Gagal";
-            alert("Gagal memeriksa update: " + err.message);
+            if (!isSilent) {
+                alert("Gagal memeriksa update: " + err.message);
+            }
         }
     };
 

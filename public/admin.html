@@ -346,6 +346,36 @@
                             <p style="color:var(--text-muted); margin-top:0.5rem;" id="aboutAppVersion">Versi Memuat...</p>
                         </div>
                         
+                        <!-- Update Sistem (OTA) Card for Administrator -->
+                        <div style="background:var(--surface); padding:1.25rem; border-radius:8px; border:1px solid var(--border);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
+                                    <span>🚀</span> Update Sistem (OTA &amp; Linux Pipeline)
+                                </h3>
+                                <span id="adminOtaStatusBadge" class="badge" style="background:#2563eb; color:white;">v10.8.4</span>
+                            </div>
+                            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
+                                Periksa pembaruan resmi repositori, lihat ringkasan changelog rilis, dan jalankan alur update sistem dengan perintah terminal Linux (Git Pull, NPM Install, PM2 Reload, Reboot).
+                            </p>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+                                <button class="btn btn-secondary" id="btnAdminCheckOta" style="font-size:0.85rem;" onclick="window.checkAdminOtaUpdate()">
+                                    🔄 Periksa Pembaruan
+                                </button>
+                                <button class="btn btn-secondary" id="btnAdminToggleChangelog" style="font-size:0.85rem;" onclick="window.toggleAdminOtaChangelog()">
+                                    📋 Catatan Rilis (Changelog)
+                                </button>
+                                <button class="btn btn-primary" id="btnAdminOpenWorkflow" style="font-size:0.85rem; background:#10b981; border-color:#059669;" onclick="window.openOtaWorkflowModal()">
+                                    🚀 Alur Eksekusi Update
+                                </button>
+                            </div>
+                            <!-- Admin Changelog Container -->
+                            <div id="adminOtaChangelogContainer" style="display:none; background:var(--surface-dark); border:1px solid var(--border); border-radius:6px; padding:1rem; max-height:260px; overflow-y:auto; margin-top:0.75rem;">
+                                <div id="adminOtaChangelogList" style="display:flex; flex-direction:column; gap:0.75rem;">
+                                    <!-- Populated via JS -->
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div style="background:var(--surface); padding:1rem; border-radius:8px; border:1px solid var(--border);">
                             <h3 style="margin:0 0 1rem 0; font-size:1.1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">Informasi Lisensi Mesin</h3>
                             <div style="display:grid; grid-template-columns: 150px 1fr; gap:0.5rem; font-size:0.9rem;">
