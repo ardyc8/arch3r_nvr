@@ -1,5 +1,16 @@
-# ⚡ Arch3r NVR (Ver. 10.9.7)
+# ⚡ Arch3r NVR (Ver. 10.9.8)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.9.8:
+- **Clean Tactical Video Canvas, External Telemetry Status Bar & Separated Heatmap Analytics**:
+  1. **Pembersihan Total Bidang Video Canvas (`public/script.js` & `public/index.html`)**:
+     - Menghapus seluruh teks dan kotak HUD *burned-in* dari dalam bidang video canvas (`LIVE ANALYTICS`, `YOLOv8 Nano • 10 FPS`, `14ms Latency`, dan kotak legenda Heatmap).
+     - Bidang video kini 100% leluasa, murni hanya menampilkan bingkai target *tactical corner brackets*, batas zona ROI, dan pendaran termal halus transparan tanpa terhalang teks.
+  2. **Dedicated External Telemetry Status Bar (Di Bawah Layar Video)**:
+     - Memindahkan seluruh metrik teknis ke status bar modern di bawah video: status aktif engine (`🟢 AI AKTIF` / `🚨 INTRUSI`), model name, FPS aktual, dan latensi inferensi.
+     - Menyediakan panel eksternal khusus untuk Heatmap & Akurasi Target ROI (`🎯 ROI Optimal: XX%`) lengkap dengan diagram pita spektrum termal yang rapi dan elegan.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.9.8** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.9.7:
 - **Bounding Box Heatmap Visualizer Overlay & ROI Spatial Priority Analytics**:

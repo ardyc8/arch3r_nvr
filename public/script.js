@@ -11313,8 +11313,10 @@ async function triggerLiveCanvasScreenInference(camId, videoEl) {
                 activeRealYoloDetections = data.detections;
                 const latEl = document.getElementById('yolo-stat-latency');
                 if (latEl && data.latency_ms) latEl.textContent = `${Math.round(data.latency_ms)}ms`;
+                const extLatEl = document.getElementById('yolo-hud-latency');
+                if (extLatEl && data.latency_ms) extLatEl.textContent = `⚡ ${Math.round(data.latency_ms)}ms`;
                 const fpsEl = document.getElementById('yolo-hud-fps');
-                if (fpsEl) fpsEl.textContent = `Live Screen`;
+                if (fpsEl) fpsEl.textContent = `Live Screen (Canvas)`;
             }
         }
     } catch (e) {
@@ -11342,6 +11344,8 @@ async function fetchRealYoloDetections() {
                 if (data.latency_ms) {
                     const latEl = document.getElementById('yolo-stat-latency');
                     if (latEl) latEl.textContent = `${Math.round(data.latency_ms)}ms`;
+                    const extLatEl = document.getElementById('yolo-hud-latency');
+                    if (extLatEl) extLatEl.textContent = `⚡ ${Math.round(data.latency_ms)}ms`;
                 }
                 if (data.fps) {
                     const fpsEl = document.getElementById('yolo-hud-fps');
@@ -11868,71 +11872,14 @@ function drawYoloBoundingBoxHeatmap(ctx, canvasWidth, canvasHeight, roiPx, curre
 
     ctx.restore();
 
-    // 4. Render Fixed Tactical Heatmap HUD Legend & ROI Verification Indicator
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform so legend stays anchored
-
-    const legendW = 310, legendH = 48;
-    const legendX = 14;
-    const legendY = canvasHeight - legendH - 14;
-
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
-    ctx.strokeStyle = 'rgba(249, 115, 22, 0.65)';
-    ctx.lineWidth = 1.2;
-    if (ctx.roundRect) {
-        ctx.beginPath();
-        ctx.roundRect(legendX, legendY, legendW, legendH, 6);
-        ctx.fill();
-        ctx.stroke();
-    } else {
-        ctx.fillRect(legendX, legendY, legendW, legendH);
-        ctx.strokeRect(legendX, legendY, legendW, legendH);
+    // 4. Update External Heatmap Telemetry Panel (Outside Video Screen)
+    const extHeatmapStatus = document.getElementById('yolo-ext-heatmap-status');
+    if (extHeatmapStatus) {
+        const roiRatioPct = totalPoints > 0 ? Math.round((pointsInRoi / totalPoints) * 100) : 0;
+        const roiStatusLabel = totalPoints === 0 ? 'Memantau...' : (roiRatioPct >= 70 ? '🎯 ROI Optimal' : '🔍 Aktivitas Luar');
+        extHeatmapStatus.textContent = `${roiStatusLabel}: ${roiRatioPct}% (${pointsInRoi}/${totalPoints})`;
+        extHeatmapStatus.style.color = roiRatioPct >= 50 ? '#4ade80' : (totalPoints > 0 ? '#38bdf8' : '#94a3b8');
     }
-
-    const roiRatioPct = totalPoints > 0 ? Math.round((pointsInRoi / totalPoints) * 100) : 0;
-
-    // Header Title
-    ctx.font = 'bold 10px monospace';
-    ctx.fillStyle = '#fb923c';
-    ctx.fillText('🔥 HEATMAP PRIORITAS DETEKSI', legendX + 10, legendY + 14);
-
-    // Dynamic Verification Text
-    ctx.font = 'bold 9.5px monospace';
-    ctx.fillStyle = roiRatioPct >= 50 ? '#4ade80' : (totalPoints > 0 ? '#38bdf8' : '#94a3b8');
-    const roiStatusLabel = totalPoints === 0 ? 'MEMANTAU' : (roiRatioPct >= 70 ? '🎯 ROI OPTIMAL' : '🔍 AKTIVITAS LUAR');
-    ctx.fillText(`${roiStatusLabel}: ${roiRatioPct}% (${pointsInRoi}/${totalPoints})`, legendX + 175, legendY + 14);
-
-    // Spectrum Gradient Bar
-    const barX = legendX + 10;
-    const barY = legendY + 22;
-    const barW = legendW - 20;
-    const barH = 7;
-
-    const barGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
-    barGrad.addColorStop(0.0, '#38bdf8');
-    barGrad.addColorStop(0.35, '#22c55e');
-    barGrad.addColorStop(0.70, '#eab308');
-    barGrad.addColorStop(1.0, '#ef4444');
-
-    ctx.fillStyle = barGrad;
-    if (ctx.roundRect) {
-        ctx.beginPath();
-        ctx.roundRect(barX, barY, barW, barH, 3);
-        ctx.fill();
-    } else {
-        ctx.fillRect(barX, barY, barW, barH);
-    }
-
-    // Legend Scale Labels
-    ctx.font = '8.5px monospace';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText('Dingin (Luar)', barX, barY + barH + 9);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#f87171';
-    ctx.fillText('Panas (Fokus Zona ROI)', barX + barW, barY + barH + 9);
-    ctx.textAlign = 'left';
-
-    ctx.restore();
 }
 window.drawYoloBoundingBoxHeatmap = drawYoloBoundingBoxHeatmap;
 
@@ -11949,6 +11896,7 @@ function updateYoloHeatmapUI() {
     const btn = document.getElementById('yolo-btn-toggle-heatmap');
     const textEl = document.getElementById('yolo-heatmap-text');
     const pill = document.getElementById('yolo-pill-heatmap');
+    const extPanel = document.getElementById('yolo-external-heatmap-panel');
 
     if (btn) {
         if (isYoloHeatmapActive) {
@@ -11972,6 +11920,9 @@ function updateYoloHeatmapUI() {
         } else {
             pill.classList.remove('active');
         }
+    }
+    if (extPanel) {
+        extPanel.style.display = isYoloHeatmapActive ? 'flex' : 'none';
     }
 }
 window.updateYoloHeatmapUI = updateYoloHeatmapUI;
@@ -12498,34 +12449,29 @@ function drawYoloViewLiveCanvasStream(timestamp) {
 
     ctx.restore();
 
-    // --- Glassmorphism AI Status HUD (Top Right) ---
-    ctx.save();
-    const hudW = 310, hudH = 30;
-    const hudX = canvas.width - hudW - 14;
-    const hudY = 10;
+    // --- Update External Telemetry Status Bar (Completely Clean Video Canvas) ---
+    const badgeEl = document.getElementById('yolo-telemetry-status-badge');
+    const dotEl = document.getElementById('yolo-telemetry-dot');
+    const stateTextEl = document.getElementById('yolo-telemetry-state-text');
 
-    ctx.fillStyle = intrusionCount > 0 ? 'rgba(239, 68, 68, 0.92)' : 'rgba(15, 23, 42, 0.85)';
-    ctx.strokeStyle = intrusionCount > 0 ? '#ef4444' : 'rgba(56, 189, 248, 0.45)';
-    ctx.lineWidth = 1;
-    if (ctx.roundRect) {
-        ctx.beginPath();
-        ctx.roundRect(hudX, hudY, hudW, hudH, 6);
-        ctx.fill();
-        ctx.stroke();
-    } else {
-        ctx.fillRect(hudX, hudY, hudW, hudH);
-        ctx.strokeRect(hudX, hudY, hudW, hudH);
+    if (badgeEl && dotEl && stateTextEl) {
+        if (intrusionCount > 0) {
+            badgeEl.style.background = 'rgba(239, 68, 68, 0.2)';
+            badgeEl.style.borderColor = '#ef4444';
+            badgeEl.style.color = '#fca5a5';
+            dotEl.style.background = '#ef4444';
+            dotEl.style.boxShadow = '0 0 8px #ef4444';
+            stateTextEl.textContent = `🚨 INTRUSI (${intrusionCount})`;
+        } else {
+            const hasTargets = (personCount + carCount + motorCount) > 0;
+            badgeEl.style.background = 'rgba(56, 189, 248, 0.12)';
+            badgeEl.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+            badgeEl.style.color = '#38bdf8';
+            dotEl.style.background = '#22c55e';
+            dotEl.style.boxShadow = '0 0 6px #22c55e';
+            stateTextEl.textContent = hasTargets ? `🟢 DETEKSI (${personCount + carCount + motorCount})` : '🟢 AI AKTIF';
+        }
     }
-
-    ctx.font = 'bold 10.5px monospace';
-    ctx.fillStyle = intrusionCount > 0 ? '#ffffff' : '#38bdf8';
-    ctx.fillText(intrusionCount > 0 ? '🚨 INTRUSI' : '🟢 AI LIVE', hudX + 8, hudY + 19);
-
-    ctx.font = '10px monospace';
-    ctx.fillStyle = '#f8fafc';
-    const objSummary = `👤 ${personCount} | 🚗 ${carCount} | 🏍️ ${motorCount}`;
-    ctx.fillText(`${objSummary} • ⚡ 14ms`, hudX + 78, hudY + 19);
-    ctx.restore();
 }
 
 // --- Interactive In-Player ROI Editing Controller ---

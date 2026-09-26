@@ -1477,19 +1477,8 @@
                                     <!-- Video & Canvas Wrapper with Fullscreen Lock & 16:9 Stage -->
                                     <div id="yolo-view-video-wrapper" class="yolo-video-wrapper">
                                         <div id="yolo-video-stage" class="yolo-video-stage">
-                                            <!-- Top Left Live HUD Badge -->
-                                            <div style="position:absolute; top:12px; left:12px; z-index:10; background:rgba(15,23,42,0.85); backdrop-filter:blur(6px); border:1px solid rgba(59,130,246,0.4); padding:4px 10px; border-radius:6px; font-size:0.75rem; color:#60a5fa; font-weight:700; display:flex; align-items:center; gap:0.45rem;">
-                                                <span style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block; box-shadow:0 0 8px #22c55e;"></span>
-                                                LIVE ANALYTICS
-                                            </div>
-
-                                            <!-- Top Right Resolution & Model Badge -->
-                                            <div style="position:absolute; top:12px; right:12px; z-index:10; background:rgba(15,23,42,0.85); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.1); padding:4px 8px; border-radius:6px; font-size:0.72rem; color:#94a3b8; font-family:monospace;">
-                                                <span id="yolo-hud-model-name" style="color:#38bdf8; font-weight:600;">YOLOv8 Nano</span> &bull; <span id="yolo-hud-fps">10 FPS</span>
-                                            </div>
-
-                                            <!-- Floating In-Player ROI Editing Banner (Active during ROI Dragging) -->
-                                            <div id="yolo-roi-edit-banner" style="display:none; position:absolute; top:48px; left:12px; right:12px; z-index:15; background:rgba(15,23,42,0.92); border:1px solid #22c55e; border-radius:8px; padding:0.6rem 0.85rem; box-shadow:0 4px 16px rgba(0,0,0,0.5); backdrop-filter:blur(6px); justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                                            <!-- Floating In-Player ROI Editing Banner (Active ONLY during interactive ROI Dragging) -->
+                                            <div id="yolo-roi-edit-banner" style="display:none; position:absolute; top:12px; left:12px; right:12px; z-index:15; background:rgba(15,23,42,0.95); border:1px solid #22c55e; border-radius:8px; padding:0.6rem 0.85rem; box-shadow:0 4px 16px rgba(0,0,0,0.6); backdrop-filter:blur(6px); justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                                                 <div style="font-size:0.8rem; font-weight:600; color:#4ade80; display:flex; align-items:center; gap:0.4rem;">
                                                     <span>✏️</span> <span>Mode Edit Zona: Seret kotak atau titik sudut untuk menentukan area deteksi ROI.</span>
                                                 </div>
@@ -1509,8 +1498,40 @@
                                             <!-- Stream Video Element (Hardware Scaled & Aligned) -->
                                             <video id="yolo-view-video-element" autoplay playsinline muted></video>
                                             
-                                            <!-- Tactical HUD Canvas Overlay (Pixel-Perfect Alignment) -->
+                                            <!-- Tactical Clean HUD Canvas Overlay (100% Uncluttered: Corner Brackets & ROI Only) -->
                                             <canvas id="yolo-view-canvas-overlay"></canvas>
+                                        </div>
+                                    </div>
+
+                                    <!-- Dedicated External Telemetry & Analytics Status Bar (Below Video) -->
+                                    <div id="yolo-external-telemetry-bar" style="margin-top:0.6rem; background:rgba(15,23,42,0.85); border:1px solid rgba(59,130,246,0.25); border-radius:8px; padding:0.55rem 0.85rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;">
+                                        <!-- Left Section: Engine Status & Telemetry Speed -->
+                                        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                                            <div id="yolo-telemetry-status-badge" style="display:flex; align-items:center; gap:0.4rem; font-size:0.76rem; font-weight:700; color:#38bdf8; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); padding:3px 8px; border-radius:5px;">
+                                                <span id="yolo-telemetry-dot" style="width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; box-shadow:0 0 6px #22c55e;"></span>
+                                                <span id="yolo-telemetry-state-text">AI STANDBY</span>
+                                            </div>
+                                            <div style="font-size:0.75rem; color:#94a3b8; display:flex; align-items:center; gap:0.4rem;">
+                                                <span id="yolo-hud-model-name" style="color:#f8fafc; font-weight:600;">YOLOv8 Nano</span>
+                                                <span>•</span>
+                                                <span id="yolo-hud-fps" style="color:#38bdf8; font-weight:600;">10 FPS</span>
+                                                <span>•</span>
+                                                <span id="yolo-hud-latency" style="color:#a78bfa; font-weight:600;">⚡ 12ms</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Right Section: Real-time Heatmap & ROI Prioritization Status (External) -->
+                                        <div id="yolo-external-heatmap-panel" style="display:none; align-items:center; gap:0.6rem; font-size:0.75rem; color:#fb923c;">
+                                            <div style="display:flex; align-items:center; gap:0.35rem; font-weight:700;">
+                                                <span>🔥 Heatmap ROI:</span>
+                                                <span id="yolo-ext-heatmap-status" style="color:#4ade80;">🎯 0% (0 titik)</span>
+                                            </div>
+                                            <!-- Mini Spectrum Gradient Bar -->
+                                            <div style="display:flex; align-items:center; gap:4px;">
+                                                <span style="font-size:0.68rem; color:#64748b;">Luar</span>
+                                                <div style="width:65px; height:6px; border-radius:3px; background:linear-gradient(90deg, #38bdf8 0%, #22c55e 35%, #eab308 70%, #ef4444 100%);"></div>
+                                                <span style="font-size:0.68rem; color:#f87171;">Fokus ROI</span>
+                                            </div>
                                         </div>
                                     </div>
 

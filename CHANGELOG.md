@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 10.9.8] - 2026-09-26
+### Clean Tactical Video Canvas, External Telemetry Status Bar & Separated Heatmap Analytics
+- **Pembersihan Total Bidang Video Canvas (`public/script.js` & `public/index.html`):**
+  - **Zero-Clutter Video Canvas**: Menghilangkan seluruh teks *burned-in* overlay dari dalam bidang video canvas (`LIVE ANALYTICS`, `YOLOv8 Nano • 10 FPS`, `MediaMTX / Live Screen`, `14ms Latency`, dan kotak legenda Heatmap). Bidang video kini 100% bersih dan leluasa, murni hanya menampilkan bingkai target *tactical corner brackets*, garis tipis batas zona ROI, dan pendaran termal halus transparan tanpa terhalang teks.
+  - **Dedicated External Telemetry Status Bar**: Memindahkan seluruh informasi teknis ke bar status modern dan terstruktur tepat di **bawah video**:
+    - **Engine State**: Badge dinamis indikator status sistem (`🟢 AI AKTIF`, `🟢 DETEKSI (X)`, atau `🚨 INTRUSI (X)` dengan efek denyut merah saat alarm perbatasan terpicu).
+    - **Performance & Latency**: Menampilkan model aktif (`YOLOv8 Nano`), framerate aktual (`10 FPS`), dan latensi responsif (`⚡ 12ms`).
+    - **External Heatmap & ROI Telemetry Panel**: Panel khusus di sisi kanan bar yang otomatis muncul saat tombol Heatmap aktif, menampilkan persentase akurasi target ROI (`🎯 ROI Optimal: XX% (inside/total)`) dan pita spektrum gradien warna termal tanpa mengotori layar kamera.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.9.8** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
+
 ## [Ver 10.9.7] - 2026-09-26
 ### Bounding Box Heatmap Visualizer Overlay & ROI Spatial Priority Analytics
 - **Visual Heatmap Overlay (`public/script.js` & `public/style.css`):**

@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 10.9.7 - Bounding Box Heatmap Visualizer Overlay, ROI Spatial Priority Analytics & Tactical HUD.",
+  "description": "Arch3r NVR Ver. 10.9.8 - Clean Tactical Video Canvas, External Telemetry Status Bar & Separated Heatmap Analytics.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
