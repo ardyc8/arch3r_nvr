@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.8.7 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.8.8 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -4247,7 +4247,7 @@ async function fetchCameras() {
                     
                     cell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
-                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill;"></video>
+                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; background:#000;"></video>
                             
                             <div id="overlay_${videoId}" class="state-overlay">
                                 <div class="state-spinner" id="spin_${videoId}"></div>
@@ -4321,7 +4321,7 @@ async function fetchCameras() {
                     
                     mCell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
-                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:fill;"></video>
+                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; background:#000;"></video>
                             
                             <div id="overlay_${videoId}" class="state-overlay">
                                 <div class="state-spinner" id="spin_${videoId}"></div>

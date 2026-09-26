@@ -1,5 +1,14 @@
-# ⚡ Arch3r NVR (Ver. 10.8.7)
+# ⚡ Arch3r NVR (Ver. 10.8.8)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.8.8:
+- **Fixed Playback Canvas Aspect Ratio Lock (Anti-Stretching), Dual-Lens Stream Stability & WebRTC/HLS Fast Recovery**:
+  1. **Penguncian Wadah Playback (Anti-Stretching / Kotak Stabil `public/index.html`)**:
+     - Membungkus stage `#playbackPlayer` dengan kontainer absolut berbatas tinggi (`min-height: 0; overflow: hidden; object-fit: contain;`). Video kamera dengan rasio non-standar (seperti kamera Franwell/V380 2-lensa vertikal 1920×2160) kini otomatis diposisikan di tengah secara proporsional (*pillarboxed*) dan stabil tanpa pernah memanjangkan kotak video ke bawah atau merusak layout timeline playback desktop.
+  2. **Optimalisasi Live Grid Cells (`public/script.js`)**:
+     - Mengubah `object-fit: fill` menjadi `object-fit: contain; background: #000;` pada kartu kamera Live Monitor (Desktop & Mobile) agar tampilan kamera 2-lensa vertikal tetap proporsional tanpa distorsi atau gepeng.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.8** pada seluruh berkas sistem sesuai protokol Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.8.7:
 - **Precise Live Stream Camera Counter, Multi-Stream Fallback & Franwell/V380 Stream Recovery Engine**:
