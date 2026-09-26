@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.9.1 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.9.2 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -3925,9 +3925,29 @@ async function fetchCameras() {
     window.destroyHlsPlayers = destroyHlsPlayers;
     window.activeHlsPlayers = activeHlsPlayers;
 
+    // --- STREAM HEALTH WATCHDOG & STALLED/FREEZE RECOVERY ENGINE (Ver. 10.9.2) ---
+    const streamHealthTracker = {};
+    window.streamHealthTracker = streamHealthTracker;
+    let streamWatchdogInterval = null;
+
     // --- PROFESSIONAL STREAM & PLAYBACK OSD STATE OVERLAY ENGINE ---
     function setStreamState(videoId, state, message, detail) {
         const overlay = document.getElementById('overlay_' + videoId);
+        const vidEl = document.getElementById(videoId);
+        const cellEl = vidEl ? vidEl.closest('.cam-cell') : null;
+
+        if (cellEl) {
+            if (state === 'live' || state === 'ready') {
+                cellEl.classList.remove('is-stalled', 'is-disconnected');
+            } else if (state === 'stalled' || state === 'reconnecting') {
+                cellEl.classList.add('is-stalled');
+                cellEl.classList.remove('is-disconnected');
+            } else if (state === 'offline' || state === 'error') {
+                cellEl.classList.add('is-disconnected');
+                cellEl.classList.remove('is-stalled');
+            }
+        }
+
         if (!overlay) return;
         const titleEl = document.getElementById('title_' + videoId);
         const descEl = document.getElementById('desc_' + videoId);
@@ -3952,6 +3972,16 @@ async function fetchCameras() {
                 titleEl.innerHTML = '⏳ Buffering...';
             }
             if (descEl) descEl.textContent = detail || message || 'Memuat paket video...';
+        } else if (state === 'stalled' || state === 'reconnecting') {
+            overlay.classList.remove('hidden');
+            if (spinEl) spinEl.style.display = (state === 'reconnecting') ? 'block' : 'none';
+            if (titleEl) {
+                titleEl.style.color = '#ef4444';
+                titleEl.innerHTML = (state === 'reconnecting')
+                    ? '<span style="display:inline-block; animation:pulse 1s infinite;">🔄</span> Menyambung Ulang...'
+                    : '🔴 Aliran Terputus / Beku';
+            }
+            if (descEl) descEl.textContent = detail || message || 'Aliran terhenti. Menghubungkan ulang otomatis...';
         } else if (state === 'offline' || state === 'error') {
             overlay.classList.remove('hidden');
             if (spinEl) spinEl.style.display = 'none';
@@ -3963,6 +3993,45 @@ async function fetchCameras() {
         }
     }
     window.setStreamState = setStreamState;
+
+    function startStreamHealthWatchdog() {
+        if (streamWatchdogInterval) clearInterval(streamWatchdogInterval);
+        streamWatchdogInterval = setInterval(() => {
+            const now = Date.now();
+            for (const id in streamHealthTracker) {
+                const entry = streamHealthTracker[id];
+                if (!entry) continue;
+
+                const video = document.getElementById(id);
+                if (!video || video.paused) continue;
+
+                // Cek apakah video sedang aktif diputar
+                if (video.readyState >= 2) {
+                    const elapsed = now - (entry.lastTickTime || now);
+                    // Jika frame video tidak bergerak sama sekali selama > 5.5 detik (beku/melekat)
+                    if (elapsed > 5500) {
+                        setStreamState(id, 'stalled', '🔴 ALIRAN TERPUTUS / BEKU', 'Gambar terhenti. Menyiapkan rekoneksi...');
+                        
+                        // Jika sudah macet > 7.5 detik dan belum dalam proses reconnecting
+                        if (elapsed > 7500 && !entry.isReconnecting) {
+                            entry.isReconnecting = true;
+                            setStreamState(id, 'reconnecting', '🔄 MENYAMBUNG ULANG STREAM...', 'Menyegarkan koneksi stream kamera...');
+                            if (entry.hlsUrl && entry.streamPath) {
+                                playUltraStream(id, entry.hlsUrl, entry.streamPath);
+                            }
+                            entry.lastTickTime = Date.now();
+                            setTimeout(() => {
+                                if (streamHealthTracker[id]) {
+                                    streamHealthTracker[id].isReconnecting = false;
+                                }
+                            }, 4000);
+                        }
+                    }
+                }
+            }
+        }, 3000); // Check every 3 seconds
+    }
+    startStreamHealthWatchdog();
 
     function setPlaybackState(state, message, detail) {
         const overlay = document.getElementById('pbStateOverlay');
@@ -4012,6 +4081,17 @@ async function fetchCameras() {
         if (!video) return null;
 
         const id = video.id || (typeof elementId === 'string' ? elementId : 'video_' + Math.random().toString(36).substr(2, 9));
+        
+        // Track stream health & metadata for watchdog
+        streamHealthTracker[id] = {
+            videoId: id,
+            hlsUrl,
+            streamPath,
+            lastTime: -1,
+            lastTickTime: Date.now(),
+            isReconnecting: false
+        };
+
         setStreamState(id, 'connecting', 'Menghubungkan WebRTC...', streamPath);
 
         if (activeHlsPlayers[id]) {
@@ -4042,7 +4122,24 @@ async function fetchCameras() {
                     if (event.track) stream.addTrack(event.track);
                     video.play().then(() => {
                         setStreamState(id, 'live');
+                        if (streamHealthTracker[id]) {
+                            streamHealthTracker[id].lastTickTime = Date.now();
+                        }
                     }).catch(() => {});
+                };
+
+                // Watchdog listener for WebRTC drop
+                pc.oniceconnectionstatechange = () => {
+                    if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+                        setStreamState(id, 'stalled', '🔴 WEBRTC TERPUTUS', 'Beralih ke HLS stream...');
+                        initHlsPlayer(video, hlsUrl, onReady, onError);
+                    }
+                };
+                pc.onconnectionstatechange = () => {
+                    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+                        setStreamState(id, 'stalled', '🔴 KONEKSI TERPUTUS', 'Beralih ke HLS stream...');
+                        initHlsPlayer(video, hlsUrl, onReady, onError);
+                    }
                 };
 
                 const offer = await pc.createOffer();
@@ -4072,6 +4169,9 @@ async function fetchCameras() {
                             await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
                             connected = true;
                             setStreamState(id, 'live');
+                            if (streamHealthTracker[id]) {
+                                streamHealthTracker[id].lastTickTime = Date.now();
+                            }
                             if (typeof onReady === 'function') onReady(pc);
                             return pc;
                         }
@@ -4130,6 +4230,10 @@ async function fetchCameras() {
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, function() {
                 video.play().then(() => {
+                    setStreamState(id, 'live');
+                    if (streamHealthTracker[id]) {
+                        streamHealthTracker[id].lastTickTime = Date.now();
+                    }
                     if (typeof onReady === 'function') onReady(hls);
                 }).catch(e => {
                     console.log('Autoplay prevented:', e);
@@ -4140,6 +4244,7 @@ async function fetchCameras() {
             let mediaErrorCount = 0;
             hls.on(Hls.Events.ERROR, function(event, data) {
                 if (data.fatal) {
+                    setStreamState(id, 'stalled', '🔴 ALIRAN TERPUTUS', 'Mencoba menghubungkan kembali...');
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             if (typeof onError === 'function') onError(data);
@@ -4174,6 +4279,7 @@ async function fetchCameras() {
             video.src = hlsUrl;
             video.addEventListener('loadedmetadata', function() {
                 video.play().then(() => {
+                    setStreamState(id, 'live');
                     if (typeof onReady === 'function') onReady(null);
                 }).catch(e => console.log('Autoplay prevented:', e));
             });
@@ -4275,6 +4381,12 @@ async function fetchCameras() {
                             vidEl.addEventListener('loadstart', () => window.setStreamState(videoId, 'connecting', 'Menghubungkan...'));
                             vidEl.addEventListener('waiting', () => window.setStreamState(videoId, 'buffering', 'Buffering Aliran...'));
                             vidEl.addEventListener('playing', () => window.setStreamState(videoId, 'live'));
+                            vidEl.addEventListener('timeupdate', () => {
+                                if (window.streamHealthTracker && window.streamHealthTracker[videoId]) {
+                                    window.streamHealthTracker[videoId].lastTime = vidEl.currentTime;
+                                    window.streamHealthTracker[videoId].lastTickTime = Date.now();
+                                }
+                            });
                             vidEl.addEventListener('stalled', () => window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...'));
                             vidEl.addEventListener('error', () => window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus'));
                         }
@@ -4349,6 +4461,12 @@ async function fetchCameras() {
                             vidEl.addEventListener('loadstart', () => window.setStreamState(videoId, 'connecting', 'Menghubungkan...'));
                             vidEl.addEventListener('waiting', () => window.setStreamState(videoId, 'buffering', 'Buffering Aliran...'));
                             vidEl.addEventListener('playing', () => window.setStreamState(videoId, 'live'));
+                            vidEl.addEventListener('timeupdate', () => {
+                                if (window.streamHealthTracker && window.streamHealthTracker[videoId]) {
+                                    window.streamHealthTracker[videoId].lastTime = vidEl.currentTime;
+                                    window.streamHealthTracker[videoId].lastTickTime = Date.now();
+                                }
+                            });
                             vidEl.addEventListener('stalled', () => window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...'));
                             vidEl.addEventListener('error', () => window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus'));
                         }

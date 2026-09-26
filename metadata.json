@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 10.9.1 - Enhanced FFmpeg RTSP Probe Buffer (Anti-Drop / SPS-PPS Recovery), Audio Stream Dynamic Mapping & Continuous Recording Stability.",
+  "description": "Arch3r NVR Ver. 10.9.2 - Stream Health Watchdog (Anti-Freeze / Stalled Recovery), Polished Action Controls & Ergonomic Split PTZ Layout.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

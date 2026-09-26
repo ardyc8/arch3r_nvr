@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.9.1 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=10.9.1">
+    <title>Arch3r NVR Ver. 10.9.2 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=10.9.2">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -18,7 +18,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="version_sync.js?v=10.9.1"></script>
+    <script src="version_sync.js?v=10.9.2"></script>
     <style>
         /* Fullscreen Drawing Mode for AI Vision */
         #ai-canvas-container.ai-fullscreen-active {
@@ -86,7 +86,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 10.9.1</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 10.9.2</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -241,11 +241,11 @@
                                     <button class="nvr-grid-btn grid-btn" data-grid="16" onclick="window.setGridLayout(16)" title="Layout 4x4">㗊 4x4</button>
                                 </div>
                                 <div class="nvr-stream-global-controls" style="display:flex; gap:6px; align-items:center;">
-                                    <button id="btnPlayAllStreams" class="nvr-tool-btn" onclick="window.playAllStreams()" title="Putar Semua Live Stream (Play All)" style="background:rgba(16,185,129,0.15); border:1px solid #059669; color:#34d399; font-size:0.78rem; padding:4px 10px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:4px; cursor:pointer;">
-                                        <span>▶️</span> Putar Semua
+                                    <button id="btnPlayAllStreams" class="nvr-tool-btn nvr-btn-stream-all" onclick="window.playAllStreams()" title="Putar Semua Live Stream (Play All)" style="background:rgba(16,185,129,0.15); border:1px solid #059669; color:#34d399; font-size:0.78rem; padding:4px 10px; display:inline-flex; align-items:center; gap:6px; font-weight:600; border-radius:4px; cursor:pointer; width:auto; height:28px;">
+                                        <span style="font-size:0.8rem; line-height:1;">▶️</span> <span>Putar Semua</span>
                                     </button>
-                                    <button id="btnPauseAllStreams" class="nvr-tool-btn" onclick="window.pauseAllStreams()" title="Jeda Semua Live Stream (Pause All / Hemat CPU)" style="background:rgba(239,68,68,0.15); border:1px solid #dc2626; color:#f87171; font-size:0.78rem; padding:4px 10px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:4px; cursor:pointer;">
-                                        <span>⏸️</span> Jeda Semua
+                                    <button id="btnPauseAllStreams" class="nvr-tool-btn nvr-btn-stream-all" onclick="window.pauseAllStreams()" title="Jeda Semua Live Stream (Pause All / Hemat CPU)" style="background:rgba(239,68,68,0.15); border:1px solid #dc2626; color:#f87171; font-size:0.78rem; padding:4px 10px; display:inline-flex; align-items:center; gap:6px; font-weight:600; border-radius:4px; cursor:pointer; width:auto; height:28px;">
+                                        <span style="font-size:0.8rem; line-height:1;">⏸️</span> <span>Jeda Semua</span>
                                     </button>
                                 </div>
                                 <div class="nvr-grid-actions-right">
@@ -258,16 +258,16 @@
                                 </div>
                             </div>
 
-                            <!-- Row 3: PTZ Control Panel Card with Optics & Player Media Controls -->
+                            <!-- Row 3: PTZ Control Panel Card with Side-by-Side Ergonomic Layout (Left: Optics & Audio Stacked, Right: D-Pad) -->
                             <div id="ptzControlPanelCard" class="nvr-ptz-card">
                                 <div class="nvr-ptz-header">
                                     <span>🎮 Kontrol PTZ & Player: <strong id="topActiveCamLabel" style="color:var(--accent-blue);">Pilih di grid</strong></span>
                                 </div>
                                 <div class="nvr-ptz-divider"></div>
-                                <div class="nvr-ptz-body">
-                                    <!-- Top Row: Horizontal parallel layout for (Lensa & Fokus) and (Kontrol Player & Audio) -->
-                                    <div class="nvr-ptz-top-panels">
-                                        <!-- 1. Left Box: Lensa & Fokus -->
+                                <div class="nvr-ptz-body nvr-ptz-split-layout">
+                                    <!-- Kolom Kiri: Lensa & Fokus (Atas) + Kontrol Player & Audio (Bawah) Berbaris Atas Bawah -->
+                                    <div class="nvr-ptz-left-column">
+                                        <!-- 1. Top: Lensa & Fokus -->
                                         <div class="nvr-ptz-group-box nvr-optics-box">
                                             <div class="nvr-ptz-group-title">🔍 LENSA & FOKUS</div>
                                             <div class="nvr-ptz-actions-grid">
@@ -278,7 +278,7 @@
                                             </div>
                                         </div>
 
-                                        <!-- 2. Right Box: Kontrol Player & Audio -->
+                                        <!-- 2. Bottom: Kontrol Player & Audio -->
                                         <div class="nvr-ptz-group-box nvr-media-box">
                                             <div class="nvr-ptz-group-title">🎬 KONTROL PLAYER & AUDIO</div>
                                             <!-- Row 1: Play, HD/SD Quality Toggle, Snapshot -->
@@ -306,14 +306,16 @@
                                         </div>
                                     </div>
 
-                                    <!-- Bottom Row: Centered D-Pad Dial -->
-                                    <div class="nvr-ptz-dial-wrapper nvr-ptz-dial-center">
-                                        <div class="nvr-ptz-dial">
-                                            <button class="nvr-ptz-arrow-btn nvr-ptz-up" onclick="window.ptzMoveSelected('up')" title="PTZ Atas">▲</button>
-                                            <button class="nvr-ptz-arrow-btn nvr-ptz-left" onclick="window.ptzMoveSelected('left')" title="PTZ Kiri">◀</button>
-                                            <button class="nvr-ptz-center-circle" onclick="window.ptzMoveSelected('stop')" title="PTZ Stop / Center"><span class="nvr-ptz-stop-square">■</span></button>
-                                            <button class="nvr-ptz-arrow-btn nvr-ptz-right" onclick="window.ptzMoveSelected('right')" title="PTZ Kanan">▶</button>
-                                            <button class="nvr-ptz-arrow-btn nvr-ptz-down" onclick="window.ptzMoveSelected('down')" title="PTZ Bawah">▼</button>
+                                    <!-- Kolom Kanan: D-Pad Dial Navigasi Sesuai Ukuran Sebelah Kiri -->
+                                    <div class="nvr-ptz-right-column">
+                                        <div class="nvr-ptz-dial-wrapper">
+                                            <div class="nvr-ptz-dial">
+                                                <button class="nvr-ptz-arrow-btn nvr-ptz-up" onclick="window.ptzMoveSelected('up')" title="PTZ Atas">▲</button>
+                                                <button class="nvr-ptz-arrow-btn nvr-ptz-left" onclick="window.ptzMoveSelected('left')" title="PTZ Kiri">◀</button>
+                                                <button class="nvr-ptz-center-circle" onclick="window.ptzMoveSelected('stop')" title="PTZ Stop / Center"><span class="nvr-ptz-stop-square">■</span></button>
+                                                <button class="nvr-ptz-arrow-btn nvr-ptz-right" onclick="window.ptzMoveSelected('right')" title="PTZ Kanan">▶</button>
+                                                <button class="nvr-ptz-arrow-btn nvr-ptz-down" onclick="window.ptzMoveSelected('down')" title="PTZ Bawah">▼</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

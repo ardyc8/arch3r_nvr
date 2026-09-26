@@ -1,5 +1,19 @@
-# ⚡ Arch3r NVR (Ver. 10.9.1)
+# ⚡ Arch3r NVR (Ver. 10.9.2)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.9.2:
+- **Stream Health Watchdog (Anti-Freeze / Stalled Recovery), Polished Action Controls & Ergonomic Split PTZ Layout**:
+  1. **Stream Health Watchdog & Stalled/Freeze Recovery (`public/script.js` & `public/style.css`)**:
+     - Memantau pergerakan frame video live streaming secara berkala tiap 3 detik. Jika paket data terputus atau frame video beku/melekat (*stuck*) > 5.5 detik, sistem langsung menampilkan indikator visual `🔴 ALIRAN TERPUTUS / BEKU` dan frame berkedip merah lembut.
+     - Jika terhenti > 7.5 detik, sistem secara otomatis mengeksekusi *soft-reconnect* untuk kamera bersangkutan tanpa mengganggu kamera lain.
+     - Deteksi instan saat WebRTC terputus (`iceConnectionState === 'disconnected' / 'failed'`) atau error jaringan HLS untuk pemulihan cepat.
+  2. **Perapian Tombol Putar & Jeda Semua (`public/index.html` & `public/style.css`)**:
+     - Mengatur tombol "Putar Semua" dan "Jeda Semua" dengan tata letak `display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; width: auto; height: 28px;` sehingga teks tombol tidak lagi menimpa atau menutupi ikon di berbagai resolusi layar.
+  3. **Redesain Ergonomis Panel PTZ Monitor (`public/index.html` & `public/style.css`)**:
+     - **Side-by-Side Split Layout**: Di desktop atau HP posisi miring/horizontal, panel navigasi Lensa & Fokus (Atas) dan Kontrol Player & Audio (Bawah) berada di sebelah kiri berbaris atas-bawah, sedangkan D-Pad dial diposisikan di sebelah kanan sejajar dan proporsional dengan tinggi tombol sebelah kiri.
+     - Mencegah D-Pad menutupi kanvas video utama dan membuat pengoperasian PTZ lebih leluasa.
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.9.2** pada seluruh komponen sistem.
 
 ### 📋 Changelog Pembaruan Ver. 10.9.1:
 - **Enhanced FFmpeg RTSP Probe Buffer (Anti-Drop / SPS-PPS Recovery), Audio Stream Dynamic Mapping & Continuous Recording Stability**:
