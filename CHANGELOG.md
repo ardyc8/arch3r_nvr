@@ -1,5 +1,13 @@
 # Changelog
 
+## [Ver 10.8.6] - 2026-09-26
+### Fixed OTA Update Execution Scope (dbData Definition Fix), Safe Staging Pipeline & System Version Alignment
+- **Perbaikan Bug Eksekusi OTA Update Backend (`server.js`):**
+  - **Fixed `ReferenceError: dbData is not defined`**: Mendeklarasikan `const dbData = getNvrDb();` di awal fungsi `executeSystemUpdate()` sehingga saat eksekusi pembaruan (Git Pull / Git Reset / Backup), konfigurasi URL repository GitHub, token akses, branch target, serta pemulihan lisensi resmi terbaca secara sempurna.
+  - **Safe Staging Pipeline**: Memastikan persistensi lisensi ke OS Vault dan pencadangan database terisolasi sebelum proses git berjalan.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.6** pada seluruh komponen sistem sesuai protokol Semantic Versioning Strict.
+
 ## [Ver 10.8.5] - 2026-09-26
 ### Default SD Multi-Stream Engine, On-Demand Streaming, Complete NVR Playback Controller (Play, Pause, Stop, Speed)
 - **Optimalisasi Kualitas Live Monitor (Default SD & Manual HD Switch):**

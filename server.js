@@ -1563,6 +1563,7 @@ async function executeSystemUpdate(steps = {}) {
     const logs = [];
     const timestamp = Date.now();
     const backupDir = `/tmp/arch3r_backup_${timestamp}`;
+    const dbData = getNvrDb();
     
     // Normalisasi parameter dari frontend UI (Mendukung mode Safe, Normal, Hard, dan granular checklist)
     const mode = steps.mode || 'safe';
@@ -1593,9 +1594,8 @@ async function executeSystemUpdate(steps = {}) {
             execSync(`cp -n local_db*.json "${backupDir}/" 2>/dev/null || true`, { cwd: __dirname });
 
             // Amankan lisensi ke Persistent OS Vault
-            const currentDb = getNvrDb();
-            const curLicense = currentDb.super_settings?.license || '';
-            const curEmail = currentDb.super_settings?.email || '';
+            const curLicense = dbData.super_settings?.license || '';
+            const curEmail = dbData.super_settings?.email || '';
             const curMid = getMachineId();
             if (curLicense) {
                 syncLicenseToVault(curLicense, curEmail, curMid);

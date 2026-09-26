@@ -1,5 +1,13 @@
-# ⚡ Arch3r NVR (Ver. 10.8.5)
+# ⚡ Arch3r NVR (Ver. 10.8.6)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.8.6:
+- **Fixed OTA Update Execution Scope (dbData Definition Fix), Safe Staging Pipeline & System Version Alignment**:
+  1. **Perbaikan Bug Eksekusi OTA Update Backend (`server.js`)**:
+     - Memperbaiki error `ReferenceError: dbData is not defined` dengan mendeklarasikan `const dbData = getNvrDb();` di dalam lingkup fungsi `executeSystemUpdate()`.
+     - Memastikan proses Git Pull / Git Reset Hard, backup database lokal, dan pengamanan lisensi resmi ke Persistent OS Vault berjalan mulus tanpa interupsi.
+  2. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.6** pada seluruh komponen sistem sesuai protokol Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.8.5:
 - **Default SD Multi-Stream Engine, On-Demand Streaming, Complete NVR Playback Controller (Play, Pause, Stop, Speed)**:
