@@ -1,5 +1,19 @@
 # Changelog
 
+## [Ver 10.9.5] - 2026-09-26
+### Native YOLOv8 Daemon Process Lifecycle Manager, 1-Click Web UI Control & Appliance-Ready Auto-Boot
+- **Native Process Lifecycle Manager & Auto-Spawn (`server.js`):**
+  - **Child Process Lifecycle Controller**: Mengintegrasikan manajemen background process mandiri untuk daemon Python YOLO (`addons/ai_yolo_service.py`), menghilangkan ketergantungan manual pada terminal SSH.
+  - **Auto-Discovery Python Binary**: Mendeteksi otomatis runtime Python di Armbian STB (`venv/bin/python3`, `venv/bin/python`, `/usr/bin/python3`, atau sistem default) secara dinamis.
+  - **Dedicated Control Endpoints**: Menambahkan endpoint `POST /api/addons/ai_yolo/start`, `POST /api/addons/ai_yolo/stop`, dan `POST /api/addons/ai_yolo/restart` yang mengendalikan daemon Python secara langsung dan aman (dengan deteksi PID, SIGTERM/SIGKILL, dan port cleaning).
+  - **Appliance-Ready Auto-Boot**: Sistem secara otomatis menyalakan daemon YOLO AI saat NVR di-boot jika sakelar addon berada dalam status aktif di database NVR.
+- **Integrasi Kontrol 1-Klik di Antarmuka Web (`public/index.html` & `public/script.js`):**
+  - **Tombol Sakelar Daya Toolbar Studio**: Tombol `⚡ Layanan AI` pada toolbar Studio yang menampilkan status visual `🟢 AI: Aktif` atau `🟡 AI: Standby` dan memungkinkan menyalakan/mematikan layanan AI hanya dengan 1 kali klik.
+  - **Tombol Aksi Cepat pada Modal Diagnostik**: Jika status terdeteksi `HYBRID ACTIVE (Siaga Daemon)`, modal diagnostik menyediakan tombol instan `▶️ Nyalakan Layanan AI Sekarang (Port 8000)` yang langsung menjalankan daemon, melakukan polling kesiapan, dan memperbarui hasil pengujian ke `🟢 OPTIMAL` secara otomatis.
+  - **Penyelarasan Tabel Addons**: Sakelar toggle pada daftar Addons NVR terhubung langsung ke proses lifecycle Python tanpa kegagalan tersembunyi.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.9.5** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
+
 ## [Ver 10.9.4] - 2026-09-26
 ### Enterprise YOLOv8 AI Real-Time Inference Pipeline, Multi-Class Bounding Box HUD & Interactive Diagnostics Probe (Proof-of-Life)
 - **Arsitektur Daemon AI YOLOv8 & Multi-Class Inference Pipeline (`addons/ai_yolo_service.py`):**

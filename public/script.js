@@ -13042,6 +13042,40 @@ async function runYoloAiDiagnosticsProbe() {
                 recBox.innerHTML = `💡 <strong>Rekomendasi Profesional:</strong> ${data.recommendation}`;
             }
 
+            // Sync modal action button (Nyalakan / Matikan)
+            const modalActionBtn = document.getElementById('yolo-diag-daemon-action-btn');
+            if (modalActionBtn) {
+                if (isOptimal) {
+                    modalActionBtn.style.background = '#ef4444';
+                    modalActionBtn.style.borderColor = '#dc2626';
+                    modalActionBtn.innerHTML = '<span>⏹️</span> Matikan Layanan AI';
+                } else {
+                    modalActionBtn.style.background = '#22c55e';
+                    modalActionBtn.style.borderColor = '#16a34a';
+                    modalActionBtn.innerHTML = '<span>▶️</span> Nyalakan Layanan AI Sekarang';
+                }
+            }
+
+            // Sync toolbar power button
+            const pIcon = document.getElementById('yolo-service-power-icon');
+            const pText = document.getElementById('yolo-service-power-text');
+            const pBtn = document.getElementById('yolo-btn-service-power');
+            if (pIcon && pText && pBtn) {
+                if (isOptimal) {
+                    pIcon.textContent = '🟢';
+                    pText.textContent = 'AI: Aktif';
+                    pBtn.style.color = '#4ade80';
+                    pBtn.style.borderColor = 'rgba(34,197,94,0.4)';
+                    pBtn.style.background = 'rgba(34,197,94,0.12)';
+                } else {
+                    pIcon.textContent = '🟡';
+                    pText.textContent = 'AI: Standby';
+                    pBtn.style.color = '#fde047';
+                    pBtn.style.borderColor = 'rgba(234,179,8,0.4)';
+                    pBtn.style.background = 'rgba(234,179,8,0.12)';
+                }
+            }
+
             if (typeof appendYoloTerminalLog === 'function') {
                 appendYoloTerminalLog(`[DIAGNOSTICS] 🩺 Probe Selesai: Health=${data.overall_health}, Cam=${data.camera_name}`, 'system');
             }
@@ -13057,6 +13091,65 @@ async function runYoloAiDiagnosticsProbe() {
     }
 }
 window.runYoloAiDiagnosticsProbe = runYoloAiDiagnosticsProbe;
+
+async function toggleYoloAiDaemonPower() {
+    const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+    const modalActionBtn = document.getElementById('yolo-diag-daemon-action-btn');
+    const pBtn = document.getElementById('yolo-btn-service-power');
+
+    try {
+        // Cek status saat ini
+        const stResp = await fetch('/api/ai/status', {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        const stData = await stResp.json();
+        const isCurrentlyActive = stData && (stData.active || stData.status === 'active');
+
+        if (isCurrentlyActive) {
+            if (modalActionBtn) modalActionBtn.innerHTML = '<span>⏳</span> Sedang Mematikan...';
+            if (typeof showToast === 'function') showToast('⏹️ Mematikan proses latar belakang daemon YOLO AI...', 'info');
+
+            const resp = await fetch('/api/addons/ai_yolo/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+            const resData = await resp.json();
+            if (typeof showToast === 'function') {
+                showToast(resData.message || 'Layanan AI berhasil dimatikan.', 'success');
+            }
+        } else {
+            if (modalActionBtn) modalActionBtn.innerHTML = '<span>⏳</span> Menghidupkan Mesin AI...';
+            if (typeof showToast === 'function') showToast('🚀 Menyalakan daemon YOLOv8 di latar belakang STB...', 'info');
+
+            const resp = await fetch('/api/addons/ai_yolo/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+            });
+            const resData = await resp.json();
+            if (typeof showToast === 'function') {
+                showToast(resData.message || 'Layanan AI berhasil dinyalakan!', 'success');
+            }
+        }
+
+        // Tunggu sejenak lalu refresh probe & daftar addons
+        setTimeout(() => {
+            runYoloAiDiagnosticsProbe();
+            if (typeof fetchInstalledAddons === 'function') {
+                fetchInstalledAddons();
+            }
+        }, 1200);
+
+    } catch (e) {
+        if (typeof showToast === 'function') showToast('Gagal mengubah status layanan AI: ' + e.message, 'error');
+    }
+}
+window.toggleYoloAiDaemonPower = toggleYoloAiDaemonPower;
 
 function closeYoloDiagnosticsModal() {
     const modal = document.getElementById('modal-yolo-ai-diagnostics');

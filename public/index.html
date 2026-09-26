@@ -1445,6 +1445,9 @@
 
                                 <!-- Action Toolbar -->
                                 <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                                    <button type="button" id="yolo-btn-service-power" class="btn btn-secondary" onclick="toggleYoloAiDaemonPower()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem;" title="Nyalakan / Matikan Proses Daemon AI di Latar Belakang STB">
+                                        <span id="yolo-service-power-icon">⚡</span> <span id="yolo-service-power-text">Layanan AI</span>
+                                    </button>
                                     <button type="button" class="btn btn-secondary" onclick="runYoloAiDiagnosticsProbe()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem; background:rgba(168,85,247,0.15); border-color:rgba(168,85,247,0.4); color:#c084fc;" title="Uji & Verifikasi Real-time Pipeline AI">
                                         <span>🩺</span> Diagnostik AI
                                     </button>
@@ -1915,11 +1918,16 @@
                     </div>
 
                     <!-- Footer -->
-                    <div style="padding:0.75rem 1.25rem; background:rgba(15,23,42,0.95); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                        <button type="button" class="btn btn-secondary" onclick="runYoloAiDiagnosticsProbe()" style="font-size:0.8rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>🔄</span> Jalankan Uji Ulang
-                        </button>
-                        <button type="button" class="btn btn-primary" onclick="closeYoloDiagnosticsModal()" style="font-size:0.83rem; background:#2563eb; border-color:#1d4ed8; padding:0.4rem 1rem;">
+                    <div style="padding:0.75rem 1.25rem; background:rgba(15,23,42,0.95); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <button type="button" class="btn btn-secondary" onclick="runYoloAiDiagnosticsProbe()" style="font-size:0.8rem; display:flex; align-items:center; gap:0.4rem;">
+                                <span>🔄</span> Jalankan Uji Ulang
+                            </button>
+                            <button type="button" id="yolo-diag-daemon-action-btn" class="btn btn-primary" onclick="toggleYoloAiDaemonPower()" style="background:#22c55e; border-color:#16a34a; font-size:0.8rem; font-weight:700; display:flex; align-items:center; gap:0.4rem;">
+                                <span>▶️</span> Nyalakan Layanan AI Sekarang
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="closeYoloDiagnosticsModal()" style="font-size:0.83rem; padding:0.4rem 1rem;">
                             Selesai
                         </button>
                     </div>

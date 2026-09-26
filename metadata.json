@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 10.9.4 - Enterprise YOLOv8 AI Real-Time Inference Engine, Diagnostics Probe & Multi-Class Bounding Box HUD.",
+  "description": "Arch3r NVR Ver. 10.9.5 - Native YOLOv8 Daemon Process Lifecycle Manager, 1-Click Web UI Control & Multi-Class Real-Time Inference.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

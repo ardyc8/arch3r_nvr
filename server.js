@@ -875,12 +875,12 @@ app.post('/api/addons/:id/toggle', verifyToken, (req, res) => {
     // Kontrol service berbasis modul
     if (addon.id === 'ai_yolo' || addon.id === 'ai-yolo') {
         if (addon.active) {
-            child_process.exec('pm2 start arch3r-ai-yolo 2>/dev/null || true', (e) => {
-                sysLog('INFO', `[Addons] AI YOLO Service dinyalakan`, 'SYSTEM');
+            startPythonAiService().then(res => {
+                sysLog('INFO', `[Addons] AI YOLO Service dinyalakan: ${res.message || 'Sukses'}`, 'SYSTEM');
             });
         } else {
-            child_process.exec('pm2 stop arch3r-ai-yolo 2>/dev/null || true', (e) => {
-                sysLog('INFO', `[Addons] AI YOLO Service dimatikan`, 'SYSTEM');
+            stopPythonAiService().then(res => {
+                sysLog('INFO', `[Addons] AI YOLO Service dimatikan: ${res.message || 'Sukses'}`, 'SYSTEM');
             });
         }
     } else if (addon.id === 'hdmi-kiosk' || addon.id === 'hdmi_kiosk') {
@@ -6448,7 +6448,7 @@ app.post('/api/addons/hdmi-native/remote-cmd', verifyToken, requireAdmin, async 
 });
 
 // ==========================================
-// AI YOLOv8 Enterprise Engine & Telemetry Routes (v10.9.4)
+// AI YOLOv8 Enterprise Engine & Process Lifecycle (v10.9.5)
 // ==========================================
 let latestYoloDetections = {};
 let aiSnapshotsLog = [];
@@ -6456,6 +6456,162 @@ let aiProcessedFramesCount = 0;
 let lastAiHeartbeatTime = Date.now();
 let lastInferenceLatencyMs = 12.5;
 let currentInferenceFps = 10.0;
+let pythonAiProcess = null;
+
+function findPythonBinary() {
+    const candidates = [
+        path.join(__dirname, 'venv', 'bin', 'python3'),
+        path.join(__dirname, 'venv', 'bin', 'python'),
+        '/usr/bin/python3',
+        '/usr/local/bin/python3',
+        'python3',
+        'python'
+    ];
+    for (const p of candidates) {
+        if (p.startsWith('/') || p.includes(path.sep)) {
+            if (fs.existsSync(p)) return p;
+        } else {
+            try {
+                child_process.execSync(`which ${p}`, { stdio: 'ignore' });
+                return p;
+            } catch (_) {}
+        }
+    }
+    return 'python3';
+}
+
+function getAiScriptPath() {
+    const candidates = [
+        path.join(__dirname, 'addons', 'ai_yolo_service.py'),
+        path.join(__dirname, 'addons', 'ai-yolo', 'ai_yolo_service.py'),
+        path.join(__dirname, 'addons', 'ai_yolo', 'ai_yolo_service.py')
+    ];
+    for (const p of candidates) {
+        if (fs.existsSync(p)) return p;
+    }
+    return candidates[0];
+}
+
+let aiYoloAddon = null;
+try {
+    const addonEntry = path.join(__dirname, 'addons', 'ai-yolo', 'index.js');
+    if (fs.existsSync(addonEntry)) {
+        aiYoloAddon = require(addonEntry);
+    }
+} catch (e) {
+    console.warn('[Addon AI YOLO] require error:', e.message);
+}
+
+async function startPythonAiService() {
+    // 1. Cek jika daemon sudah online di port 8000
+    const current = await checkPythonAiStatus();
+    if (current.active) {
+        return { success: true, message: 'Layanan Python YOLO AI sudah aktif dan merespons di port 8000.', alreadyRunning: true, status: current };
+    }
+
+    if (aiYoloAddon && typeof aiYoloAddon.controlService === 'function') {
+        return new Promise((resolve) => {
+            aiYoloAddon.controlService('start', (err, result) => {
+                if (err) {
+                    sysLog('ERROR', `[AI Daemon] Gagal menyalakan AI YOLO: ${err.message}`, 'ADDON');
+                    return resolve({ success: false, error: err.message });
+                }
+                sysLog('INFO', `[AI Daemon] Layanan AI YOLO berhasil dinyalakan (Mode: ${result.mode}, Port: ${result.port || 8000})`, 'ADDON');
+                resolve({ success: true, message: 'Layanan AI YOLO berhasil dinyalakan dan aktif!', ...result });
+            });
+        });
+    }
+
+    // 2. Bersihkan sisa proses liar jika ada
+    try {
+        if (pythonAiProcess && !pythonAiProcess.killed) {
+            pythonAiProcess.kill('SIGTERM');
+        }
+        child_process.execSync('fuser -k 8000/tcp 2>/dev/null || pkill -f ai_yolo_service.py 2>/dev/null || true');
+    } catch (_) {}
+
+    // 3. Tentukan binary Python dan path script
+    const pyBin = findPythonBinary();
+    const scriptPath = getAiScriptPath();
+
+    if (!fs.existsSync(scriptPath)) {
+        sysLog('ERROR', `[AI Daemon] Berkas script AI tidak ditemukan di ${scriptPath}`, 'ADDON');
+        return { success: false, error: `Script AI tidak ditemukan di ${scriptPath}` };
+    }
+
+    sysLog('INFO', `[AI Daemon] Menyalakan proses latar belakang YOLO AI: ${pyBin} ${scriptPath}`, 'ADDON');
+
+    try {
+        pythonAiProcess = spawn(pyBin, [scriptPath], {
+            cwd: __dirname,
+            detached: false,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: { ...process.env, PYTHONUNBUFFERED: '1' }
+        });
+
+        pythonAiProcess.stdout.on('data', (data) => {
+            const line = data.toString().trim();
+            if (line) sysLog('INFO', `[AI Python] ${line.substring(0, 160)}`, 'AI');
+        });
+
+        pythonAiProcess.stderr.on('data', (data) => {
+            const line = data.toString().trim();
+            if (line && !line.includes('DeprecationWarning')) {
+                sysLog('WARN', `[AI Python] ${line.substring(0, 160)}`, 'AI');
+            }
+        });
+
+        pythonAiProcess.on('exit', (code, signal) => {
+            sysLog('WARN', `[AI Daemon] Proses Python AI berhenti (Exit Code: ${code}, Signal: ${signal})`, 'ADDON');
+            pythonAiProcess = null;
+        });
+
+        // 4. Polling responsif hingga port 8000 online (maksimal 4.5 detik)
+        for (let i = 0; i < 9; i++) {
+            await new Promise(r => setTimeout(r, 500));
+            const status = await checkPythonAiStatus();
+            if (status.active) {
+                sysLog('INFO', `[AI Daemon] Layanan YOLO AI berhasil online di port 8000!`, 'ADDON');
+                return { success: true, message: 'Layanan YOLO AI berhasil dinyalakan dan aktif!', status };
+            }
+        }
+
+        return { 
+            success: true, 
+            message: 'Proses daemon Python diluncurkan di latar belakang (sedang memuat weights model di memori).',
+            pendingInit: true
+        };
+    } catch (err) {
+        sysLog('ERROR', `[AI Daemon] Gagal menjalankan proses Python AI: ${err.message}`, 'ADDON');
+        return { success: false, error: err.message };
+    }
+}
+
+async function stopPythonAiService() {
+    sysLog('INFO', `[AI Daemon] Mematikan proses background YOLO AI...`, 'ADDON');
+    if (aiYoloAddon && typeof aiYoloAddon.controlService === 'function') {
+        return new Promise((resolve) => {
+            aiYoloAddon.controlService('stop', (err, result) => {
+                sysLog('INFO', `[AI Daemon] Layanan AI YOLO berhasil dimatikan`, 'ADDON');
+                resolve({ success: true, message: 'Layanan AI YOLO berhasil dimatikan.' });
+            });
+        });
+    }
+
+    try {
+        if (pythonAiProcess && !pythonAiProcess.killed) {
+            pythonAiProcess.kill('SIGTERM');
+            setTimeout(() => {
+                try { if (pythonAiProcess) pythonAiProcess.kill('SIGKILL'); } catch (_) {}
+            }, 1000);
+        }
+        child_process.exec('pm2 stop arch3r-ai-yolo 2>/dev/null || fuser -k 8000/tcp 2>/dev/null || pkill -f ai_yolo_service.py 2>/dev/null || true');
+        pythonAiProcess = null;
+        return { success: true, message: 'Layanan Python AI berhasil dimatikan.' };
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
+}
 
 // Check AI Python Daemon Status on Port 8000
 async function checkPythonAiStatus() {
@@ -6524,6 +6680,65 @@ app.get('/api/addons/ai_yolo/status', verifyToken, async (req, res) => {
         last_latency_ms: lastInferenceLatencyMs,
         current_fps: currentInferenceFps
     });
+});
+
+app.post('/api/addons/ai_yolo/start', verifyToken, async (req, res) => {
+    const db = getNvrDb();
+    if (!db.addons) db.addons = [];
+    let addon = db.addons.find(a => a.id === 'ai_yolo' || a.id === 'ai-yolo');
+    if (addon) addon.active = true;
+    saveNvrDb(db);
+
+    const result = await startPythonAiService();
+    res.json(result);
+});
+
+app.post('/api/addons/ai_yolo/stop', verifyToken, async (req, res) => {
+    const db = getNvrDb();
+    if (!db.addons) db.addons = [];
+    let addon = db.addons.find(a => a.id === 'ai_yolo' || a.id === 'ai-yolo');
+    if (addon) addon.active = false;
+    saveNvrDb(db);
+
+    const result = await stopPythonAiService();
+    res.json(result);
+});
+
+app.post('/api/addons/ai_yolo/restart', verifyToken, async (req, res) => {
+    sysLog('INFO', `[AI YOLO Service] Menerima perintah restart layanan AI`, 'ADDON');
+    await stopPythonAiService();
+    await new Promise(r => setTimeout(r, 600));
+    const result = await startPythonAiService();
+    res.json(result);
+});
+
+// Dedicated 1-Click AI Service Endpoints for Web UI & Diagnostics
+app.post('/api/ai/service/start', verifyToken, async (req, res) => {
+    const db = getNvrDb();
+    if (!db.addons) db.addons = [];
+    let addon = db.addons.find(a => a.id === 'ai_yolo' || a.id === 'ai-yolo');
+    if (addon) addon.active = true;
+    saveNvrDb(db);
+    const result = await startPythonAiService();
+    res.json(result);
+});
+
+app.post('/api/ai/service/stop', verifyToken, async (req, res) => {
+    const db = getNvrDb();
+    if (!db.addons) db.addons = [];
+    let addon = db.addons.find(a => a.id === 'ai_yolo' || a.id === 'ai-yolo');
+    if (addon) addon.active = false;
+    saveNvrDb(db);
+    const result = await stopPythonAiService();
+    res.json(result);
+});
+
+app.post('/api/ai/service/restart', verifyToken, async (req, res) => {
+    sysLog('INFO', `[AI Service] Restart dipicu dari Web UI / Studio`, 'ADDON');
+    await stopPythonAiService();
+    await new Promise(r => setTimeout(r, 600));
+    const result = await startPythonAiService();
+    res.json(result);
 });
 
 app.get('/api/ai/telemetry', verifyToken, async (req, res) => {
@@ -6731,7 +6946,7 @@ app.get('/api/ai/config/export', verifyToken, (req, res) => {
         res.setHeader('Content-Disposition', 'attachment; filename="arch3r_ai_config_backup.json"');
         res.json({
             app: 'Arch3r NVR',
-            version: '10.9.4',
+            version: '10.9.5',
             exported_at: new Date().toISOString(),
             cameras_ai_config: aiConfigs
         });
@@ -6907,9 +7122,19 @@ app.post('/api/ai/test-telegram', verifyToken, async (req, res) => {
     }
 });
 
-app.listen(port, "0.0.0.0", () => {
-        sysLog('INFO', `NVR Backend berjalan di port ${port}`);
-    });
+        // Auto-start active AI YOLO Addon on boot if configured
+        try {
+            const db = getNvrDb();
+            const yoloAddon = (db.addons || []).find(a => (a.id === 'ai_yolo' || a.id === 'ai-yolo') && a.active);
+            if (yoloAddon) {
+                sysLog('INFO', `[AI Daemon] Auto-starting AI YOLO Daemon on boot...`, 'ADDON');
+                startPythonAiService().catch(() => {});
+            }
+        } catch (_) {}
+
+        app.listen(port, "0.0.0.0", () => {
+            sysLog('INFO', `NVR Backend berjalan di port ${port}`);
+        });
 }
 
 boot();

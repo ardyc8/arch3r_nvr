@@ -1,0 +1,8 @@
+{
+  "name": "arch3r-addon-ai-yolo",
+  "version": "1.0.0",
+  "description": "AI YOLOv8 Daemon & Process Lifecycle Manager for Arch3r NVR on Armbian STB",
+  "main": "index.js",
+  "author": "Arch3r NVR Team",
+  "license": "ISC"
+}

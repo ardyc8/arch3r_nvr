@@ -1,5 +1,19 @@
-# ⚡ Arch3r NVR (Ver. 10.9.4)
+# ⚡ Arch3r NVR (Ver. 10.9.5)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.9.5:
+- **Native YOLOv8 Daemon Process Lifecycle Manager, 1-Click Web UI Control & Appliance-Ready Auto-Boot**:
+  1. **Native Process Lifecycle Manager & Auto-Spawn (`server.js`)**:
+     - Child Process Lifecycle Controller yang mengontrol background daemon Python YOLOv8 (`addons/ai_yolo_service.py`) secara mandiri, tanpa perlu mengetik di terminal SSH.
+     - Auto-Discovery Python Binary yang cerdas mendeteksi environment `venv/bin/python3`, `venv/bin/python`, atau sistem Python STB.
+     - Endpoint kontrol langsung `POST /api/addons/ai_yolo/start`, `stop`, dan `restart` dengan deteksi status online/offline real-time.
+     - Appliance-Ready Auto-Boot untuk otomatisasi start layanan AI saat NVR menyala jika sakelar addon aktif.
+  2. **Integrasi Kontrol 1-Klik di Antarmuka Web (`public/index.html` & `public/script.js`)**:
+     - Tombol Sakelar Daya Toolbar Studio (`⚡ Layanan AI`) dengan indikator `🟢 AI: Aktif` / `🟡 AI: Standby`.
+     - Tombol Aksi Cepat pada Modal Diagnostik (`▶️ Nyalakan Layanan AI Sekarang`) untuk transisi instan dari mode standby ke `🟢 OPTIMAL`.
+     - Integrasi penuh dengan sakelar di tabel Addons NVR.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.9.5** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.9.4:
 - **Enterprise YOLOv8 AI Real-Time Inference Pipeline, Multi-Class Bounding Box HUD & Interactive Diagnostics Probe (Proof-of-Life)**:
