@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 10.8.4 - Unified Superadmin & Admin About OTA Live Sync Engine, Fixed Password Peek Layout, Safe Pipeline Execution.",
+  "description": "Arch3r NVR Ver. 10.8.5 - Default SD Multi-Stream Engine, On-Demand Streaming, Complete NVR Playback Controller (Play, Pause, Stop, Speed).",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

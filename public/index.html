@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.7.4 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=10.7.4">
+    <title>Arch3r NVR Ver. 10.8.5 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=10.8.5">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -18,7 +18,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="version_sync.js?v=10.7.4"></script>
+    <script src="version_sync.js?v=10.8.5"></script>
     <style>
         /* Fullscreen Drawing Mode for AI Vision */
         #ai-canvas-container.ai-fullscreen-active {
@@ -192,7 +192,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.2.9</h3>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.8.5</h3>
                 <div style="display:flex; align-items:center; margin-left:auto;">
                     <img src="Archer.ico?v=2" alt="Arch3r" style="height:26px; width:26px; object-fit:contain; border-radius:4px;">
                 </div>
@@ -232,13 +232,21 @@
                                 </div>
                             </div>
 
-                            <!-- Row 2: Grid Layout Selector & Action Buttons (Refresh & Fullscreen) -->
+                            <!-- Row 2: Grid Layout Selector & Action Buttons (Play All, Pause All, Refresh & Fullscreen) -->
                             <div id="gridToolbarRow" class="nvr-grid-toolbar-row">
                                 <div class="nvr-grid-selector-group">
                                     <button class="nvr-grid-btn grid-btn" data-grid="1" onclick="window.setGridLayout(1)" title="Layout 1x1">▢ 1x1</button>
                                     <button class="nvr-grid-btn grid-btn" data-grid="4" onclick="window.setGridLayout(4)" title="Layout 2x2">⊞ 2x2</button>
                                     <button class="nvr-grid-btn grid-btn active" data-grid="9" onclick="window.setGridLayout(9)" title="Layout 3x3">▦ 3x3</button>
                                     <button class="nvr-grid-btn grid-btn" data-grid="16" onclick="window.setGridLayout(16)" title="Layout 4x4">㗊 4x4</button>
+                                </div>
+                                <div class="nvr-stream-global-controls" style="display:flex; gap:6px; align-items:center;">
+                                    <button id="btnPlayAllStreams" class="nvr-tool-btn" onclick="window.playAllStreams()" title="Putar Semua Live Stream (Play All)" style="background:rgba(16,185,129,0.15); border:1px solid #059669; color:#34d399; font-size:0.78rem; padding:4px 10px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:4px; cursor:pointer;">
+                                        <span>▶️</span> Putar Semua
+                                    </button>
+                                    <button id="btnPauseAllStreams" class="nvr-tool-btn" onclick="window.pauseAllStreams()" title="Jeda Semua Live Stream (Pause All / Hemat CPU)" style="background:rgba(239,68,68,0.15); border:1px solid #dc2626; color:#f87171; font-size:0.78rem; padding:4px 10px; display:inline-flex; align-items:center; gap:4px; font-weight:600; border-radius:4px; cursor:pointer;">
+                                        <span>⏸️</span> Jeda Semua
+                                    </button>
                                 </div>
                                 <div class="nvr-grid-actions-right">
                                     <button id="btnPlayerRefresh" class="nvr-tool-btn" onclick="window.refreshAllStreams()" title="Muat Ulang Semua Aliran (Refresh)">
@@ -368,11 +376,45 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Video Controls -->
-                                <div style="display:flex; justify-content:center; align-items:center; gap:1rem; margin-top:0.25rem;">
-                                    <button id="btnPbPlay" class="btn-sm btn-secondary" style="border-radius:50%; width:40px; height:40px; padding:0; display:flex; justify-content:center; align-items:center; font-size:14px;">▶️</button>
-                                    <button id="btnPbMute" class="btn-sm btn-secondary" style="border-radius:50%; width:35px; height:35px; padding:0; display:flex; justify-content:center; align-items:center; font-size:12px;">🔊</button>
-                                    <button id="btnPbFullscreen" class="btn-sm btn-secondary" style="border-radius:50%; width:35px; height:35px; padding:0; display:flex; justify-content:center; align-items:center; font-size:12px;">⛶</button>
+                                <!-- Professional Video Controls Suite -->
+                                <div class="playback-controls-bar" style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; margin-top:0.35rem; flex-wrap:wrap; background:rgba(15,23,42,0.6); padding:6px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.06);">
+                                    <!-- Left: Stop, Rewind 10s, Pause, Play, Forward 10s -->
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <button id="btnPbStop" class="btn-sm btn-secondary" onclick="window.stopPlayback()" title="Stop Rekaman & Reset Timeline" style="display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#f87171; border-color:#dc2626; background:rgba(239,68,68,0.1); padding:4px 10px; border-radius:4px; cursor:pointer;">
+                                            <span>⏹</span> Stop
+                                        </button>
+                                        <button id="btnPbPause" class="btn-sm btn-secondary" onclick="window.pausePlayback()" title="Jeda Rekaman (Pause)" style="display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#fbbf24; border-color:#d97706; background:rgba(245,158,11,0.1); padding:4px 10px; border-radius:4px; cursor:pointer;">
+                                            <span>⏸</span> Pause
+                                        </button>
+                                        <button id="btnPbPlay" class="btn-sm btn-primary" onclick="window.resumePlayback()" title="Putar Rekaman (Play)" style="display:inline-flex; align-items:center; gap:4px; font-weight:600; padding:4px 14px; background:#2563eb; border-radius:4px; cursor:pointer; color:#fff;">
+                                            <span id="pbPlayBtnIcon">▶</span> Play
+                                        </button>
+                                        <div style="width:1px; height:20px; background:var(--border); margin:0 4px;"></div>
+                                        <button id="btnPbSeekBack" class="btn-sm btn-secondary" onclick="window.seekPlaybackOffset(-10)" title="Mundur 10 Detik" style="padding:4px 8px; font-size:11px; border-radius:4px; cursor:pointer;">
+                                            ⏪ -10s
+                                        </button>
+                                        <button id="btnPbSeekForward" class="btn-sm btn-secondary" onclick="window.seekPlaybackOffset(10)" title="Maju 10 Detik" style="padding:4px 8px; font-size:11px; border-radius:4px; cursor:pointer;">
+                                            +10s ⏩
+                                        </button>
+                                    </div>
+
+                                    <!-- Center: Playback Speed Selector -->
+                                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                                        <label for="selPbSpeed" style="font-size:0.75rem; color:var(--text-muted); margin:0;">Kecepatan:</label>
+                                        <select id="selPbSpeed" class="form-control" onchange="window.setPlaybackSpeed(this.value)" style="width:auto; padding:2px 8px; font-size:0.8rem; background:#1e293b; color:#38bdf8; border-color:#334155; font-weight:600; border-radius:4px; cursor:pointer;">
+                                            <option value="0.5">0.5x</option>
+                                            <option value="1.0" selected>1.0x (Normal)</option>
+                                            <option value="2.0">2.0x</option>
+                                            <option value="4.0">4.0x</option>
+                                            <option value="8.0">8.0x</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Right: Volume, Mute & Fullscreen -->
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <button id="btnPbMute" class="btn-sm btn-secondary" title="Bisu / Bunyikan Audio" style="border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer;">🔊</button>
+                                        <button id="btnPbFullscreen" class="btn-sm btn-secondary" title="Layar Penuh Video Rekaman" style="border-radius:4px; padding:4px 8px; font-size:12px; cursor:pointer;">⛶ Fullscreen</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -591,10 +633,18 @@
                                 <!-- RTSP Stream URLs (Auto-Filled by Preset, but Editable) -->
                                 <div class="form-group" style="margin-top:0.25rem;">
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                        <label style="margin:0; font-size:0.8rem; color:#cbd5e1;">URL Stream RTSP Utama (Main Stream HD)</label>
+                                        <label style="margin:0; font-size:0.8rem; color:#cbd5e1;">URL Stream RTSP Utama (Main Stream HD - 1080p/2K)</label>
                                         <button type="button" id="btnSyncRtspUrl" class="btn-sm btn-secondary" style="font-size:0.72rem; padding:2px 6px; border-color:#334155;">⚡ Susun URL Ulang</button>
                                     </div>
                                     <input type="text" id="camMainUrl" placeholder="rtsp://admin:pass@192.168.1.100:554/live/ch00_1" required style="font-family:monospace; font-size:0.82rem;">
+                                </div>
+
+                                <div class="form-group" style="margin-top:0.5rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                                        <label style="margin:0; font-size:0.8rem; color:#94a3b8;">URL Stream RTSP Sub (Sub Stream SD - D1/360p / Default Multi-Grid Ringan)</label>
+                                        <small style="color:#64748b; font-size:0.72rem;">Opsional (Otomatis fallback ke Main jika kosong)</small>
+                                    </div>
+                                    <input type="text" id="camSubUrl" placeholder="rtsp://admin:pass@192.168.1.100:554/live/ch00_0" style="font-family:monospace; font-size:0.82rem;">
                                 </div>
 
                                 <!-- Action Buttons: Test Connection & Probe -->

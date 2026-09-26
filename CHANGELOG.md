@@ -1,5 +1,22 @@
 # Changelog
 
+## [Ver 10.8.5] - 2026-09-26
+### Default SD Multi-Stream Engine, On-Demand Streaming, Complete NVR Playback Controller (Play, Pause, Stop, Speed)
+- **Optimalisasi Kualitas Live Monitor (Default SD & Manual HD Switch):**
+  - **Default Kualitas SD (Sub-Stream)**: Multi-view Live Monitor kini secara *default* memutar resolusi SD (Sub-Stream) untuk mencegah lonjakan konsumsi CPU STB Armbian dan *packet drop*, menjaga kelancaran streaming multi-kamera secara simultan.
+  - **Interactive Quality Toggle [ SD | HD ]**: Setiap *tile* kamera kini dilengkapi tombol sakelar badge kualitas instan `[ SD ]` / `[ HD ]` yang memungkinkan pengguna berpindah resolusi kapan saja secara independen.
+  - **Form Input RTSP Sub-Stream**: Menempatkan konfigurasi Sub-Stream RTSP (SD) secara jelas di form Tambah/Edit Kamera dengan kemampuan *auto-fallback* ke Main-Stream jika kosong.
+- **On-Demand Streaming & Global Stream Controls:**
+  - **Tombol Global [ ▶️ Putar Semua ] & [ ⏸️ Jeda Semua ]**: Ditambahkan pada bilah *toolbar* Live Monitor untuk memudahkan menyalakan atau menjeda pemutaran seluruh kamera dengan satu klik guna menghemat daya/bandwidth.
+  - **Kontrol Play/Pause Individual per Tile**: Setiap kartu kamera dilengkapi tombol kontrol putar/jeda terpisah.
+- **Suite Kontrol Playback Terpadu (Playback Engine):**
+  - **Tombol ⏹ Stop**: Menghentikan pemutaran rekaman, merilis *buffer* memori video, dan mengembalikan kursor *timeline* ke awal (00:00:00).
+  - **Tombol ⏸ Pause & ▶ Play**: Menjeda atau melanjutkan rekaman dari posisi waktu kursor *scrubber* saat ini.
+  - **Tombol Navigasi Lompat ⏪ -10s & +10s ⏩**: Mempermudah inspeksi frame kejadian rekaman secara presisi.
+  - **Pengatur Kecepatan (Speed Selector)**: Mendukung kecepatan playback 0.5x, 1.0x (Normal), 2.0x, 4.0x, dan 8.0x.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.5** pada seluruh berkas sistem sesuai protokol Semantic Versioning Strict.
+
 ## [Ver 10.8.4] - 2026-09-25
 ### Unified Superadmin & Admin About OTA Live Sync Engine, Fixed Password Peek Layout & Safe Pipeline Execution
 - **Perbaikan Tombol Mata Melayang (Floating Eye Icon Fix) pada Superadmin OTA (`public/superadmin.html` & `public/style.css`):**

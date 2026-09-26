@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.7.4 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.8.5 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -3532,8 +3532,119 @@ async function fetchCameras() {
         }
     }
 
+    window.camStreamQualities = window.camStreamQualities || {};
+
     window.reloadActiveStreams = function() {
         updateGridDisplay();
+    };
+
+    window.toggleCameraQuality = function(camId) {
+        if (!camId) return;
+        window.camStreamQualities = window.camStreamQualities || {};
+        const cur = window.camStreamQualities[camId] || 'SD';
+        const nextQuality = cur === 'SD' ? 'HD' : 'SD';
+        window.camStreamQualities[camId] = nextQuality;
+        
+        // Update badge on Desktop
+        const badgeD = document.getElementById('badge_quality_' + camId);
+        if (badgeD) {
+            badgeD.textContent = nextQuality;
+            badgeD.style.background = nextQuality === 'HD' ? '#2563eb' : '#059669';
+        }
+        // Update badge on Mobile
+        const badgeM = document.getElementById('m_badge_quality_' + camId);
+        if (badgeM) {
+            badgeM.textContent = nextQuality;
+            badgeM.style.background = nextQuality === 'HD' ? '#2563eb' : '#059669';
+        }
+        // Update bottom PTZ control panel label if selected
+        const ptzLabel = document.getElementById('playerQualityLabel');
+        if (ptzLabel && (selectedCamIdForPtz === camId || activeChannel === camId)) {
+            ptzLabel.textContent = nextQuality;
+        }
+
+        // Reload stream for this specific camera
+        const cam = cameras.find(c => c.id === camId);
+        if (!cam || cam.enabled === false) return;
+        
+        const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
+        const streamPath = (nextQuality === 'SD' && hasDistinctSub)
+            ? (cam.mediaMtxSubPath || ((cam.mediaMtxPath || cam.id) + '_sub'))
+            : (cam.mediaMtxPath || cam.id);
+
+        let hlsUrl = '';
+        if (nextQuality === 'SD' && hasDistinctSub) {
+            if (cam.subStreamUrl && cam.subStreamUrl.startsWith('http')) {
+                hlsUrl = cam.subStreamUrl;
+            } else {
+                hlsUrl = '/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken());
+            }
+        } else {
+            hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
+        }
+
+        const cellD = document.getElementById('cell_' + camId);
+        if (cellD) {
+            const vid = cellD.querySelector('video');
+            if (vid) {
+                playUltraStream(vid.id, hlsUrl, streamPath);
+            }
+        }
+        const cellM = document.getElementById('m_cell_' + camId);
+        if (cellM) {
+            const vidM = cellM.querySelector('video');
+            if (vidM) {
+                playUltraStream(vidM.id, hlsUrl, streamPath);
+            }
+        }
+        showToast(`Kamera ${cam.name}: Kualitas diubah ke ${nextQuality}`, 'info');
+    };
+
+    window.toggleSelectedQuality = function() {
+        const targetId = selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : (cameras[0]?.id));
+        if (!targetId) return;
+        window.toggleCameraQuality(targetId);
+    };
+
+    window.playAllStreams = function() {
+        const videos = document.querySelectorAll('.cam-player-video');
+        let count = 0;
+        videos.forEach(v => {
+            if (v.paused) {
+                v.play().catch(() => {});
+                count++;
+            }
+        });
+        showToast(`▶️ Memulai seluruh aliran live kamera (${videos.length} kamera)`, 'success');
+    };
+
+    window.pauseAllStreams = function() {
+        const videos = document.querySelectorAll('.cam-player-video');
+        videos.forEach(v => {
+            if (!v.paused) {
+                v.pause();
+            }
+        });
+        showToast(`⏸️ Seluruh live stream dijeda (Hemat CPU & Bandwidth STB)`, 'warning');
+    };
+
+    window.toggleTilePlayPause = function(camId) {
+        const cell = document.getElementById('cell_' + camId) || document.getElementById('m_cell_' + camId);
+        if (!cell) return;
+        const vid = cell.querySelector('video');
+        const btnD = document.getElementById('btn_tile_pp_' + camId);
+        const btnM = document.getElementById('m_btn_tile_pp_' + camId);
+        if (vid) {
+            if (vid.paused) {
+                vid.play().catch(() => {});
+                if (btnD) btnD.textContent = '⏸️';
+                if (btnM) btnM.textContent = '⏸️';
+            } else {
+                vid.pause();
+                if (btnD) btnD.textContent = '▶️';
+                if (btnM) btnM.textContent = '▶️';
+            }
+        }
     };
 
     window.toggleSelectedPlayPause = function() {
@@ -4084,11 +4195,11 @@ async function fetchCameras() {
                     cell.id = "cell_" + cam.id;
                     cell.onclick = () => window.selectCellForPtz(cam.id);
                     
-                    // Dual Stream Auto Switch: SD for multi-grid if distinct subStream exists, HD for single-view
+                    // Dual Stream Engine: Default is SD for lightweight multi-view & STB stability
                     const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
                     let curQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
                     if (!curQuality) {
-                        curQuality = (count > 1 && hasDistinctSub) ? 'SD' : 'HD';
+                        curQuality = 'SD'; // Default SD standard across all views
                         window.camStreamQualities[cam.id] = curQuality;
                     }
                     let hlsUrl = '';
@@ -4117,9 +4228,10 @@ async function fetchCameras() {
                                 <p id="desc_${videoId}">Memulai koneksi WebRTC / RTSP...</p>
                             </div>
 
-                            <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:5px; align-items:center;">
+                            <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:4px; align-items:center;">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                <span id="badge_quality_${cam.id}" class="badge" style="font-size:0.65rem; padding:2px 5px; background:rgba(0,0,0,0.6);">${curQuality}</span>
+                                <button type="button" id="btn_tile_pp_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Jeda Stream Ini" style="font-size:0.65rem; padding:2px 6px; border-radius:4px; cursor:pointer; background:rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.25);">⏸️</button>
+                                <button type="button" id="badge_quality_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleCameraQuality('${cam.id}')" title="Klik untuk beralih kualitas SD / HD" style="font-size:0.65rem; padding:2px 7px; border-radius:4px; cursor:pointer; font-weight:700; background:${curQuality === 'HD' ? '#2563eb' : '#059669'}; color:#fff; border:1px solid rgba(255,255,255,0.3);">${curQuality}</button>
                             </div>
                             <div class="cam-title-bar" style="z-index:14;">
                                 ${cam.name || ('Kamera ' + (i + 1))}
@@ -4161,7 +4273,7 @@ async function fetchCameras() {
                     const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
                     let curQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
                     if (!curQuality) {
-                        curQuality = (count > 1 && hasDistinctSub) ? 'SD' : 'HD';
+                        curQuality = 'SD';
                         window.camStreamQualities[cam.id] = curQuality;
                     }
                     let hlsUrl = '';
@@ -4190,9 +4302,10 @@ async function fetchCameras() {
                                 <p id="desc_${videoId}">Memulai koneksi WebRTC / RTSP...</p>
                             </div>
 
-                            <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:5px; align-items:center;">
+                            <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:4px; align-items:center;">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                <span id="m_badge_quality_${cam.id}" class="badge" style="font-size:0.65rem; padding:2px 5px; background:rgba(0,0,0,0.6);">${curQuality}</span>
+                                <button type="button" id="m_btn_tile_pp_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Jeda Stream Ini" style="font-size:0.65rem; padding:2px 6px; border-radius:4px; cursor:pointer; background:rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.25);">⏸️</button>
+                                <button type="button" id="m_badge_quality_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleCameraQuality('${cam.id}')" title="Klik untuk beralih kualitas SD / HD" style="font-size:0.65rem; padding:2px 7px; border-radius:4px; cursor:pointer; font-weight:700; background:${curQuality === 'HD' ? '#2563eb' : '#059669'}; color:#fff; border:1px solid rgba(255,255,255,0.3);">${curQuality}</button>
                             </div>
                             <div class="cam-title-bar" style="z-index:14;">
                                 ${cam.name || ('Kamera ' + (i + 1))}
@@ -4543,26 +4656,81 @@ let recordingsMap = {};
 
         playbackPlayer.addEventListener('play', () => {
             const btnPbPlay = document.getElementById('btnPbPlay');
-            if (btnPbPlay) btnPbPlay.textContent = '⏸️';
+            if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">⏸</span> Pause';
         });
 
         playbackPlayer.addEventListener('pause', () => {
             const btnPbPlay = document.getElementById('btnPbPlay');
-            if (btnPbPlay) btnPbPlay.textContent = '▶️';
+            if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">▶</span> Play';
         });
     }
+
+    // --- Complete NVR Playback Controller Engine ---
+    window.stopPlayback = function() {
+        if (!playbackPlayer) return;
+        playbackPlayer.pause();
+        playbackPlayer.removeAttribute('src');
+        playbackPlayer.load();
+        if (scrubber) scrubber.style.left = '0%';
+        const pbCurrentTime = document.getElementById('pbCurrentTime');
+        if (pbCurrentTime) pbCurrentTime.textContent = '00:00:00';
+        if (pbTitle) pbTitle.textContent = 'Playback Dihentikan (Standby)';
+        const btnPbPlay = document.getElementById('btnPbPlay');
+        if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">▶</span> Play';
+        setPlaybackState('ready', 'Standby', 'Pilih rekaman atau klik Play untuk memutar.');
+        showToast('⏹️ Pemutaran rekaman dihentikan & timeline di-reset', 'info');
+    };
+
+    window.pausePlayback = function() {
+        if (!playbackPlayer) return;
+        playbackPlayer.pause();
+        const btnPbPlay = document.getElementById('btnPbPlay');
+        if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">▶</span> Play';
+        showToast('⏸️ Rekaman dijeda', 'info');
+    };
+
+    window.resumePlayback = function() {
+        if (!playbackPlayer) return;
+        if (playbackPlayer.src && playbackPlayer.paused) {
+            playbackPlayer.play().then(() => {
+                const btnPbPlay = document.getElementById('btnPbPlay');
+                if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">⏸</span> Pause';
+            }).catch(() => {});
+        } else if (!playbackPlayer.src) {
+            if (currentPlaybackChunks && currentPlaybackChunks.length > 0) {
+                playChunk(currentPlaybackChunks[0], 0);
+            } else {
+                showToast('Pilih kamera dan tanggal rekaman terlebih dahulu', 'warning');
+            }
+        } else {
+            playbackPlayer.pause();
+            const btnPbPlay = document.getElementById('btnPbPlay');
+            if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">▶</span> Play';
+        }
+    };
+
+    window.seekPlaybackOffset = function(seconds) {
+        if (!playbackPlayer || !playbackPlayer.src) {
+            showToast('Pilih dan putar rekaman terlebih dahulu untuk seek', 'warning');
+            return;
+        }
+        const target = Math.max(0, Math.min(playbackPlayer.duration || 86400, playbackPlayer.currentTime + seconds));
+        playbackPlayer.currentTime = target;
+        showToast(`${seconds > 0 ? '+' : ''}${seconds} Detik`, 'info');
+    };
+
+    window.setPlaybackSpeed = function(rate) {
+        if (!playbackPlayer) return;
+        const speed = parseFloat(rate) || 1.0;
+        playbackPlayer.playbackRate = speed;
+        showToast(`Kecepatan pemutaran rekaman: ${speed}x`, 'info');
+    };
 
     // Controls Buttons
     const btnPbPlay = document.getElementById('btnPbPlay');
     if (btnPbPlay && playbackPlayer) {
         btnPbPlay.addEventListener('click', () => {
-            if (playbackPlayer.paused) {
-                playbackPlayer.play();
-                btnPbPlay.textContent = '⏸️';
-            } else {
-                playbackPlayer.pause();
-                btnPbPlay.textContent = '▶️';
-            }
+            window.resumePlayback();
         });
     }
 

@@ -265,3 +265,53 @@ let recordingsMap = {};
         // Update timeline
         renderTimeline();
     }
+
+    window.stopPlayback = function() {
+        if (!playbackPlayer) return;
+        playbackPlayer.pause();
+        playbackPlayer.removeAttribute('src');
+        playbackPlayer.load();
+        if (scrubber) scrubber.style.left = '0%';
+        const pbCurrentTime = document.getElementById('pbCurrentTime');
+        if (pbCurrentTime) pbCurrentTime.textContent = '00:00:00';
+        if (pbTitle) pbTitle.textContent = 'Playback Dihentikan (Standby)';
+        const btnPbPlay = document.getElementById('btnPbPlay');
+        if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">▶</span> Play';
+    };
+
+    window.pausePlayback = function() {
+        if (!playbackPlayer) return;
+        playbackPlayer.pause();
+        const btnPbPlay = document.getElementById('btnPbPlay');
+        if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">▶</span> Play';
+    };
+
+    window.resumePlayback = function() {
+        if (!playbackPlayer) return;
+        if (playbackPlayer.src && playbackPlayer.paused) {
+            playbackPlayer.play().then(() => {
+                const btnPbPlay = document.getElementById('btnPbPlay');
+                if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">⏸</span> Pause';
+            }).catch(() => {});
+        } else if (!playbackPlayer.src) {
+            if (currentPlaybackChunks && currentPlaybackChunks.length > 0) {
+                playChunk(currentPlaybackChunks[0], 0);
+            }
+        } else {
+            playbackPlayer.pause();
+            const btnPbPlay = document.getElementById('btnPbPlay');
+            if (btnPbPlay) btnPbPlay.innerHTML = '<span id="pbPlayBtnIcon">▶</span> Play';
+        }
+    };
+
+    window.seekPlaybackOffset = function(seconds) {
+        if (!playbackPlayer || !playbackPlayer.src) return;
+        const target = Math.max(0, Math.min(playbackPlayer.duration || 86400, playbackPlayer.currentTime + seconds));
+        playbackPlayer.currentTime = target;
+    };
+
+    window.setPlaybackSpeed = function(rate) {
+        if (!playbackPlayer) return;
+        const speed = parseFloat(rate) || 1.0;
+        playbackPlayer.playbackRate = speed;
+    };

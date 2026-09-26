@@ -1,15 +1,22 @@
-# ⚡ Arch3r NVR (Ver. 10.8.6)
+# ⚡ Arch3r NVR (Ver. 10.8.5)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
 
-### 📋 Changelog Pembaruan Ver. 10.8.6:
-- **Restoring Clean Classic 10.7.5 Responsive UI Layout, Natural Monitor Grid & Anti-Cutoff Guard**:
-  1. **Pemulihan Tata Letak Klasik Ver. 10.7.5 (Classic Clean Layout Restoration)**:
-     - Menghapus semua deklarasi CSS override yang rumit dan kaku (seperti pembatasan aspect ratio dan kalkulasi tinggi yang memaksa) yang merusak tata letak sebelumnya.
-     - Mengembalikan `#videoGridContainer` dan `.video-grid` ke arsitektur standar Ver 10.7.5 (`flex: 1; min-height: 0; align-items: stretch;`) sehingga kanvas CCTV tampil utuh di bagian atas layar HP tanpa celah kosong dan tanpa mendesak panel kontrol ke bawah.
-  2. **Bilah Kontrol Bawah Bebas Terpotong**:
-     - Menyesuaikan `#topControlContainer` dengan scrolling sentuh dan padding pelindung `safe-area-inset-bottom`, menjamin seluruh tombol kontrol dapat diakses dengan mudah tanpa pernah terpotong oleh bilah browser HP.
-  3. **Penyelarasan Versi Sistem**:
-     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.6** pada seluruh komponen sistem (`package.json`, `metadata.json`, `index.html`, `public/index.html`, `public/admin.html`, `public/superadmin.html`, `public/version_sync.js`, `public/script.js`, `public/style.css`, `README.md`, dan `CHANGELOG.md`) mematuhi aturan Semantic Versioning Strict.
+### 📋 Changelog Pembaruan Ver. 10.8.5:
+- **Default SD Multi-Stream Engine, On-Demand Streaming, Complete NVR Playback Controller (Play, Pause, Stop, Speed)**:
+  1. **Optimalisasi Kualitas Live Monitor (Default SD & Manual HD Switch)**:
+     - Multi-view Live Monitor kini secara *default* memutar resolusi SD (Sub-Stream) untuk mencegah lonjakan konsumsi CPU STB Armbian dan *packet drop*, menjaga kelancaran streaming multi-kamera secara simultan.
+     - Setiap *tile* kamera kini dilengkapi tombol sakelar badge kualitas instan `[ SD ]` / `[ HD ]` yang memungkinkan pengguna berpindah resolusi kapan saja secara independen.
+     - Menempatkan konfigurasi Sub-Stream RTSP (SD) secara jelas di form Tambah/Edit Kamera dengan kemampuan *auto-fallback* ke Main-Stream jika kosong.
+  2. **On-Demand Streaming & Global Stream Controls**:
+     - Ditambahkan tombol global `[ ▶️ Putar Semua ]` & `[ ⏸️ Jeda Semua ]` pada bilah *toolbar* Live Monitor untuk memudahkan menyalakan atau menjeda pemutaran seluruh kamera dengan satu klik guna menghemat daya/bandwidth STB.
+     - Setiap kartu kamera dilengkapi tombol kontrol putar/jeda terpisah.
+  3. **Suite Kontrol Playback Terpadu (Playback Engine)**:
+     - Tombol **⏹ Stop**: Menghentikan pemutaran rekaman, merilis *buffer* memori video, dan mengembalikan kursor *timeline* ke awal (00:00:00).
+     - Tombol **⏸ Pause & ▶ Play**: Menjeda atau melanjutkan rekaman dari posisi waktu kursor *scrubber* saat ini.
+     - Tombol Navigasi Lompat **⏪ -10s & +10s ⏩**: Mempermudah inspeksi frame kejadian rekaman secara presisi.
+     - Pengatur Kecepatan (*Speed Selector*): Mendukung kecepatan playback 0.5x, 1.0x (Normal), 2.0x, 4.0x, dan 8.0x.
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.5** pada seluruh komponen sistem (`package.json`, `metadata.json`, `index.html`, `public/index.html`, `public/admin.html`, `public/superadmin.html`, `public/version_sync.js`, `public/script.js`, `public/style.css`, `README.md`, dan `CHANGELOG.md`) mematuhi aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.8.5:
 - **Proportional Viewport Distribution, Zero-Gap Mobile Layout, Uniform Menu Padding & Anti-Clipping Guard**:
