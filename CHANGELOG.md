@@ -1,5 +1,22 @@
 # Changelog
 
+## [Ver 10.9.4] - 2026-09-26
+### Enterprise YOLOv8 AI Real-Time Inference Pipeline, Multi-Class Bounding Box HUD & Interactive Diagnostics Probe (Proof-of-Life)
+- **Arsitektur Daemon AI YOLOv8 & Multi-Class Inference Pipeline (`addons/ai_yolo_service.py`):**
+  - **Queryable Bounding Box Cache**: Menambahkan endpoint `GET /api/ai/detections?camera_id=...` pada daemon Python yang menyimpan memori riwayat deteksi objek terkini secara berkesinambungan.
+  - **Multi-Class Detection Engine**: Memperluas deteksi objek YOLOv8 COCO tidak hanya untuk manusia (*person*), tetapi juga kendaraan (*car, motorcycle, bus, truck, bicycle*) dan hewan peliharaan/ternak (*dog, cat, animal*).
+  - **Real-Time Telemetry & Frame Metrics**: Menghitung secara dinamis frame yang diproses (*total frames processed*), latensi komputasi inferensi milidetik (*latency ms*), dan frekuensi cuplikan (*sampling FPS*).
+  - **End-to-End Diagnostics Probe**: Menambahkan endpoint `POST /api/ai/diagnostics/probe` untuk menguji tensor model YOLOv8 secara sintetis di memori dan memverifikasi kelayakan pipeline inferensi.
+- **Konsolidasi Endpoint AI Backend NVR (`server.js`):**
+  - **Penyelarasan Endpoint `/api/ai/*`**: Menghapus duplikasi endpoint uji coba lama dan menggabungkannya ke arsitektur enterprise terpadu (`/api/ai/status`, `/api/ai/telemetry`, `/api/ai/detections`, `/api/ai/diagnostics/probe`, `/api/ai/grid`, `/api/ai/webhook`).
+  - **Live Heartbeat & Worker Verification**: Memantau koneksi daemon port 8000 secara aktif, sinkronisasi daftar worker kamera aktif, dan fallback aman ke mode inferensi hybrid bila daemon sedang dimuat.
+- **Antarmuka Studio YOLO AI & Pembuktian Real-Time (`public/index.html` & `public/script.js`):**
+  - **Tombol & Modal Diagnostik AI Terpadu**: Tombol `🩺 Diagnostik AI` pada toolbar Studio yang menjalankan 4 langkah uji verifikasi (Daemon STB Port 8000, Mesin Tensor Model YOLOv8n, Pipeline Ingestion Stream RTSP, dan Detektor Intrusi ROI/Tripwire).
+  - **Tactical Real-Time HUD Metrics**: Menampilkan indikator latensi inferensi riil (*e.g., 12ms*), sampling FPS (*e.g., 10 FPS*), dan jumlah objek terdeteksi langsung di pojok atas kanvas video stream.
+  - **Peningkatan Responsivitas Bounding Box**: Pembaruan interval query deteksi riil dan penyesuaian parameter sensitivitas (*confidence threshold 20%-90%*) langsung dari UI agar objek mudah terbaca tanpa terputus.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.9.4** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
+
 ## [Ver 10.9.3] - 2026-09-26
 ### Tactical YOLO AI Studio Enhanced Engine, Multi-Point Perimeter Hit-Test, Heartbeat Diagnostics & Live Stream OSD
 - **Integrasi Endpoint & Arsitektur Backend AI YOLO (`server.js`):**

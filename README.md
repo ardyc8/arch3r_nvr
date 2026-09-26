@@ -1,5 +1,21 @@
-# ⚡ Arch3r NVR (Ver. 10.9.3)
+# ⚡ Arch3r NVR (Ver. 10.9.4)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.9.4:
+- **Enterprise YOLOv8 AI Real-Time Inference Pipeline, Multi-Class Bounding Box HUD & Interactive Diagnostics Probe (Proof-of-Life)**:
+  1. **Arsitektur Daemon AI YOLOv8 & Multi-Class Inference Pipeline (`addons/ai_yolo_service.py`)**:
+     - Queryable Bounding Box Cache via `GET /api/ai/detections?camera_id=...` untuk pembacaan real-time hasil inferensi model tanpa jeda.
+     - Multi-Class Detection Engine yang mendukung pendeteksian manusia (*person*), kendaraan (*car, motorcycle, bicycle, bus, truck*), dan hewan peliharaan (*dog, cat, animal*).
+     - Telemetri aktif: frame count, latensi inferensi milidetik (*ms*), dan rate sampling FPS.
+     - Synthetic test probe via `POST /api/ai/diagnostics/probe` untuk verifikasi end-to-end model di memori.
+  2. **Konsolidasi Endpoint AI Backend NVR (`server.js`)**:
+     - Standardisasi endpoint `/api/ai/*` terpadu: status, deteksi, telemetri, konfigurasi grid/ROI, dan webhook alarm.
+     - Deteksi detak jantung (*heartbeat*) daemon port 8000 dan fallback hybrid yang aman tanpa crash.
+  3. **Antarmuka Studio YOLO AI & Pembuktian Real-Time (`public/index.html` & `public/script.js`)**:
+     - Tombol & modal interaktif `🩺 Diagnostik AI` untuk pengujian langsung status sistem AI.
+     - Tactical HUD Metrics dengan latensi ms, FPS, dan jumlah objek real-time di atas video player.
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.9.4** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.9.3:
 - **Tactical YOLO AI Studio Enhanced Engine, Multi-Point Perimeter Hit-Test, Heartbeat Diagnostics & Live Stream OSD**:

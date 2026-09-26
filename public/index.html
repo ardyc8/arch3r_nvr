@@ -1445,6 +1445,9 @@
 
                                 <!-- Action Toolbar -->
                                 <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-secondary" onclick="runYoloAiDiagnosticsProbe()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem; background:rgba(168,85,247,0.15); border-color:rgba(168,85,247,0.4); color:#c084fc;" title="Uji & Verifikasi Real-time Pipeline AI">
+                                        <span>🩺</span> Diagnostik AI
+                                    </button>
                                     <button type="button" id="yolo-btn-toggle-roi" class="btn btn-secondary" onclick="toggleYoloRoiEditMode()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem; border-color:rgba(34,197,94,0.4); color:#4ade80; background:rgba(34,197,94,0.1);">
                                         <span>✏️</span> Atur Zona ROI
                                     </button>
@@ -1838,6 +1841,87 @@
                                 Tutup
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Dialog Diagnostik Realtime AI YOLO (Proof of AI Life & Health) -->
+            <div id="modal-yolo-ai-diagnostics" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(6px); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
+                <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; width:100%; max-width:680px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 12px 35px rgba(0,0,0,0.7); overflow:hidden;">
+                    <!-- Header -->
+                    <div style="padding:1rem 1.25rem; background:rgba(15,23,42,0.95); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h3 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                <span>🩺</span> Hasil Diagnostik Real-Time Pipeline YOLO AI
+                            </h3>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                                Uji Verifikasi End-to-End: Daemon STB, Ingestion Stream RTSP, Tensor Model, & Area ROI
+                            </div>
+                        </div>
+                        <button type="button" onclick="closeYoloDiagnosticsModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.4rem; cursor:pointer; line-height:1;">&times;</button>
+                    </div>
+
+                    <!-- Body -->
+                    <div style="padding:1.25rem 1.5rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:1rem;">
+                        <!-- Overall Status Banner -->
+                        <div id="yolo-diag-status-banner" style="background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.4); border-radius:8px; padding:0.85rem 1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                            <div style="display:flex; align-items:center; gap:0.6rem;">
+                                <span id="yolo-diag-overall-icon" style="font-size:1.5rem;">🟢</span>
+                                <div>
+                                    <div id="yolo-diag-overall-title" style="font-size:0.95rem; font-weight:700; color:#4ade80;">STATUS AI: OPTIMAL & BERJALAN AKTIF</div>
+                                    <div id="yolo-diag-overall-subtitle" style="font-size:0.75rem; color:#94a3b8;">Pipeline deteksi objek dan inferensi model merespons real-time.</div>
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:0.7rem; color:var(--text-muted);">Latency Uji:</div>
+                                <div id="yolo-diag-latency-val" style="font-size:1rem; font-weight:800; color:#38bdf8;">12ms</div>
+                            </div>
+                        </div>
+
+                        <!-- 4 Step Test Table -->
+                        <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                            <div style="padding:0.6rem 1rem; background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border); font-size:0.78rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">
+                                📋 Tahap Verifikasi Sistem
+                            </div>
+                            <div id="yolo-diag-tests-container" style="display:flex; flex-direction:column; divide-y:1px solid var(--border);">
+                                <!-- Dynamically populated by runYoloAiDiagnosticsProbe() -->
+                            </div>
+                        </div>
+
+                        <!-- Technical Metrics Grid -->
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:0.75rem;">
+                            <div style="background:rgba(15,23,42,0.6); padding:0.75rem; border-radius:6px; border:1px solid var(--border); text-align:center;">
+                                <div style="font-size:0.68rem; color:var(--text-muted);">Frame Diproses</div>
+                                <div id="yolo-diag-stat-frames" style="font-size:1.1rem; font-weight:700; color:#38bdf8; margin-top:2px;">1,420</div>
+                            </div>
+                            <div style="background:rgba(15,23,42,0.6); padding:0.75rem; border-radius:6px; border:1px solid var(--border); text-align:center;">
+                                <div style="font-size:0.68rem; color:var(--text-muted);">Sampling FPS</div>
+                                <div id="yolo-diag-stat-fps" style="font-size:1.1rem; font-weight:700; color:#22c55e; margin-top:2px;">10 FPS</div>
+                            </div>
+                            <div style="background:rgba(15,23,42,0.6); padding:0.75rem; border-radius:6px; border:1px solid var(--border); text-align:center;">
+                                <div style="font-size:0.68rem; color:var(--text-muted);">Confidence Min</div>
+                                <div id="yolo-diag-stat-conf" style="font-size:1.1rem; font-weight:700; color:#fbbf24; margin-top:2px;">40%</div>
+                            </div>
+                            <div style="background:rgba(15,23,42,0.6); padding:0.75rem; border-radius:6px; border:1px solid var(--border); text-align:center;">
+                                <div style="font-size:0.68rem; color:var(--text-muted);">Worker Kamera</div>
+                                <div id="yolo-diag-stat-workers" style="font-size:1.1rem; font-weight:700; color:#c084fc; margin-top:2px;">1 Aktif</div>
+                            </div>
+                        </div>
+
+                        <!-- Recommendations / Advice -->
+                        <div id="yolo-diag-recommendation" style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); border-radius:6px; padding:0.75rem 1rem; font-size:0.78rem; color:#bfdbfe; line-height:1.45;">
+                            💡 <strong>Rekomendasi Profesional:</strong> Jika target objek tidak terdeteksi, turunkan ambang batas Confidence (misal ke 30-40%) atau pastikan stream kamera memiliki pencahayaan memadai dan resolusi substream 720p/480p.
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="padding:0.75rem 1.25rem; background:rgba(15,23,42,0.95); border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                        <button type="button" class="btn btn-secondary" onclick="runYoloAiDiagnosticsProbe()" style="font-size:0.8rem; display:flex; align-items:center; gap:0.4rem;">
+                            <span>🔄</span> Jalankan Uji Ulang
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="closeYoloDiagnosticsModal()" style="font-size:0.83rem; background:#2563eb; border-color:#1d4ed8; padding:0.4rem 1rem;">
+                            Selesai
+                        </button>
                     </div>
                 </div>
             </div>
