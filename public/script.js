@@ -11259,6 +11259,8 @@ window.toggleYoloCameraStatus = toggleYoloCameraStatus;
 
 let activeYoloSettingsTab = 'view';
 let isYoloEditMode = false;
+let isYoloHeatmapActive = false;
+let yoloHeatmapHistory = [];
 let yoloTelemetryTimer = null;
 
 let yoloCanvasAnimationTimer = null;
@@ -11790,6 +11792,190 @@ let roiDragHandle = null; // 'nw', 'ne', 'sw', 'se', 'move', 'new'
 let roiDragStartPoint = { x: 0, y: 0 };
 let roiDragOriginalBox = { x: 10, y: 10, w: 80, h: 80 };
 
+// --- Bounding Box Heatmap Overlay & ROI Verification Visualizer ---
+function drawYoloBoundingBoxHeatmap(ctx, canvasWidth, canvasHeight, roiPx, currentFrameDetections) {
+    if (!isYoloHeatmapActive) return;
+
+    const now = Date.now();
+    const HEATMAP_MAX_AGE_MS = 6500; // 6.5s retention for smooth motion trails
+
+    // 1. Ingest newly detected objects into spatial heatmap history
+    if (Array.isArray(currentFrameDetections) && currentFrameDetections.length > 0) {
+        currentFrameDetections.forEach(det => {
+            const b = det.box;
+            if (!b) return;
+            const midX = b.x + b.w / 2;
+            const midY = b.y + b.h / 2;
+
+            // Throttle duplicate points within same proximity (<22px within 140ms)
+            const isNear = yoloHeatmapHistory.some(pt => (now - pt.timestamp < 140) && Math.hypot(pt.x - midX, pt.y - midY) < 22);
+            if (!isNear) {
+                yoloHeatmapHistory.push({
+                    x: midX,
+                    y: midY,
+                    w: b.w,
+                    h: b.h,
+                    isInsideRoi: !!det.isInsideRoi,
+                    timestamp: now,
+                    weight: Math.min(1.0, Math.max(0.4, det.confidence || 0.85))
+                });
+            }
+        });
+    }
+
+    // 2. Prune expired points
+    yoloHeatmapHistory = yoloHeatmapHistory.filter(pt => (now - pt.timestamp) < HEATMAP_MAX_AGE_MS);
+
+    // 3. Render Additive Thermal Spots (Rendered inside current stage transform)
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    let pointsInRoi = 0;
+    const totalPoints = yoloHeatmapHistory.length;
+
+    yoloHeatmapHistory.forEach(pt => {
+        const age = now - pt.timestamp;
+        const lifeRatio = Math.max(0, 1.0 - (age / HEATMAP_MAX_AGE_MS));
+        if (lifeRatio <= 0) return;
+
+        if (pt.isInsideRoi) pointsInRoi++;
+
+        // Calculate dynamic thermal radius based on bounding box dimension
+        const radius = Math.max(35, Math.min(130, (pt.w + pt.h) * 0.45));
+        const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, radius);
+
+        const baseAlpha = lifeRatio * 0.62 * pt.weight;
+
+        if (pt.isInsideRoi) {
+            // High-Priority ROI Intrusion / Focus Zone: Hot Crimson & Amber
+            grad.addColorStop(0.0, `rgba(239, 68, 68, ${baseAlpha})`);
+            grad.addColorStop(0.35, `rgba(249, 115, 22, ${baseAlpha * 0.75})`);
+            grad.addColorStop(0.70, `rgba(234, 179, 8, ${baseAlpha * 0.35})`);
+            grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+        } else {
+            // Background / Non-ROI detections: Cool Electric Cyan & Indigo
+            grad.addColorStop(0.0, `rgba(56, 189, 248, ${baseAlpha * 0.65})`);
+            grad.addColorStop(0.40, `rgba(14, 165, 233, ${baseAlpha * 0.4})`);
+            grad.addColorStop(0.75, `rgba(99, 102, 241, ${baseAlpha * 0.2})`);
+            grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+        }
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.restore();
+
+    // 4. Render Fixed Tactical Heatmap HUD Legend & ROI Verification Indicator
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform so legend stays anchored
+
+    const legendW = 310, legendH = 48;
+    const legendX = 14;
+    const legendY = canvasHeight - legendH - 14;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+    ctx.strokeStyle = 'rgba(249, 115, 22, 0.65)';
+    ctx.lineWidth = 1.2;
+    if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(legendX, legendY, legendW, legendH, 6);
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        ctx.fillRect(legendX, legendY, legendW, legendH);
+        ctx.strokeRect(legendX, legendY, legendW, legendH);
+    }
+
+    const roiRatioPct = totalPoints > 0 ? Math.round((pointsInRoi / totalPoints) * 100) : 0;
+
+    // Header Title
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = '#fb923c';
+    ctx.fillText('🔥 HEATMAP PRIORITAS DETEKSI', legendX + 10, legendY + 14);
+
+    // Dynamic Verification Text
+    ctx.font = 'bold 9.5px monospace';
+    ctx.fillStyle = roiRatioPct >= 50 ? '#4ade80' : (totalPoints > 0 ? '#38bdf8' : '#94a3b8');
+    const roiStatusLabel = totalPoints === 0 ? 'MEMANTAU' : (roiRatioPct >= 70 ? '🎯 ROI OPTIMAL' : '🔍 AKTIVITAS LUAR');
+    ctx.fillText(`${roiStatusLabel}: ${roiRatioPct}% (${pointsInRoi}/${totalPoints})`, legendX + 175, legendY + 14);
+
+    // Spectrum Gradient Bar
+    const barX = legendX + 10;
+    const barY = legendY + 22;
+    const barW = legendW - 20;
+    const barH = 7;
+
+    const barGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+    barGrad.addColorStop(0.0, '#38bdf8');
+    barGrad.addColorStop(0.35, '#22c55e');
+    barGrad.addColorStop(0.70, '#eab308');
+    barGrad.addColorStop(1.0, '#ef4444');
+
+    ctx.fillStyle = barGrad;
+    if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, barW, barH, 3);
+        ctx.fill();
+    } else {
+        ctx.fillRect(barX, barY, barW, barH);
+    }
+
+    // Legend Scale Labels
+    ctx.font = '8.5px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Dingin (Luar)', barX, barY + barH + 9);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#f87171';
+    ctx.fillText('Panas (Fokus Zona ROI)', barX + barW, barY + barH + 9);
+    ctx.textAlign = 'left';
+
+    ctx.restore();
+}
+window.drawYoloBoundingBoxHeatmap = drawYoloBoundingBoxHeatmap;
+
+function toggleYoloHeatmapOverlay() {
+    isYoloHeatmapActive = !isYoloHeatmapActive;
+    updateYoloHeatmapUI();
+    if (typeof showToast === 'function') {
+        showToast(isYoloHeatmapActive ? '🔥 Bounding Box Heatmap Diaktifkan (Visualisasi ROI Aktif)' : '❄️ Bounding Box Heatmap Dinonaktifkan', 'info');
+    }
+}
+window.toggleYoloHeatmapOverlay = toggleYoloHeatmapOverlay;
+
+function updateYoloHeatmapUI() {
+    const btn = document.getElementById('yolo-btn-toggle-heatmap');
+    const textEl = document.getElementById('yolo-heatmap-text');
+    const pill = document.getElementById('yolo-pill-heatmap');
+
+    if (btn) {
+        if (isYoloHeatmapActive) {
+            btn.classList.add('active');
+            btn.style.borderColor = '#ef4444';
+            btn.style.background = 'rgba(239, 68, 68, 0.22)';
+            btn.style.color = '#fca5a5';
+        } else {
+            btn.classList.remove('active');
+            btn.style.borderColor = 'rgba(249, 115, 22, 0.4)';
+            btn.style.background = 'rgba(249, 115, 22, 0.1)';
+            btn.style.color = '#fb923c';
+        }
+    }
+    if (textEl) {
+        textEl.textContent = isYoloHeatmapActive ? 'Heatmap: ON' : 'Heatmap: OFF';
+    }
+    if (pill) {
+        if (isYoloHeatmapActive) {
+            pill.classList.add('active');
+        } else {
+            pill.classList.remove('active');
+        }
+    }
+}
+window.updateYoloHeatmapUI = updateYoloHeatmapUI;
+
 // --- Professional NVR Tactical Corner-Bracket Bounding Box Renderer ---
 function drawTacticalCornerBracketBox(ctx, boxX, boxY, boxW, boxH, threatColor, isInsideRoi, label, confidence, icon) {
     ctx.save();
@@ -12203,7 +12389,8 @@ function drawYoloViewLiveCanvasStream(timestamp) {
         };
     }
 
-    // --- DRAW DETECTIONS VIA CORNER BRACKETS ---
+    // --- DRAW DETECTIONS VIA CORNER BRACKETS & OPTIONAL HEATMAP ---
+    const currentFrameHeatmapDetections = [];
     if (Array.isArray(activeRealYoloDetections) && activeRealYoloDetections.length > 0) {
         activeRealYoloDetections.forEach(obj => {
             const rawType = (obj.type || obj.class || 'person').toLowerCase();
@@ -12286,6 +12473,13 @@ function drawYoloViewLiveCanvasStream(timestamp) {
                 const isInsideRoi = centerInRoi || footInRoi || hasSignificantOverlap;
                 if (isInsideRoi) intrusionCount++;
 
+                // Track for heatmap visualizer
+                currentFrameHeatmapDetections.push({
+                    box: { x: boxX, y: boxY, w: boxW, h: boxH },
+                    isInsideRoi: isInsideRoi,
+                    confidence: obj.confidence || obj.score || 0.85
+                });
+
                 const threatColor = isInsideRoi
                     ? (Math.floor(Date.now() / 400) % 2 === 0 ? '#ef4444' : '#f97316')
                     : (obj.color || '#38bdf8');
@@ -12295,6 +12489,11 @@ function drawYoloViewLiveCanvasStream(timestamp) {
                 recordYoloDetectionEvent(obj, isInsideRoi);
             }
         });
+    }
+
+    // Overlay Bounding Box Heatmap & ROI Prioritization visualizer if toggle is enabled
+    if (isYoloHeatmapActive) {
+        drawYoloBoundingBoxHeatmap(ctx, canvas.width, canvas.height, roiPx, currentFrameHeatmapDetections);
     }
 
     ctx.restore();
@@ -13563,6 +13762,10 @@ function openYoloCameraSettings(camId) {
 
     // Reset event strip for selected camera session
     renderYoloEventStrip();
+
+    // Reset heatmap spatial history for selected camera session
+    yoloHeatmapHistory = [];
+    updateYoloHeatmapUI();
 
     loadYoloCameraSettingsData(camId);
     attachYoloVideoPreview('yolo-view-video-element');

@@ -1,5 +1,17 @@
-# ⚡ Arch3r NVR (Ver. 10.9.6)
+# ⚡ Arch3r NVR (Ver. 10.9.7)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.9.7:
+- **Bounding Box Heatmap Visualizer Overlay & ROI Spatial Priority Analytics**:
+  1. **Visual Heatmap Overlay (`public/script.js` & `public/style.css`)**:
+     - Visualisasi akumulasi jejak spasial objek dengan gradien radial termal dinamis (retensi 6,5 detik) terakselerasi hardware pada canvas preview video (60 FPS tanpa beban CPU).
+     - Rona warna adaptif: Hotspot Merah-Oranye (*Thermal Crimson & Amber*) untuk deteksi di dalam zona ROI Perimeter vs Biru Dingin (*Electric Cyan*) untuk latar belakang non-ROI.
+     - Panel Fixed Tactical HUD Legend di kiri bawah menampilkan rasio prioritas ROI (`🎯 ROI TARGET: XX%`) serta diagram skala warna gradien untuk verifikasi instan.
+  2. **Kontrol Sakelar Visual di Antarmuka Web (`public/index.html`)**:
+     - Tombol sakelar ganda pada Action Toolbar (`🔥 Heatmap: OFF / ON`) dan Quick Filter Strip (`🔥 Heatmap ROI`).
+     - Pembersihan otomatis riwayat jejak saat berganti channel kamera untuk isolasi visual yang bersih.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.9.7** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.9.6:
 - **MediaMTX Local Loopback RTSP Stream Ingestion & Dual-Pipeline Real-Time Canvas Screen Analytics**:

@@ -2172,6 +2172,20 @@ body {
     box-shadow: 0 0 10px rgba(37, 99, 235, 0.35);
 }
 
+.yolo-filter-pill#yolo-pill-heatmap.active {
+    background: #c2410c;
+    color: #ffffff;
+    border-color: #f97316;
+    box-shadow: 0 0 14px rgba(249, 115, 22, 0.45);
+}
+
+#yolo-btn-toggle-heatmap.active {
+    background: rgba(239, 68, 68, 0.22) !important;
+    border-color: #ef4444 !important;
+    color: #fca5a5 !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+}
+
 .yolo-event-card {
     background: rgba(15, 23, 42, 0.75);
     border: 1px solid rgba(255, 255, 255, 0.08);

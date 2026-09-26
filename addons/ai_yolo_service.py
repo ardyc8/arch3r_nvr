@@ -1,5 +1,5 @@
 # ==============================================================================
-# Arch3r NVR - AI YOLOv8 Service Daemon (v10.9.6)
+# Arch3r NVR - AI YOLOv8 Service Daemon (v10.9.7)
 # Enterprise MediaMTX Local Loopback RTSP Stream Ingestion, Dynamic Canvas
 # Frame Analysis, Multi-Class Inference, Realtime Telemetry, and ROI Perimeter Guard.
 # ==============================================================================
@@ -23,7 +23,7 @@ import httpx
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
 
 # Initialize FastAPI Daemon
-app = FastAPI(title="Arch3r NVR AI YOLO Daemon", version="10.9.6")
+app = FastAPI(title="Arch3r NVR AI YOLO Daemon", version="10.9.7")
 
 app.add_middleware(
     CORSMiddleware,

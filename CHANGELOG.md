@@ -1,5 +1,22 @@
 # Changelog
 
+## [Ver 10.9.7] - 2026-09-26
+### Bounding Box Heatmap Visualizer Overlay & ROI Spatial Priority Analytics
+- **Visual Heatmap Overlay (`public/script.js` & `public/style.css`):**
+  - **Dynamic Spatial Accumulation**: Menghadirkan akumulasi jejak spasial deteksi objek menggunakan gradien radial termal dengan algoritma fading/decay otomatis (retensi 6,5 detik) yang berjalan lancar pada 60 FPS di Armbian STB.
+  - **Diferensiasi Kromatik ROI vs Non-ROI**:
+    - **Thermal Crimson & Amber (Hotspot)**: Objek yang melintasi atau berada di dalam Zona ROI Perimeter dirender dengan cahaya merah/oranye hangat berdensitas tinggi untuk verifikasi pelanggaran perbatasan instan.
+    - **Electric Cyan & Indigo (Ambient)**: Objek di luar zona ROI dirender dengan rona dingin untuk membedakan aktivitas latar belakang.
+  - **Fixed Tactical HUD Legend & ROI Focus Ratio**:
+    - Menampilkan panel HUD metrik rasio fokus ROI di sudut kiri bawah layar: `🔥 HEATMAP PRIORITAS DETEKSI | 🎯 ROI TARGET: XX% (inside/total)` lengkap dengan pita spektrum warna termal *[ Dingin (Luar) ─── Panas (Intrusi ROI) ]*.
+    - Menjamin operator dapat memverifikasi secara langsung dan visual apakah model AI benar-benar "melihat" dan memprioritaskan area ROI yang telah dikonfigurasi.
+- **Kontrol Sakelar Visual di Antarmuka Web (`public/index.html`):**
+  - **Toolbar Action Button**: Menambahkan tombol sakelar `🔥 Heatmap: OFF / ON` pada toolbar atas YOLO Studio dengan indikasi visual aktif (*active glow*).
+  - **Quick Filter Strip Pill**: Menambahkan tombol pil `🔥 Heatmap ROI` pada jajaran filter target cepat untuk kemudahan akses saat memantau stream video langsung.
+  - **Session Isolation**: Riwayat spasial heatmap otomatis dibersihkan saat berganti kamera untuk memastikan visualisasi selalu relevan dengan sudut pandang kamera yang dipilih.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.9.7** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
+
 ## [Ver 10.9.6] - 2026-09-26
 ### MediaMTX Local Loopback RTSP Stream Ingestion & Dual-Pipeline Real-Time Canvas Screen Analytics
 - **MediaMTX Local Loopback Ingestion (`addons/ai_yolo_service.py` & `server.js`):**
