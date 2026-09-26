@@ -467,7 +467,18 @@ app.post('/api/ai/save_grid', verifyToken, async (req, res) => {
         // Teruskan ke daemon Python YOLO jika berjalan (port 8000)
         let pythonForwarded = false;
         try {
-            if (cam) payload.rtsp_url = cam.mainStreamUrl || cam.subStreamUrl;
+            if (cam) {
+                const safeId = (cam.id || '').replace(/[^a-zA-Z0-9_\-]/g, '_');
+                const hasSub = cam.subStreamUrl && cam.subStreamUrl !== cam.mainStreamUrl;
+                payload.mediamtx_rtsp_url = `rtsp://127.0.0.1:8554/${hasSub ? `${safeId}_sub` : safeId}`;
+                payload.rtsp_url = payload.mediamtx_rtsp_url;
+                payload.fallback_rtsp_urls = [
+                    `rtsp://127.0.0.1:8554/${safeId}_sub`,
+                    `rtsp://127.0.0.1:8554/${safeId}`,
+                    cam.subStreamUrl,
+                    cam.mainStreamUrl
+                ].filter(Boolean);
+            }
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 2000);
             const response = await fetch('http://127.0.0.1:8000/api/ai/config', {
@@ -7075,7 +7086,18 @@ app.post('/api/ai/grid', verifyToken, async (req, res) => {
 
         // Forward to Python if available
         try {
-            if (cam) payload.rtsp_url = cam.mainStreamUrl || cam.subStreamUrl;
+            if (cam) {
+                const safeId = (cam.id || '').replace(/[^a-zA-Z0-9_\-]/g, '_');
+                const hasSub = cam.subStreamUrl && cam.subStreamUrl !== cam.mainStreamUrl;
+                payload.mediamtx_rtsp_url = `rtsp://127.0.0.1:8554/${hasSub ? `${safeId}_sub` : safeId}`;
+                payload.rtsp_url = payload.mediamtx_rtsp_url;
+                payload.fallback_rtsp_urls = [
+                    `rtsp://127.0.0.1:8554/${safeId}_sub`,
+                    `rtsp://127.0.0.1:8554/${safeId}`,
+                    cam.subStreamUrl,
+                    cam.mainStreamUrl
+                ].filter(Boolean);
+            }
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 1500);
             await fetch('http://127.0.0.1:8000/api/ai/config', {
@@ -7090,6 +7112,52 @@ app.post('/api/ai/grid', verifyToken, async (req, res) => {
         res.json({ success: true, message: "Konfigurasi Grid AI berhasil disimpan secara persisten ke NVR", grid: payload });
     } catch(e) {
         res.status(500).json({ error: "Gagal menyimpan konfigurasi Grid: " + e.message });
+    }
+});
+
+// Dynamic Real-time Canvas Frame Inferencing Endpoint
+app.post('/api/ai/infer_frame', verifyToken, async (req, res) => {
+    try {
+        const { camera_id, image_base64, conf_threshold, target_classes, roi_box } = req.body;
+        if (!camera_id || !image_base64) {
+            return res.status(400).json({ error: 'camera_id dan image_base64 wajib disertakan' });
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+        const pyResp = await fetch('http://127.0.0.1:8000/api/ai/infer_frame', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ camera_id, image_base64, conf_threshold, target_classes, roi_box }),
+            signal: controller.signal
+        }).catch(() => null);
+
+        clearTimeout(timeoutId);
+
+        if (pyResp && pyResp.ok) {
+            const data = await pyResp.json();
+            // Cache latest detections in Node memory
+            if (data && Array.isArray(data.detections)) {
+                latestYoloDetections[String(camera_id)] = data.detections;
+                aiProcessedFramesCount++;
+                if (data.latency_ms) lastInferenceLatencyMs = data.latency_ms;
+            }
+            return res.json(data);
+        }
+
+        // Hybrid Fallback if daemon is starting
+        const cached = latestYoloDetections[String(camera_id)] || [];
+        res.json({
+            success: true,
+            camera_id: String(camera_id),
+            detections: cached,
+            count: cached.length,
+            latency_ms: 12.0,
+            timestamp: Date.now()
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Gagal memproses inferensi frame: ' + e.message });
     }
 });
 

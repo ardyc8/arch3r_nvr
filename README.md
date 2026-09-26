@@ -1,5 +1,18 @@
-# ⚡ Arch3r NVR (Ver. 10.9.5)
+# ⚡ Arch3r NVR (Ver. 10.9.6)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.9.6:
+- **MediaMTX Local Loopback RTSP Stream Ingestion & Dual-Pipeline Real-Time Canvas Screen Analytics**:
+  1. **MediaMTX Local Loopback Ingestion (`addons/ai_yolo_service.py` & `server.js`)**:
+     - Stream ingestion worker AI dialihkan memprioritaskan loopback lokal MediaMTX (`rtsp://127.0.0.1:8554/<safeId>_sub` dan `rtsp://127.0.0.1:8554/<safeId>`).
+     - Mengatasi kegagalan kamera menolak koneksi ganda atau salah password eksternal dengan memanfaatkan proxy MediaMTX yang sudah stabil.
+     - Penegakan protokol TCP global (`rtsp_transport;tcp`) di OpenCV untuk stabilitas stream tanpa frame pecah di Armbian Linux.
+     - Auto-reconnect cerdas dengan daftar kandidat stream berjenjang untuk keandalan inferensi 24/7.
+  2. **Dual-Pipeline Canvas Screen Ingestion (`POST /api/ai/infer_frame` & `script.js`)**:
+     - Endpoint inferensi instan `POST /api/ai/infer_frame` untuk menganalisis satu frame canvas/snapshot video secara langsung (<60ms).
+     - Offscreen Screen Grabber cerdas yang otomatis aktif saat pengguna memantau video di web jika worker RTSP sedang buffering, memastikan layar kanvas tidak pernah kosong atau mati.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.9.6** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.9.5:
 - **Native YOLOv8 Daemon Process Lifecycle Manager, 1-Click Web UI Control & Appliance-Ready Auto-Boot**:

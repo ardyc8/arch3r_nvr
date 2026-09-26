@@ -11267,6 +11267,61 @@ let lastRealYoloFetchTime = 0;
 let yoloDetectionEventHistory = [];
 let lastRecordedDetectionMap = new Map();
 
+// --- Dual-Pipeline Real-Time Screen & MediaMTX Inference Engine ---
+let lastCanvasInferTime = 0;
+let isCanvasInferBusy = false;
+let offscreenInferCanvas = null;
+
+async function triggerLiveCanvasScreenInference(camId, videoEl) {
+    if (isCanvasInferBusy || !videoEl || videoEl.paused || videoEl.readyState < 2) return;
+    const now = Date.now();
+    if (now - lastCanvasInferTime < 400) return; // 2.5 FPS throttled for STB/Client efficiency
+
+    try {
+        isCanvasInferBusy = true;
+        lastCanvasInferTime = now;
+
+        if (!offscreenInferCanvas) {
+            offscreenInferCanvas = document.createElement('canvas');
+        }
+        offscreenInferCanvas.width = 640;
+        offscreenInferCanvas.height = 360;
+        const ctx = offscreenInferCanvas.getContext('2d');
+        ctx.drawImage(videoEl, 0, 0, 640, 360);
+
+        const imgB64 = offscreenInferCanvas.toDataURL('image/jpeg', 0.65);
+        const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+
+        const resp = await fetch('/api/ai/infer_frame', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+                camera_id: camId,
+                image_base64: imgB64,
+                conf_threshold: (parseFloat(document.getElementById('yolo-threshold-slider')?.value || '40')) / 100
+            })
+        });
+
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data && Array.isArray(data.detections) && data.detections.length > 0) {
+                activeRealYoloDetections = data.detections;
+                const latEl = document.getElementById('yolo-stat-latency');
+                if (latEl && data.latency_ms) latEl.textContent = `${Math.round(data.latency_ms)}ms`;
+                const fpsEl = document.getElementById('yolo-hud-fps');
+                if (fpsEl) fpsEl.textContent = `Live Screen`;
+            }
+        }
+    } catch (e) {
+        // Fallback silently
+    } finally {
+        isCanvasInferBusy = false;
+    }
+}
+
 async function fetchRealYoloDetections() {
     const camId = typeof activeYoloSettingsCamId !== 'undefined' ? activeYoloSettingsCamId : null;
     if (!camId) {
@@ -11280,22 +11335,34 @@ async function fetchRealYoloDetections() {
         });
         if (resp.ok) {
             const data = await resp.json();
-            if (data && Array.isArray(data.detections)) {
+            if (data && Array.isArray(data.detections) && data.detections.length > 0) {
                 activeRealYoloDetections = data.detections;
+                if (data.latency_ms) {
+                    const latEl = document.getElementById('yolo-stat-latency');
+                    if (latEl) latEl.textContent = `${Math.round(data.latency_ms)}ms`;
+                }
+                if (data.fps) {
+                    const fpsEl = document.getElementById('yolo-hud-fps');
+                    if (fpsEl) fpsEl.textContent = `${Math.round(data.fps)} FPS (MediaMTX)`;
+                }
             } else {
-                activeRealYoloDetections = [];
-            }
-            if (data && data.latency_ms) {
-                const latEl = document.getElementById('yolo-stat-latency');
-                if (latEl) latEl.textContent = `${Math.round(data.latency_ms)}ms`;
-            }
-            if (data && data.fps) {
-                const fpsEl = document.getElementById('yolo-hud-fps');
-                if (fpsEl) fpsEl.textContent = `${Math.round(data.fps)} FPS`;
+                // If backend RTSP has 0 detections or is reconnecting, trigger canvas screen inference
+                const videoEl = document.getElementById('yolo-view-video-element');
+                if (videoEl && !videoEl.paused && videoEl.readyState >= 2) {
+                    triggerLiveCanvasScreenInference(camId, videoEl);
+                } else {
+                    activeRealYoloDetections = [];
+                }
             }
         }
     } catch(e) {
-        activeRealYoloDetections = [];
+        // Network fallback
+        const videoEl = document.getElementById('yolo-view-video-element');
+        if (videoEl && !videoEl.paused && videoEl.readyState >= 2) {
+            triggerLiveCanvasScreenInference(camId, videoEl);
+        } else {
+            activeRealYoloDetections = [];
+        }
     }
 }
 
