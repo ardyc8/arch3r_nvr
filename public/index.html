@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.8.6 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=10.8.6">
+    <title>Arch3r NVR Ver. 10.7.4 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=10.7.4">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -18,7 +18,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="version_sync.js?v=10.8.6"></script>
+    <script src="version_sync.js?v=10.7.4"></script>
     <style>
         /* Fullscreen Drawing Mode for AI Vision */
         #ai-canvas-container.ai-fullscreen-active {
@@ -120,7 +120,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 10.8.6</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 10.6.0</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -192,7 +192,7 @@
         <main class="main-content">
             <header class="mobile-header">
                 <button id="btnMobileMenu" class="btn-icon">☰</button>
-                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.8.6</h3>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:#f8fafc;">Arch3r NVR Ver. 10.2.9</h3>
                 <div style="display:flex; align-items:center; margin-left:auto;">
                     <img src="Archer.ico?v=2" alt="Arch3r" style="height:26px; width:26px; object-fit:contain; border-radius:4px;">
                 </div>
@@ -252,11 +252,8 @@
 
                             <!-- Row 3: PTZ Control Panel Card with Optics & Player Media Controls -->
                             <div id="ptzControlPanelCard" class="nvr-ptz-card">
-                                <div class="nvr-ptz-header" onclick="window.togglePtzCard()" style="cursor:pointer;" title="Klik untuk Tampilkan / Sembunyikan Panel PTZ & Player">
+                                <div class="nvr-ptz-header">
                                     <span>🎮 Kontrol PTZ & Player: <strong id="topActiveCamLabel" style="color:var(--accent-blue);">Pilih di grid</strong></span>
-                                    <button id="btnTogglePtzCard" class="btn-sm btn-secondary" onclick="event.stopPropagation(); window.togglePtzCard();" style="font-size:11px; padding:2px 8px; border-radius:4px; display:inline-flex; align-items:center; gap:4px; border:1px solid var(--border); background:var(--surface-dark);" title="Buka / Tutup Panel PTZ">
-                                        <span id="ptzToggleIcon">▼</span> <span id="ptzToggleText">Tutup</span>
-                                    </button>
                                 </div>
                                 <div class="nvr-ptz-divider"></div>
                                 <div class="nvr-ptz-body">
@@ -398,7 +395,7 @@
 
             <!-- 3. VIEW KAMERA -->
             <div id="view-setting-cameras" class="view-pane">
-                <div class="content-wrapper" style="padding:1.75rem 2rem; max-width:1100px; margin:0 auto;">
+                <div class="content-wrapper" style="padding:1rem 1.5rem; max-width:1100px; margin:0 auto;">
                     
                     <!-- Header Section with Action Buttons -->
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:1.25rem;">
@@ -898,7 +895,7 @@
 
             <!-- 4. VIEW STORAGE GLOBAL (AUTO-DETECT USB/HDD) -->
             <div id="view-setting-record" class="view-pane">
-                <div class="content-wrapper" style="padding:2rem; max-width:850px; margin:0 auto;">
+                <div class="content-wrapper" style="padding:1rem 1.5rem; max-width:850px; margin:0 auto;">
                     <h2>Pengaturan Storage & Media Rekaman</h2>
                     <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.5rem;">
                         Pilih flashdisk USB atau Harddisk eksternal yang terpasang di Armbian STB.
@@ -957,7 +954,7 @@
 
             <!-- 5. VIEW MANAJEMEN USER (KLIEN MOBILE) - FITUR ARCH3R ARCHITECTURE -->
             <div id="view-setting-users" class="view-pane">
-                <div class="content-wrapper" style="padding:2rem; max-width:900px; margin:0 auto;">
+                <div class="content-wrapper" style="padding:1rem 1.5rem; max-width:900px; margin:0 auto;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
                         <div>
                             <h2 style="margin:0; font-size:1.3rem;">Manajemen Akun User (Klien Mobile)</h2>
@@ -1072,7 +1069,7 @@
 
             <!-- 6. VIEW SISTEM & NETWORK -->
             <div id="view-setting-system" class="view-pane">
-                <div class="content-wrapper" style="padding:2rem; max-width:850px; margin:0 auto;">
+                <div class="content-wrapper" style="padding:1rem 1.5rem; max-width:850px; margin:0 auto;">
                     <h2>Sistem, Jaringan, & Notifikasi</h2>
                     <form id="systemForm" class="camera-form-section" style="margin-top:1.5rem;">
                         <div class="form-group">
@@ -1126,7 +1123,7 @@
 
             <!-- 7. VIEW KEAMANAN AKUN ADMIN -->
             <div id="view-setting-account" class="view-pane">
-                <div class="content-wrapper" style="padding:2rem; max-width:650px; margin:0 auto;">
+                <div class="content-wrapper" style="padding:1rem 1.5rem; max-width:650px; margin:0 auto;">
                     <h2>Keamanan Akun Administrator</h2>
                     <form id="changePasswordForm" class="camera-form-section" style="margin-top:1.5rem;">
                         <div class="form-group">
@@ -1144,7 +1141,7 @@
 
             <!-- 8. VIEW SYSTEM LOGS -->
             <div id="view-logs" class="view-pane">
-                <div class="content-wrapper" style="padding:1.5rem; height:100%; display:flex; flex-direction:column;">
+                <div class="content-wrapper" style="padding:1rem 1.5rem; height:100%; display:flex; flex-direction:column;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap: wrap; gap: 10px;">
                         <h2 style="margin:0; font-size:1.2rem;">System Logs Real-time</h2>
                         <div style="display:flex; gap:10px; align-items:center;">
@@ -1189,7 +1186,7 @@
             
             <!-- 8.5 VIEW ADDONS -->
             <div id="view-addons" class="view-pane">
-                <div class="content-wrapper" style="padding: 1.25rem 1.25rem 3.5rem 1.25rem; max-width: 1200px; margin: 0 auto;">
+                <div class="content-wrapper" style="padding: 1rem 1.5rem 2.5rem 1.5rem; max-width: 1200px; margin: 0 auto;">
                     
                     <!-- 1. MAIN VIEW: REPOSITORI & MARKEPLACE ADDONS -->
                     <div id="addons-repository-view" style="display:block;">
@@ -1705,7 +1702,7 @@
 
             <!-- 9. VIEW ABOUT -->
             <div id="view-about" class="view-pane">
-                <div class="content-wrapper" style="padding: 2rem; max-width:800px; margin:0 auto;">
+                <div class="content-wrapper" style="padding: 1rem 1.5rem; max-width:800px; margin:0 auto;">
                     <h2>Informasi Sistem NVR</h2>
                     <div class="camera-form-section" style="margin-top:1rem; display:flex; flex-direction:column; gap:1rem;">
                         <div style="background:rgba(0,0,0,0.2); padding:1.5rem; border-radius:8px; border:1px solid var(--border); text-align:center;">
@@ -1777,7 +1774,7 @@
         <header class="mobile-topbar">
             <div class="brand">
                 <span>🛡️</span>
-                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 10.8.6</span></span>
+                <span>Archer Mobile <span class="badge" style="background:#10b981; font-size:0.65rem;">Ver. 10.2.9</span></span>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <span id="lblUserMobileName" style="font-size:0.8rem; color:#60a5fa; font-weight:600;">User</span>

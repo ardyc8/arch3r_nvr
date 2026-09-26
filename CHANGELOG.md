@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 10.8.3] - 2026-09-25
+### Restored Crisp Zero-Gap View Layout (v10.7.5 Style), Pure Vanilla CSS & Compact Spacing
+- **Eliminasi Celah Atas (Top Gap Fix) di Semua Halaman Selain Live Monitor (`public/style.css` & `public/index.html`):**
+  - **Penghapusan Framework CSS Override**: Menghapus import Tailwind CSS pada `style.css` yang sebelumnya menginjeksi preflight/margin reset liar yang merusak hierarki tata letak Vanilla UI.
+  - **Strict Hidden Mobile Header on Desktop**: Memastikan elemen `<header class="mobile-header">` disetel ke `display: none !important;` pada layar desktop sehingga tidak lagi memakan ruang 60px kosong di bagian atas area tampilan utama (`.main-content`).
+  - **Standardized Compact View Content Padding**: Menyelaraskan padding seluruh kontainer halaman (`.content-wrapper` pada Kamera, Storage, Manajemen User, Sistem/Jaringan, Keamanan Akun, System Logs, Addons, dan About NVR) dari sebelumnya `2rem` (32px) menjadi `1rem 1.5rem` (16px 24px) yang rapi, padat, dan langsung menempel pas di bagian atas layar persis seperti pada Ver. 10.7.5.
+  - **Penyelarasan public/admin.html**: Menstandardisasi seluruh kontainer pengaturan pada `public/admin.html` agar tidak memiliki gap vertikal berlebih.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.3** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/version_sync.js`, `public/style.css`, `public/index.html`, `README.md`, dan `CHANGELOG.md` sesuai protokol Semantic Versioning Strict.
+
 ## [Ver 10.8.2] - 2026-09-25
 ### Live GitHub Branch & Commit OTA Engine with Private Repo PAT Token Support
 - **Live Branch & Commit SHA OTA Tracking (`server.js`):**
