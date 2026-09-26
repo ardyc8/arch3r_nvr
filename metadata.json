@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 10.8.6 - Fixed OTA Update Execution Scope (dbData Definition Fix), Multi-Stream SD/HD Engine, NVR Playback Suite.",
+  "description": "Arch3r NVR Ver. 10.8.7 - Precise Live Stream Camera Counter, Multi-Stream Fallback & Franwell/V380 Stream Recovery Engine.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

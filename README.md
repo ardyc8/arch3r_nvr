@@ -1,5 +1,15 @@
-# ⚡ Arch3r NVR (Ver. 10.8.6)
+# ⚡ Arch3r NVR (Ver. 10.8.7)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.8.7:
+- **Precise Live Stream Camera Counter, Multi-Stream Fallback & Franwell/V380 Stream Recovery Engine**:
+  1. **Perbaikan Hitungan Kamera Global Play / Pause (`public/script.js`)**:
+     - Memperbaiki selektor `playAllStreams()` dan `pauseAllStreams()` agar hanya menghitung dan mengontrol elemen kamera yang sedang aktif di grid terlihat, bukan seluruh elemen video DOM tersembunyi. Notifikasi toast kini secara presisi menampilkan jumlah kamera aktif yang sebenarnya (contoh: 4 kamera).
+  2. **Optimalisasi Stabilitas Live Stream Franwell / V380 Dual-Lens & H.265 Resilience (`public/script.js`)**:
+     - **Intelligent Default Quality Detection**: Sistem secara cerdas mendeteksi apakah kamera memiliki URL Sub-Stream terpisah atau hanya Main Stream tunggal. Kamera tanpa konfigurasi Sub-Stream otomatis memutar jalur HD tanpa mencoba mencari path `_sub` yang tidak ada.
+     - **HLS / WebRTC Error Recovery & Audio Codec Swapping**: Menambahkan penanganan otomatis saat terjadi `MEDIA_ERROR` atau *buffer stall* pada browser untuk memulihkan koneksi stream secara instan.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.7** pada seluruh berkas sistem sesuai protokol Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.8.6:
 - **Fixed OTA Update Execution Scope (dbData Definition Fix), Safe Staging Pipeline & System Version Alignment**:

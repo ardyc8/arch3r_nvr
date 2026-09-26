@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.8.5 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.8.7 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -3607,25 +3607,41 @@ async function fetchCameras() {
     };
 
     window.playAllStreams = function() {
-        const videos = document.querySelectorAll('.cam-player-video');
-        let count = 0;
+        const isUserApp = document.getElementById("userApp") && document.getElementById("userApp").style.display !== "none";
+        const gridContainer = isUserApp ? document.getElementById("mVideoGrid") : (document.getElementById("videoGrid") || document.getElementById("mVideoGrid"));
+        const videos = gridContainer ? gridContainer.querySelectorAll('.cam-player-video') : document.querySelectorAll('.cam-player-video');
+        
+        let startedCount = 0;
         videos.forEach(v => {
             if (v.paused) {
                 v.play().catch(() => {});
-                count++;
             }
+            startedCount++;
         });
-        showToast(`▶️ Memulai seluruh aliran live kamera (${videos.length} kamera)`, 'success');
+
+        const activeCamsCount = (cameras && Array.isArray(cameras) && cameras.length > 0)
+            ? cameras.filter(c => c.enabled !== false).length
+            : (videos.length || 1);
+
+        showToast(`▶️ Memulai seluruh aliran live kamera (${activeCamsCount} kamera)`, 'success');
     };
 
     window.pauseAllStreams = function() {
-        const videos = document.querySelectorAll('.cam-player-video');
+        const isUserApp = document.getElementById("userApp") && document.getElementById("userApp").style.display !== "none";
+        const gridContainer = isUserApp ? document.getElementById("mVideoGrid") : (document.getElementById("videoGrid") || document.getElementById("mVideoGrid"));
+        const videos = gridContainer ? gridContainer.querySelectorAll('.cam-player-video') : document.querySelectorAll('.cam-player-video');
+        
         videos.forEach(v => {
             if (!v.paused) {
                 v.pause();
             }
         });
-        showToast(`⏸️ Seluruh live stream dijeda (Hemat CPU & Bandwidth STB)`, 'warning');
+
+        const activeCamsCount = (cameras && Array.isArray(cameras) && cameras.length > 0)
+            ? cameras.filter(c => c.enabled !== false).length
+            : (videos.length || 1);
+
+        showToast(`⏸️ Seluruh live stream dijeda (${activeCamsCount} kamera - Hemat CPU & Bandwidth)`, 'warning');
     };
 
     window.toggleTilePlayPause = function(camId) {
@@ -4116,6 +4132,8 @@ async function fetchCameras() {
                     if (typeof onReady === 'function') onReady(hls);
                 });
             });
+
+            let mediaErrorCount = 0;
             hls.on(Hls.Events.ERROR, function(event, data) {
                 if (data.fatal) {
                     switch (data.type) {
@@ -4126,10 +4144,19 @@ async function fetchCameras() {
                                     activeHlsPlayers[id].loadSource(hlsUrl);
                                     activeHlsPlayers[id].startLoad();
                                 }
-                            }, 3000);
+                            }, 2500);
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
-                            hls.recoverMediaError();
+                            mediaErrorCount++;
+                            if (mediaErrorCount === 1) {
+                                hls.recoverMediaError();
+                            } else if (mediaErrorCount === 2) {
+                                if (typeof hls.swapAudioCodec === 'function') hls.swapAudioCodec();
+                                hls.recoverMediaError();
+                            } else {
+                                if (typeof onError === 'function') onError(data);
+                                hls.destroy();
+                            }
                             break;
                         default:
                             if (typeof onError === 'function') onError(data);
@@ -4195,11 +4222,11 @@ async function fetchCameras() {
                     cell.id = "cell_" + cam.id;
                     cell.onclick = () => window.selectCellForPtz(cam.id);
                     
-                    // Dual Stream Engine: Default is SD for lightweight multi-view & STB stability
+                    // Dual Stream Engine: Default is SD if distinct sub-stream exists, or HD if single main-stream
                     const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
                     let curQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
                     if (!curQuality) {
-                        curQuality = 'SD'; // Default SD standard across all views
+                        curQuality = hasDistinctSub ? 'SD' : 'HD'; // Intelligent default
                         window.camStreamQualities[cam.id] = curQuality;
                     }
                     let hlsUrl = '';
@@ -4273,7 +4300,7 @@ async function fetchCameras() {
                     const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
                     let curQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
                     if (!curQuality) {
-                        curQuality = 'SD';
+                        curQuality = hasDistinctSub ? 'SD' : 'HD';
                         window.camStreamQualities[cam.id] = curQuality;
                     }
                     let hlsUrl = '';
