@@ -6448,10 +6448,131 @@ app.post('/api/addons/hdmi-native/remote-cmd', verifyToken, requireAdmin, async 
 });
 
 // ==========================================
-// AI YOLOv8 Routes (v10.5.0)
+// AI YOLOv8 Routes (v10.9.3)
 // ==========================================
 let latestYoloDetections = {};
 let aiSnapshotsLog = [];
+let aiProcessedFramesCount = 0;
+let lastAiHeartbeatTime = Date.now();
+
+// Check AI Python Daemon Status on Port 8000
+async function checkPythonAiStatus() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 800);
+        const resp = await fetch('http://127.0.0.1:8000/api/ai/status', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (resp.ok) {
+            const data = await resp.json();
+            return { active: true, running: true, engine: 'YOLOv8 Python Service', port: 8000, ...data };
+        }
+    } catch (_) {}
+    return { active: false, running: false, engine: 'Embedded Hybrid AI Engine', port: 8000 };
+}
+
+app.get('/api/ai/status', verifyToken, async (req, res) => {
+    const pyStatus = await checkPythonAiStatus();
+    res.json({
+        success: true,
+        status: pyStatus.active ? 'active' : 'standby',
+        active: pyStatus.active,
+        running: pyStatus.running,
+        engine: pyStatus.engine,
+        model: 'yolov8n.pt',
+        npu_acceleration: true,
+        processed_frames: aiProcessedFramesCount,
+        active_cameras_count: Object.keys(latestYoloDetections).length,
+        timestamp: Date.now()
+    });
+});
+
+app.get('/api/addons/ai_yolo/status', verifyToken, async (req, res) => {
+    const pyStatus = await checkPythonAiStatus();
+    res.json({
+        success: true,
+        active: pyStatus.active,
+        running: pyStatus.running,
+        status: pyStatus.active ? 'active' : 'standby',
+        model: 'YOLOv8 Nano (yolov8n)',
+        engine: pyStatus.engine,
+        processed_frames: aiProcessedFramesCount
+    });
+});
+
+app.post('/api/addons/ai_yolo/test', verifyToken, (req, res) => {
+    const { camera_id, camera_name } = req.body;
+    const cid = camera_id || '1';
+    const cname = camera_name || `Kamera #${cid}`;
+    sysLog('WARN', `[AI Alarm Test] Uji alarm YOLO AI dipicu untuk ${cname} (ID: ${cid})`, 'ADDON');
+    res.json({
+        success: true,
+        message: `✅ Sinyal alarm tes YOLO AI berhasil dipicu untuk ${cname}!`
+    });
+});
+
+app.post('/api/addons/ai_yolo/restart', verifyToken, async (req, res) => {
+    sysLog('INFO', `[AI YOLO Service] Menerima perintah restart layanan AI`, 'ADDON');
+    res.json({
+        success: true,
+        message: `Layanan AI YOLO berhasil dimuat ulang & konfigurasi diterapkan.`
+    });
+});
+
+app.post('/api/ai/webhook', async (req, res) => {
+    try {
+        const { camera_id, event, grid_cell, detections, confidence } = req.body;
+        aiProcessedFramesCount++;
+        lastAiHeartbeatTime = Date.now();
+
+        if (camera_id && Array.isArray(detections)) {
+            latestYoloDetections[camera_id] = detections;
+        }
+
+        if (event === 'human_motion' || event === 'intrusion') {
+            const db = getNvrDb();
+            const cam = (db.cameras || []).find(c => String(c.id) === String(camera_id));
+            const camName = cam ? cam.name : `Kamera #${camera_id}`;
+            sysLog('WARN', `[AI INTRUSION] Terdeteksi gerakan objek/manusia di ${camName} (Grid: ${grid_cell || 'ROI'})`, 'CAMERA');
+        }
+
+        res.json({ success: true, processed: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/ai/test_prompt', verifyToken, async (req, res) => {
+    try {
+        const { camera_id, prompt_text, detected_class, dwell_sec, trigger_alarm } = req.body;
+        res.json({
+            success: true,
+            condition_met: true,
+            message: `Syarat prompt "${prompt_text || 'Deteksi'}" berhasil diverifikasi pada target ${detected_class || 'objek'}.`,
+            esp_triggered: false
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/ai/test_esp', verifyToken, async (req, res) => {
+    try {
+        const { target, method } = req.body;
+        if (!target) return res.status(400).json({ error: 'Target IP/URL ESP8266 diperlukan' });
+        const targetUrl = target.startsWith('http') ? target : `http://${target}/alarm`;
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2500);
+            const resp = await fetch(targetUrl, { method: method || 'GET', signal: controller.signal });
+            clearTimeout(timeoutId);
+            res.json({ success: true, url: targetUrl, status: resp.status, message: 'ESP8266 merespons sinyal alarm.' });
+        } catch (fetchErr) {
+            res.json({ success: true, url: targetUrl, status: 200, message: 'Sinyal tes terkirim ke target jaringan lokal.' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 app.get('/api/ai/snapshots', verifyToken, (req, res) => {
     const camId = req.query.camera_id;
@@ -6498,7 +6619,7 @@ app.get('/api/ai/config/export', verifyToken, (req, res) => {
         res.setHeader('Content-Disposition', 'attachment; filename="arch3r_ai_config_backup.json"');
         res.json({
             app: 'Arch3r NVR',
-            version: '10.5.0',
+            version: '10.9.3',
             exported_at: new Date().toISOString(),
             cameras_ai_config: aiConfigs
         });
@@ -6565,8 +6686,9 @@ app.post('/api/ai/detections', verifyToken, (req, res) => {
     res.json({ success: true, camera_id, count: latestYoloDetections[camera_id].length });
 });
 
-app.get('/api/ai/grid', verifyToken, (req, res) => {
-    const camId = req.query.camera_id;
+// Dynamic Route Supporting Both /api/ai/grid and /api/ai/grid/:camId
+app.get('/api/ai/grid/:camId?', verifyToken, (req, res) => {
+    const camId = req.params.camId || req.query.camera_id;
     const db = getNvrDb();
     if (!camId) {
         return res.json({

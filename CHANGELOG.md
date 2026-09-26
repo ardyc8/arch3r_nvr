@@ -1,5 +1,20 @@
 # Changelog
 
+## [Ver 10.9.3] - 2026-09-26
+### Tactical YOLO AI Studio Enhanced Engine, Multi-Point Perimeter Hit-Test, Heartbeat Diagnostics & Live Stream OSD
+- **Integrasi Endpoint & Arsitektur Backend AI YOLO (`server.js`):**
+  - **Dynamic Route `/api/ai/grid/:camId`**: Menyediakan route dinamis untuk pembacaan konfigurasi ROI dan prompt per-kamera (mengatasi respon 404 saat memuat parameter zona kamera).
+  - **AI Status & Diagnostics Service**: Endpoint `/api/ai/status` dan `/api/addons/ai_yolo/status` untuk pemantauan detak jantung (*heartbeat*) real-time dari daemon Python (port 8000) dan fallback ke mesin hybrid terintegrasi.
+  - **Webhook & Alarm Ingest Endpoint**: Endpoint `POST /api/ai/webhook` dan `POST /api/addons/ai_yolo/test` untuk penerimaan event intrusi objek dari inferensi AI, pencatatan otomatis ke log sistem, dan pemicu notifikasi alarm.
+- **Universal Coordinate Parser & Enhanced ROI Hit-Test (`public/script.js`):**
+  - **Multi-Format Coordinate Normalization**: Fungsi parser otomatis untuk koordinat ratio normal (0.0-1.0), persentase (0-100%), piksel absolut (640x360), dan array `xyxy` / `bbox` sehingga kotak target terdeteksi selalu tampil presisi di atas kanvas video.
+  - **Multi-Point Perimeter & ROI Intrusion Testing**: Deteksi pelanggaran batas perimeter berbasis titik tengah objek (*centroid*), titik kontak kaki (*ground foot-point* - standar CCTV profesional), dan rasio *Intersection over Union* (IoU area overlap > 25%).
+  - **Live AI Heartbeat & Tactical Status HUD**: Indikator status inferensi aktif (FPS, latensi ms, dan ringkasan target) dengan visual flashing merah saat terjadi pelanggaran zona ROI.
+- **Dynamic Test Simulator with Trajectory & Audio Chime (`public/script.js`):**
+  - Tombol `🧪 Uji Target (Test Detection)` yang menampilkan pergerakan objek animasi nyata menyeberangi perimeter ROI dan membunyikan alarm buzzer chime (Web Audio API) untuk verifikasi kesiapan sistem.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.9.3** pada seluruh komponen sistem.
+
 ## [Ver 10.9.2] - 2026-09-26
 ### Stream Health Watchdog (Anti-Freeze / Stalled Recovery), Polished Action Controls & Ergonomic Split PTZ Layout
 - **Stream Health Watchdog & Stalled/Freeze Recovery (`public/script.js` & `public/style.css`):**

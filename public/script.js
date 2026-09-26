@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.9.2 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.9.3 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -12061,6 +12061,72 @@ function drawYoloViewLiveCanvasStream(timestamp) {
     }
 
     let personCount = 0, carCount = 0, motorCount = 0, animalCount = 0;
+    let intrusionCount = 0;
+
+    // Helper: Parse any bounding box format (percentage, ratio, pixel, xyxy) to canvas pixels
+    function parseDetectionBounds(obj, cw, ch) {
+        let bx = 0, by = 0, bw = 60, bh = 80;
+
+        // 1. Percentage format (0-100)
+        if (typeof obj.pctX === 'number' && typeof obj.pctW === 'number') {
+            bx = (obj.pctX / 100) * cw;
+            by = (obj.pctY / 100) * ch;
+            bw = (obj.pctW / 100) * cw;
+            bh = (obj.pctH / 100) * ch;
+        }
+        // 2. Normalized Ratio format (0.0 - 1.0)
+        else if (typeof obj.nx === 'number' && typeof obj.nw === 'number') {
+            bx = obj.nx * cw;
+            by = obj.ny * ch;
+            bw = obj.nw * cw;
+            bh = obj.nh * ch;
+        }
+        // 3. Array xyxy [x1, y1, x2, y2]
+        else if (Array.isArray(obj.xyxy) && obj.xyxy.length >= 4) {
+            const [x1, y1, x2, y2] = obj.xyxy;
+            // Check if ratio or pixels
+            const isRatio = x2 <= 1.0 && y2 <= 1.0 && (x2 > 0 || y2 > 0);
+            if (isRatio) {
+                bx = x1 * cw;
+                by = y1 * ch;
+                bw = (x2 - x1) * cw;
+                bh = (y2 - y1) * ch;
+            } else {
+                const scaleX = cw / 640;
+                const scaleY = ch / 360;
+                bx = x1 * scaleX;
+                by = y1 * scaleY;
+                bw = (x2 - x1) * scaleX;
+                bh = (y2 - y1) * scaleY;
+            }
+        }
+        // 4. Raw x, y, w, h
+        else if (typeof obj.x === 'number' && typeof obj.w === 'number') {
+            if (obj.x <= 1.0 && obj.w <= 1.0 && (obj.x > 0 || obj.w > 0)) {
+                bx = obj.x * cw;
+                by = obj.y * ch;
+                bw = obj.w * cw;
+                bh = obj.h * ch;
+            } else if (obj.x <= 100 && obj.w <= 100 && (obj.w > 0)) {
+                bx = (obj.x / 100) * cw;
+                by = (obj.y / 100) * ch;
+                bw = (obj.w / 100) * cw;
+                bh = (obj.h / 100) * ch;
+            } else {
+                bx = obj.x;
+                by = obj.y;
+                bw = obj.w;
+                bh = obj.h;
+            }
+        }
+
+        return {
+            x: Math.round(bx),
+            y: Math.round(by),
+            w: Math.max(16, Math.round(bw)),
+            h: Math.max(16, Math.round(bh))
+        };
+    }
 
     // --- DRAW DETECTIONS VIA CORNER BRACKETS ---
     if (Array.isArray(activeRealYoloDetections) && activeRealYoloDetections.length > 0) {
@@ -12108,20 +12174,42 @@ function drawYoloViewLiveCanvasStream(timestamp) {
             }
 
             if (isVisible) {
-                const boxX = obj.pctX !== undefined ? (obj.pctX / 100) * canvas.width : (obj.x || 0);
-                const boxY = obj.pctY !== undefined ? (obj.pctY / 100) * canvas.height : (obj.y || 0);
-                const boxW = obj.pctW !== undefined ? (obj.pctW / 100) * canvas.width : (obj.w || 60);
-                const boxH = obj.pctH !== undefined ? (obj.pctH / 100) * canvas.height : (obj.h || 80);
+                const box = parseDetectionBounds(obj, canvas.width, canvas.height);
+                const boxX = box.x;
+                const boxY = box.y;
+                const boxW = box.w;
+                const boxH = box.h;
 
-                // Determine if target is inside defined ROI using target center crosshair
+                // High-Accuracy Multi-Point Intrusion Test:
+                // 1. Center Crosshair Point
                 const objCenterX = boxX + boxW / 2;
                 const objCenterY = boxY + boxH / 2;
-                const isInsideRoi = (
+                const centerInRoi = (
                     objCenterX >= roiPx.x &&
                     objCenterX <= (roiPx.x + roiPx.w) &&
                     objCenterY >= roiPx.y &&
                     objCenterY <= (roiPx.y + roiPx.h)
                 );
+
+                // 2. Foot-point (Bottom Center Contact Point - CCTV Industry Standard)
+                const footX = boxX + boxW / 2;
+                const footY = boxY + boxH * 0.90;
+                const footInRoi = (
+                    footX >= roiPx.x &&
+                    footX <= (roiPx.x + roiPx.w) &&
+                    footY >= roiPx.y &&
+                    footY <= (roiPx.y + roiPx.h)
+                );
+
+                // 3. Bounding Box Overlap / Intersection
+                const overlapX = Math.max(0, Math.min(boxX + boxW, roiPx.x + roiPx.w) - Math.max(boxX, roiPx.x));
+                const overlapY = Math.max(0, Math.min(boxY + boxH, roiPx.y + roiPx.h) - Math.max(boxY, roiPx.y));
+                const overlapArea = overlapX * overlapY;
+                const boxArea = boxW * boxH;
+                const hasSignificantOverlap = boxArea > 0 && (overlapArea / boxArea) > 0.25;
+
+                const isInsideRoi = centerInRoi || footInRoi || hasSignificantOverlap;
+                if (isInsideRoi) intrusionCount++;
 
                 const threatColor = isInsideRoi
                     ? (Math.floor(Date.now() / 400) % 2 === 0 ? '#ef4444' : '#f97316')
@@ -12138,12 +12226,12 @@ function drawYoloViewLiveCanvasStream(timestamp) {
 
     // --- Glassmorphism AI Status HUD (Top Right) ---
     ctx.save();
-    const hudW = 270, hudH = 28;
+    const hudW = 310, hudH = 30;
     const hudX = canvas.width - hudW - 14;
     const hudY = 10;
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.fillStyle = intrusionCount > 0 ? 'rgba(239, 68, 68, 0.92)' : 'rgba(15, 23, 42, 0.85)';
+    ctx.strokeStyle = intrusionCount > 0 ? '#ef4444' : 'rgba(56, 189, 248, 0.45)';
     ctx.lineWidth = 1;
     if (ctx.roundRect) {
         ctx.beginPath();
@@ -12156,12 +12244,13 @@ function drawYoloViewLiveCanvasStream(timestamp) {
     }
 
     ctx.font = 'bold 10.5px monospace';
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillText('📡 HUD', hudX + 8, hudY + 18);
+    ctx.fillStyle = intrusionCount > 0 ? '#ffffff' : '#38bdf8';
+    ctx.fillText(intrusionCount > 0 ? '🚨 INTRUSI' : '🟢 AI LIVE', hudX + 8, hudY + 19);
 
     ctx.font = '10px monospace';
     ctx.fillStyle = '#f8fafc';
-    ctx.fillText(`👤 ${personCount} | 🚗 ${carCount} | 🏍️ ${motorCount} | ⚡ 14ms`, hudX + 55, hudY + 18);
+    const objSummary = `👤 ${personCount} | 🚗 ${carCount} | 🏍️ ${motorCount}`;
+    ctx.fillText(`${objSummary} • ⚡ 14ms`, hudX + 78, hudY + 19);
     ctx.restore();
 }
 
@@ -12982,46 +13071,99 @@ function resetYoloSensorCropFrame() {
 }
 window.resetYoloSensorCropFrame = resetYoloSensorCropFrame;
 
+let yoloSimTestAnimId = null;
+
+function playYoloBuzzerChime() {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(980, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.28);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.28);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.28);
+    } catch (_) {}
+}
+
 function simulateYoloDetectionTest() {
     const roi = currentYoloRoi || { x: 10, y: 10, w: 80, h: 80 };
 
-    // Target 1: Inside ROI (Critical Intrusion)
-    const insideTarget = {
-        type: 'person',
-        label: 'Person (Intruder)',
-        confidence: 0.94,
-        pctX: Math.max(0, Math.min(90, roi.x + (roi.w * 0.3))),
-        pctY: Math.max(0, Math.min(90, roi.y + (roi.h * 0.3))),
-        pctW: Math.min(18, Math.max(8, roi.w * 0.35)),
-        pctH: Math.min(32, Math.max(14, roi.h * 0.45)),
-        color: '#ef4444'
-    };
+    if (yoloSimTestAnimId) {
+        cancelAnimationFrame(yoloSimTestAnimId);
+        yoloSimTestAnimId = null;
+    }
 
-    // Target 2: Outside ROI (Normal Detection)
-    let outX = roi.x > 22 ? (roi.x / 2) : Math.min(88, roi.x + roi.w + 4);
-    let outY = Math.max(8, Math.min(80, roi.y + (roi.h * 0.5)));
-    const outsideTarget = {
-        type: 'car',
-        label: 'Mobil',
-        confidence: 0.88,
-        pctX: Math.max(2, Math.min(85, outX)),
-        pctY: Math.max(2, Math.min(85, outY)),
-        pctW: 20,
-        pctH: 15,
-        color: '#38bdf8'
-    };
+    // Play audible buzzer chime for test confirmation
+    playYoloBuzzerChime();
 
-    activeRealYoloDetections = [insideTarget, outsideTarget];
+    let simTick = 0;
+    const startX = Math.max(2, roi.x - 15);
+    const targetEndX = roi.x + (roi.w * 0.45);
+    const carX = Math.min(85, roi.x + roi.w + 6);
+
+    function simLoop() {
+        simTick += 0.035;
+        const progress = (Math.sin(simTick) + 1) / 2; // 0.0 to 1.0 back and forth
+        const curPersonX = startX + (targetEndX - startX) * progress;
+        const curPersonY = roi.y + (roi.h * 0.35);
+
+        // Person moving in and out of ROI
+        const insideTarget = {
+            type: 'person',
+            label: 'Person (Intruder)',
+            confidence: 0.96,
+            pctX: curPersonX,
+            pctY: curPersonY,
+            pctW: Math.min(16, Math.max(8, roi.w * 0.32)),
+            pctH: Math.min(32, Math.max(14, roi.h * 0.48)),
+            color: '#ef4444'
+        };
+
+        // Car moving slowly outside perimeter
+        const outsideTarget = {
+            type: 'car',
+            label: 'Mobil',
+            confidence: 0.91,
+            pctX: Math.max(2, Math.min(86, carX + Math.sin(simTick * 0.7) * 5)),
+            pctY: Math.max(8, Math.min(82, roi.y + (roi.h * 0.65))),
+            pctW: 22,
+            pctH: 16,
+            color: '#38bdf8'
+        };
+
+        activeRealYoloDetections = [insideTarget, outsideTarget];
+
+        drawYoloViewLiveCanvasStream();
+
+        if (simTick < 12) {
+            yoloSimTestAnimId = requestAnimationFrame(simLoop);
+        } else {
+            yoloSimTestAnimId = null;
+        }
+    }
+
+    simLoop();
 
     // Force clear throttling map so test events are immediately registered in event strip
     lastRecordedDetectionMap.clear();
 
-    // Trigger detection events for target strip & terminal
-    recordYoloDetectionEvent(insideTarget, true);
-    recordYoloDetectionEvent(outsideTarget, false);
-
-    // Re-draw canvas immediately
-    drawYoloViewLiveCanvasStream();
+    const testInside = {
+        type: 'person',
+        label: 'Person (Intruder)',
+        confidence: 0.96,
+        pctX: targetEndX,
+        pctY: roi.y + (roi.h * 0.35),
+        pctW: Math.min(16, Math.max(8, roi.w * 0.32)),
+        pctH: Math.min(32, Math.max(14, roi.h * 0.48))
+    };
+    recordYoloDetectionEvent(testInside, true);
 
     // Ensure terminal log wrapper is visible
     const termWrapper = document.getElementById('yolo-terminal-log-wrapper');
@@ -13029,12 +13171,11 @@ function simulateYoloDetectionTest() {
         termWrapper.style.display = 'block';
     }
 
-    appendYoloTerminalLog('[TEST] 🧪 Simulasi diagnostik AI dipicu: 1 Target Pelanggaran ROI, 1 Target Luar Zona', 'system');
-    appendYoloTerminalLog(`[ALARM] 🚨 CRITICAL INTRUSION: Target ${insideTarget.label} (${Math.round(insideTarget.confidence * 100)}%) melanggar ZONA ROI!`, 'alarm');
-    appendYoloTerminalLog(`[TARGET] 🎯 DETECTED: Target ${outsideTarget.label} (${Math.round(outsideTarget.confidence * 100)}%) berada di luar perimeter`, 'target');
+    appendYoloTerminalLog('[TEST] 🧪 Simulasi diagnostik AI: Target bergerak menyeberangi perimeter ROI', 'system');
+    appendYoloTerminalLog(`[ALARM] 🚨 CRITICAL INTRUSION: Target Person (96%) terdeteksi melanggar ZONA ROI!`, 'alarm');
 
     if (typeof showToast === 'function') {
-        showToast('🧪 Simulasi target AI aktif! Target terdeteksi & terminal log diperbarui.', 'success');
+        showToast('🧪 Uji simulasi target aktif! Target bergerak dinamis melintasi zona ROI & buzzer chime dipicu.', 'success');
     }
 }
 window.simulateYoloDetectionTest = simulateYoloDetectionTest;
