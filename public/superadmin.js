@@ -238,7 +238,11 @@
             if(elP2p) elP2p.value = data.settings.p2p_relay || 'p2p.archer-nvr.net:443';
             
             const elOtaUrl = document.getElementById('otaGithubUrl');
-            if(elOtaUrl) elOtaUrl.value = data.settings.ota_github_url || 'https://api.github.com/repos/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME/releases/latest';
+            if(elOtaUrl) elOtaUrl.value = data.settings.ota_github_url || '';
+            const elOtaBranch = document.getElementById('otaBranch');
+            if(elOtaBranch) elOtaBranch.value = data.settings.ota_branch || 'main';
+            const elOtaToken = document.getElementById('otaGithubToken');
+            if(elOtaToken) elOtaToken.value = data.settings.ota_github_token || '';
 
             const badge = document.getElementById('saLicenseBadge');
             const trialBox = document.getElementById('trialInfoBox');
@@ -996,21 +1000,32 @@
     if (btnSaveOta) {
         btnSaveOta.addEventListener('click', async (e) => {
             e.preventDefault();
-            const otaUrl = inputOtaUrl.value.trim();
+            const otaUrl = (inputOtaUrl ? inputOtaUrl.value : '').trim();
+            const otaBranch = (document.getElementById('otaBranch')?.value || 'main').trim();
+            const otaToken = (document.getElementById('otaGithubToken')?.value || '').trim();
+
             btnSaveOta.textContent = "⏳ Menyimpan...";
             try {
                 const res = await authFetch('/api/superadmin/settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ota_github_url: otaUrl })
+                    body: JSON.stringify({ 
+                        ota_github_url: otaUrl,
+                        ota_branch: otaBranch,
+                        ota_github_token: otaToken
+                    })
                 });
                 if (res.ok) {
                     btnSaveOta.textContent = "✅ Tersimpan";
-                    alert("Berhasil! URL OTA Update telah disimpan.");
-                    setTimeout(() => btnSaveOta.textContent = "💾 Simpan URL", 2000);
+                    alert("Berhasil! Konfigurasi GitHub OTA Update telah disimpan.");
+                    setTimeout(() => btnSaveOta.textContent = "💾 Simpan Konfigurasi GitHub", 2000);
+                    // Langsung jalankan pengecekan update otomatis
+                    if (typeof window.checkOtaUpdate === 'function') {
+                        window.checkOtaUpdate();
+                    }
                 } else {
                     btnSaveOta.textContent = "❌ Gagal";
-                    alert("Gagal menyimpan URL OTA.");
+                    alert("Gagal menyimpan konfigurasi GitHub OTA.");
                 }
             } catch (err) {
                 btnSaveOta.textContent = "❌ Error";

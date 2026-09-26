@@ -1196,7 +1196,7 @@ function parseChangelogFromDisk(filePath = path.join(__dirname, 'CHANGELOG.md'))
     }
 }
 
-// Robust GitHub Repository URL Parser (Handles git clone URLs, api.github.com, and raw URLs)
+// Robust GitHub Repository URL Parser (Handles git clone URLs, api.github.com, github.com, and raw URLs)
 function parseGitHubUrl(url) {
     if (!url || typeof url !== 'string') return null;
     const str = url.trim();
@@ -1214,17 +1214,23 @@ function parseGitHubUrl(url) {
         return { owner: rawMatch[1], repo: rawMatch[2].replace(/\.git$/i, '') };
     }
 
-    // Pattern 3: github.com/:owner/:repo (excluding repos/)
+    // Pattern 3: github.com/:owner/:repo (or git@github.com:owner/repo.git)
     const webMatch = str.match(/github\.com[:/](?!repos\/)([^/]+)\/([^/.]+)/i);
     if (webMatch) {
         return { owner: webMatch[1], repo: webMatch[2].replace(/\.git$/i, '') };
+    }
+
+    // Pattern 4: Simple "owner/repo" shorthand
+    const shortMatch = str.match(/^([a-zA-Z0-9_\-\.]+)\/([a-zA-Z0-9_\-\.]+)$/);
+    if (shortMatch) {
+        return { owner: shortMatch[1], repo: shortMatch[2].replace(/\.git$/i, '') };
     }
 
     return null;
 }
 
 // Auto-Detect GitHub Repository Information from local git remote or custom URL
-function getGitRepoRemoteInfo(customUrl = '') {
+function getGitRepoRemoteInfo(customUrl = '', customToken = '') {
     try {
         let parsed = parseGitHubUrl(customUrl);
         if (!parsed) {
@@ -1235,11 +1241,16 @@ function getGitRepoRemoteInfo(customUrl = '') {
         }
         if (parsed) {
             const { owner, repo } = parsed;
+            const token = (customToken || '').trim();
             return {
                 owner,
                 repo,
+                token,
                 rawPackageUrl: (branch = 'main') => `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/package.json`,
                 rawChangelogUrl: (branch = 'main') => `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/CHANGELOG.md`,
+                apiBranchCommitUrl: (branch = 'main') => `https://api.github.com/repos/${owner}/${repo}/commits/${branch}`,
+                apiPackageContentsUrl: (branch = 'main') => `https://api.github.com/repos/${owner}/${repo}/contents/package.json?ref=${branch}`,
+                apiChangelogContentsUrl: (branch = 'main') => `https://api.github.com/repos/${owner}/${repo}/contents/CHANGELOG.md?ref=${branch}`,
                 apiReleasesUrl: `https://api.github.com/repos/${owner}/${repo}/releases/latest`
             };
         }
@@ -1249,15 +1260,26 @@ function getGitRepoRemoteInfo(customUrl = '') {
 
 async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
     const isGit = fs.existsSync(path.join(__dirname, '.git'));
-    let branch = 'main';
+    let branch = queryOpts.branch || 'main';
     let lastCommit = '-';
+    let lastCommitHash = '';
     let gitRemote = '';
     let commitsAhead = 0;
 
+    const dbData = getNvrDb();
+    const superSettings = dbData.super_settings || {};
+    const configuredToken = queryOpts.token || superSettings.ota_github_token || superSettings.github_token || '';
+    const configuredBranch = queryOpts.branch || superSettings.ota_branch || branch || 'main';
+    branch = configuredBranch;
+
     if (isGit) {
         try {
-            branch = execSync('git rev-parse --abbrev-ref HEAD 2>/dev/null', { cwd: __dirname }).toString().trim() || 'main';
+            const detectedBranch = execSync('git rev-parse --abbrev-ref HEAD 2>/dev/null', { cwd: __dirname }).toString().trim();
+            if (detectedBranch && !queryOpts.branch && !superSettings.ota_branch) {
+                branch = detectedBranch;
+            }
             lastCommit = execSync('git log -1 --format="%h (%s)" 2>/dev/null', { cwd: __dirname }).toString().trim() || '-';
+            lastCommitHash = execSync('git rev-parse HEAD 2>/dev/null', { cwd: __dirname }).toString().trim() || '';
             gitRemote = execSync('git config --get remote.origin.url 2>/dev/null', { cwd: __dirname }).toString().trim() || '';
         } catch (e) {}
     }
@@ -1286,8 +1308,22 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
     let otaSource = isGit ? `Git Repository (${branch})` : 'Katalog Cloud Resmi Arch3r NVR';
     let remoteBranchFound = branch || 'main';
     let remoteCheckSuccess = false;
+    let remoteCommitSha = '';
+    let remoteCommitMsg = '';
 
-    // 2. Prioritas 1: Jika STB adalah repositori Git, periksa commit & package.json langsung via Git CLI (Sangat Cepat & Bekerja untuk Repo Privat/Publik)
+    // Helper build request headers (supports private repo GitHub PAT token)
+    function buildGithubHeaders(token) {
+        const h = {
+            'User-Agent': 'Arch3r-NVR-Updater/10.8.2',
+            'Accept': 'application/vnd.github.v3+json, application/json'
+        };
+        if (token) {
+            h['Authorization'] = `Bearer ${token}`;
+        }
+        return h;
+    }
+
+    // 2. Prioritas 1: Jika STB adalah repositori Git lokal yang valid, periksa commit & package.json langsung via Git CLI
     if (isGit) {
         try {
             execSync(`git fetch origin ${branch} 2>/dev/null`, { cwd: __dirname, timeout: 6000 });
@@ -1323,62 +1359,130 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
         } catch (_) {}
     }
 
-    // 3. Deteksi Remote GitHub (otomatis dari konfigurasi ota_github_url atau git remote origin)
-    const gitInfo = getGitRepoRemoteInfo(otaCustomUrl);
+    // 3. Deteksi Remote GitHub (otomatis dari URL konfigurasi, atau super_settings, atau git remote origin)
+    const effectiveOtaUrl = otaCustomUrl || superSettings.ota_github_url || gitRemote || '';
+    const gitInfo = getGitRepoRemoteInfo(effectiveOtaUrl, configuredToken);
 
-    // 4. Prioritas 2: Cek Langsung ke Branch Git Remote (raw.githubusercontent.com)
-    // Otomatis terdeteksi seketika saat user melakukan git push ke branch main, tanpa butuh release manual di GitHub!
-    if (gitInfo && compareSemver(latestVersion, APP_VERSION) <= 0) {
+    // 4. Prioritas 2: Live GitHub API & Branch Commits Tracking (Bekerja instan begitu Anda push dari AI Studio!)
+    if (gitInfo) {
         const candidateBranches = [branch || 'main', 'main', 'master'].filter((v, i, a) => a.indexOf(v) === i);
+        const ghHeaders = buildGithubHeaders(gitInfo.token);
+
         for (const candidateBranch of candidateBranches) {
             try {
-                const pkgUrl = gitInfo.rawPackageUrl(candidateBranch);
-                const respPkg = await fetch(pkgUrl, {
-                    headers: { 'User-Agent': 'Arch3r-NVR' },
-                    signal: AbortSignal.timeout(4000)
+                // A. Periksa Commit Terbaru di Branch target (Mendapatkan SHA, Pesan Commit, & Tanggal)
+                const commitResp = await fetch(gitInfo.apiBranchCommitUrl(candidateBranch), {
+                    headers: ghHeaders,
+                    signal: AbortSignal.timeout(5000)
                 });
-                if (respPkg.ok) {
-                    const remotePkg = await respPkg.json();
-                    if (remotePkg && remotePkg.version) {
-                        const parsedRemoteVer = remotePkg.version.replace(/^v/i, '').trim();
-                        latestVersion = parsedRemoteVer;
-                        remoteBranchFound = candidateBranch;
-                        otaSource = `GitHub (${gitInfo.owner}/${gitInfo.repo} @ branch ${candidateBranch})`;
-                        releaseTitle = `Arch3r NVR Ver. ${latestVersion} (Branch ${candidateBranch})`;
-                        remoteCheckSuccess = true;
 
-                        // Ambil juga changelog terbaru dari branch remote GitHub
+                if (commitResp.ok) {
+                    const commitData = await commitResp.json();
+                    if (commitData && commitData.sha) {
+                        remoteCommitSha = commitData.sha;
+                        remoteCommitMsg = commitData.commit?.message?.split('\n')[0] || '';
+                        const authorDate = commitData.commit?.committer?.date || commitData.commit?.author?.date;
+                        if (authorDate) releaseDate = authorDate.substring(0, 10);
+                        
+                        remoteBranchFound = candidateBranch;
+                        otaSource = `GitHub Live Branch (${gitInfo.owner}/${gitInfo.repo} @ ${candidateBranch})`;
+                    }
+                }
+
+                // B. Periksa package.json dari Branch target (via Raw atau GitHub Contents API)
+                let remotePkg = null;
+
+                // Coba via Raw URL
+                try {
+                    const respRawPkg = await fetch(gitInfo.rawPackageUrl(candidateBranch), {
+                        headers: ghHeaders,
+                        signal: AbortSignal.timeout(4000)
+                    });
+                    if (respRawPkg.ok) {
+                        remotePkg = await respRawPkg.json();
+                    }
+                } catch (_) {}
+
+                // Jika Raw gagal (misal repo private), coba via GitHub Contents API
+                if (!remotePkg) {
+                    try {
+                        const respContentsPkg = await fetch(gitInfo.apiPackageContentsUrl(candidateBranch), {
+                            headers: ghHeaders,
+                            signal: AbortSignal.timeout(4000)
+                        });
+                        if (respContentsPkg.ok) {
+                            const data = await respContentsPkg.json();
+                            if (data && data.content) {
+                                const decoded = Buffer.from(data.content, 'base64').toString('utf8');
+                                remotePkg = JSON.parse(decoded);
+                            }
+                        }
+                    } catch (_) {}
+                }
+
+                if (remotePkg && remotePkg.version) {
+                    const parsedRemoteVer = remotePkg.version.replace(/^v/i, '').trim();
+                    latestVersion = parsedRemoteVer;
+                    remoteBranchFound = candidateBranch;
+                    releaseTitle = `Arch3r NVR Ver. ${latestVersion} (${remoteCommitMsg || 'Rilis Live GitHub'})`;
+                    remoteCheckSuccess = true;
+
+                    // C. Ambil CHANGELOG.md terbaru dari remote jika ada
+                    let clText = '';
+                    try {
+                        const respRawCl = await fetch(gitInfo.rawChangelogUrl(candidateBranch), {
+                            headers: ghHeaders,
+                            signal: AbortSignal.timeout(4000)
+                        });
+                        if (respRawCl.ok) {
+                            clText = await respRawCl.text();
+                        }
+                    } catch (_) {}
+
+                    if (!clText) {
                         try {
-                            const clUrl = gitInfo.rawChangelogUrl(candidateBranch);
-                            const respCl = await fetch(clUrl, {
-                                headers: { 'User-Agent': 'Arch3r-NVR' },
+                            const respContentsCl = await fetch(gitInfo.apiChangelogContentsUrl(candidateBranch), {
+                                headers: ghHeaders,
                                 signal: AbortSignal.timeout(4000)
                             });
-                            if (respCl.ok) {
-                                const clText = await respCl.text();
-                                const parsedRemoteCl = parseChangelogContent(clText);
-                                if (parsedRemoteCl && parsedRemoteCl.length > 0) {
-                                    finalChangelog = parsedRemoteCl;
-                                    releaseDate = parsedRemoteCl[0].date || releaseDate;
-                                    releaseTitle = parsedRemoteCl[0].title || releaseTitle;
-                                    if (parsedRemoteCl[0].items && parsedRemoteCl[0].items.length > 0) {
-                                        releaseNotes = parsedRemoteCl[0].items;
-                                    }
+                            if (respContentsCl.ok) {
+                                const data = await respContentsCl.json();
+                                if (data && data.content) {
+                                    clText = Buffer.from(data.content, 'base64').toString('utf8');
                                 }
                             }
                         } catch (_) {}
-                        break;
                     }
+
+                    if (clText) {
+                        const parsedRemoteCl = parseChangelogContent(clText);
+                        if (parsedRemoteCl && parsedRemoteCl.length > 0) {
+                            finalChangelog = parsedRemoteCl;
+                            releaseDate = parsedRemoteCl[0].date || releaseDate;
+                            releaseTitle = parsedRemoteCl[0].title || releaseTitle;
+                            if (parsedRemoteCl[0].items && parsedRemoteCl[0].items.length > 0) {
+                                releaseNotes = parsedRemoteCl[0].items;
+                            }
+                        }
+                    } else if (remoteCommitMsg) {
+                        releaseNotes = [
+                            `Commit Terbaru: ${remoteCommitMsg}`,
+                            `SHA: ${remoteCommitSha ? remoteCommitSha.substring(0, 7) : '-'} (Branch: ${candidateBranch})`,
+                            `Diperbarui langsung dari sinkronisasi GitHub.`
+                        ];
+                    }
+
+                    break;
                 }
             } catch (_) {}
         }
     }
 
-    // 5. Prioritas 3: Fallback ke GitHub Releases API jika dikonfigurasi
-    if (!remoteCheckSuccess && otaCustomUrl && !otaCustomUrl.includes('YOUR_GITHUB_USERNAME')) {
+    // 5. Prioritas 3: Fallback ke GitHub Releases API jika branch commit tidak aktif
+    if (!remoteCheckSuccess && gitInfo) {
         try {
-            const resp = await fetch(otaCustomUrl, { 
-                headers: { 'User-Agent': 'Arch3r-NVR', 'Accept': 'application/json' },
+            const resp = await fetch(gitInfo.apiReleasesUrl, { 
+                headers: buildGithubHeaders(gitInfo.token),
                 signal: AbortSignal.timeout(4500)
             });
             if (resp.ok) {
@@ -1391,11 +1495,6 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
                         releaseNotes = release.body.split('\n').map(l => l.trim()).filter(l => l.length > 0);
                     }
                     otaSource = `GitHub Release (${release.name || release.tag_name})`;
-                    remoteCheckSuccess = true;
-                } else if (release.version) {
-                    latestVersion = release.version.replace(/^v/i, '') || latestVersion;
-                    releaseTitle = `Arch3r NVR Ver. ${latestVersion} (Remote Package)`;
-                    otaSource = `Remote Package (${otaCustomUrl})`;
                     remoteCheckSuccess = true;
                 }
             }
@@ -1417,7 +1516,8 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
     }
 
     const cmp = compareSemver(latestVersion, APP_VERSION);
-    const hasUpdate = cmp > 0 || commitsAhead > 0;
+    const hasDifferentCommit = (remoteCommitSha && lastCommitHash && !lastCommitHash.startsWith(remoteCommitSha) && !remoteCommitSha.startsWith(lastCommitHash));
+    const hasUpdate = cmp > 0 || commitsAhead > 0 || (hasDifferentCommit && cmp >= 0);
     const isNewer = cmp > 0;
     const isOlder = cmp < 0;
 
@@ -1427,9 +1527,9 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
     if (isNewer) {
         statusText = 'UPDATE_AVAILABLE';
         message = `Tersedia pembaruan baru v${latestVersion}! (Terdeteksi langsung dari branch ${remoteBranchFound} GitHub). Buka 'Alur Eksekusi Update' untuk memilih kategori pembaruan.`;
-    } else if (commitsAhead > 0) {
+    } else if (commitsAhead > 0 || hasDifferentCommit) {
         statusText = 'COMMITS_AVAILABLE';
-        message = `Terdapat ${commitsAhead} commit pembaruan baru di branch ${branch}. Jalankan Safe / Normal Update untuk menerapkan pembaruan.`;
+        message = `Terdapat commit pembaruan baru di branch ${remoteBranchFound}. Jalankan Safe / Normal Update untuk menerapkan pembaruan.`;
     } else if (isOlder) {
         statusText = 'CUSTOM_OR_BETA';
         message = `Versi terpasang lokal (v${APP_VERSION}) lebih baru atau sejajar dengan rilis remote (v${latestVersion}). Lingkungan pengembangan aktif.`;
@@ -1445,11 +1545,16 @@ async function checkSystemUpdate(otaCustomUrl, queryOpts = {}) {
         release_title: releaseTitle,
         release_notes: releaseNotes,
         commits_ahead: commitsAhead,
+        remote_commit_sha: remoteCommitSha ? remoteCommitSha.substring(0, 7) : '',
+        remote_commit_msg: remoteCommitMsg,
         is_git: isGit,
-        git_branch: branch,
+        git_branch: remoteBranchFound,
         git_remote: gitRemote,
         last_commit: lastCommit,
         ota_source: otaSource,
+        has_token: !!gitInfo?.token,
+        repo_owner: gitInfo?.owner || '',
+        repo_name: gitInfo?.repo || '',
         changelog: finalChangelog.slice(0, 15) // Kirim 15 rilis terbaru untuk panel changelog UI
     };
 }
@@ -1503,6 +1608,11 @@ async function executeSystemUpdate(steps = {}) {
         }
     }
 
+    const targetBranch = steps.branch || dbData.super_settings?.ota_branch || 'main';
+    const otaToken = steps.token || dbData.super_settings?.ota_github_token || dbData.super_settings?.github_token || '';
+    const otaUrl = steps.ota_github_url || dbData.super_settings?.ota_github_url || '';
+    const gitInfo = getGitRepoRemoteInfo(otaUrl, otaToken);
+
     // 2. Step 2: Git Stash (Safe Update) atau Git Reset Hard (Hard Update)
     if (doGitStash && !doGitReset) {
         try {
@@ -1516,8 +1626,13 @@ async function executeSystemUpdate(steps = {}) {
 
     if (doGitReset) {
         try {
-            logs.push(`[2] 🔄 Menjalankan Git Fetch & Reset Hard (origin/main)...`);
-            const resetOut = execSync('git fetch --all && git reset --hard origin/main 2>&1', { cwd: __dirname }).toString().trim();
+            logs.push(`[2] 🔄 Menjalankan Git Fetch & Reset Hard (origin/${targetBranch})...`);
+            let resetCmd = `git fetch origin ${targetBranch} && git reset --hard origin/${targetBranch} 2>&1`;
+            if (gitInfo && gitInfo.token && gitInfo.owner && gitInfo.repo) {
+                const authedRemote = `https://${encodeURIComponent(gitInfo.token)}@github.com/${gitInfo.owner}/${gitInfo.repo}.git`;
+                resetCmd = `git fetch "${authedRemote}" ${targetBranch} && git reset --hard FETCH_HEAD 2>&1`;
+            }
+            const resetOut = execSync(resetCmd, { cwd: __dirname }).toString().trim();
             logs.push(`    ${resetOut}`);
         } catch (e) {
             logs.push(`    ⚠️ Reset hard: ${e.message}`);
@@ -1527,8 +1642,13 @@ async function executeSystemUpdate(steps = {}) {
     // 3. Step 3: Git Pull (Normal & Safe Update)
     if (doGitPull) {
         try {
-            logs.push(`[3] ⬇️ Menjalankan Git Pull (origin/main)...`);
-            const pullOut = execSync('git pull origin main 2>&1', { cwd: __dirname }).toString().trim();
+            logs.push(`[3] ⬇️ Menjalankan Git Pull (origin/${targetBranch})...`);
+            let pullCmd = `git pull origin ${targetBranch} 2>&1`;
+            if (gitInfo && gitInfo.token && gitInfo.owner && gitInfo.repo) {
+                const authedRemote = `https://${encodeURIComponent(gitInfo.token)}@github.com/${gitInfo.owner}/${gitInfo.repo}.git`;
+                pullCmd = `git pull "${authedRemote}" ${targetBranch} 2>&1`;
+            }
+            const pullOut = execSync(pullCmd, { cwd: __dirname }).toString().trim();
             logs.push(`    ${pullOut}`);
         } catch (e) {
             logs.push(`    ⚠️ Git pull: ${e.message}`);

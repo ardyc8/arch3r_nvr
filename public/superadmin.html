@@ -364,13 +364,49 @@
                         </div>
 
                         <!-- Custom Repo Configuration Panel -->
-                        <div id="otaConfigPanel" style="display:none; margin-top:1rem; padding:1rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:8px;">
-                            <label style="font-size:0.78rem; color:var(--text-muted); display:block; margin-bottom:0.4rem;">
-                                URL Kustom GitHub Releases API (Kosongkan jika menggunakan server rilis resmi Arch3r):
-                            </label>
-                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                                <input type="text" id="otaGithubUrl" class="input" placeholder="https://api.github.com/repos/USERNAME/REPO/releases/latest" style="flex:1; min-width:240px; font-size:0.8rem; background:var(--surface-dark);">
-                                <button id="btnSaSaveOta" class="btn btn-secondary" style="font-size:0.8rem; white-space:nowrap;">💾 Simpan URL</button>
+                        <div id="otaConfigPanel" style="display:none; margin-top:1rem; padding:1.25rem; background:var(--bg-dark); border:1px solid var(--border); border-radius:8px;">
+                            <div style="font-weight:600; font-size:0.95rem; margin-bottom:0.75rem; color:#60a5fa; display:flex; align-items:center; gap:0.5rem;">
+                                <span>🐙</span> Konfigurasi Sinkronisasi GitHub OTA (Public & Private Repo)
+                            </div>
+                            
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:0.75rem; margin-bottom:0.75rem;">
+                                <div>
+                                    <label style="font-size:0.78rem; color:var(--text-muted); display:block; margin-bottom:0.35rem;">
+                                        URL Repositori GitHub / Format <code>username/repo</code>:
+                                    </label>
+                                    <input type="text" id="otaGithubUrl" class="input" placeholder="https://github.com/USERNAME/REPO atau USERNAME/REPO" style="width:100%; font-size:0.82rem; background:var(--surface-dark);">
+                                </div>
+                                
+                                <div>
+                                    <label style="font-size:0.78rem; color:var(--text-muted); display:block; margin-bottom:0.35rem;">
+                                        Target Branch (Cabang):
+                                    </label>
+                                    <input type="text" id="otaBranch" class="input" placeholder="main" value="main" style="width:100%; font-size:0.82rem; background:var(--surface-dark);">
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom:0.85rem;">
+                                <label style="font-size:0.78rem; color:var(--text-muted); display:block; margin-bottom:0.35rem;">
+                                    GitHub Personal Access Token (PAT) <span style="color:#a78bfa;">[Opsional - Wajib diisi hanya jika repo Private]</span>:
+                                </label>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <input type="password" id="otaGithubToken" class="input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx (GitHub PAT Token)" style="flex:1; font-size:0.82rem; background:var(--surface-dark); font-family:monospace;">
+                                    <button type="button" class="btn btn-secondary btn-peek-pwd" data-target="otaGithubToken" style="padding:0 0.6rem; font-size:0.85rem;">
+                                        <span class="peek-icon">👁️</span>
+                                    </button>
+                                </div>
+                                <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.25rem;">
+                                    Token tersimpan secara aman di backend STB dan hanya digunakan untuk mengautentikasi penarikan commit rilis.
+                                </div>
+                            </div>
+
+                            <div style="display:flex; gap:0.5rem; justify-content:flex-end; flex-wrap:wrap;">
+                                <button id="btnSaSaveOta" class="btn btn-primary" style="font-size:0.82rem; padding:0.5rem 1rem;">
+                                    💾 Simpan Konfigurasi GitHub
+                                </button>
+                                <button type="button" id="btnSaTestOtaConnection" class="btn btn-secondary" style="font-size:0.82rem; padding:0.5rem 1rem;" onclick="checkOtaUpdate()">
+                                    🔄 Uji Koneksi & Cek Update
+                                </button>
                             </div>
                         </div>
                     </div>

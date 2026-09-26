@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 10.8.1 - Direct GitHub Branch Live OTA Pipeline, Raw Package & Changelog Inspector, Safe Multi-Category System Updater.",
+  "description": "Arch3r NVR Ver. 10.8.2 - Live GitHub Branch & Commit OTA Engine, Private Repo PAT Token Support, Safe Multi-Category System Updater.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

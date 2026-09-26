@@ -1,5 +1,21 @@
 # Changelog
 
+## [Ver 10.8.2] - 2026-09-25
+### Live GitHub Branch & Commit OTA Engine with Private Repo PAT Token Support
+- **Live Branch & Commit SHA OTA Tracking (`server.js`):**
+  - **Commit-Level Live Synchronization**: Menambahkan integrasi pelacakan commit SHA langsung ke branch `main` GitHub (`/commits/{branch}`). Begitu kode di-push dari AI Studio ke GitHub, STB langsung mendeteksi ada pembaruan tanpa perlu membuat tag Release manual di GitHub.
+  - **Shorthand Repository Parser**: Mendukung format fleksibel seperti `username/repo`, `https://github.com/username/repo`, `git@github.com:username/repo.git`, maupun `api.github.com`.
+  - **Smart Dual-Check**: Membandingkan versi SemVer dari `package.json` dan commit hash SHA terbaru. Jika ada commit baru atau nomor versi lebih tinggi, tombol pembaruan langsung aktif.
+- **Private Repository Authentication Support (GitHub PAT Token):**
+  - **GitHub Personal Access Token (PAT) Integration**: Menambahkan dukungan token autentikasi Bearer untuk repositori privat pada backend STB (`super_settings.ota_github_token`).
+  - **Dukungan Git Pull Berotentikasi**: Eksekusi pembaruan (`executeSystemUpdate`) kini mendukung `git pull` dan `git fetch` menggunakan token autentikasi GitHub.
+  - **GitHub API Contents Fallback**: Jika akses raw diblokir, sistem otomatis beralih ke GitHub Contents API terenkripsi base64 dengan token untuk membaca `package.json` dan `CHANGELOG.md`.
+- **Enhanced Superadmin GitHub OTA Configuration UI (`superadmin.html` & `superadmin.js`):**
+  - Antarmuka baru untuk konfigurasi Repositori GitHub, Target Branch (`main`), dan GitHub PAT Token dengan toggle sensorintip kata sandi.
+  - Tombol simpan dan uji koneksi langsung.
+- **System Version & Metadata Alignment:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.2** pada `package.json`, `metadata.json`, `index.html`, `public/admin.html`, `public/version_sync.js`, `public/superadmin.html`, `public/script.js`, `README.md`, dan `CHANGELOG.md` sesuai protokol Semantic Versioning Strict.
+
 ## [Ver 10.8.1] - 2026-09-25
 ### Direct GitHub Branch Live OTA Pipeline, Raw Package & Changelog Inspector
 - **Direct GitHub Branch Live OTA Pipeline (`server.js`):**
