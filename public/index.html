@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 10.8.8 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=10.8.8">
+    <title>Arch3r NVR Ver. 10.9.0 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=10.9.0">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -18,7 +18,7 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="version_sync.js?v=10.8.8"></script>
+    <script src="version_sync.js?v=10.9.0"></script>
     <style>
         /* Fullscreen Drawing Mode for AI Vision */
         #ai-canvas-container.ai-fullscreen-active {
@@ -86,7 +86,7 @@
         <div class="auth-card" id="authCard" style="max-width:420px;">
             <div class="brand" style="justify-content:center; border:none; padding-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
                 <span class="icon"><img src="Archer.ico?v=2" style="height:2.2rem; width:2.2rem; object-fit:contain; border-radius:6px;"></span>
-                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 10.8.8</span></h2>
+                <h2 style="margin:0; font-size:1.3rem;">Arch3r NVR <span class="badge" style="background:#2563eb; font-size:0.75rem; padding:2px 8px; border-radius:4px;">Ver. 10.9.0</span></h2>
             </div>
             <p style="text-align:center; color:var(--text-muted); font-size:0.8rem; margin-bottom:1.5rem;">
                 Professional Armbian STB NVR System
@@ -1192,45 +1192,134 @@
 
             <!-- 8. VIEW SYSTEM LOGS -->
             <div id="view-logs" class="view-pane">
-                <div class="content-wrapper" style="padding:1rem 1.5rem; height:100%; display:flex; flex-direction:column;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap: wrap; gap: 10px;">
-                        <h2 style="margin:0; font-size:1.2rem;">System Logs Real-time</h2>
-                        <div style="display:flex; gap:10px; align-items:center;">
-                            <input type="text" id="logSearchInput" class="form-control" placeholder="Cari pesan log..." style="width:200px; padding:6px 10px; font-size:0.85rem; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:4px;">
-                            <select id="logCategoryFilter" class="form-control" style="padding:6px 10px; font-size:0.85rem; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:4px;">
-                                <option value="ALL">Semua Kategori</option>
-                                <option value="SYSTEM">System</option>
-                                <option value="CAMERA">Camera</option>
-                                <option value="STORAGE">Storage</option>
-                                <option value="SECURITY">Security</option>
-                            </select>
-                            <select id="logLevelFilter" class="form-control" style="padding:6px 10px; font-size:0.85rem; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:4px;">
-                                <option value="ALL">Semua Level</option>
-                                <option value="INFO">INFO</option>
-                                <option value="WARN">WARN</option>
-                                <option value="ERROR">ERROR</option>
-                            </select>
-                            <button id="btnToggleAutoLog" class="btn btn-secondary" style="display:flex; align-items:center; gap:5px;" onclick="window.toggleAutoLog()">
-                                <span id="autoLogIcon">⏸️</span> <span id="autoLogText">Stop</span>
-                            </button>
-                            <button class="btn btn-secondary" onclick="window.copyLogs()" style="display:flex; align-items:center; gap:5px;">📋 Copy</button>
+                <div class="content-wrapper" style="padding:1rem 1.5rem 2rem 1.5rem; height:100%; display:flex; flex-direction:column; box-sizing:border-box;">
+                    
+                    <!-- Header Section -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+                        <div>
+                            <h2 style="margin:0; font-size:1.35rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                <span>📜</span> System Logs & Telemetry Real-time
+                            </h2>
+                            <p style="color:var(--text-muted); margin:0.25rem 0 0 0; font-size:0.83rem;">
+                                Pemantauan riwayat event, diagnostik RTSP/ONVIF kamera, penyimpanan, dan keamanan Armbian STB.
+                            </p>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span id="logLiveBadge" class="badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); font-size:0.75rem; padding:4px 10px; display:inline-flex; align-items:center; gap:6px;">
+                                <span style="width:7px; height:7px; border-radius:50%; background:#22c55e; display:inline-block; box-shadow:0 0 6px #22c55e;"></span>
+                                <span id="logLiveStatusText">LIVE STREAMING LOGS</span>
+                            </span>
                         </div>
                     </div>
-                    <div style="flex:1; background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow-y:auto;">
-                        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.85rem; font-family:monospace;">
-                            <thead style="background:rgba(0,0,0,0.3); position:sticky; top:0; z-index:10;">
+
+                    <!-- Mini Metric Summary Cards -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:0.75rem; margin-bottom:1rem;">
+                        <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+                            <div style="font-size:1.6rem; background:rgba(59,130,246,0.12); width:42px; height:42px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#60a5fa;">📋</div>
+                            <div>
+                                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Total Log</div>
+                                <div id="logStatTotal" style="font-size:1.25rem; font-weight:700; color:#f8fafc;">0</div>
+                            </div>
+                        </div>
+                        <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+                            <div style="font-size:1.6rem; background:rgba(16,185,129,0.12); width:42px; height:42px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#34d399;">🔵</div>
+                            <div>
+                                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Info Normal</div>
+                                <div id="logStatInfo" style="font-size:1.25rem; font-weight:700; color:#34d399;">0</div>
+                            </div>
+                        </div>
+                        <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+                            <div style="font-size:1.6rem; background:rgba(245,158,11,0.12); width:42px; height:42px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fbbf24;">⚠️</div>
+                            <div>
+                                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Peringatan</div>
+                                <div id="logStatWarn" style="font-size:1.25rem; font-weight:700; color:#fbbf24;">0</div>
+                            </div>
+                        </div>
+                        <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem; box-shadow:0 2px 4px rgba(0,0,0,0.2);">
+                            <div style="font-size:1.6rem; background:rgba(239,68,68,0.12); width:42px; height:42px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#f87171;">🚨</div>
+                            <div>
+                                <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">Error Kritis</div>
+                                <div id="logStatError" style="font-size:1.25rem; font-weight:700; color:#f87171;">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Toolbar & Filters -->
+                    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.65rem;">
+                        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; flex:1; min-width:280px;">
+                            <div style="position:relative; flex:1; min-width:180px; max-width:320px;">
+                                <input type="text" id="logSearchInput" class="form-control" placeholder="Cari pesan atau ID log..." style="width:100%; padding:6px 10px 6px 30px; font-size:0.83rem; background:rgba(15,23,42,0.6); border:1px solid var(--border); color:#fff; border-radius:6px; box-sizing:border-box;">
+                                <span style="position:absolute; left:9px; top:50%; transform:translateY(-50%); font-size:0.85rem; color:var(--text-muted);">🔍</span>
+                            </div>
+                            <select id="logCategoryFilter" class="form-control" style="padding:6px 10px; font-size:0.83rem; background:rgba(15,23,42,0.6); border:1px solid var(--border); color:#fff; border-radius:6px; min-width:140px;">
+                                <option value="ALL">📁 Semua Kategori</option>
+                                <option value="SYSTEM">⚙️ System</option>
+                                <option value="CAMERA">📹 Camera</option>
+                                <option value="STORAGE">💾 Storage</option>
+                                <option value="SECURITY">🔐 Security</option>
+                                <option value="DATABASE">🗄️ Database</option>
+                                <option value="ADDON">🧩 Addon</option>
+                            </select>
+                            <select id="logLevelFilter" class="form-control" style="padding:6px 10px; font-size:0.83rem; background:rgba(15,23,42,0.6); border:1px solid var(--border); color:#fff; border-radius:6px; min-width:120px;">
+                                <option value="ALL">⭐ Semua Level</option>
+                                <option value="INFO">🔵 INFO</option>
+                                <option value="WARN">🟡 WARN</option>
+                                <option value="ERROR">🔴 ERROR</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display:flex; gap:0.45rem; align-items:center; flex-wrap:wrap;">
+                            <button id="btnToggleAutoLog" class="btn btn-secondary" style="display:flex; align-items:center; gap:5px; font-size:0.82rem; padding:6px 10px; border-color:rgba(59,130,246,0.3); color:#60a5fa;" onclick="window.toggleAutoLog()">
+                                <span id="autoLogIcon">⏸️</span> <span id="autoLogText">Stop</span>
+                            </button>
+                            <button id="btnRefreshLogs" class="btn btn-secondary" style="display:flex; align-items:center; gap:5px; font-size:0.82rem; padding:6px 10px;" onclick="window.fetchLogs()" title="Segarkan Log Sekarang">
+                                <span>🔄</span> Segarkan
+                            </button>
+                            <button class="btn btn-secondary" onclick="window.copyLogs()" style="display:flex; align-items:center; gap:5px; font-size:0.82rem; padding:6px 10px;" title="Salin seluruh isi log">
+                                <span>📋</span> Salin
+                            </button>
+                            <div style="position:relative; display:inline-block;">
+                                <button type="button" class="btn btn-secondary" onclick="window.toggleExportDropdown()" style="display:flex; align-items:center; gap:4px; font-size:0.82rem; padding:6px 10px;">
+                                    <span>📥</span> Ekspor ▾
+                                </button>
+                                <div id="logExportDropdown" style="display:none; position:absolute; right:0; top:110%; background:#1e293b; border:1px solid var(--border); border-radius:6px; box-shadow:0 8px 20px rgba(0,0,0,0.6); z-index:50; min-width:140px; overflow:hidden;">
+                                    <a href="javascript:void(0)" onclick="window.exportLogsFile('txt')" style="display:block; padding:8px 12px; color:#f8fafc; font-size:0.8rem; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.06);">📄 File Teks (.txt)</a>
+                                    <a href="javascript:void(0)" onclick="window.exportLogsFile('csv')" style="display:block; padding:8px 12px; color:#f8fafc; font-size:0.8rem; text-decoration:none;">📊 File Excel (.csv)</a>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" onclick="window.confirmClearLogs()" style="display:flex; align-items:center; gap:5px; font-size:0.82rem; padding:6px 10px; color:#f87171; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.08);" title="Bersihkan riwayat log">
+                                <span>🧹</span> Bersihkan
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Scrollable Logs Table Container -->
+                    <div style="flex:1; background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow-y:auto; position:relative; min-height:240px; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+                        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.82rem; font-family:monospace;">
+                            <thead style="background:#0f172a; position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border);">
                                 <tr>
-                                    <th style="padding:10px; border-bottom:1px solid var(--border); width:160px; color:var(--text-muted);">Waktu</th>
-                                    <th style="padding:10px; border-bottom:1px solid var(--border); width:80px; color:var(--text-muted);">Level</th>
-                                    <th style="padding:10px; border-bottom:1px solid var(--border); width:100px; color:var(--text-muted);">Kategori</th>
-                                    <th style="padding:10px; border-bottom:1px solid var(--border); color:var(--text-muted);">Pesan</th>
+                                    <th style="padding:10px 12px; width:155px; color:#94a3b8; font-weight:600;">Waktu</th>
+                                    <th style="padding:10px 12px; width:90px; color:#94a3b8; font-weight:600;">Level</th>
+                                    <th style="padding:10px 12px; width:115px; color:#94a3b8; font-weight:600;">Kategori</th>
+                                    <th style="padding:10px 12px; color:#94a3b8; font-weight:600;">Pesan & Diagnostik Sistem</th>
                                 </tr>
                             </thead>
                             <tbody id="logsContainer">
-                                <tr><td colspan="4" style="padding:20px; text-align:center; color:var(--text-muted);">Memuat logs sistem...</td></tr>
+                                <tr><td colspan="4" style="padding:30px; text-align:center; color:var(--text-muted);">Memuat logs sistem...</td></tr>
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Footer Info & Loaded Count -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.6rem; font-size:0.75rem; color:var(--text-muted);">
+                        <div>
+                            <span>⚡ Armbian STB Logger</span> &bull; <span>Auto-Prune: 60 Hari</span> &bull; <span>In-Memory Safe Buffer</span>
+                        </div>
+                        <div id="logLoadedCount">
+                            Menampilkan 0 log
+                        </div>
+                    </div>
+
                 </div>
             </div>
         

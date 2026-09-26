@@ -1,5 +1,26 @@
-# ⚡ Arch3r NVR (Ver. 10.8.8)
+# ⚡ Arch3r NVR (Ver. 10.9.0)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.9.0:
+- **Resolved Duplicate Variable Declaration in Script Lifecycle & Semantic Minor Version Transition**:
+  1. **Perbaikan SyntaxError Script Frontend (`public/script.js`)**:
+     - Menghapus deklarasi ganda `const btnRefreshLogs` di dalam cakupan `DOMContentLoaded` yang memicu kendala parsing JavaScript di browser klien.
+     - Memastikan tombol segarkan log sistem terikat dengan listener `fetchLogs()` secara aman dan bersih.
+  2. **Transisi Versi Semantic (Strict SemVer)**:
+     - Menaikkan nomor versi dari **10.8.9** ke **10.9.0** pada seluruh berkas konfigurasi, manifest, antarmuka, dan dokumentasi sistem sesuai aturan Semantic Versioning Strict.
+
+### 📋 Changelog Pembaruan Ver. 10.8.9:
+- **High-Performance Debounced System Logs, Real-Time Metric Counters & Armbian STB Zero-Background-Load Engine**:
+  1. **Optimalisasi Backend & Proteksi Flash eMMC/SD Armbian (`server.js`)**:
+     - Mengganti penulisan `local_db_logs.json` sinkronus per baris log dengan mekanisme *debounced flush* terisolasi (8 detik). Mencegah keausan media flash (*eMMC/SD wear*) dan menghilangkan lonjakan beban CPU/*I/O wait* di Linux Armbian STB.
+     - Menyediakan endpoint `/api/logs` berkinerja tinggi dengan kalkulasi instan metrik (*Total, Info, Warning, Error, Camera, Storage, Security*), filter terpadu, dan parameter pembatas data (*limit*).
+     - Menambahkan endpoint `DELETE /api/logs` (pembersihan log aman) dan `GET /api/logs/export` (unduh ekspor log `.txt` / `.csv`).
+  2. **Pembaruan Desain & Dashboard System Logs (`public/index.html` & `public/script.js`)**:
+     - **Metric Summary Cards**: Menampilkan 4 kartu ringkasan instan (Total Log, Info Normal, Peringatan/Warn, Error Kritis) di bagian atas menu System Logs.
+     - **Tab-Aware Lifecycle (Zero Background Load)**: Polling real-time log hanya aktif saat tab System Logs dibuka dan otomatis dijeda total saat pengguna berpindah ke menu Monitor Live atau Playback.
+     - **Professional Action Toolbar**: Fitur pencarian pesan cerdas, filter kategori/level, tombol pause/resume real-time, tombol salin ke clipboard, menu unduh ekspor berkas log, dan pembersihan log aman.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.8.9** pada seluruh komponen sistem sesuai protokol Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.8.8:
 - **Fixed Playback Canvas Aspect Ratio Lock (Anti-Stretching), Dual-Lens Stream Stability & WebRTC/HLS Fast Recovery**:

@@ -1,5 +1,26 @@
 # Changelog
 
+## [Ver 10.9.0] - 2026-09-26
+### Resolved Duplicate Variable Declaration in Script Lifecycle & Semantic Minor Version Transition
+- **Perbaikan SyntaxError Script Frontend (`public/script.js`):**
+  - Menghapus redeklarasi ganda variabel `btnRefreshLogs` di dalam cakupan `DOMContentLoaded` yang memicu `SyntaxError: redeclaration of const btnRefreshLogs`.
+  - Memastikan listener tombol segarkan log terhubung secara aman tanpa memblokir parsing JavaScript di browser.
+- **Transisi Versi Semantic (Strict SemVer):**
+  - Menaikkan nomor versi dari **10.8.9** ke **10.9.0** pada seluruh berkas konfigurasi, manifest, antarmuka, dan dokumentasi sistem sesuai aturan Semantic Versioning Strict.
+
+## [Ver 10.8.9] - 2026-09-26
+### High-Performance Debounced System Logs, Real-Time Metric Counters & Armbian STB Zero-Background-Load Engine
+- **Optimalisasi Backend & Proteksi Flash eMMC/SD Armbian (`server.js`):**
+  - **In-Memory Buffer & Debounced Disk Flush**: Mengganti penulisan file `local_db_logs.json` sinkronus per baris log dengan mekanisme debounced flush terisolasi (8 detik debounce). Mencegah keausan media flash (*flash memory wear*) dan menghilangkan lonjakan beban CPU/*I/O wait* di Linux Armbian STB.
+  - **Enhanced Endpoint `/api/logs`**: Mendukung kalkulasi metrik ringkasan (*Total, Info, Warning, Error, Camera, Storage, Security*), filter terpadu, dan parameter pembatas *limit* agar transfer data sangat ringan (<10KB).
+  - **Dedicated Log Management Endpoints**: Menambahkan endpoint `DELETE /api/logs` (pembersihan log aman oleh Administrator) dan `GET /api/logs/export` (ekspor berkas `.txt` / `.csv`).
+- **Pembaruan Desain & Dashboard System Logs (`public/index.html` & `public/script.js`):**
+  - **Metric Summary Cards**: Menampilkan 4 kartu ringkasan instan (Total Log, Info Normal, Peringatan/Warn, Error Kritis) di bagian atas menu System Logs.
+  - **Tab-Aware Lifecycle (Zero Background Load)**: Polling real-time log **hanya aktif saat tab System Logs dibuka** dan otomatis dijeda total saat pengguna berpindah ke menu Monitor Live atau Playback, membebaskan CPU browser dan STB dari beban polling terus-menerus.
+  - **Professional Action Toolbar**: Fitur pencarian pesan cerdas, filter kategori/level, tombol pause/resume real-time, tombol salin ke clipboard, menu unduh ekspor berkas log, dan pembersihan log aman.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.8.9** pada seluruh komponen sistem sesuai protokol Semantic Versioning Strict.
+
 ## [Ver 10.8.8] - 2026-09-26
 ### Fixed Playback Canvas Aspect Ratio Lock (Anti-Stretching), Dual-Lens Stream Stability & WebRTC/HLS Fast Recovery
 - **Penguncian Wadah Playback (Anti-Stretching / Kotak Stabil `public/index.html`):**

@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.8.8 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 10.9.0 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -1014,13 +1014,17 @@ async function handleLogout() {
             } else if (targetId === 'view-about') {
                 if (typeof fetchAboutInfo === 'function') fetchAboutInfo();
             } else if (targetId === 'view-logs') {
-                if (typeof fetchLogs === 'function') fetchLogs();
+                if (typeof window.startLogsLivePolling === 'function') window.startLogsLivePolling();
             } else if (targetId === 'view-setting-users') {
                 if (typeof loadUsersList === 'function') loadUsersList();
             } else if (targetId === 'view-setting-record') {
                 if (typeof loadStorageDevices === 'function') loadStorageDevices();
             } else if (targetId === 'view-playback') {
                 if (typeof fetchRecordings === 'function') fetchRecordings();
+            }
+
+            if (targetId !== 'view-logs' && typeof window.stopLogsLivePolling === 'function') {
+                window.stopLogsLivePolling();
             }
         };
 
@@ -5367,126 +5371,280 @@ async function fetchSystemSettings() {
     }
 
     // =========================================================================
-    // ADMINISTRATOR - SYSTEM LOGS
+    // ADMINISTRATOR - SYSTEM LOGS & TELEMETRY (ARMBIAN STB OPTIMIZED)
     // =========================================================================
-let allLogsCache = [];
-    async function fetchLogs() {
+    let allLogsCache = [];
+    let logSummaryStats = { total: 0, info: 0, warn: 0, error: 0, camera: 0, storage: 0, security: 0 };
+    let autoLogInterval = null;
+    let isAutoLogActive = true;
+
+    async function fetchLogs(silent = false) {
         if (!logsContainer) return;
         try {
-            const res = await authFetch('/api/logs');
+            const catFilter = document.getElementById('logCategoryFilter')?.value || 'ALL';
+            const levelFilter = document.getElementById('logLevelFilter')?.value || 'ALL';
+            const searchInput = (document.getElementById('logSearchInput')?.value || '').trim();
+
+            let url = `/api/logs?limit=300`;
+            if (catFilter !== 'ALL') url += `&category=${encodeURIComponent(catFilter)}`;
+            if (levelFilter !== 'ALL') url += `&level=${encodeURIComponent(levelFilter)}`;
+            if (searchInput) url += `&search=${encodeURIComponent(searchInput)}`;
+
+            const res = await authFetch(url);
+            if (!res.ok) throw new Error('Gagal memuat log dari server');
             const data = await res.json();
-            if (data && data.logs) {
+            
+            if (data && Array.isArray(data.logs)) {
                 allLogsCache = data.logs;
+                if (data.stats) {
+                    logSummaryStats = data.stats;
+                }
+                updateLogMetricsUI();
                 renderFilteredLogs();
             }
         } catch(e) {
-            logsContainer.innerHTML = '<div style="color:#ef4444;">Gagal memuat log sistem.</div>';
+            if (!silent && logsContainer) {
+                logsContainer.innerHTML = `<tr><td colspan="4" style="padding:20px; text-align:center; color:#ef4444;">⚠️ Gagal memuat log: ${e.message}</td></tr>`;
+            }
         }
+    }
+    window.fetchLogs = fetchLogs;
+
+    function updateLogMetricsUI() {
+        const statTotal = document.getElementById('logStatTotal');
+        const statInfo = document.getElementById('logStatInfo');
+        const statWarn = document.getElementById('logStatWarn');
+        const statError = document.getElementById('logStatError');
+
+        if (statTotal) statTotal.textContent = logSummaryStats.total || allLogsCache.length || 0;
+        if (statInfo) statInfo.textContent = logSummaryStats.info || 0;
+        if (statWarn) statWarn.textContent = logSummaryStats.warn || 0;
+        if (statError) statError.textContent = logSummaryStats.error || 0;
     }
     
     function renderFilteredLogs() {
         if (!logsContainer) return;
         
-        const catFilter = document.getElementById('logCategoryFilter') ? document.getElementById('logCategoryFilter').value : 'ALL';
-        const levelFilter = document.getElementById('logLevelFilter') ? document.getElementById('logLevelFilter').value : 'ALL';
-        const searchInput = document.getElementById('logSearchInput') ? document.getElementById('logSearchInput').value.toLowerCase() : '';
+        const catFilter = document.getElementById('logCategoryFilter')?.value || 'ALL';
+        const levelFilter = document.getElementById('logLevelFilter')?.value || 'ALL';
+        const searchInput = (document.getElementById('logSearchInput')?.value || '').trim().toLowerCase();
         
         const filtered = allLogsCache.filter(log => {
             const logCat = log.category || 'SYSTEM';
             if (catFilter !== 'ALL' && logCat !== catFilter) return false;
             if (levelFilter !== 'ALL' && log.level !== levelFilter) return false;
-            
-            if (searchInput) {
-                if (!log.message.toLowerCase().includes(searchInput)) return false;
-            }
+            if (searchInput && !(log.message || '').toLowerCase().includes(searchInput)) return false;
             return true;
         });
         
         // Reverse array to put newest logs at the top
-        filtered.reverse();
+        const reversed = [...filtered].reverse();
         
-        if (filtered.length === 0) {
-            logsContainer.innerHTML = '<tr><td colspan="4" style="padding:20px; text-align:center; color:#64748b;">Tidak ada log yang ditemukan.</td></tr>';
+        const logLoadedCount = document.getElementById('logLoadedCount');
+        if (logLoadedCount) {
+            logLoadedCount.textContent = `Menampilkan ${reversed.length} dari total ${logSummaryStats.total || allLogsCache.length} log`;
+        }
+
+        if (reversed.length === 0) {
+            logsContainer.innerHTML = '<tr><td colspan="4" style="padding:25px; text-align:center; color:#64748b;">Tidak ada log yang sesuai dengan filter atau pencarian.</td></tr>';
             return;
         }
         
-        logsContainer.innerHTML = filtered.map(log => {
-            let color = '#a3be8c';
-            if (log.level === 'ERROR') color = '#ef4444';
-            if (log.level === 'WARN') color = '#f59e0b';
-            if (log.level === 'INFO') color = '#3b82f6';
-            
+        logsContainer.innerHTML = reversed.map(log => {
+            let badgeBg = 'rgba(59,130,246,0.15)';
+            let badgeColor = '#60a5fa';
+            let badgeBorder = 'rgba(59,130,246,0.3)';
+            let levelIcon = '🔵';
+
+            if (log.level === 'ERROR') {
+                badgeBg = 'rgba(239,68,68,0.18)';
+                badgeColor = '#f87171';
+                badgeBorder = 'rgba(239,68,68,0.4)';
+                levelIcon = '🔴';
+            } else if (log.level === 'WARN') {
+                badgeBg = 'rgba(245,158,11,0.18)';
+                badgeColor = '#fbbf24';
+                badgeBorder = 'rgba(245,158,11,0.4)';
+                levelIcon = '🟡';
+            }
+
             const cat = log.category || 'SYSTEM';
-            let catColor = '#475569';
-            if (cat === 'CAMERA') catColor = '#059669';
-            if (cat === 'STORAGE') catColor = '#ca8a04';
-            if (cat === 'SECURITY') catColor = '#9333ea';
+            let catBg = 'rgba(71,85,105,0.2)';
+            let catColor = '#cbd5e1';
+            let catIcon = '⚙️';
+            if (cat === 'CAMERA') { catBg = 'rgba(16,185,129,0.15)'; catColor = '#34d399'; catIcon = '📹'; }
+            else if (cat === 'STORAGE') { catBg = 'rgba(202,138,4,0.15)'; catColor = '#facc15'; catIcon = '💾'; }
+            else if (cat === 'SECURITY') { catBg = 'rgba(147,51,234,0.15)'; catColor = '#c084fc'; catIcon = '🔐'; }
+            else if (cat === 'DATABASE') { catBg = 'rgba(2,132,199,0.15)'; catColor = '#38bdf8'; catIcon = '🗄️'; }
+            else if (cat === 'ADDON') { catBg = 'rgba(236,72,153,0.15)'; catColor = '#f472b6'; catIcon = '🧩'; }
             
-            const timeStr = new Date(log.timestamp).toLocaleString('id-ID');
+            let timeStr = log.timestamp || '';
+            try {
+                if (timeStr && !isNaN(new Date(timeStr).getTime())) {
+                    timeStr = new Date(timeStr).toLocaleString('id-ID', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit',
+                        hour12: false
+                    });
+                }
+            } catch (_) {}
             
-            return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05); color:#f8fafc;">
-                <td style="padding:8px 10px; color:#94a3b8; white-space:nowrap; width:160px;">${timeStr}</td>
-                <td style="padding:8px 10px; width:100px;"><span style="color:${color}; font-weight:600;">${log.level}</span></td>
-                <td style="padding:8px 10px; width:120px;"><span style="background:${catColor}; color:#fff; padding:2px 6px; border-radius:4px; font-size:0.7rem;">${cat}</span></td>
-                <td style="padding:8px 10px;">${log.message}</td>
+            return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05); color:#f8fafc; transition:background 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background=''">
+                <td style="padding:9px 12px; color:#94a3b8; white-space:nowrap; width:155px; font-size:0.78rem;">${timeStr}</td>
+                <td style="padding:9px 12px; width:90px;"><span style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:2px 7px; border-radius:4px; font-weight:700; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;">${levelIcon} ${log.level}</span></td>
+                <td style="padding:9px 12px; width:115px;"><span style="background:${catBg}; color:${catColor}; border:1px solid rgba(255,255,255,0.08); padding:2px 7px; border-radius:4px; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px; font-weight:600;">${catIcon} ${cat}</span></td>
+                <td style="padding:9px 12px; line-height:1.45; word-break:break-word; color:#e2e8f0;">${escapeHtml(log.message || '')}</td>
             </tr>`;
         }).join('');
     }
-    
-    let autoLogInterval = null;
-    let isAutoLog = true;
+
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    window.startLogsLivePolling = function() {
+        if (!isAutoLogActive) return;
+        if (autoLogInterval) clearInterval(autoLogInterval);
+        fetchLogs(true);
+        autoLogInterval = setInterval(() => {
+            const logsPane = document.getElementById('view-logs');
+            if (logsPane && logsPane.classList.contains('active')) {
+                fetchLogs(true);
+            } else {
+                window.stopLogsLivePolling();
+            }
+        }, 4000); // 4-second gentle cadence protects STB
+    };
+
+    window.stopLogsLivePolling = function() {
+        if (autoLogInterval) {
+            clearInterval(autoLogInterval);
+            autoLogInterval = null;
+        }
+    };
     
     window.toggleAutoLog = function() {
-        isAutoLog = !isAutoLog;
+        isAutoLogActive = !isAutoLogActive;
         const icon = document.getElementById('autoLogIcon');
         const text = document.getElementById('autoLogText');
-        if (isAutoLog) {
+        const statusText = document.getElementById('logLiveStatusText');
+        const badge = document.getElementById('logLiveBadge');
+
+        if (isAutoLogActive) {
             if (icon) icon.textContent = '⏸️';
             if (text) text.textContent = 'Stop';
-            autoLogInterval = setInterval(fetchLogs, 3000);
-            fetchLogs();
+            if (statusText) statusText.textContent = 'LIVE STREAMING LOGS';
+            if (badge) {
+                badge.style.background = 'rgba(34,197,94,0.15)';
+                badge.style.color = '#4ade80';
+                badge.style.borderColor = 'rgba(34,197,94,0.3)';
+            }
+            window.startLogsLivePolling();
+            showToast('▶️ Real-time log monitoring diaktifkan', 'info');
         } else {
             if (icon) icon.textContent = '▶️';
             if (text) text.textContent = 'Play';
-            if (autoLogInterval) clearInterval(autoLogInterval);
+            if (statusText) statusText.textContent = 'PAUSED';
+            if (badge) {
+                badge.style.background = 'rgba(100,116,139,0.15)';
+                badge.style.color = '#94a3b8';
+                badge.style.borderColor = 'rgba(100,116,139,0.3)';
+            }
+            window.stopLogsLivePolling();
+            showToast('⏸️ Log auto-refresh dijeda', 'info');
+        }
+    };
+
+    window.toggleExportDropdown = function() {
+        const dd = document.getElementById('logExportDropdown');
+        if (!dd) return;
+        dd.style.display = dd.style.display === 'none' || !dd.style.display ? 'block' : 'none';
+    };
+
+    // Close export dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dd = document.getElementById('logExportDropdown');
+        if (dd && dd.style.display === 'block') {
+            if (!e.target.closest('#logExportDropdown') && !e.target.closest('button[onclick*="toggleExportDropdown"]')) {
+                dd.style.display = 'none';
+            }
+        }
+    });
+
+    window.exportLogsFile = function(format) {
+        const dd = document.getElementById('logExportDropdown');
+        if (dd) dd.style.display = 'none';
+        
+        const token = getAuthToken();
+        const exportUrl = `/api/logs/export?format=${encodeURIComponent(format)}${token ? '&token=' + encodeURIComponent(token) : ''}`;
+        
+        const a = document.createElement('a');
+        a.href = exportUrl;
+        a.download = `arch3r_system_logs_${new Date().toISOString().slice(0, 10)}.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast(`📥 Mengunduh file log sistem (.${format})...`, 'success');
+    };
+
+    window.confirmClearLogs = async function() {
+        if (!confirm('Apakah Anda yakin ingin membersihkan seluruh riwayat log sistem? Tindakan ini tidak dapat dibatalkan.')) return;
+        try {
+            const res = await authFetch('/api/logs', { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                showToast('🧹 Log sistem berhasil dibersihkan.', 'success');
+                allLogsCache = [];
+                logSummaryStats = { total: 0, info: 0, warn: 0, error: 0, camera: 0, storage: 0, security: 0 };
+                updateLogMetricsUI();
+                renderFilteredLogs();
+            } else {
+                alert(data.error || 'Gagal membersihkan log.');
+            }
+        } catch(e) {
+            alert('Gagal menghubungi server: ' + e.message);
         }
     };
     
     window.copyLogs = function() {
-        if (!allLogsCache || allLogsCache.length === 0) return alert('Tidak ada log untuk dicopy');
+        if (!allLogsCache || allLogsCache.length === 0) return alert('Tidak ada log untuk disalin.');
         
-        // Reverse array to put newest logs at the top
         const filtered = [...allLogsCache].reverse();
-        
         const text = filtered.map(log => {
             const timeStr = new Date(log.timestamp).toLocaleString('id-ID');
             return `[${timeStr}] [${log.level}] [${log.category || 'SYSTEM'}] ${log.message}`;
         }).join('\n');
         
         navigator.clipboard.writeText(text).then(() => {
-            alert('Log berhasil dicopy ke clipboard!');
+            showToast('📋 Log sistem berhasil disalin ke clipboard!', 'success');
         }).catch(err => {
-            alert('Gagal mencopy log: ' + err);
+            alert('Gagal menyalin log: ' + err);
         });
     };
     
     // Attach event listeners for filters
     const catEl = document.getElementById('logCategoryFilter');
     const levelEl = document.getElementById('logLevelFilter');
-    if (catEl) catEl.addEventListener('change', renderFilteredLogs);
-    if (levelEl) levelEl.addEventListener('change', renderFilteredLogs);
+    if (catEl) catEl.addEventListener('change', () => fetchLogs(false));
+    if (levelEl) levelEl.addEventListener('change', () => fetchLogs(false));
     const searchEl = document.getElementById('logSearchInput');
-    if (searchEl) searchEl.addEventListener('input', renderFilteredLogs);
-    
-    // Auto start logs if in index
-    if (document.getElementById('view-logs')) {
-        autoLogInterval = setInterval(fetchLogs, 3000);
+    if (searchEl) {
+        let searchDebounce = null;
+        searchEl.addEventListener('input', () => {
+            if (searchDebounce) clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                fetchLogs(true);
+            }, 300);
+        });
     }
-
     
-    window.fetchLogs = fetchLogs;
     if (btnRefreshLogs) {
-        btnRefreshLogs.addEventListener('click', fetchLogs);
+        btnRefreshLogs.addEventListener('click', () => fetchLogs(false));
     }
 
     // Mulai Eksekusi Autentikasi

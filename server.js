@@ -2321,7 +2321,29 @@ function scheduleDbSave() {
     }
 }
 
-// Logger
+// Logger with Debounced Disk Flush (High-Performance for Armbian STB flash memory protection)
+let logsSaveTimer = null;
+function scheduleLogsSave() {
+    if (logsSaveTimer) return;
+    logsSaveTimer = setTimeout(() => {
+        logsSaveTimer = null;
+        flushLogsToDisk();
+    }, 8000); // 8s debounce protects eMMC / MicroSD from excessive writes
+}
+
+function flushLogsToDisk() {
+    try {
+        if (!cachedDb) return;
+        const payloadLogs = { system_logs: cachedDb.system_logs || [] };
+        const fPath = path.join(dataDir, 'local_db_logs.json');
+        const tmp = fPath + '.tmp';
+        fs.writeFileSync(tmp, JSON.stringify(payloadLogs, null, 2));
+        fs.renameSync(tmp, fPath);
+    } catch (e) {
+        console.error('[LOGGER] Error flushing logs to disk:', e.message);
+    }
+}
+
 function sysLog(level, message, category = 'SYSTEM') {
     const timestamp = getLocalTimeString();
     console.log(`[${timestamp}] [${level}] [${category}] ${message}`);
@@ -2335,7 +2357,9 @@ function sysLog(level, message, category = 'SYSTEM') {
         
         dbData.system_logs.push({ id: Date.now(), timestamp, level, category, message });
         if (dbData.system_logs.length > 5000) dbData.system_logs.shift(); // Keep last 5000 logs
-        saveNvrDb(dbData);
+        
+        // High-Performance Debounced save prevents event-loop stalls & disk wear
+        scheduleLogsSave();
     } catch (e) {}
 }
 
@@ -5898,9 +5922,109 @@ app.get('/api/settings', verifyToken, (req, res) => {
 app.get('/api/logs', verifyToken, (req, res) => {
     try {
         const dbData = getNvrDb();
-        res.json({ logs: dbData.system_logs || [] });
+        const allLogs = dbData.system_logs || [];
+        
+        // Calculate summary stats
+        let total = allLogs.length;
+        let infoCount = 0;
+        let warnCount = 0;
+        let errorCount = 0;
+        let cameraCount = 0;
+        let storageCount = 0;
+        let securityCount = 0;
+        
+        for (let i = 0; i < allLogs.length; i++) {
+            const l = allLogs[i];
+            if (l.level === 'ERROR') errorCount++;
+            else if (l.level === 'WARN') warnCount++;
+            else infoCount++;
+            
+            if (l.category === 'CAMERA') cameraCount++;
+            else if (l.category === 'STORAGE') storageCount++;
+            else if (l.category === 'SECURITY') securityCount++;
+        }
+
+        const stats = {
+            total,
+            info: infoCount,
+            warn: warnCount,
+            error: errorCount,
+            camera: cameraCount,
+            storage: storageCount,
+            security: securityCount
+        };
+
+        const limit = req.query.limit ? parseInt(req.query.limit, 10) : 0;
+        const category = req.query.category || 'ALL';
+        const level = req.query.level || 'ALL';
+        const search = (req.query.search || '').trim().toLowerCase();
+
+        let filtered = allLogs;
+        if (category !== 'ALL' || level !== 'ALL' || search) {
+            filtered = allLogs.filter(log => {
+                const logCat = log.category || 'SYSTEM';
+                if (category !== 'ALL' && logCat !== category) return false;
+                if (level !== 'ALL' && log.level !== level) return false;
+                if (search && !(log.message || '').toLowerCase().includes(search)) return false;
+                return true;
+            });
+        }
+
+        if (limit > 0 && filtered.length > limit) {
+            const sliced = filtered.slice(filtered.length - limit);
+            return res.json({ logs: sliced, totalCount: filtered.length, stats });
+        }
+
+        res.json({ logs: filtered, totalCount: filtered.length, stats });
     } catch(e) {
         res.status(500).json({ error: e.message });
+    }
+});
+
+app.delete('/api/logs', verifyToken, requireAdministrator, (req, res) => {
+    try {
+        const dbData = getNvrDb();
+        dbData.system_logs = [];
+        flushLogsToDisk();
+        sysLog('INFO', `Log sistem berhasil dibersihkan oleh ${req.userRole || 'Administrator'}`, 'SYSTEM');
+        flushLogsToDisk();
+        res.json({ success: true, message: 'Log sistem berhasil dibersihkan.' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/logs/export', verifyToken, (req, res) => {
+    try {
+        const dbData = getNvrDb();
+        const allLogs = dbData.system_logs || [];
+        const format = req.query.format === 'csv' ? 'csv' : 'txt';
+        const dateStr = new Date().toISOString().slice(0, 10);
+        
+        if (format === 'csv') {
+            let csvContent = 'ID,Waktu,Level,Kategori,Pesan\n';
+            allLogs.forEach(l => {
+                const safeMsg = (l.message || '').replace(/"/g, '""');
+                csvContent += `"${l.id}","${l.timestamp}","${l.level}","${l.category || 'SYSTEM'}","${safeMsg}"\n`;
+            });
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="arch3r_system_logs_${dateStr}.csv"`);
+            return res.send(csvContent);
+        } else {
+            let txtContent = `=======================================================\n`;
+            txtContent += ` ARCH3R NVR - SYSTEM LOGS EXPORT\n`;
+            txtContent += ` Waktu Ekspor: ${new Date().toLocaleString('id-ID')}\n`;
+            txtContent += ` Total Baris: ${allLogs.length}\n`;
+            txtContent += `=======================================================\n\n`;
+            allLogs.forEach(l => {
+                txtContent += `[${l.timestamp}] [${l.level}] [${l.category || 'SYSTEM'}] ${l.message}\n`;
+            });
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="arch3r_system_logs_${dateStr}.txt"`);
+            return res.send(txtContent);
+        }
+    } catch (e) {
+        res.status(500).send('Gagal mengekspor log: ' + e.message);
     }
 });
 
