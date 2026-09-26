@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 10.9.9] - 2026-09-26
+### Universal Multi-Timezone Auto Synchronizer & Zero-UTC Offset Error Correction
+- **Koreksi Cap Waktu Lokal Otomatis (`public/script.js`):**
+  - **Eliminasi Kesalahan Offset UTC**: Memperbaiki pencetakan cap waktu pada canvas CCTV OSD (`REC ● CAM-YOLO AI | YYYY-MM-DD HH:mm:ss | ARCH3R NVR`) yang sebelumnya memanggil `.toISOString()` (waktu standar UTC GMT+0 yang tertinggal 7 jam ke hari kemarin).
+  - **Universal Local Device Timezone Format**: Mengganti pemformatan dengan fungsi penanggalan lokal dinamis (`getFullYear`, `getMonth`, `getDate`, `getHours`, `getMinutes`, `getSeconds`).
+  - **Global Multi-Region Compatibility**: Di mana pun sistem NVR atau klien berada (WIB, WITA, WIT, Tokyo, London, atau New York), jam pada canvas OSD dan event strip log deteksi otomatis 100% selaras dengan jam asli pada OSD video CCTV fisik dan perangkat tanpa memerlukan hardcode zona waktu.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.9.9** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
+
 ## [Ver 10.9.8] - 2026-09-26
 ### Clean Tactical Video Canvas, External Telemetry Status Bar & Separated Heatmap Analytics
 - **Pembersihan Total Bidang Video Canvas (`public/script.js` & `public/index.html`):**

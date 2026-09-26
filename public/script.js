@@ -12037,8 +12037,12 @@ function recordYoloDetectionEvent(obj, isInsideRoi) {
     }
     lastRecordedDetectionMap.set(key, nowMs);
 
-    const now = new Date();
-    const timeStr = now.toTimeString().substring(0, 8);
+    // Universal Local Timezone Handling for Event Card Time
+    const eventDate = (obj.timestamp && typeof obj.timestamp === 'number') 
+        ? new Date(obj.timestamp) 
+        : (obj.timestamp ? new Date(obj.timestamp) : new Date());
+    const pad = (n) => String(n).padStart(2, '0');
+    const timeStr = `${pad(eventDate.getHours())}:${pad(eventDate.getMinutes())}:${pad(eventDate.getSeconds())}`;
 
     const eventItem = {
         id: `yolo_evt_${nowMs}_${Math.floor(Math.random() * 1000)}`,
@@ -12179,12 +12183,14 @@ function drawYoloViewLiveCanvasStream(timestamp) {
         ctx.textAlign = 'left';
     }
 
-    // Top-Left CCTV OSD Timestamp
+    // Professional Clean Local OSD Timestamp (Universal Multi-Timezone & Zero-UTC Offset Error)
     const now = new Date();
-    const timeString = now.toISOString().replace('T', ' ').substring(0, 19);
+    const pad = (n) => String(n).padStart(2, '0');
+    const localDateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const localTimeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     ctx.font = 'bold 11px monospace';
     ctx.fillStyle = '#22c55e';
-    ctx.fillText(`REC ● CAM-YOLO AI | ${timeString} | ARCH3R NVR`, 14, 22);
+    ctx.fillText(`REC ● CAM-YOLO AI | ${localDateStr} ${localTimeStr} | ARCH3R NVR`, 14, 22);
 
     // Read Filter States
     const filterPerson = !!document.getElementById('yolo-view-filter-person')?.checked;

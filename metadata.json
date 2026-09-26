@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 10.9.8 - Clean Tactical Video Canvas, External Telemetry Status Bar & Separated Heatmap Analytics.",
+  "description": "Arch3r NVR Ver. 10.9.9 - Universal Multi-Timezone Auto Synchronizer & Zero-UTC Offset Error Correction.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

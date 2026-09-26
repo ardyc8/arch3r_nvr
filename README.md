@@ -1,5 +1,14 @@
-# ⚡ Arch3r NVR (Ver. 10.9.8)
+# ⚡ Arch3r NVR (Ver. 10.9.9)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.9.9:
+- **Universal Multi-Timezone Auto Synchronizer & Zero-UTC Offset Error Correction**:
+  1. **Koreksi Cap Waktu Lokal Otomatis (`public/script.js`)**:
+     - Mengatasi masalah perbedaan jam/tanggal 7 jam antara canvas OSD dan video CCTV fisik yang disebabkan pemanggilan format mentah `.toISOString()` (UTC GMT+0).
+     - Menerapkan pemformat lokal universal berbasis timezone perangkat pengguna tanpa hardcode string zona.
+     - Di mana pun sistem dipasang (WIB, WITA, WIT, atau zona waktu internasional), waktu deteksi dan cap OSD otomatis selaras 100% dengan jam asli kamera CCTV.
+  2. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.9.9** pada seluruh komponen sistem sesuai aturan Semantic Versioning Strict.
 
 ### 📋 Changelog Pembaruan Ver. 10.9.8:
 - **Clean Tactical Video Canvas, External Telemetry Status Bar & Separated Heatmap Analytics**:
