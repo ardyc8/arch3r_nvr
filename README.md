@@ -1,5 +1,14 @@
-# ⚡ Arch3r NVR (Ver. 10.9.0)
+# ⚡ Arch3r NVR (Ver. 10.9.1)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 10.9.1:
+- **Enhanced FFmpeg RTSP Probe Buffer (Anti-Drop / SPS-PPS Recovery), Audio Stream Dynamic Mapping & Continuous Recording Stability**:
+  1. **Optimalisasi FFmpeg Perekaman Kontinyu (`server.js`)**:
+     - Menambahkan flag `-analyzeduration 5000000` (5 detik) dan `-probesize 5000000` (5 MB) sebelum parameter input `-i` untuk memastikan FFmpeg berhasil membaca header SPS/PPS dan parameter video pada kamera yang lambat handshake (mengatasi error `unspecified size`, `Output file does not contain any stream`, dan `Invalid argument`).
+     - Menambahkan parameter `-stimeout 10000000` (10 detik) dan `-fflags +genpts+nobuffer+discardcorrupt` untuk mencegah perekaman berhenti mendadak akibat *jitter* WiFi atau *packet loss* (CSeq mismatch).
+     - Menerapkan mapping stream `-map 0:v:0` dan `-map 0:a?` (audio opsional) sehingga kamera tanpa mikrofon tidak memicu peringatan *Codec AVOption b*.
+  2. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 10.9.1** pada seluruh komponen sistem.
 
 ### 📋 Changelog Pembaruan Ver. 10.9.0:
 - **Resolved Duplicate Variable Declaration in Script Lifecycle & Semantic Minor Version Transition**:

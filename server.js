@@ -3470,14 +3470,23 @@ function spawnRecordingFFmpeg(cam) {
     } else {
         const isRtsp = typeof sourceUrl === 'string' && sourceUrl.startsWith('rtsp://');
         inputArgs = [
-            ...(isRtsp ? ['-rtsp_transport', 'tcp'] : []),
+            ...(isRtsp ? [
+                '-rtsp_transport', 'tcp',
+                '-rtsp_flags', 'prefer_tcp',
+                '-stimeout', '10000000', // 10s socket timeout in microseconds (prevents RTSP packet drop / hang)
+                '-analyzeduration', '5000000', // 5s analyze buffer for SPS/PPS detection
+                '-probesize', '5000000', // 5MB probe buffer
+                '-fflags', '+genpts+nobuffer+discardcorrupt'
+            ] : []),
             '-i', sourceUrl
         ];
     }
 
     // Parameter Audio Transcoding / Passthrough untuk perekaman MP4
     let audioArgs = ['-an'];
+    let hasAudioMap = false;
     if (cam.audioEnabled !== false && cam.audioCodec !== 'none') {
+        hasAudioMap = true;
         if (cam.audioCodec === 'copy') {
             audioArgs = ['-c:a', 'copy'];
         } else if (cam.audioCodec === 'opus') {
@@ -3495,6 +3504,8 @@ function spawnRecordingFFmpeg(cam) {
         '-y',
         '-loglevel', 'warning',
         ...inputArgs,
+        '-map', '0:v:0',
+        ...(hasAudioMap ? ['-map', '0:a?'] : []),
         '-c:v', isDemo ? 'libx264' : 'copy',
         ...(isDemo ? ['-preset', 'ultrafast'] : []),
         ...audioArgs,

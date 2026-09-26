@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 10.9.1] - 2026-09-26
+### Enhanced FFmpeg RTSP Probe Buffer (Anti-Drop / SPS-PPS Recovery), Audio Stream Dynamic Mapping & Continuous Recording Stability
+- **Optimalisasi FFmpeg Perekaman Kontinyu (`server.js`):**
+  - **RTSP Probe & Analyze Buffer**: Menambahkan flag `-analyzeduration 5000000` (5 detik) dan `-probesize 5000000` (5 MB) sebelum parameter input `-i` untuk memastikan FFmpeg berhasil membaca header SPS/PPS dan parameter video pada kamera yang lambat handshake (mengatasi error `unspecified size`, `Output file does not contain any stream`, dan `Invalid argument`).
+  - **RTSP Socket Timeout & Packet Resiliency**: Menambahkan parameter `-stimeout 10000000` (10 detik) dan `-fflags +genpts+nobuffer+discardcorrupt` untuk mencegah perekaman berhenti mendadak akibat *jitter* WiFi atau *packet loss* (CSeq mismatch).
+  - **Dynamic Audio Stream Mapping**: Menerapkan mapping stream `-map 0:v:0` dan `-map 0:a?` (audio opsional) sehingga kamera tanpa mikrofon tidak memicu peringatan *Codec AVOption b*.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 10.9.1** pada seluruh komponen sistem.
+
 ## [Ver 10.9.0] - 2026-09-26
 ### Resolved Duplicate Variable Declaration in Script Lifecycle & Semantic Minor Version Transition
 - **Perbaikan SyntaxError Script Frontend (`public/script.js`):**
