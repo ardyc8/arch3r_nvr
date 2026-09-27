@@ -32,14 +32,16 @@ if [ -f "venv/bin/activate" ]; then
     echo "[!] Menginstal Dependensi AI (Menggunakan Disk TMP, menghindari limit RAM)..."
     pip install --no-cache-dir fastapi uvicorn opencv-python ultralytics httpx
     
-    echo "[4/4] Menjalankan Arch3r AI YOLO Service..."
+    echo "[4/4] Menjalankan Arch3r AI YOLO Service (Port: ${AI_PORT:-5055})..."
     rm -rf pip_tmp
-    python addons/ai_yolo_service.py
+    AI_PORT="${AI_YOLO_PORT:-5055}"
+    python addons/ai_yolo_service.py --port="${AI_PORT}"
 else
     echo "[!] Peringatan: Venv gagal dibuat. Menggunakan instalasi sistem (--break-system-packages)..."
     pip3 install --no-cache-dir fastapi uvicorn opencv-python ultralytics httpx --break-system-packages
     
-    echo "[4/4] Menjalankan Arch3r AI YOLO Service..."
+    AI_PORT="${AI_YOLO_PORT:-5055}"
+    echo "[4/4] Menjalankan Arch3r AI YOLO Service (Port: ${AI_PORT})..."
     rm -rf pip_tmp
-    python3 addons/ai_yolo_service.py
+    python3 addons/ai_yolo_service.py --port="${AI_PORT}"
 fi

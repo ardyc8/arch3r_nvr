@@ -6686,6 +6686,11 @@ function getAiScriptPath() {
     return candidates[0];
 }
 
+// Configurable AI YOLO daemon port (Default 5055 to prevent port conflict with Node.js on 8000)
+function getAiYoloPort() {
+    return parseInt(process.env.AI_YOLO_PORT || '5055', 10);
+}
+
 let aiYoloAddon = null;
 try {
     const addonEntry = path.join(__dirname, 'addons', 'ai-yolo', 'index.js');
@@ -6697,10 +6702,11 @@ try {
 }
 
 async function startPythonAiService() {
-    // 1. Cek jika daemon sudah online di port 8000
+    const aiPort = getAiYoloPort();
+    // 1. Cek jika daemon sudah online di port AI yang ditentukan
     const current = await checkPythonAiStatus();
     if (current.active) {
-        return { success: true, message: 'Layanan Python YOLO AI sudah aktif dan merespons di port 8000.', alreadyRunning: true, status: current };
+        return { success: true, message: `Layanan Python YOLO AI sudah aktif dan merespons di port ${aiPort}.`, alreadyRunning: true, status: current };
     }
 
     if (aiYoloAddon && typeof aiYoloAddon.controlService === 'function') {
@@ -6710,7 +6716,7 @@ async function startPythonAiService() {
                     sysLog('ERROR', `[AI Daemon] Gagal menyalakan AI YOLO: ${err.message}`, 'ADDON');
                     return resolve({ success: false, error: err.message });
                 }
-                sysLog('INFO', `[AI Daemon] Layanan AI YOLO berhasil dinyalakan (Mode: ${result.mode}, Port: ${result.port || 8000})`, 'ADDON');
+                sysLog('INFO', `[AI Daemon] Layanan AI YOLO berhasil dinyalakan (Mode: ${result.mode}, Port: ${result.port || aiPort})`, 'ADDON');
                 resolve({ success: true, message: 'Layanan AI YOLO berhasil dinyalakan dan aktif!', ...result });
             });
         });
@@ -6721,7 +6727,7 @@ async function startPythonAiService() {
         if (pythonAiProcess && !pythonAiProcess.killed) {
             pythonAiProcess.kill('SIGTERM');
         }
-        child_process.execSync('fuser -k 8000/tcp 2>/dev/null || pkill -f ai_yolo_service.py 2>/dev/null || true');
+        child_process.execSync(`fuser -k ${aiPort}/tcp 2>/dev/null || pkill -f ai_yolo_service.py 2>/dev/null || true`);
     } catch (_) {}
 
     // 3. Tentukan binary Python dan path script
@@ -6733,14 +6739,14 @@ async function startPythonAiService() {
         return { success: false, error: `Script AI tidak ditemukan di ${scriptPath}` };
     }
 
-    sysLog('INFO', `[AI Daemon] Menyalakan proses latar belakang YOLO AI: ${pyBin} ${scriptPath}`, 'ADDON');
+    sysLog('INFO', `[AI Daemon] Menyalakan proses latar belakang YOLO AI: ${pyBin} ${scriptPath} --port=${aiPort}`, 'ADDON');
 
     try {
-        pythonAiProcess = spawn(pyBin, [scriptPath], {
+        pythonAiProcess = spawn(pyBin, [scriptPath, `--port=${aiPort}`], {
             cwd: __dirname,
             detached: false,
             stdio: ['ignore', 'pipe', 'pipe'],
-            env: { ...process.env, PYTHONUNBUFFERED: '1' }
+            env: { ...process.env, PYTHONUNBUFFERED: '1', AI_YOLO_PORT: String(aiPort) }
         });
 
         pythonAiProcess.stdout.on('data', (data) => {
@@ -6760,12 +6766,12 @@ async function startPythonAiService() {
             pythonAiProcess = null;
         });
 
-        // 4. Polling responsif hingga port 8000 online (maksimal 4.5 detik)
+        // 4. Polling responsif hingga port online (maksimal 4.5 detik)
         for (let i = 0; i < 9; i++) {
             await new Promise(r => setTimeout(r, 500));
             const status = await checkPythonAiStatus();
             if (status.active) {
-                sysLog('INFO', `[AI Daemon] Layanan YOLO AI berhasil online di port 8000!`, 'ADDON');
+                sysLog('INFO', `[AI Daemon] Layanan YOLO AI berhasil online di port ${aiPort}!`, 'ADDON');
                 return { success: true, message: 'Layanan YOLO AI berhasil dinyalakan dan aktif!', status };
             }
         }
@@ -6782,6 +6788,7 @@ async function startPythonAiService() {
 }
 
 async function stopPythonAiService() {
+    const aiPort = getAiYoloPort();
     sysLog('INFO', `[AI Daemon] Mematikan proses background YOLO AI...`, 'ADDON');
     if (aiYoloAddon && typeof aiYoloAddon.controlService === 'function') {
         return new Promise((resolve) => {
@@ -6799,7 +6806,7 @@ async function stopPythonAiService() {
                 try { if (pythonAiProcess) pythonAiProcess.kill('SIGKILL'); } catch (_) {}
             }, 1000);
         }
-        child_process.exec('pm2 stop arch3r-ai-yolo 2>/dev/null || fuser -k 8000/tcp 2>/dev/null || pkill -f ai_yolo_service.py 2>/dev/null || true');
+        child_process.exec(`pm2 stop arch3r-ai-yolo 2>/dev/null || fuser -k ${aiPort}/tcp 2>/dev/null || pkill -f ai_yolo_service.py 2>/dev/null || true`);
         pythonAiProcess = null;
         return { success: true, message: 'Layanan Python AI berhasil dimatikan.' };
     } catch (err) {
@@ -6807,12 +6814,13 @@ async function stopPythonAiService() {
     }
 }
 
-// Check AI Python Daemon Status on Port 8000
+// Check AI Python Daemon Status on Configured Port (default 5055)
 async function checkPythonAiStatus() {
+    const aiPort = getAiYoloPort();
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 800);
-        const resp = await fetch('http://127.0.0.1:8000/api/ai/status', { signal: controller.signal });
+        const resp = await fetch(`http://127.0.0.1:${aiPort}/api/ai/status`, { signal: controller.signal });
         clearTimeout(timeoutId);
         if (resp.ok) {
             const data = await resp.json();
@@ -6826,14 +6834,14 @@ async function checkPythonAiStatus() {
                 currentInferenceFps = data.current_fps;
             }
             lastAiHeartbeatTime = Date.now();
-            return { active: true, running: true, engine: 'YOLOv8 Python Service', port: 8000, ...data };
+            return { active: true, running: true, engine: 'YOLOv8 Python Service', port: aiPort, ...data };
         }
     } catch (_) {}
     return { 
         active: false, 
         running: false, 
         engine: 'Embedded Hybrid AI Engine', 
-        port: 8000,
+        port: aiPort,
         model: 'yolov8n.pt',
         total_frames_processed: aiProcessedFramesCount,
         last_inference_latency_ms: lastInferenceLatencyMs,
@@ -6956,6 +6964,7 @@ app.post('/api/ai/diagnostics/probe', verifyToken, async (req, res) => {
     const cid = String(camera_id);
     const db = getNvrDb();
     const cam = (db.cameras || []).find(c => String(c.id) === cid);
+    const aiPort = getAiYoloPort();
     
     // Step 1: Check Python Daemon
     let pythonReachable = false;
@@ -6963,7 +6972,7 @@ app.post('/api/ai/diagnostics/probe', verifyToken, async (req, res) => {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 1200);
-        const resp = await fetch('http://127.0.0.1:8000/api/ai/diagnostics/probe', {
+        const resp = await fetch(`http://127.0.0.1:${aiPort}/api/ai/diagnostics/probe`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ camera_id: cid }),
@@ -6984,7 +6993,7 @@ app.post('/api/ai/diagnostics/probe', verifyToken, async (req, res) => {
         timestamp: new Date().toISOString(),
         tests: [
             {
-                name: 'Python YOLO Service Daemon (Port 8000)',
+                name: `Python YOLO Service Daemon (Port ${aiPort})`,
                 status: pythonReachable ? 'PASS' : 'STANDBY_HYBRID',
                 details: pythonReachable 
                     ? `Layanan daemon Python online & terhubung (Latency: ${pyProbeResult?.test_latency_ms || 12}ms)`
@@ -7450,11 +7459,12 @@ app.get('/api/ai/detections', verifyToken, async (req, res) => {
         return res.json({ success: true, detections: latestYoloDetections, fps: currentInferenceFps, latency_ms: lastInferenceLatencyMs });
     }
 
-    // Try fetching from Python YOLO inference engine if running on local port 8000
+    const aiPort = getAiYoloPort();
+    // Try fetching from Python YOLO inference engine if running on local port
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 1000);
-        const pyResp = await fetch(`http://127.0.0.1:8000/api/ai/detections?camera_id=${encodeURIComponent(camId)}`, {
+        const pyResp = await fetch(`http://127.0.0.1:${aiPort}/api/ai/detections?camera_id=${encodeURIComponent(camId)}`, {
             signal: controller.signal
         });
         clearTimeout(timeoutId);

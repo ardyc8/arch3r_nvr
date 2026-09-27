@@ -690,8 +690,21 @@ def start_worker(camera_id: str):
     print(f"[AI YOLO] Worker thread dimulai untuk Kamera #{cid}")
 
 if __name__ == "__main__":
+    # Custom / Configurable Port (Default 5055 to prevent conflict with Node.js on port 8000)
+    ai_port = int(os.environ.get("AI_YOLO_PORT", 5055))
+    try:
+        import sys
+        for arg in sys.argv[1:]:
+            if arg.startswith("--port="):
+                ai_port = int(arg.split("=")[1])
+            elif arg.isdigit():
+                ai_port = int(arg)
+    except Exception:
+        pass
+
     print("=====================================================")
-    print("  Arch3r NVR - AI YOLOv8 Inference Daemon Ver. 10.9.6")
-    print("  MediaMTX Loopback & Real-Time Canvas Screen Analysis")
+    print(f"  Arch3r NVR - AI YOLOv8 Inference Daemon Ver. 11.0.5")
+    print(f"  MediaMTX Loopback & Real-Time Canvas Screen Analysis")
+    print(f"  Listening on: http://0.0.0.0:{ai_port}")
     print("=====================================================")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=ai_port)

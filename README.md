@@ -1,5 +1,17 @@
-# ⚡ Arch3r NVR (Ver. 11.0.4)
+# ⚡ Arch3r NVR (Ver. 11.0.5)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.0.5:
+- **Configurable AI YOLO Port Architecture & Zero Port 8000 Conflict**:
+  1. **Dukungan Custom Port Fleksibel (`addons/ai_yolo_service.py` & `start_ai_service.sh`)**:
+     - Memindahkan port default daemon Python dari `8000` (yang bentrok dengan server Node.js Arch3r NVR) ke port bebas **`5055`**.
+     - Mendukung argumen kustom `--port=<nomor_port>` dan variabel lingkungan `AI_YOLO_PORT`.
+  2. **Integrasi Dinamis Node.js Backend (`server.js`)**:
+     - Fungsi `getAiYoloPort()` membaca port secara otomatis dari konfigurasi sistem.
+     - Semua proxy telemetri, probe status, dan query deteksi (`/api/ai/status`, `/api/ai/diagnostics/probe`, `/api/ai/detections`) otomatis terhubung ke port Python yang tepat.
+  3. **Pembersihan Dependensi & Cache (`package.json`)**:
+     - Menghapus entri ganda `vite` di `package.json` dan menyegarkan integritas package manager.
+     - Penyelarasan versi sistem ke **Ver. 11.0.5**.
 
 ### 📋 Changelog Pembaruan Ver. 11.0.4:
 - **ARM STB Safe Multi-Engine AI Architecture (Zero Illegal Instruction)**:

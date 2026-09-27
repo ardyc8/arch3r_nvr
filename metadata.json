@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.0.4 - ARM STB Safe Multi-Engine AI (OpenCV DNN & Optical Contour Tracking).",
+  "description": "Arch3r NVR Ver. 11.0.5 - Configurable AI YOLO Port Architecture & Zero-Conflict STB Engine.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
