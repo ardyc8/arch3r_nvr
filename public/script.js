@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 11.1.2 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 11.1.3 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -9740,7 +9740,12 @@ async function fetchInstalledAddons() {
                         </td>
                         <td style="padding: 1rem 1.5rem; text-align:right;">
                             <div style="display:flex; justify-content:flex-end; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-                                <button class="btn-sm btn-primary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan">⚙️</button>
+                                ${(addon.id === 'ai_yolo' || addon.id === 'ai-yolo') ? `
+                                    <button class="btn-sm btn-primary" onclick="openYoloAiPage()" title="Buka Studio AI Vision Terpadu" style="display:inline-flex; align-items:center; gap:0.35rem; background:#2563eb; border-color:#2563eb; font-weight:600; padding:0.3rem 0.8rem; border-radius:6px; box-shadow:0 2px 6px rgba(37,99,235,0.35);">
+                                        <span>🎯</span> Studio AI
+                                    </button>
+                                ` : ''}
+                                <button class="btn-sm btn-secondary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan Global">⚙️</button>
                                 <button class="btn-sm btn-secondary" onclick="toggleAddonState('${addon.id}', ${!addon.active})" title="${addon.active ? 'Matikan' : 'Nyalakan'}">
                                     ${addon.active ? '⏹️' : '▶️'}
                                 </button>
@@ -11044,34 +11049,25 @@ function saveYoloCamerasToStorage() {
 
 function resetAddonsView() {
     const repoView = document.getElementById('addons-repository-view');
-    const yoloMainView = document.getElementById('yolo-main-list-view');
-    const yoloSettingsView = document.getElementById('yolo-settings-view');
+    const settingsView = document.getElementById('yolo-settings-view');
 
     if (repoView) repoView.style.display = 'block';
-    if (yoloMainView) yoloMainView.style.display = 'none';
-    if (yoloSettingsView) yoloSettingsView.style.display = 'none';
+    if (settingsView) settingsView.style.display = 'none';
 }
 window.resetAddonsView = resetAddonsView;
 
-function initYoloAiPage() {
-    loadYoloCamerasFromStorage();
-    renderYoloCameraList();
-}
-window.initYoloAiPage = initYoloAiPage;
-
-function openYoloAiPage() {
+function openYoloAiPage(targetCamId) {
     if (typeof window.navigateToView === 'function') {
         window.navigateToView('view-addons', false);
     }
     const repoView = document.getElementById('addons-repository-view');
-    const yoloMainView = document.getElementById('yolo-main-list-view');
-    const yoloSettingsView = document.getElementById('yolo-settings-view');
+    const settingsView = document.getElementById('yolo-settings-view');
 
     if (repoView) repoView.style.display = 'none';
-    if (yoloMainView) yoloMainView.style.display = 'block';
-    if (yoloSettingsView) yoloSettingsView.style.display = 'none';
+    if (settingsView) settingsView.style.display = 'block';
 
-    initYoloAiPage();
+    const camId = targetCamId || getActiveYoloCameraId();
+    openYoloCameraSettings(camId);
 }
 window.openYoloAiPage = openYoloAiPage;
 
@@ -13938,24 +13934,32 @@ function openYoloCameraSettings(camId) {
     const switcher = document.getElementById('yolo-studio-channel-switcher');
     if (switcher) {
         switcher.innerHTML = '';
-        const activeList = (yoloCamerasList && yoloCamerasList.length > 0) ? yoloCamerasList : (window.cameras || []);
-        activeList.forEach(c => {
-            const cid = String(c.id);
-            const cnm = c.name || `Kamera #${cid}`;
+        const globalCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+        const activeList = (globalCams && globalCams.length > 0) ? globalCams : (yoloCamerasList || []);
+        
+        if (activeList.length === 0) {
             const opt = document.createElement('option');
-            opt.value = cid;
-            opt.textContent = cnm;
-            if (cid === String(camId)) opt.selected = true;
+            opt.value = String(camId);
+            opt.textContent = `Kamera #${camId}`;
+            opt.selected = true;
             switcher.appendChild(opt);
-        });
+        } else {
+            activeList.forEach(c => {
+                const cid = String(c.id);
+                const cnm = c.name || `Kamera #${cid}`;
+                const opt = document.createElement('option');
+                opt.value = cid;
+                opt.textContent = cnm;
+                if (cid === String(camId)) opt.selected = true;
+                switcher.appendChild(opt);
+            });
+        }
     }
 
     const repoView = document.getElementById('addons-repository-view');
-    const mainList = document.getElementById('yolo-main-list-view');
     const settingsView = document.getElementById('yolo-settings-view');
 
     if (repoView) repoView.style.display = 'none';
-    if (mainList) mainList.style.display = 'none';
     if (settingsView) settingsView.style.display = 'block';
 
     // Reset event strip for selected camera session
@@ -13999,11 +14003,9 @@ function closeYoloCameraSettings() {
     }
 
     const repoView = document.getElementById('addons-repository-view');
-    const mainList = document.getElementById('yolo-main-list-view');
     const settingsView = document.getElementById('yolo-settings-view');
 
-    if (repoView) repoView.style.display = 'none';
-    if (mainList) mainList.style.display = 'block';
+    if (repoView) repoView.style.display = 'block';
     if (settingsView) settingsView.style.display = 'none';
 }
 window.closeYoloCameraSettings = closeYoloCameraSettings;

@@ -1383,82 +1383,37 @@
                         </div>
                     </div>
 
-                    <!-- 2. MANAGE VIEW: KELOLA ADDON YOLO AI (DISAMBUNG DARI TOMBOL KELOLA DI REPOSITORI) -->
-                    <div id="yolo-main-list-view" style="display:none;">
-                        <!-- Header Kelola YOLO AI -->
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.25rem 1.5rem; box-shadow:0 4px 6px rgba(0,0,0,0.3);">
-                            <div style="display:flex; align-items:center; gap:0.85rem;">
-                                <button type="button" class="btn btn-secondary" onclick="closeYoloAiPage()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; padding:0.5rem 0.9rem;">
-                                    <span>⬅️</span> Kembali ke Repositori Addons
-                                </button>
-                                <div>
-                                    <h2 style="margin:0; font-size:1.5rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                                        <span>🎯</span> Studio AI Vision & Kanal Kamera NVR
-                                    </h2>
-                                    <p style="color:var(--text-muted); margin:0.25rem 0 0 0; font-size:0.85rem;">
-                                        Pilih kamera NVR terdaftar untuk mengaktifkan analisis objek cerdas, mengatur area deteksi (ROI), dan konfigurasi alarm.
-                                    </p>
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <button type="button" class="btn btn-secondary" onclick="runYoloAiDiagnosticsProbe()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.88rem; padding:0.55rem 1rem; border-radius:8px; background:rgba(168,85,247,0.15); border-color:rgba(168,85,247,0.4); color:#c084fc;">
-                                    <span>🩺</span> Dokter Lingkungan AI
-                                </button>
-                                <button type="button" class="btn btn-primary" onclick="openAddYoloCameraModal()" style="background:#2563eb; border-color:#2563eb; display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; font-weight:600; padding:0.55rem 1.1rem; border-radius:8px;">
-                                    <span>➕</span> Hubungkan Kamera NVR
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Panel List Kamera YOLO AI -->
-                        <div style="background:var(--surface); border-radius:10px; border:1px solid var(--border); padding:1.25rem; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border);">
-                                <div>
-                                    <h3 style="margin:0; font-size:1.1rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                                        <span>📹</span> Kanal Kamera Bertiket Analisis AI
-                                    </h3>
-                                    <span style="font-size:0.78rem; color:var(--text-muted);">Hanya kamera yang dicentang aktif yang dianalisis oleh model AI YOLO di STB.</span>
-                                </div>
-                                <span id="yolo-camera-count-badge" class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">0 Kamera Terhubung</span>
-                            </div>
-
-                            <!-- List Baris Kamera -->
-                            <div id="yolo-camera-list-container" style="display:flex; flex-direction:column; gap:0.75rem;">
-                                <!-- Dynamically populated via script.js -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 3. SETTINGS VIEW: ENTERPRISE YOLO AI STUDIO (Unified Video Stream + Tactical Canvas + Real-Time Event Strip) -->
+                    <!-- 2. VIEW: ENTERPRISE YOLO AI STUDIO (Unified Video Stream + Tactical Canvas + Real-Time Event Strip) -->
                     <div id="yolo-settings-view" style="display:none;">
                         <div style="background:var(--surface); border-radius:12px; border:1px solid var(--border); padding:1.25rem 1.5rem; box-shadow:0 6px 20px rgba(0,0,0,0.4);">
                             
-                            <!-- Header Settings YOLO AI -->
+                            <!-- Header Settings YOLO AI Studio -->
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:0.85rem;">
+                                <!-- Sisi Kiri: Tombol Kembali, Judul & Switcher Kanal Kamera NVR -->
                                 <div style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap;">
                                     <button type="button" class="btn btn-secondary" onclick="closeYoloCameraSettings()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; padding:0.45rem 0.85rem;">
-                                        <span>⬅️</span> Kembali
+                                        <span>⬅️</span> Kembali ke Addons
                                     </button>
                                     <div>
                                         <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
                                             <h3 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                                                <span>🎯</span> YOLO AI Studio &mdash; <span id="yolo-settings-camera-name" style="color:#38bdf8; font-weight:700;">Kamera</span>
+                                                <span>🎯</span> Studio AI Vision &mdash; <span id="yolo-settings-camera-name" style="color:#38bdf8; font-weight:700;">Kamera</span>
                                             </h3>
                                             <!-- PENGALIH CEPAT KANAL KAMERA NVR -->
-                                            <div style="display:inline-flex; align-items:center; gap:0.35rem; background:rgba(0,0,0,0.3); padding:2px 8px; border-radius:6px; border:1px solid var(--border);">
-                                                <span style="font-size:0.75rem; color:var(--text-muted);">Pilih Kamera:</span>
-                                                <select id="yolo-studio-channel-switcher" onchange="switchYoloActiveCamera(this.value)" style="background:transparent; color:#38bdf8; border:none; font-size:0.8rem; font-weight:700; cursor:pointer; outline:none; padding:2px 4px;">
+                                            <div style="display:inline-flex; align-items:center; gap:0.4rem; background:rgba(15,23,42,0.85); padding:3px 10px; border-radius:6px; border:1px solid rgba(59,130,246,0.3);">
+                                                <span style="font-size:0.75rem; color:var(--text-muted);">📹 Kanal Kamera:</span>
+                                                <select id="yolo-studio-channel-switcher" onchange="switchYoloActiveCamera(this.value)" style="background:#0f172a; color:#38bdf8; border:1px solid var(--border); font-size:0.82rem; font-weight:700; cursor:pointer; outline:none; padding:3px 8px; border-radius:4px;">
                                                     <!-- Dynamically populated from available cameras -->
                                                 </select>
                                             </div>
                                         </div>
                                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
-                                            Intelligent Object Analytics &bull; RKNN STB Acceleration &bull; Unified Stream
+                                            Intelligent Object Analytics &bull; RKNN STB Acceleration &bull; Unified RTSP/HLS Stream
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Action Toolbar -->
+                                <!-- Sisi Kanan: Action Toolbar Rapi & Terstruktur -->
                                 <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                                     <button type="button" id="yolo-btn-service-power" class="btn btn-secondary" onclick="toggleYoloAiDaemonPower()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem;" title="Nyalakan / Matikan Proses Daemon AI di Latar Belakang STB">
                                         <span id="yolo-service-power-icon">⚡</span> <span id="yolo-service-power-text">Layanan AI</span>
@@ -1466,21 +1421,23 @@
                                     <button type="button" class="btn btn-secondary" onclick="runYoloAiDiagnosticsProbe()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem; background:rgba(168,85,247,0.15); border-color:rgba(168,85,247,0.4); color:#c084fc;" title="Uji & Verifikasi Real-time Pipeline AI">
                                         <span>🩺</span> Diagnostik AI
                                     </button>
-                                    <button type="button" id="yolo-btn-toggle-roi" class="btn btn-secondary" onclick="toggleYoloRoiEditMode()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem; border-color:rgba(34,197,94,0.4); color:#4ade80; background:rgba(34,197,94,0.1);">
+                                    <button type="button" id="yolo-btn-toggle-roi" class="btn btn-secondary" onclick="toggleYoloRoiEditMode()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem; border-color:rgba(34,197,94,0.4); color:#4ade80; background:rgba(34,197,94,0.1);" title="Atur Area Deteksi Target Intrusi">
                                         <span>✏️</span> Atur Zona ROI
                                     </button>
                                     <button type="button" id="yolo-btn-toggle-heatmap" class="btn btn-secondary" onclick="toggleYoloHeatmapOverlay()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem; border-color:rgba(249,115,22,0.4); color:#fb923c; background:rgba(249,115,22,0.1);" title="Aktifkan / Matikan Tampilan Heatmap Bounding Box & Verifikasi Fokus ROI">
                                         <span id="yolo-heatmap-icon">🔥</span> <span id="yolo-heatmap-text">Heatmap: OFF</span>
                                     </button>
-                                    <button type="button" class="btn btn-secondary" onclick="openYoloParametersModal()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem; background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); color:#60a5fa;">
+                                    <button type="button" class="btn btn-secondary" onclick="openYoloParametersModal()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.83rem; font-weight:600; padding:0.45rem 0.85rem; background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); color:#60a5fa;" title="Konfigurasi Sensitivitas, Sampling FPS, & Aksi Alarm">
                                         <span>⚙️</span> Parameter AI
                                     </button>
-                                    <button type="button" class="btn btn-secondary" onclick="refreshYoloSettingStream()" style="font-size:0.83rem; padding:0.45rem 0.65rem;" title="Segarkan Stream Video">
-                                        <span>🔄</span>
-                                    </button>
-                                    <button type="button" class="btn btn-secondary" onclick="toggleYoloVideoFullscreen()" style="font-size:0.83rem; padding:0.45rem 0.65rem;" title="Layar Penuh">
-                                        <span>⛶</span>
-                                    </button>
+                                    <div style="display:flex; gap:0.25rem; border-left:1px solid var(--border); padding-left:0.5rem;">
+                                        <button type="button" class="btn btn-secondary" onclick="refreshYoloSettingStream()" style="font-size:0.83rem; padding:0.45rem 0.65rem;" title="Segarkan Stream Video">
+                                            <span>🔄</span>
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" onclick="toggleYoloVideoFullscreen()" style="font-size:0.83rem; padding:0.45rem 0.65rem;" title="Layar Penuh">
+                                            <span>⛶</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2440,6 +2397,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=11.1.2"></script>
+    <script src="script.js?v=11.1.3"></script>
 </body>
 </html>
