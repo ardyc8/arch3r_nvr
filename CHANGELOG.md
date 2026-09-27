@@ -1,5 +1,103 @@
 # Changelog
 
+## [Ver 11.1.7] - 2026-09-27
+### Dynamic Active Mount Validator, Auto-Inherit Drive & eMMC Anti-Leak Protection
+- **Dynamic Active Mount Validator & Auto-Fallback (`server.js`):**
+  - **Auto-Inherit Harddisk Aktif**: Jika kamera memiliki `storagePath` lama yang menunjuk ke drive yang sudah tidak ada / dicabut / berganti nama (misal nama volume lama `New Volume`), sistem secara otomatis mengabaikan path mati tersebut dan mengalihkan penulisan rekaman ke **Harddisk Eksternal yang saat ini aktif menancap** di STB Linux Armbian.
+  - **Eliminasi Hardcode Nama Harddisk**: Bebas menggunakan nama volume apa pun (`ArcHDD`, `Seagate`, `WD_1TB`, `TOSHIBA`, dll.) tanpa dependensi string statis.
+- **Proteksi Anti-Bocor eMMC Linux Armbian (`server.js`):**
+  - Fungsi `isStorageSafeForWriting` memvalidasi keberadaan fisik partisi Linux di `/media/devmon/*`, `/media/*`, atau `/mnt/*` sebelum FFmpeg menulis file rekaman MP4, mencegah pembuatan folder hantu di memori internal eMMC STB.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.7**.
+
+## [Ver 11.1.6] - 2026-09-27
+### Fixed Storage Path Nesting Recursion & Optimized Armbian STB RAM Watchdog
+- **Pembersihan Jalur Penyimpanan Rekaman (`server.js`):**
+  - **Eliminasi Recursion Duplikasi Folder**: Memperbaiki router jalur kamera `getEffectiveCameraStoragePath` agar normalisasi folder rekaman selalu berada tepat di `[Penyimpanan]/Arch3r_NVR/[ID_Kamera]` tanpa membuat subfolder bertumpuk.
+- **Optimasi Watchdog Memori STB (`server.js`):**
+  - **Ambang Batas Cerdas**: Menaikkan threshold proteksi RAM STB menjadi 900MB (atau di atas 65% penggunaan RAM) dengan jeda debounce 15 menit agar proses FFmpeg tidak ter-restart secara mendadak saat streaming multi-kamera aktif.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.6**.
+
+## [Ver 11.1.5] - 2026-09-27
+### Centralized Arch3r_NVR Storage Root & Hardware Multi-Drive Dynamic Scanner
+- **Centralized Storage Router (`server.js`):**
+  - **Root Terpadu `Arch3r_NVR`**: Semua rekaman video kamera secara otomatis ditempatkan di folder induk `Arch3r_NVR` pada partisi penyimpanan utama yang dipilih oleh pengguna.
+  - **Dynamic Storage Scanning**: Pemindaian menyeluruh terhadap semua harddisk eksternal dan partisi flash drive yang ter-mount di `/media/devmon/*` dan `/media/*`.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.5**.
+
+## [Ver 11.1.4] - 2026-09-27
+### Multi-Tenant Playback Streamlining & Devmon Fast Path Resolver
+- **Playback & Storage Engine Enhancements (`server.js`):**
+  - Sinkronisasi rekaman database `syncRecordingsToDB` memindai seluruh direktori drive secara dinamis dengan fallback path resolution untuk endpoint `/api/recordings/:camId/:date/:filename`.
+  - Akses unrestricted penuh untuk Superadmin dan Administrator Gedung pada daftar rekaman.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.4**.
+
+## [Ver 11.1.3] - 2026-09-27
+### Enterprise Multi-ROI Zone Detection & Tactical Telegram Alerts
+- **Tactical Telegram Snapshot Notifications (`public/script.js` & `server.js`):**
+  - Pengiriman notifikasi insiden intrusi keamanan langsung ke bot Telegram beserta snapshot frame video berkualitas tinggi.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.3**.
+
+## [Ver 11.1.2] - 2026-09-27
+### Low-Latency Native PTZ Protocol & Macrovideo Binary Socket
+- **Driver PTZ Binary Terpadu (`lib/v380_driver.js` & `server.js`):**
+  - Peningkatan kontrol gerakan kamera V380 / Macrovideo IP Cam langsung via port binary socket 8800 dengan latensi di bawah 40ms.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.2**.
+
+## [Ver 11.1.1] - 2026-09-27
+### Armbian Hardware Health Watchdog & Thermal Monitoring
+- **Real-Time Hardware Telemetry (`server.js` & `public/script.js`):**
+  - Endpoint `/api/system/stats` memantau suhu SoC Armbian (`/sys/class/thermal`), persentase CPU, dan penggunaan RAM STB secara berkala.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.1**.
+
+## [Ver 11.1.0] - 2026-09-27
+### Tactical YOLO AI Studio Enterprise Architecture
+- **Enterprise AI Workstation (`public/script.js` & `public/index.html`):**
+  - Studio konfigurasi AI terpadu dengan 3 langkah alur kerja (Pilih Kamera, Gambar Zona ROI, dan Atur Syarat Prompt Deteksi).
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.0**.
+
+## [Ver 11.0.9] - 2026-09-27
+### Universal Database Split Engine & Shadow Backup Mirror
+- **Split-DB File Isolation (`server.js`):**
+  - Memisahkan database menjadi modul terisolasi (`local_db_settings.json`, `local_db_accounts.json`, `local_db_cameras.json`, `local_db_recordings.json`) untuk mencegah korupsi data saat `git pull` atau listrik padam.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.0.9**.
+
+## [Ver 11.0.8] - 2026-09-27
+### HDMI Kiosk Native Player Engine (Direct MPV Integration)
+- **Direct Hardware Display (`server.js` & `addons/hdmi-native`):**
+  - Addon pemutar video layar TV langsung melalui HDMI STB menggunakan MPV acceleration.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.0.8**.
+
+## [Ver 11.0.7] - 2026-09-27
+### PWA Offline Action Sync Engine & Network Resilience
+- **Offline Resilience (`public/script.js`):**
+  - Antarmuka web PWA mengantrekan perintah konfigurasi saat koneksi HP/klien terputus dan otomatis mengirimkannya saat jaringan pulih.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.0.7**.
+
+## [Ver 11.0.6] - 2026-09-27
+### MediaMTX Auto-Sync & Multi-Profile Stream Routing
+- **MediaMTX Dynamic Routing (`server.js`):**
+  - Otomatis membuat konfigurasi MediaMTX untuk RTSP/WebRTC/HLS pada port 8889/8880 tanpa konfigurasi manual.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.0.6**.
+
+## [Ver 11.0.5] - 2026-09-27
+### ONVIF Universal Device Discovery & Network Profile Resolver
+- **Network Discovery Engine (`server.js`):**
+  - Pemindaian otomatis IP jaringan dan deteksi port ONVIF/RTSP (8899, 554, 80, 2020, 8800) untuk integrasi kamera 1-klik.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.0.5**.
+
 ## [Ver 11.0.4] - 2026-09-27
 ### ARM STB Safe Multi-Engine AI Architecture (Zero Illegal Instruction)
 - **Eliminasi Total Crash `Illegal Instruction` (`addons/ai_yolo_service.py`):**
