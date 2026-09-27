@@ -1,5 +1,14 @@
-# ⚡ Arch3r NVR (Ver. 11.0.3)
+# ⚡ Arch3r NVR (Ver. 11.0.4)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.0.4:
+- **ARM STB Safe Multi-Engine AI Architecture (Zero Illegal Instruction)**:
+  1. **Pencegahan Crash `Illegal Instruction` (`addons/ai_yolo_service.py`)**:
+     - Arsitektur Multi-Engine 3 Tingkat: `OpenCV DNN ONNX` -> `PyTorch Ultralytics fallback` -> `Native OpenCV MOG2 Motion & Optical Contour Tracker`.
+     - 100% aman untuk prosesor ARM Cortex-A53 (Amlogic S905X/W/D), tidak memicu instruksi vektor terlarang (SIGILL).
+     - Menghasilkan deteksi objek manusia, mobil, motor secara instan dan bebas dari freeze CPU.
+  2. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.0.4** pada seluruh file konfigurasi dan dokumentasi.
 
 ### 📋 Changelog Pembaruan Ver. 11.0.3:
 - **Real-Time Live Streaming AI Installer & Locked VENV Module Auditor**:

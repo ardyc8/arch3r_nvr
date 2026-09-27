@@ -7076,7 +7076,7 @@ except Exception as e:
         { id: 'uvicorn', name: 'Uvicorn ASGI Web Server', required: true, checkCmd: pyModuleCheck('uvicorn') },
         { id: 'pydantic', name: 'Pydantic Data Validator', required: true, checkCmd: pyModuleCheck('pydantic') },
         { id: 'ultralytics', name: 'YOLOv8 Ultralytics Engine', required: false, checkCmd: pyModuleCheck('ultralytics') },
-        { id: 'model_file', name: 'Berkas Model AI (yolov8n.pt)', required: true, checkCmd: `test -f addons/yolov8n.pt || test -f yolov8n.pt` }
+        { id: 'model_file', name: 'Berkas Model AI (yolov8n.onnx / yolov8n.pt)', required: true, checkCmd: `test -f addons/yolov8n.onnx || test -f yolov8n.onnx || test -f addons/yolov8n.pt || test -f yolov8n.pt` }
     ];
 
     const results = modules.map(m => {
