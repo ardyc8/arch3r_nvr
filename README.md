@@ -1,5 +1,12 @@
-# ⚡ Arch3r NVR (Ver. 11.0.7)
+# ⚡ Arch3r NVR (Ver. 11.0.8)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.0.8:
+- **Server Startup Integrity & Watchdog Route Fix**:
+  1. **Perbaikan Syntax Routing `server.js`**:
+     - Memperbaiki deklarasi route handler asynchronous `app.get('/api/ai/telemetry', ...)` sehingga dev server Node.js dapat berjalan secara mulus tanpa error `SyntaxError: Unexpected reserved word`.
+  2. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.0.8** pada seluruh file konfigurasi dan dokumentasi.
 
 ### 📋 Changelog Pembaruan Ver. 11.0.7:
 - **Autonomous AI Memory Watchdog & Self-Healing Graceful Recovery Engine**:

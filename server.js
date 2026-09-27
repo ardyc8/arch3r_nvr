@@ -7031,6 +7031,8 @@ app.post('/api/ai/watchdog/check_now', verifyToken, async (req, res) => {
         res.status(500).json({ success: false, error: e.message });
     }
 });
+
+app.get('/api/ai/telemetry', verifyToken, async (req, res) => {
     const pyStatus = await checkPythonAiStatus();
     res.json({
         success: true,
