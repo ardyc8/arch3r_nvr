@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.0.6 - Ultra Low-CPU Motion-Gated AI Snapshot & 1-Core Thread-Capping Engine.",
+  "description": "Arch3r NVR Ver. 11.0.7 - Autonomous AI Memory Watchdog & Self-Healing Graceful Recovery Engine.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

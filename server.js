@@ -6943,7 +6943,94 @@ app.post('/api/ai/service/restart', verifyToken, async (req, res) => {
     res.json(result);
 });
 
-app.get('/api/ai/telemetry', verifyToken, async (req, res) => {
+let aiMemoryWatchdogTimer = null;
+let lastAiMemoryStats = { rss_mb: 0, pct_mem: 0, last_check: 0, restarts_count: 0, last_restart: null };
+
+function startAiMemoryWatchdog(maxRssMb = 450, maxPct = 40.0) {
+    if (aiMemoryWatchdogTimer) clearInterval(aiMemoryWatchdogTimer);
+    
+    aiMemoryWatchdogTimer = setInterval(async () => {
+        try {
+            // Find PID of running ai_yolo_service.py
+            child_process.exec('pgrep -f "ai_yolo_service.py"', async (err, stdout) => {
+                if (err || !stdout.trim()) return;
+                const pids = stdout.trim().split('\n').filter(Boolean);
+                const pid = pids[0];
+                if (!pid) return;
+
+                child_process.exec(`ps -p ${pid} -o rss,%mem --no-headers`, async (psErr, psOut) => {
+                    if (psErr || !psOut.trim()) return;
+                    const parts = psOut.trim().split(/\s+/);
+                    const rssKb = parseInt(parts[0], 10) || 0;
+                    const pctMem = parseFloat(parts[1]) || 0;
+                    const rssMb = Math.round(rssKb / 1024);
+
+                    lastAiMemoryStats.rss_mb = rssMb;
+                    lastAiMemoryStats.pct_mem = pctMem;
+                    lastAiMemoryStats.last_check = Date.now();
+
+                    // Check if memory exceeded safe limits for ARM STB
+                    if (rssMb >= maxRssMb || pctMem >= maxPct) {
+                        sysLog('WARN', `[AI Memory Watchdog] Memory threshold exceeded! PID ${pid}: ${rssMb}MB (${pctMem}%). Threshold: ${maxRssMb}MB / ${maxPct}%. Menjalankan graceful restart...`, 'SYSTEM');
+                        lastAiMemoryStats.restarts_count = (lastAiMemoryStats.restarts_count || 0) + 1;
+                        lastAiMemoryStats.last_restart = new Date().toISOString();
+                        
+                        await stopPythonAiService();
+                        await new Promise(r => setTimeout(r, 1200));
+                        await startPythonAiService();
+                        sysLog('INFO', `[AI Memory Watchdog] Layanan AI YOLO berhasil di-restart secara graceful untuk membebaskan RAM STB.`, 'SYSTEM');
+                    }
+                });
+            });
+        } catch (_) {}
+    }, 20000); // Check every 20 seconds
+}
+startAiMemoryWatchdog();
+
+app.get('/api/ai/watchdog/status', verifyToken, (req, res) => {
+    res.json({
+        success: true,
+        watchdog_active: !!aiMemoryWatchdogTimer,
+        stats: lastAiMemoryStats,
+        thresholds: {
+            max_rss_mb: 450,
+            max_pct_mem: 40.0,
+            check_interval_sec: 20
+        },
+        timestamp: Date.now()
+    });
+});
+
+app.post('/api/ai/watchdog/check_now', verifyToken, async (req, res) => {
+    try {
+        child_process.exec('pgrep -f "ai_yolo_service.py"', (err, stdout) => {
+            if (err || !stdout.trim()) {
+                return res.json({ success: true, running: false, message: 'Daemon AI tidak sedang berjalan' });
+            }
+            const pid = stdout.trim().split('\n')[0];
+            child_process.exec(`ps -p ${pid} -o rss,%mem --no-headers`, (psErr, psOut) => {
+                if (psErr || !psOut.trim()) {
+                    return res.json({ success: false, error: 'Gagal membaca metrik proses' });
+                }
+                const parts = psOut.trim().split(/\s+/);
+                const rssMb = Math.round((parseInt(parts[0], 10) || 0) / 1024);
+                const pctMem = parseFloat(parts[1]) || 0;
+                lastAiMemoryStats.rss_mb = rssMb;
+                lastAiMemoryStats.pct_mem = pctMem;
+                lastAiMemoryStats.last_check = Date.now();
+                res.json({
+                    success: true,
+                    pid,
+                    rss_mb: rssMb,
+                    pct_mem: pctMem,
+                    status: (rssMb > 450 || pctMem > 40.0) ? 'HIGH' : 'NORMAL'
+                });
+            });
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
     const pyStatus = await checkPythonAiStatus();
     res.json({
         success: true,

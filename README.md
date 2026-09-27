@@ -1,5 +1,17 @@
-# ⚡ Arch3r NVR (Ver. 11.0.6)
+# ⚡ Arch3r NVR (Ver. 11.0.7)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.0.7:
+- **Autonomous AI Memory Watchdog & Self-Healing Graceful Recovery Engine**:
+  1. **Dual-Layer Memory Watchdog Daemon (`addons/monitor_ai_memory.sh` & `server.js`)**:
+     - Memantau penggunaan memori Resident Set Size (RSS) dan persentase RAM `%MEM` dari proses Python YOLO secara berkala.
+     - Threshold proteksi STB: batas atas 450 MB atau 40.0% kapasitas RAM.
+     - Melakukan restart secara anggun (*graceful restart*): mengirimkan sinyal `SIGTERM`, menunggu proses melepaskan resource kamera, membersihkan port 5055, dan meluncurkan ulang daemon secara otomatis tanpa interupsi pada sistem NVR utama.
+  2. **API Endpoint Telemetri Watchdog (`server.js`)**:
+     - `/api/ai/watchdog/status`: Memberikan status kesehatan memori, jumlah restart yang berhasil ditangani, dan ambang batas proteksi.
+     - `/api/ai/watchdog/check_now`: Pemicu audit penggunaan memori instan.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.0.7** pada seluruh file konfigurasi dan dokumentasi.
 
 ### 📋 Changelog Pembaruan Ver. 11.0.6:
 - **Ultra Low-CPU Motion-Gated AI Snapshot & 1-Core Thread-Capping Engine**:
