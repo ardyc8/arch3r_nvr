@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 11.1.3 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 11.1.4 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -12885,11 +12885,20 @@ function updateYoloRoiDisplays() {
     const yDisp = document.getElementById('yolo-roi-y-val');
     const wDisp = document.getElementById('yolo-roi-w-val');
     const hDisp = document.getElementById('yolo-roi-h-val');
+    const coordDisp = document.getElementById('yolo-roi-coord-display');
 
     if (xDisp) xDisp.textContent = `${Math.round(currentYoloRoi.x)}%`;
     if (yDisp) yDisp.textContent = `${Math.round(currentYoloRoi.y)}%`;
     if (wDisp) wDisp.textContent = `${Math.round(currentYoloRoi.w)}%`;
     if (hDisp) hDisp.textContent = `${Math.round(currentYoloRoi.h)}%`;
+
+    if (coordDisp && currentYoloRoi) {
+        const x = Math.round(currentYoloRoi.x);
+        const y = Math.round(currentYoloRoi.y);
+        const w = Math.round(currentYoloRoi.w);
+        const h = Math.round(currentYoloRoi.h);
+        coordDisp.textContent = `(${x}%, ${y}%) ➔ (${w}%, ${h}%)`;
+    }
 }
 
 function resetYoloRoiBox() {
