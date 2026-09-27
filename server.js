@@ -2418,7 +2418,7 @@ function getActualBaseStoragePath(skipAutoDetect = false) {
 // 🛡️ ARCH3R NVR CENTRALIZED STORAGE ROUTER
 // Otomatis menempatkan rekaman di root [Penyimpanan]/Arch3r_NVR/[ID_Kamera]
 function getEffectiveCameraStoragePath(cam) {
-    const camId = (cam && cam.id) ? String(cam.id) : '1';
+    const camId = (cam && cam.id) ? String(cam.id).trim() : '1';
     let base = getActualBaseStoragePath();
     
     if (cam && cam.storagePath && typeof cam.storagePath === 'string') {
@@ -2428,10 +2428,15 @@ function getEffectiveCameraStoragePath(cam) {
         }
     }
     
-    // Pastikan folder root berstandar Arch3r_NVR
-    if (path.basename(base) === 'Arch3r_NVR') {
-        return path.join(base, camId);
+    // Normalisasi: jika base sudah berakhiran atau mengandung Arch3r_NVR / ID kamera lama
+    // Contoh: "/media/devmon/New Volume/Arch3r_NVR/cam_atas_depan" -> "/media/devmon/New Volume"
+    const archIdx = base.indexOf('Arch3r_NVR');
+    if (archIdx !== -1) {
+        let rootBeforeArch = base.substring(0, archIdx).replace(/[/\\]+$/, '');
+        if (!rootBeforeArch) rootBeforeArch = '/';
+        return path.join(rootBeforeArch, 'Arch3r_NVR', camId);
     }
+    
     return path.join(base, 'Arch3r_NVR', camId);
 }
 
@@ -2440,6 +2445,9 @@ function getEffectiveCameraStoragePath(cam) {
 function isStorageSafeForWriting(targetFullPath) {
     if (!targetFullPath) return false;
     
+    // Jika folder tujuan sudah ada di disk, berarti aman
+    if (fs.existsSync(targetFullPath)) return true;
+
     // Jika target adalah drive eksternal di /media/devmon/ atau /media/ atau /mnt/
     if (targetFullPath.startsWith('/media/') || targetFullPath.startsWith('/mnt/')) {
         const parts = targetFullPath.split(path.sep).filter(Boolean);
@@ -7141,15 +7149,19 @@ app.post('/api/ai/service/restart', verifyToken, async (req, res) => {
 
 let aiMemoryWatchdogTimer = null;
 let lastAiMemoryStats = { rss_mb: 0, pct_mem: 0, last_check: 0, restarts_count: 0, last_restart: null };
+let consecutiveMemBreaches = 0;
 
-function startAiMemoryWatchdog(maxRssMb = 450, maxPct = 40.0) {
+function startAiMemoryWatchdog(maxRssMb = 900, maxPct = 65.0) {
     if (aiMemoryWatchdogTimer) clearInterval(aiMemoryWatchdogTimer);
     
     aiMemoryWatchdogTimer = setInterval(async () => {
         try {
             // Find PID of running ai_yolo_service.py
             child_process.exec('pgrep -f "ai_yolo_service.py"', async (err, stdout) => {
-                if (err || !stdout.trim()) return;
+                if (err || !stdout.trim()) {
+                    consecutiveMemBreaches = 0;
+                    return;
+                }
                 const pids = stdout.trim().split('\n').filter(Boolean);
                 const pid = pids[0];
                 if (!pid) return;
@@ -7165,21 +7177,27 @@ function startAiMemoryWatchdog(maxRssMb = 450, maxPct = 40.0) {
                     lastAiMemoryStats.pct_mem = pctMem;
                     lastAiMemoryStats.last_check = Date.now();
 
-                    // Check if memory exceeded safe limits for ARM STB
+                    // Check if memory exceeded safe limits for ARM STB with debounce
                     if (rssMb >= maxRssMb || pctMem >= maxPct) {
-                        sysLog('WARN', `[AI Memory Watchdog] Memory threshold exceeded! PID ${pid}: ${rssMb}MB (${pctMem}%). Threshold: ${maxRssMb}MB / ${maxPct}%. Menjalankan graceful restart...`, 'SYSTEM');
-                        lastAiMemoryStats.restarts_count = (lastAiMemoryStats.restarts_count || 0) + 1;
-                        lastAiMemoryStats.last_restart = new Date().toISOString();
-                        
-                        await stopPythonAiService();
-                        await new Promise(r => setTimeout(r, 1200));
-                        await startPythonAiService();
-                        sysLog('INFO', `[AI Memory Watchdog] Layanan AI YOLO berhasil di-restart secara graceful untuk membebaskan RAM STB.`, 'SYSTEM');
+                        consecutiveMemBreaches++;
+                        if (consecutiveMemBreaches >= 2) {
+                            sysLog('WARN', `[AI Memory Watchdog] Memory threshold exceeded (2x)! PID ${pid}: ${rssMb}MB (${pctMem}%). Threshold: ${maxRssMb}MB / ${maxPct}%. Menjalankan graceful restart...`, 'SYSTEM');
+                            lastAiMemoryStats.restarts_count = (lastAiMemoryStats.restarts_count || 0) + 1;
+                            lastAiMemoryStats.last_restart = new Date().toISOString();
+                            consecutiveMemBreaches = 0;
+
+                            await stopPythonAiService();
+                            await new Promise(r => setTimeout(r, 1500));
+                            await startPythonAiService();
+                            sysLog('INFO', `[AI Memory Watchdog] Layanan AI YOLO berhasil di-restart secara graceful untuk membebaskan RAM STB.`, 'SYSTEM');
+                        }
+                    } else {
+                        consecutiveMemBreaches = 0;
                     }
                 });
             });
         } catch (_) {}
-    }, 20000); // Check every 20 seconds
+    }, 45000); // Check every 45 seconds
 }
 startAiMemoryWatchdog();
 
@@ -7189,9 +7207,9 @@ app.get('/api/ai/watchdog/status', verifyToken, (req, res) => {
         watchdog_active: !!aiMemoryWatchdogTimer,
         stats: lastAiMemoryStats,
         thresholds: {
-            max_rss_mb: 450,
-            max_pct_mem: 40.0,
-            check_interval_sec: 20
+            max_rss_mb: 900,
+            max_pct_mem: 65.0,
+            check_interval_sec: 45
         },
         timestamp: Date.now()
     });

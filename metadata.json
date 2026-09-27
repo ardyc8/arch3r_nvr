@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.1.5 - Smart Centralized Arch3r_NVR Storage Root, Auto-Inherit Camera Drive & eMMC Anti-Leak Protection.",
+  "description": "Arch3r NVR Ver. 11.1.6 - Fixed Storage Path Nesting Recursion & Optimized Armbian STB RAM Watchdog.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
