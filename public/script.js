@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 10.9.3 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 11.1.2 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -9905,107 +9905,79 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
     // --- 1. SPESIFIKASI: AI YOLOv8 Human Detection Addon ---
     if (addonId === 'ai_yolo' || addonId === 'ai-yolo') {
         const isRunning = statusData ? (statusData.active || statusData.running) : false;
-        const currentCam = configObj.camera_id || '';
         const confPercent = Math.round((configObj.confidence_threshold !== undefined ? configObj.confidence_threshold : 0.50) * 100);
         const frameSkip = configObj.frame_skip || 15;
         const streamType = configObj.stream_type || 'sub';
         const aiEngine = (statusData && statusData.engine) || 'YOLOv8 ARM64 Engine';
         const aiPort = (statusData && statusData.port) || 5055;
 
-        let camOptionsHtml = '<option value="">-- Analisis Semua Kamera / Standar --</option>';
-        availableCams.forEach(cam => {
-            const isSel = String(cam.id) === String(currentCam) ? 'selected' : '';
-            camOptionsHtml += `<option value="${cam.id}" ${isSel}>${cam.name} (${cam.ip || 'RTSP'})</option>`;
-        });
-
         container.innerHTML = `
-            <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3);">
+            <!-- HEADER STATUS DAEMON & QUICK CTA -->
+            <div style="margin-bottom: 1.25rem; padding: 1.1rem; border-radius: 8px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3);">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                     <div>
-                        <strong style="color:#60a5fa; font-size:1rem; display:block;">🧠 ${aiEngine}</strong>
-                        <span style="font-size:0.82rem; color:var(--text-muted); font-family:monospace;">Port: ${aiPort} &bull; Mode: ${statusData?.mode || 'Daemon'}</span>
+                        <strong style="color:#60a5fa; font-size:1.05rem; display:flex; align-items:center; gap:0.4rem;">
+                            <span>🧠</span> ${aiEngine}
+                        </strong>
+                        <span style="font-size:0.82rem; color:var(--text-muted); font-family:monospace;">Port Daemon: ${aiPort} &bull; Mode: ${statusData?.mode || 'Background Daemon'}</span>
                     </div>
                     <div style="display:flex; gap:0.4rem; align-items:center;">
-                        <span style="padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isRunning ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isRunning ? '#22c55e' : '#ef4444'}; border: 1px solid ${isRunning ? '#22c55e' : '#ef4444'};">
-                            ${isRunning ? '🟢 Daemon Aktif' : '⚪ Siaga / Mati'}
+                        <span style="padding: 0.3rem 0.75rem; border-radius: 5px; font-size: 0.82rem; font-weight: bold; background:${isRunning ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isRunning ? '#22c55e' : '#ef4444'}; border: 1px solid ${isRunning ? '#22c55e' : '#ef4444'};">
+                            ${isRunning ? '🟢 Daemon Aktif & Berjalan' : '⚪ Siaga / Nonaktif'}
                         </span>
                     </div>
                 </div>
-                <div style="display:flex; gap:0.5rem; margin-top:0.85rem; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm btn-primary" onclick="closeAddonConfigModal(); openYoloAiPage('${currentCam}')" style="display:flex; align-items:center; gap:0.35rem; background:#2563eb; border-color:#2563eb; font-weight:600;">
+
+                <div style="margin-top:1rem; padding-top:0.85rem; border-top:1px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                    <div style="font-size:0.82rem; color:#cbd5e1;">
+                        Untuk memilih kamera, menggambar area deteksi (ROI), dan melihat visual live stream kamera:
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="closeAddonConfigModal(); openYoloAiPage();" style="display:flex; align-items:center; gap:0.45rem; background:#2563eb; border-color:#1d4ed8; font-weight:700; padding:0.55rem 1.1rem; border-radius:6px; box-shadow:0 2px 8px rgba(37,99,235,0.4);">
                         <span>🎯</span> Buka Studio AI Vision & Area ROI
                     </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAddonState('ai_yolo', ${!isRunning})" style="display:flex; align-items:center; gap:0.35rem;">
-                        <span>${isRunning ? '⏹️' : '▶️'}</span> ${isRunning ? 'Matikan Daemon' : 'Nyalakan Daemon'}
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="restartAIYoloService()" style="display:flex; align-items:center; gap:0.35rem;">
-                        <span>⚡</span> Restart Service
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="testAIYoloAlarm()" style="display:flex; align-items:center; gap:0.35rem;">
-                        <span>🔔</span> Uji Alarm
-                    </button>
                 </div>
             </div>
 
-            <!-- DOKTER LINGKUNGAN AI & CHECKLIST DEPENDENSI STB -->
-            <div style="margin-bottom: 1.25rem; padding: 0.9rem; border-radius: 6px; background: rgba(0,0,0,0.25); border: 1px solid var(--border);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                    <strong style="font-size:0.88rem; color:#cbd5e1; display:flex; align-items:center; gap:0.4rem;">
-                        <span>🩺</span> Dokter Lingkungan AI Armbian STB
-                    </strong>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="checkYoloModulesReadiness()" style="font-size:0.75rem; padding:2px 8px;">
-                        🔄 Cek Ulang
-                    </button>
-                </div>
-                <div id="yolo-modules-checklist-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.5rem; font-size:0.8rem; color:#94a3b8;">
-                    <div style="padding:0.4rem; background:rgba(255,255,255,0.03); border-radius:4px;">Memeriksa status dependensi Python...</div>
-                </div>
-            </div>
-
+            <!-- FORM KONFIGURASI GLOBAL SISTEM AI -->
             <form id="addonConfigForm">
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
                     <div>
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Target Kamera Pengawasan:</label>
-                        <select name="camera_id" id="addon_cfg_cam_id" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                            ${camOptionsHtml}
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Prioritas Stream Video:</label>
+                        <select name="stream_type" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="sub" ${streamType === 'sub' ? 'selected' : ''}>Sub-Stream (RTSP Ringan - Standar Terbaik STB Armbian)</option>
+                            <option value="main" ${streamType === 'main' ? 'selected' : ''}>Main-Stream (Full HD - Khusus Perangkat CPU Tinggi)</option>
                         </select>
+                        <small style="color:var(--text-muted); display:block; margin-top:0.25rem;">Sub-stream memangkas beban CPU hingga 75% tanpa mengurangi akurasi deteksi.</small>
                     </div>
 
                     <div>
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Sumber Stream Video:</label>
-                        <select name="stream_type" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                            <option value="sub" ${streamType === 'sub' ? 'selected' : ''}>Sub-Stream (RTSP Ringan - Sangat Disarankan STB)</option>
-                            <option value="main" ${streamType === 'main' ? 'selected' : ''}>Main-Stream (Full HD - Butuh Kapasitas CPU Tinggi)</option>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Interval Sampling Frame (Frame Skip Rate):</label>
+                        <select name="frame_skip" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="15" ${frameSkip === 15 ? 'selected' : ''}>15 Frames (~2 FPS) - Sangat Hemat CPU (Rekomendasi STB Armbian)</option>
+                            <option value="10" ${frameSkip === 10 ? 'selected' : ''}>10 Frames (~3 FPS) - Deteksi Sedang</option>
+                            <option value="5" ${frameSkip === 5 ? 'selected' : ''}>5 Frames (~6 FPS) - Deteksi Cepat</option>
                         </select>
+                        <small style="color:var(--text-muted); display:block; margin-top:0.25rem;">Mengatur seberapa sering model menganalisis frame per detik.</small>
                     </div>
                 </div>
 
-                <div style="margin-bottom: 1.25rem;">
+                <div style="margin-bottom: 1.25rem; background:rgba(0,0,0,0.18); padding:0.9rem; border-radius:6px; border:1px solid var(--border);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
-                        <label style="font-weight:600; font-size:0.88rem; color:var(--text);">Ambang Batas Kepercayaan (Confidence Threshold):</label>
-                        <span id="addon_conf_label" style="font-weight:bold; color:#3b82f6; font-size:0.9rem;">${confPercent}%</span>
+                        <label style="font-weight:600; font-size:0.88rem; color:var(--text);">Ambang Batas Kepercayaan Global (Confidence Threshold):</label>
+                        <span id="addon_conf_label" style="font-weight:bold; color:#3b82f6; font-size:0.95rem;">${confPercent}%</span>
                     </div>
                     <input type="range" name="confidence_threshold" min="0.10" max="0.95" step="0.05" value="${configObj.confidence_threshold || 0.50}"
                         oninput="document.getElementById('addon_conf_label').textContent = Math.round(this.value * 100) + '%';"
-                        style="width:100%; accent-color:#3b82f6;">
-                    <small style="color:var(--text-muted); display:block; margin-top:0.25rem;">Rekomendasi 50% untuk mengurangi false alarm dari dedaunan atau bayangan cahaya.</small>
-                </div>
-
-                <div style="margin-bottom: 1.25rem;">
-                    <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Interval Pemrosesan Frame (Frame Skip Rate):</label>
-                    <select name="frame_skip" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                        <option value="15" ${frameSkip === 15 ? 'selected' : ''}>15 Frames (~2 FPS) - Sangat Hemat CPU (Rekomendasi STB Armbian)</option>
-                        <option value="10" ${frameSkip === 10 ? 'selected' : ''}>10 Frames (~3 FPS) - Deteksi Sedang</option>
-                        <option value="5" ${frameSkip === 5 ? 'selected' : ''}>5 Frames (~6 FPS) - Deteksi Cepat</option>
-                    </select>
+                        style="width:100%; accent-color:#3b82f6; cursor:pointer;">
+                    <small style="color:var(--text-muted); display:block; margin-top:0.35rem;">Ambang batas standar 50% untuk menyaring false alarm dari hewan kecil, serangga, atau bayangan.</small>
                 </div>
 
                 <div style="background:rgba(0,0,0,0.15); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
-                    <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Aksi Respon & Notifikasi Alarm:</strong>
+                    <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Aksi Respon & Notifikasi Alarm Global:</strong>
                     <div style="display:flex; flex-direction:column; gap:0.6rem;">
                         <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
                             <input type="checkbox" name="sound_buzzer" value="true" ${configObj.sound_buzzer !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
-                            <span>Bunyikan Alarm Buzzer Audio di Web UI saat terjadi intrusi manusia</span>
+                            <span>Bunyikan Alarm Buzzer Audio di Web UI saat terjadi intrusi pada area ROI</span>
                         </label>
                         <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
                             <input type="checkbox" name="log_alerts" value="true" ${configObj.log_alerts !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
@@ -13938,14 +13910,45 @@ function startYoloTelemetrySimulator() {
     }, 2000);
 }
 
+function switchYoloActiveCamera(newCamId) {
+    if (!newCamId || String(newCamId) === String(activeYoloSettingsCamId)) return;
+    openYoloCameraSettings(newCamId);
+}
+window.switchYoloActiveCamera = switchYoloActiveCamera;
+
 function openYoloCameraSettings(camId) {
-    activeYoloSettingsCamId = camId;
+    activeYoloSettingsCamId = String(camId);
     localStorage.setItem('arch3r_yolo_active_cam_id', String(camId));
+    
+    // Cari nama kamera dari yoloCamerasList atau window.cameras
+    let camName = `Kamera #${camId}`;
     const target = yoloCamerasList.find(c => String(c.id) === String(camId));
-    const camName = target ? target.name : `Kamera (${camId})`;
+    if (target && target.name) {
+        camName = target.name;
+    } else {
+        const globalCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+        const foundGlobal = globalCams.find(c => String(c.id) === String(camId));
+        if (foundGlobal && foundGlobal.name) camName = foundGlobal.name;
+    }
 
     const nameSpan = document.getElementById('yolo-settings-camera-name');
     if (nameSpan) nameSpan.textContent = camName;
+
+    // Sinkronkan Dropdown Pemilih Kanal Kamera di Header Studio
+    const switcher = document.getElementById('yolo-studio-channel-switcher');
+    if (switcher) {
+        switcher.innerHTML = '';
+        const activeList = (yoloCamerasList && yoloCamerasList.length > 0) ? yoloCamerasList : (window.cameras || []);
+        activeList.forEach(c => {
+            const cid = String(c.id);
+            const cnm = c.name || `Kamera #${cid}`;
+            const opt = document.createElement('option');
+            opt.value = cid;
+            opt.textContent = cnm;
+            if (cid === String(camId)) opt.selected = true;
+            switcher.appendChild(opt);
+        });
+    }
 
     const repoView = document.getElementById('addons-repository-view');
     const mainList = document.getElementById('yolo-main-list-view');

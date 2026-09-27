@@ -1393,16 +1393,19 @@
                                 </button>
                                 <div>
                                     <h2 style="margin:0; font-size:1.5rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                                        <span>🤖</span> Pengaturan Addon YOLO AI
+                                        <span>🎯</span> Studio AI Vision & Kanal Kamera NVR
                                     </h2>
                                     <p style="color:var(--text-muted); margin:0.25rem 0 0 0; font-size:0.85rem;">
-                                        Kelola daftar kamera NVR yang terhubung ke analitik cerdas YOLO AI.
+                                        Pilih kamera NVR terdaftar untuk mengaktifkan analisis objek cerdas, mengatur area deteksi (ROI), dan konfigurasi alarm.
                                     </p>
                                 </div>
                             </div>
-                            <div>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <button type="button" class="btn btn-secondary" onclick="runYoloAiDiagnosticsProbe()" style="display:flex; align-items:center; gap:0.4rem; font-size:0.88rem; padding:0.55rem 1rem; border-radius:8px; background:rgba(168,85,247,0.15); border-color:rgba(168,85,247,0.4); color:#c084fc;">
+                                    <span>🩺</span> Dokter Lingkungan AI
+                                </button>
                                 <button type="button" class="btn btn-primary" onclick="openAddYoloCameraModal()" style="background:#2563eb; border-color:#2563eb; display:flex; align-items:center; gap:0.5rem; font-size:0.9rem; font-weight:600; padding:0.55rem 1.1rem; border-radius:8px;">
-                                    <span>➕</span> Tambah Kamera
+                                    <span>➕</span> Hubungkan Kamera NVR
                                 </button>
                             </div>
                         </div>
@@ -1410,9 +1413,12 @@
                         <!-- Panel List Kamera YOLO AI -->
                         <div style="background:var(--surface); border-radius:10px; border:1px solid var(--border); padding:1.25rem; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px solid var(--border);">
-                                <h3 style="margin:0; font-size:1.1rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                                    <span>📹</span> Panel List Kamera YOLO AI
-                                </h3>
+                                <div>
+                                    <h3 style="margin:0; font-size:1.1rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                        <span>📹</span> Kanal Kamera Bertiket Analisis AI
+                                    </h3>
+                                    <span style="font-size:0.78rem; color:var(--text-muted);">Hanya kamera yang dicentang aktif yang dianalisis oleh model AI YOLO di STB.</span>
+                                </div>
                                 <span id="yolo-camera-count-badge" class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">0 Kamera Terhubung</span>
                             </div>
 
@@ -1434,9 +1440,18 @@
                                         <span>⬅️</span> Kembali
                                     </button>
                                     <div>
-                                        <h3 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                                            <span>🎯</span> YOLO AI Studio &mdash; <span id="yolo-settings-camera-name" style="color:#38bdf8; font-weight:700;">Kamera</span>
-                                        </h3>
+                                        <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                                            <h3 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                                <span>🎯</span> YOLO AI Studio &mdash; <span id="yolo-settings-camera-name" style="color:#38bdf8; font-weight:700;">Kamera</span>
+                                            </h3>
+                                            <!-- PENGALIH CEPAT KANAL KAMERA NVR -->
+                                            <div style="display:inline-flex; align-items:center; gap:0.35rem; background:rgba(0,0,0,0.3); padding:2px 8px; border-radius:6px; border:1px solid var(--border);">
+                                                <span style="font-size:0.75rem; color:var(--text-muted);">Pilih Kamera:</span>
+                                                <select id="yolo-studio-channel-switcher" onchange="switchYoloActiveCamera(this.value)" style="background:transparent; color:#38bdf8; border:none; font-size:0.8rem; font-weight:700; cursor:pointer; outline:none; padding:2px 4px;">
+                                                    <!-- Dynamically populated from available cameras -->
+                                                </select>
+                                            </div>
+                                        </div>
                                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
                                             Intelligent Object Analytics &bull; RKNN STB Acceleration &bull; Unified Stream
                                         </div>
@@ -1699,13 +1714,16 @@
                 </div>
             </div>
 
-            <!-- Modal Dialog + Tambah Kamera YOLO AI -->
+            <!-- Modal Dialog Hubungkan Kamera NVR ke Analisis AI -->
             <div id="modal-add-yolo-camera" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
                 <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; width:100%; max-width:550px; box-shadow:0 10px 25px rgba(0,0,0,0.5); overflow:hidden;">
                     <div style="padding:1rem 1.25rem; background:rgba(15,23,42,0.8); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                        <h3 style="margin:0; font-size:1.1rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                            <span>➕</span> Tambah Kamera ke Addons YOLO AI
-                        </h3>
+                        <div>
+                            <h3 style="margin:0; font-size:1.1rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                                <span>➕</span> Hubungkan Kamera NVR ke Analisis AI
+                            </h3>
+                            <span style="font-size:0.75rem; color:var(--text-muted);">Pilih dari kamera yang telah terdaftar di NVR untuk dianalisis oleh modul AI.</span>
+                        </div>
                         <button type="button" onclick="closeAddYoloCameraModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.2rem; cursor:pointer; line-height:1;">&times;</button>
                     </div>
                     <div style="padding:1.25rem; max-height:380px; overflow-y:auto;" id="add-yolo-camera-list">
@@ -2422,6 +2440,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=10.0.0"></script>
+    <script src="script.js?v=11.1.2"></script>
 </body>
 </html>
