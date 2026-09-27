@@ -2398,6 +2398,7 @@ function saveCameras(data) {
 }
 
 function resolveStoragePath(camPath) {
+    if (!camPath || typeof camPath !== 'string') return baseStoragePath;
     if (path.isAbsolute(camPath)) return camPath;
     return path.join(__dirname, camPath);
 }
@@ -2405,29 +2406,56 @@ function resolveStoragePath(camPath) {
 function getActualBaseStoragePath(skipAutoDetect = false) {
     const dbData = getNvrDb();
     if (dbData && dbData.recording_path && dbData.recording_path.trim() !== '') {
-        return dbData.recording_path;
+        return dbData.recording_path.trim();
     }
     const settings = getSettings();
     if (settings.globalStoragePath && settings.globalStoragePath.trim() !== '') {
-        return settings.globalStoragePath;
+        return settings.globalStoragePath.trim();
+    }
+    return baseStoragePath;
+}
+
+// 🛡️ ARCH3R NVR CENTRALIZED STORAGE ROUTER
+// Otomatis menempatkan rekaman di root [Penyimpanan]/Arch3r_NVR/[ID_Kamera]
+function getEffectiveCameraStoragePath(cam) {
+    const camId = (cam && cam.id) ? String(cam.id) : '1';
+    let base = getActualBaseStoragePath();
+    
+    if (cam && cam.storagePath && typeof cam.storagePath === 'string') {
+        const trimmed = cam.storagePath.trim();
+        if (trimmed !== '' && trimmed !== 'default' && trimmed !== 'auto') {
+            base = resolveStoragePath(trimmed);
+        }
     }
     
-    // Disabled deep synchronous scanning during path resolution to prevent 502 Bad Gateway
-    // If no path is configured, default to local data/recordings directory.
-    // The user can set the path explicitly in the settings.
-    /*
-    if (!skipAutoDetect) {
-        try {
-            const external = detectStorageDevices(true).filter(d => d.category === 'External' && d.totalGB > 0);
-            if (external.length > 0) {
-                external.sort((a, b) => b.freeGB - a.freeGB);
-                return external[0].mountPath;
-            }
-        } catch(e) {}
+    // Pastikan folder root berstandar Arch3r_NVR
+    if (path.basename(base) === 'Arch3r_NVR') {
+        return path.join(base, camId);
     }
-    */
+    return path.join(base, 'Arch3r_NVR', camId);
+}
 
-    return baseStoragePath;
+// 🛡️ PROTEKSI ANTI-BOCOR eMMC STB
+// Memastikan harddisk eksternal benar-benar ter-mount sebelum menulis, mencegah pembuatan folder hantu di internal eMMC
+function isStorageSafeForWriting(targetFullPath) {
+    if (!targetFullPath) return false;
+    
+    // Jika target adalah drive eksternal di /media/devmon/ atau /media/ atau /mnt/
+    if (targetFullPath.startsWith('/media/') || targetFullPath.startsWith('/mnt/')) {
+        const parts = targetFullPath.split(path.sep).filter(Boolean);
+        let mountPoint = '';
+        if (parts.length >= 3 && parts[0] === 'media' && parts[1] === 'devmon') {
+            mountPoint = path.sep + path.join(parts[0], parts[1], parts[2]);
+        } else if (parts.length >= 2) {
+            mountPoint = path.sep + path.join(parts[0], parts[1]);
+        }
+        
+        // Jika folder mount point tidak ada secara fisik, tolak penulisan folder
+        if (mountPoint && !fs.existsSync(mountPoint)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 // Database Initialization
@@ -3262,7 +3290,8 @@ function ensureRecordFolders() {
     
     getCameras().forEach(cam => {
         if (cam.recordMode === 'continuous') {
-            const base = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
+            const base = getEffectiveCameraStoragePath(cam);
+            if (!isStorageSafeForWriting(base)) return;
             [yesterday, today, tomorrow].forEach(date => {
                 const d = path.join(base, date);
                 try { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); } catch (err) { sysLog('ERROR', 'Gagal membuat folder: ' + d, 'STORAGE'); }
@@ -3465,7 +3494,11 @@ function spawnRecordingFFmpeg(cam) {
 
     stopCameraRecording(cam.id);
 
-    const recBase = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
+    const recBase = getEffectiveCameraStoragePath(cam);
+    if (!isStorageSafeForWriting(recBase)) {
+        sysLog('WARN', `[${cam.id}] Lokasi penyimpanan ${recBase} tidak terdeteksi atau belum ter-mount. Perekaman dijeda secara aman untuk melindungi memori internal STB.`, 'STORAGE');
+        return;
+    }
     try { if (!fs.existsSync(recBase)) fs.mkdirSync(recBase, { recursive: true }); } catch (err) { sysLog('ERROR', 'Gagal membuat folder base: ' + recBase, 'STORAGE'); }
 
     const segSec = cam.segmentDurationSec || 900;
@@ -3629,7 +3662,7 @@ function runRetention() {
         if (cam.recordMode !== 'continuous') continue;
         const maxDays = cam.maxStorageDays || 7;
         const maxGB = cam.maxFolderSizeGB || 10;
-        const base = resolveStoragePath(cam.storagePath || path.join(getActualBaseStoragePath(), 'Arch3r_NVR', cam.id));
+        const base = getEffectiveCameraStoragePath(cam);
         if (!fs.existsSync(base)) continue;
 
         const limitMs = Date.now() - (maxDays * 86400000);

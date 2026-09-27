@@ -716,7 +716,7 @@
                             <!-- BLOK 3: MODE REKAMAN & STORAGE -->
                             <div class="cam-form-section">
                                 <div class="cam-form-section-title">
-                                    <span>💾</span> 3. Mode Rekaman & Penyimpanan
+                                    <span>💾</span> 3. Mode Rekaman & Lokasi Penyimpanan
                                 </div>
 
                                 <div class="form-row">
@@ -728,8 +728,21 @@
                                         </select>
                                     </div>
                                     <div class="form-group flex-1">
+                                        <label>Target Penyimpanan Harddisk</label>
+                                        <select id="camStorageSelect" class="form-control" style="font-weight:600; background:#1e293b; color:#38bdf8;">
+                                            <option value="">🌐 Default (Otomatis Ikuti Harddisk Utama NVR)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group flex-1">
                                         <label>Batas Masa Simpan (Retensi Hari)</label>
                                         <input type="number" id="camMaxDays" value="7" min="1" placeholder="Contoh: 7 hari">
+                                    </div>
+                                    <div class="form-group flex-1">
+                                        <label>Batas Kuota Folder Kamera (GB)</label>
+                                        <input type="number" id="camMaxGB" value="10" min="1" step="0.5">
                                     </div>
                                 </div>
                             </div>
@@ -737,7 +750,7 @@
                             <!-- BLOK 4: PENGATURAN LANJUTAN (ACCORDION COLLAPSIBLE) -->
                             <details id="cameraAdvancedDetails" class="cam-advanced-accordion">
                                 <summary class="cam-advanced-summary">
-                                    <span>⚙️ Pengaturan Lanjutan (Advanced Streams, Audio Codec, Transcode)</span>
+                                    <span>⚙️ Pengaturan Lanjutan (Advanced Streams, Audio Codec, Custom Path)</span>
                                     <span class="cam-advanced-chevron">▼</span>
                                 </summary>
                                 
@@ -748,8 +761,8 @@
                                             <input type="text" id="camCustomId" placeholder="Kosongkan untuk ID otomatis">
                                         </div>
                                         <div class="form-group flex-1">
-                                            <label>Sub Stream RTSP URL (Multi-Grid Ringan SD / 360p)</label>
-                                            <input type="text" id="camSubUrl" placeholder="Contoh: rtsp://user:pass@192.168.1.100:554/live/ch00_0">
+                                            <label>Custom Storage Folder Path (Override Manual)</label>
+                                            <input type="text" id="camStoragePath" placeholder="Kosong = Ikuti Target Penyimpanan di atas">
                                         </div>
                                     </div>
 
@@ -783,17 +796,6 @@
                                                 <input type="checkbox" id="camAudioEnabled" checked style="width:16px; height:16px;">
                                                 <label for="camAudioEnabled" style="font-weight:600; cursor:pointer; margin:0;">🔊 Sertakan Audio Kamera</label>
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group flex-1">
-                                            <label>Custom Storage Folder</label>
-                                            <input type="text" id="camStoragePath" placeholder="Kosong = Ikuti Storage Utama STB">
-                                        </div>
-                                        <div class="form-group flex-1">
-                                            <label>Batas Kuota Folder Kamera (GB)</label>
-                                            <input type="number" id="camMaxGB" value="10" min="1" step="0.5">
                                         </div>
                                     </div>
                                 </div>
@@ -2422,6 +2424,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=11.1.4"></script>
+    <script src="script.js?v=11.1.5"></script>
 </body>
 </html>

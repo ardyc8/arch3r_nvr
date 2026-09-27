@@ -1,4 +1,4 @@
-// script.js - Archer NVR Ver. 11.1.4 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
+// script.js - Archer NVR Ver. 11.1.5 Multi-Tenant Controller & Enterprise Tactical YOLO AI Studio
 
 // --- Universal Toast Notification Engine (Pure Vanilla DOM) ---
 function showToast(message, type = 'info') {
@@ -2339,6 +2339,11 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         const sPath = document.getElementById('camStoragePath');
         if(sPath) sPath.value = cam.storagePath || '';
         
+        // Sinkronkan dropdown target harddisk kamera
+        if (typeof populateCameraStorageOptions === 'function') {
+            populateCameraStorageOptions(cam.storagePath || '');
+        }
+        
         const formTitle = document.getElementById('formTitle');
         if (formTitle) formTitle.textContent = 'Edit Kamera: ' + cam.name;
         
@@ -2470,10 +2475,66 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
 
         const advDetails = document.getElementById('camAdvancedDetails');
         if (advDetails) advDetails.open = false;
+
+        const sPath = document.getElementById('camStoragePath');
+        if (sPath) sPath.value = '';
+
+        if (typeof populateCameraStorageOptions === 'function') {
+            populateCameraStorageOptions('');
+        }
     }
+
+    async function populateCameraStorageOptions(selectedPath = '') {
+        const sel = document.getElementById('camStorageSelect');
+        if (!sel) return;
+        
+        sel.innerHTML = '<option value="">🌐 Default (Otomatis Ikuti Harddisk Utama NVR)</option>';
+        
+        try {
+            const res = await authFetch('/api/system/storage-devices');
+            if (res.ok) {
+                const data = await res.json();
+                const devices = data.devices || [];
+                devices.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.mountPath;
+                    opt.textContent = `💾 ${d.name} (${d.freeGB} GB Bebas / Total ${d.totalGB} GB)`;
+                    sel.appendChild(opt);
+                });
+            }
+        } catch(e) {}
+        
+        const customPathInput = document.getElementById('camStoragePath');
+        if (selectedPath) {
+            let found = false;
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === selectedPath) {
+                    sel.selectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found && customPathInput) {
+                customPathInput.value = selectedPath;
+            }
+        } else {
+            sel.value = '';
+            if (customPathInput) customPathInput.value = '';
+        }
+    }
+    window.populateCameraStorageOptions = populateCameraStorageOptions;
 
     // Wire up Camera Modal & Scanner Modal & Template Management triggers
     setTimeout(() => {
+        const camStorageSelectEl = document.getElementById('camStorageSelect');
+        if (camStorageSelectEl) {
+            camStorageSelectEl.addEventListener('change', (e) => {
+                const customPathInput = document.getElementById('camStoragePath');
+                if (customPathInput) {
+                    customPathInput.value = e.target.value || '';
+                }
+            });
+        }
         const btnOpenAdd = document.getElementById('btnOpenAddCameraModal');
         if (btnOpenAdd) {
             btnOpenAdd.onclick = () => {
@@ -2691,7 +2752,7 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
                 maxFolderSizeGB: document.getElementById('camMaxGB') ? parseFloat(document.getElementById('camMaxGB').value) : 10,
                 segmentDurationSec: document.getElementById('camSegmentSec') ? parseInt(document.getElementById('camSegmentSec').value) : 900,
                 transcode: document.getElementById('camTranscode') ? document.getElementById('camTranscode').value : 'auto',
-                storagePath: document.getElementById('camStoragePath') ? document.getElementById('camStoragePath').value : ''
+                storagePath: (document.getElementById('camStoragePath')?.value || document.getElementById('camStorageSelect')?.value || '').trim()
             };
             
             try {
