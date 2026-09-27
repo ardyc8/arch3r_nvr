@@ -9728,13 +9728,7 @@ async function fetchInstalledAddons() {
                         </td>
                         <td style="padding: 1rem 1.5rem; text-align:right;">
                             <div style="display:flex; justify-content:flex-end; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-                                ${(addon.id === 'ai_yolo' || addon.id === 'ai-yolo') ? `
-                                    <button class="btn-sm btn-primary" onclick="openYoloAiPage()" title="Kelola & Konfigurasi AI Kamera" style="background:#2563eb; border-color:#2563eb; font-weight:600; display:inline-flex; align-items:center; gap:0.35rem; padding:0.4rem 0.8rem;">
-                                        <span>🎯</span> Kelola AI Kamera
-                                    </button>
-                                ` : `
-                                    <button class="btn-sm btn-primary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan">⚙️</button>
-                                `}
+                                <button class="btn-sm btn-primary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan">⚙️</button>
                                 <button class="btn-sm btn-secondary" onclick="toggleAddonState('${addon.id}', ${!addon.active})" title="${addon.active ? 'Matikan' : 'Nyalakan'}">
                                     ${addon.active ? '⏹️' : '▶️'}
                                 </button>

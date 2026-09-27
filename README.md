@@ -1,5 +1,16 @@
-# ⚡ Arch3r NVR (Ver. 11.0.8)
+# ⚡ Arch3r NVR (Ver. 11.0.9)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.0.9:
+- **Universal Addon Toggle Controller & Unified Addons Management UI**:
+  1. **Rute Universal Toggle Addon (`server.js`)**:
+     - Menambahkan handler `POST /api/addons/:addonId/toggle` di backend dengan dukungan penuh untuk `ai_yolo`, `hdmi-kiosk`, `hdmi-native`, dan addon lainnya.
+     - Menyelesaikan kendala `HTTP 500` saat tombol Start/Stop (`▶️` / `⏹️`) ditekan pada modul YOLO AI.
+  2. **Penyeragaman Tampilan Tombol Addons UI (`script.js`)**:
+     - Menyeragamkan seluruh aksi pengaturan modul addons menjadi icon gerigi (`⚙️`) yang rapi dan konsisten.
+     - Modal pengaturan YOLO AI kini dapat diakses langsung via tombol `⚙️` dengan tautan terintegrasi ke editor AI Vision & ROI Grid.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.0.9** pada seluruh file konfigurasi dan dokumentasi.
 
 ### 📋 Changelog Pembaruan Ver. 11.0.8:
 - **Server Startup Integrity & Watchdog Route Fix**:
