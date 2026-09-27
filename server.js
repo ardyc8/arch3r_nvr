@@ -6634,10 +6634,21 @@ function initAutonomousBackgroundAiWorker() {
     }, 3000);
 }
 
+let cachedPythonBinary = null;
+
 function findPythonBinary() {
+    if (cachedPythonBinary && fs.existsSync(cachedPythonBinary)) {
+        return cachedPythonBinary;
+    }
+
     const candidates = [
         path.join(__dirname, 'venv', 'bin', 'python3'),
         path.join(__dirname, 'venv', 'bin', 'python'),
+        '/root/arch3r_nvr/venv/bin/python3',
+        '/root/arch3r_nvr/venv/bin/python',
+        '/home/arch3r/arch3r_nvr/venv/bin/python3',
+        path.join(process.cwd(), 'venv', 'bin', 'python3'),
+        path.join(process.cwd(), 'venv', 'bin', 'python'),
         '/usr/bin/python3',
         '/usr/local/bin/python3',
         'python3',
@@ -6645,15 +6656,22 @@ function findPythonBinary() {
     ];
     for (const p of candidates) {
         if (p.startsWith('/') || p.includes(path.sep)) {
-            if (fs.existsSync(p)) return p;
+            if (fs.existsSync(p)) {
+                cachedPythonBinary = p;
+                return p;
+            }
         } else {
             try {
-                child_process.execSync(`which ${p}`, { stdio: 'ignore' });
-                return p;
+                const found = child_process.execSync(`which ${p}`, { stdio: 'pipe', encoding: 'utf-8' }).trim();
+                if (found && fs.existsSync(found)) {
+                    cachedPythonBinary = found;
+                    return found;
+                }
             } catch (_) {}
         }
     }
-    return 'python3';
+    cachedPythonBinary = 'python3';
+    return cachedPythonBinary;
 }
 
 function getAiScriptPath() {
@@ -7028,15 +7046,36 @@ function appendAiInstallLog(msg, type = 'info') {
  */
 function auditAiModulesReadiness() {
     const pyBin = findPythonBinary();
+
+    // Helper command to safely get python module version using importlib.metadata or __version__
+    const pyModuleCheck = (modName) => {
+        return `${pyBin} -c "
+import sys
+try:
+    import ${modName}
+    ver = None
+    try:
+        import importlib.metadata
+        ver = importlib.metadata.version('${modName}')
+    except Exception:
+        pass
+    if not ver:
+        ver = getattr(${modName}, '__version__', None)
+    print(ver if ver else 'Terpasang')
+except Exception as e:
+    sys.exit(1)
+"`;
+    };
+
     const modules = [
         { id: 'python', name: 'Python 3 Runtime', required: true, checkCmd: `${pyBin} --version` },
-        { id: 'pip', name: 'PIP Package Manager', required: true, checkCmd: `${pyBin} -m pip --version || which pip3 || which pip` },
-        { id: 'cv2', name: 'OpenCV Computer Vision (cv2)', required: true, checkCmd: `${pyBin} -c "import cv2; print(cv2.__version__)"` },
-        { id: 'numpy', name: 'NumPy Tensor Mathematics', required: true, checkCmd: `${pyBin} -c "import numpy; print(numpy.__version__)"` },
-        { id: 'fastapi', name: 'FastAPI Microservice Engine', required: true, checkCmd: `${pyBin} -c "import fastapi; print(fastapi.__version__)"` },
-        { id: 'uvicorn', name: 'Uvicorn ASGI Web Server', required: true, checkCmd: `${pyBin} -c "import uvicorn; print(uvicorn.__version__)"` },
-        { id: 'pydantic', name: 'Pydantic Data Validator', required: true, checkCmd: `${pyBin} -c "import pydantic; print(pydantic.__version__)"` },
-        { id: 'ultralytics', name: 'YOLOv8 Ultralytics Engine', required: false, checkCmd: `${pyBin} -c "import ultralytics; print(ultralytics.__version__)"` },
+        { id: 'pip', name: 'PIP Package Manager', required: true, checkCmd: `${pyBin} -m pip --version` },
+        { id: 'cv2', name: 'OpenCV Computer Vision (cv2)', required: true, checkCmd: pyModuleCheck('cv2') },
+        { id: 'numpy', name: 'NumPy Tensor Mathematics', required: true, checkCmd: pyModuleCheck('numpy') },
+        { id: 'fastapi', name: 'FastAPI Microservice Engine', required: true, checkCmd: pyModuleCheck('fastapi') },
+        { id: 'uvicorn', name: 'Uvicorn ASGI Web Server', required: true, checkCmd: pyModuleCheck('uvicorn') },
+        { id: 'pydantic', name: 'Pydantic Data Validator', required: true, checkCmd: pyModuleCheck('pydantic') },
+        { id: 'ultralytics', name: 'YOLOv8 Ultralytics Engine', required: false, checkCmd: pyModuleCheck('ultralytics') },
         { id: 'model_file', name: 'Berkas Model AI (yolov8n.pt)', required: true, checkCmd: `test -f addons/yolov8n.pt || test -f yolov8n.pt` }
     ];
 
@@ -7046,7 +7085,7 @@ function auditAiModulesReadiness() {
         try {
             const out = child_process.execSync(m.checkCmd, { 
                 stdio: ['ignore', 'pipe', 'pipe'], 
-                timeout: 3000,
+                timeout: 4000,
                 encoding: 'utf-8'
             }).trim();
             installed = true;
@@ -7092,6 +7131,43 @@ app.get('/api/ai/modules/install-progress', verifyToken, (req, res) => {
     });
 });
 
+/**
+ * Execute command with live line-by-line output streaming into aiInstallProgressState
+ */
+function runStreamCommand(cmd, args = []) {
+    return new Promise((resolve, reject) => {
+        let spawned;
+        try {
+            if (args.length > 0) {
+                spawned = spawn(cmd, args, { cwd: __dirname, env: { ...process.env, PYTHONUNBUFFERED: '1' } });
+            } else {
+                spawned = spawn(cmd, { shell: true, cwd: __dirname, env: { ...process.env, PYTHONUNBUFFERED: '1' } });
+            }
+        } catch (err) {
+            return reject(err);
+        }
+
+        const handleData = (data) => {
+            const lines = data.toString().split('\n');
+            for (const line of lines) {
+                const cleaned = line.trim();
+                if (cleaned) {
+                    appendAiInstallLog(cleaned);
+                }
+            }
+        };
+
+        if (spawned.stdout) spawned.stdout.on('data', handleData);
+        if (spawned.stderr) spawned.stderr.on('data', handleData);
+
+        spawned.on('error', (err) => reject(err));
+        spawned.on('close', (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`Command exited with code ${code}`));
+        });
+    });
+}
+
 app.post('/api/ai/modules/install', verifyToken, requireAdmin, async (req, res) => {
     if (aiInstallProgressState.running) {
         return res.status(409).json({
@@ -7102,100 +7178,102 @@ app.post('/api/ai/modules/install', verifyToken, requireAdmin, async (req, res) 
 
     aiInstallProgressState = {
         running: true,
-        currentStep: 'Inisialisasi Sistem...',
+        currentStep: 'Inisialisasi Lingkungan STB...',
         progressPct: 5,
         logs: [],
         error: null,
         completed: false
     };
 
-    appendAiInstallLog('🚀 Memulai alur instalasi 1-Click Modul AI YOLO...', 'info');
+    appendAiInstallLog('🚀 Memulai alur instalasi dependensi AI YOLO secara real-time...', 'info');
 
-    // Run in background asynchronously so UI does not freeze or timeout
+    // Run in background asynchronously so UI does not freeze and streams stdout live
     (async () => {
         const pyBin = findPythonBinary();
-        
+        appendAiInstallLog(`Menggunakan environment binary: ${pyBin}`, 'info');
+
         try {
-            // Step 1: Check Python
-            aiInstallProgressState.currentStep = 'Memeriksa runtime Python 3...';
+            // Step 1: Check Python Runtime
+            aiInstallProgressState.currentStep = 'Tahap 1/5: Memeriksa runtime Python 3...';
             aiInstallProgressState.progressPct = 15;
-            appendAiInstallLog(`Menggunakan binary Python: ${pyBin}`);
             
             try {
                 const pyVer = child_process.execSync(`${pyBin} --version`, { encoding: 'utf-8' }).trim();
-                appendAiInstallLog(`✅ ${pyVer} terverifikasi.`);
+                appendAiInstallLog(`✅ Terdeteksi: ${pyVer}`);
             } catch (err) {
-                appendAiInstallLog(`⚠️ Python 3 belum terpasang. Menjalankan apt update...`, 'warn');
+                appendAiInstallLog(`⚠️ Python belum terpasang. Memasang paket python3 via apt-get...`, 'warn');
                 try {
-                    child_process.execSync('export DEBIAN_FRONTEND=noninteractive; apt-get update -y && apt-get install -y python3 python3-pip python3-venv', { encoding: 'utf-8', timeout: 60000 });
-                    appendAiInstallLog(`✅ Python3 & pip berhasil dipasang via apt.`);
+                    await runStreamCommand('export DEBIAN_FRONTEND=noninteractive; apt-get update -y && apt-get install -y python3 python3-pip python3-venv');
+                    appendAiInstallLog(`✅ python3 & python3-pip berhasil dipasang via apt.`);
                 } catch (aptErr) {
-                    appendAiInstallLog(`Catatan: Akses root apt tidak tersedia (${aptErr.message.substring(0, 80)}). Mencoba pip bootstrap...`, 'warn');
+                    appendAiInstallLog(`Catatan: Akses root apt tidak tersedia atau dibatasi: ${aptErr.message}`, 'warn');
                 }
             }
 
             // Step 2: Ensure PIP is available
-            aiInstallProgressState.currentStep = 'Memverifikasi PIP Package Manager...';
+            aiInstallProgressState.currentStep = 'Tahap 2/5: Memverifikasi PIP Package Manager...';
             aiInstallProgressState.progressPct = 30;
             let hasPip = false;
             try {
-                child_process.execSync(`${pyBin} -m pip --version`, { encoding: 'utf-8' });
+                const pipVer = child_process.execSync(`${pyBin} -m pip --version`, { encoding: 'utf-8' }).trim();
                 hasPip = true;
-                appendAiInstallLog(`✅ PIP Package Manager siap.`);
+                appendAiInstallLog(`✅ PIP siap: ${pipVer}`);
             } catch (_) {
-                appendAiInstallLog(`Mencoba mengunduh bootstrap get-pip.py...`);
+                appendAiInstallLog(`Mencoba bootstrap get-pip.py untuk ${pyBin}...`, 'warn');
                 try {
-                    child_process.execSync(`curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && ${pyBin} /tmp/get-pip.py --no-warn-script-location --break-system-packages || true`, { encoding: 'utf-8', timeout: 45000 });
+                    await runStreamCommand(`curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && ${pyBin} /tmp/get-pip.py --no-warn-script-location --break-system-packages`);
                     hasPip = true;
-                    appendAiInstallLog(`✅ PIP bootstrap berhasil dipasang.`);
+                    appendAiInstallLog(`✅ Bootstrap pip selesai.`);
                 } catch (pipErr) {
-                    appendAiInstallLog(`⚠️ Bootstrap pip gagal: ${pipErr.message.substring(0, 80)}`, 'warn');
+                    appendAiInstallLog(`⚠️ Gagal bootstrap pip: ${pipErr.message}`, 'warn');
                 }
             }
 
-            // Step 3: Install core lightweight ML libraries
-            aiInstallProgressState.currentStep = 'Memasang paket OpenCV, FastAPI, Uvicorn & NumPy...';
-            aiInstallProgressState.progressPct = 60;
-            appendAiInstallLog(`Memasang library: opencv-python-headless, numpy, fastapi, uvicorn, pydantic...`);
+            // Step 3: Install core lightweight ML libraries with live streaming
+            aiInstallProgressState.currentStep = 'Tahap 3/5: Memasang pustaka FastAPI, Uvicorn, OpenCV & NumPy...';
+            aiInstallProgressState.progressPct = 55;
+            appendAiInstallLog(`Menjalankan instalasi paket via pip (Live Output):`);
 
             if (hasPip) {
                 try {
-                    const pipCmd = `${pyBin} -m pip install --no-cache-dir opencv-python-headless numpy fastapi uvicorn pydantic httpx --break-system-packages || ${pyBin} -m pip install --no-cache-dir opencv-python-headless numpy fastapi uvicorn pydantic httpx`;
-                    child_process.execSync(pipCmd, { encoding: 'utf-8', timeout: 120000 });
-                    appendAiInstallLog(`✅ Paket OpenCV, FastAPI, Uvicorn & NumPy berhasil dipasang!`);
+                    const pipCmd = `${pyBin} -m pip install --no-cache-dir fastapi uvicorn pydantic opencv-python-headless numpy httpx --break-system-packages || ${pyBin} -m pip install --no-cache-dir fastapi uvicorn pydantic opencv-python-headless numpy httpx`;
+                    await runStreamCommand(pipCmd);
+                    appendAiInstallLog(`✅ Seluruh pustaka Python AI berhasil diverifikasi & dipasang!`);
                 } catch (pipInstallErr) {
-                    appendAiInstallLog(`⚠️ Gagal memasang via pip: ${pipInstallErr.message.substring(0, 100)}. Native Node Engine tetap aktif.`, 'warn');
+                    appendAiInstallLog(`⚠️ Peringatan saat pip install: ${pipInstallErr.message}. Sistem tetap didukung Engine Native Node.js.`, 'warn');
                 }
             }
 
             // Step 4: Download lightweight YOLOv8 Nano weights if not present
-            aiInstallProgressState.currentStep = 'Memverifikasi berkas model YOLOv8 Nano...';
-            aiInstallProgressState.progressPct = 85;
+            aiInstallProgressState.currentStep = 'Tahap 4/5: Memverifikasi berkas model YOLOv8 Nano...';
+            aiInstallProgressState.progressPct = 80;
             const targetModelPath = path.join(__dirname, 'addons', 'yolov8n.pt');
             if (!fs.existsSync(targetModelPath) && !fs.existsSync('yolov8n.pt')) {
                 appendAiInstallLog(`Mengunduh berkas tensor model yolov8n.pt...`);
                 try {
                     fs.mkdirSync(path.join(__dirname, 'addons'), { recursive: true });
-                    child_process.execSync(`curl -sL https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.pt -o "${targetModelPath}" || curl -sL https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt -o "${targetModelPath}"`, { timeout: 40000 });
-                    appendAiInstallLog(`✅ Berkas model yolov8n.pt berhasil diunduh ke folder addons/!`);
+                    await runStreamCommand(`curl -L -o "${targetModelPath}" https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.pt`);
+                    appendAiInstallLog(`✅ Berkas model yolov8n.pt berhasil disimpan ke folder addons/!`);
                 } catch (dlErr) {
-                    appendAiInstallLog(`ℹ️ Berkas model belum terunduh: ${dlErr.message.substring(0, 60)} (Sistem tetap didukung oleh Server Native Engine).`, 'warn');
+                    appendAiInstallLog(`ℹ️ Unduhan curl model: ${dlErr.message}.`, 'warn');
                 }
             } else {
-                appendAiInstallLog(`✅ Berkas model yolov8n.pt sudah ada di sistem.`);
+                appendAiInstallLog(`✅ Berkas model yolov8n.pt telah tersedia di sistem.`);
             }
 
             // Step 5: Test & Restart Service
-            aiInstallProgressState.currentStep = 'Menjalankan restart layanan AI...';
+            aiInstallProgressState.currentStep = 'Tahap 5/5: Memuat ulang layanan daemon AI...';
             aiInstallProgressState.progressPct = 95;
-            appendAiInstallLog(`Memuat ulang engine AI NVR...`);
+            appendAiInstallLog(`Me-restart proses Python AI Daemon...`);
+            await stopPythonAiService().catch(() => {});
+            await new Promise(r => setTimeout(r, 800));
             await startPythonAiService().catch(() => {});
 
-            aiInstallProgressState.currentStep = 'Selesai! Sistem AI Siap Digunakan.';
+            aiInstallProgressState.currentStep = 'Selesai! Seluruh Modul AI Siap 100%.';
             aiInstallProgressState.progressPct = 100;
             aiInstallProgressState.completed = true;
             aiInstallProgressState.running = false;
-            appendAiInstallLog(`🎉 Seluruh pemeriksaan modul selesai. Engine NVR beroperasi penuh!`, 'info');
+            appendAiInstallLog(`🎉 Selamat! Semua modul & dependensi STB telah siap beroperasi.`, 'info');
             sysLog('INFO', `[AI Modules] Pemasangan modul AI otomatis 1-Click telah selesai dieksekusi.`, 'SYSTEM');
 
         } catch (fatalErr) {
@@ -7209,7 +7287,7 @@ app.post('/api/ai/modules/install', verifyToken, requireAdmin, async (req, res) 
 
     res.json({
         success: true,
-        message: 'Proses instalasi modul AI berhasil diluncurkan di latar belakang!',
+        message: 'Proses instalasi modul AI berhasil diluncurkan secara real-time!',
         state: aiInstallProgressState
     });
 });

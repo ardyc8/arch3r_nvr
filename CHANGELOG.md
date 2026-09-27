@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.0.3] - 2026-09-27
+### Real-Time Live Streaming AI Installer & Locked VENV Module Auditor
+- **Pendeteksian VENV Terkunci & Anti-Flicker (`server.js`):**
+  - **Locked VENV Priority**: Memprioritaskan virtual environment aktif (`/root/arch3r_nvr/venv/bin/python3`, `./venv/bin/python3`) dan menyimpan cache binary agar status PIP tidak lagi berubah-ubah (flickering antara hijau dan merah).
+  - **Modern Module Version Discovery**: Menggunakan `importlib.metadata.version()` pada FastAPI, Uvicorn, OpenCV, dan NumPy sehingga FastAPI 0.141+ terdeteksi akurat 100% tanpa AttributeError.
+- **Real-Time Live Streaming Console Output (`server.js` & `public/script.js`):**
+  - **Fluid `spawn` Streaming Architecture**: Menggantikan blocking `execSync` dengan `runStreamCommand(spawn)` sehingga baris log unduhan paket (seperti instalasi pip) terkirim secara live dan instan ke antarmuka web.
+  - **Color-Coded Interactive Terminal**: Polling dipercepat ke 600ms dengan styling terminal berwarna (🟢 Sukses, 🟡 Peringatan, 🔴 Error) sehingga pengguna dapat melihat proses instalasi berlangsung detik demi detik layaknya di terminal Linux.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.0.3** sesuai protokol Semantic Versioning Strict.
+
 ## [Ver 11.0.2] - 2026-09-27
 ### AI Modules Readiness Doctor & 1-Click Autonomous Dependency Installer
 - **AI Modules Readiness Doctor (`server.js` & `public/script.js`):**

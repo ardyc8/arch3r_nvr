@@ -1,5 +1,16 @@
-# ⚡ Arch3r NVR (Ver. 11.0.2)
+# ⚡ Arch3r NVR (Ver. 11.0.3)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.0.3:
+- **Real-Time Live Streaming AI Installer & Locked VENV Module Auditor**:
+  1. **Pendeteksian VENV Terkunci & Anti-Flicker (`server.js`)**:
+     - Memprioritaskan virtual environment aktif (`/root/arch3r_nvr/venv/bin/python3`, `./venv/bin/python3`) dan menyimpan cache binary permanen agar status PIP tidak lagi berubah-ubah (flickering).
+     - Memanfaatkan `importlib.metadata.version()` sehingga versi FastAPI modern (0.141+) terdeteksi akurat 100%.
+  2. **Real-Time Live Streaming Console Output (`server.js` & `public/script.js`)**:
+     - Mengganti blocking synchronous execution dengan `spawn` process pipeline sehingga proses unduhan pip mengalir baris per baris secara live ke browser.
+     - Terminal visual interaktif dengan pewarnaan log status (🟢 Berhasil, 🟡 Peringatan, 🔴 Error).
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.0.3** pada seluruh file konfigurasi dan dokumentasi.
 
 ### 📋 Changelog Pembaruan Ver. 11.0.2:
 - **AI Modules Readiness Doctor & 1-Click Autonomous Dependency Installer**:

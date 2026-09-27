@@ -13461,7 +13461,7 @@ async function start1ClickModulesInstallation() {
             showToast('🚀 Pemasangan modul AI diluncurkan di latar belakang STB...', 'info');
         }
 
-        // Poll progress every 1.5s
+        // Poll progress every 600ms for smooth live terminal streaming
         if (yoloInstallPollingTimer) clearInterval(yoloInstallPollingTimer);
         yoloInstallPollingTimer = setInterval(async () => {
             try {
@@ -13476,11 +13476,17 @@ async function start1ClickModulesInstallation() {
                     if (progressBar) progressBar.style.width = `${pData.progressPct || 0}%`;
                     
                     if (consoleLog && Array.isArray(pData.logs)) {
-                        consoleLog.innerHTML = pData.logs.join('<br>');
+                        consoleLog.innerHTML = pData.logs.map(l => {
+                            let color = '#a7f3d0';
+                            if (l.includes('[ERROR]') || l.includes('Error') || l.includes('❌')) color = '#fca5a5';
+                            else if (l.includes('[WARN]') || l.includes('⚠️')) color = '#fde047';
+                            else if (l.includes('✅') || l.includes('🎉')) color = '#86efac';
+                            return `<div style="color:${color}; line-height:1.35; word-break:break-all;">${l}</div>`;
+                        }).join('');
                         consoleLog.scrollTop = consoleLog.scrollHeight;
                     }
 
-                    if (pData.completed || !pData.running) {
+                    if (pData.completed || (!pData.running && pData.progressPct === 100)) {
                         clearInterval(yoloInstallPollingTimer);
                         yoloInstallPollingTimer = null;
                         if (installBtn) {
@@ -13492,10 +13498,17 @@ async function start1ClickModulesInstallation() {
                         }
                         checkYoloModulesReadiness();
                         runYoloAiDiagnosticsProbe();
+                    } else if (!pData.running && pData.error) {
+                        clearInterval(yoloInstallPollingTimer);
+                        yoloInstallPollingTimer = null;
+                        if (installBtn) {
+                            installBtn.disabled = false;
+                            installBtn.innerHTML = '<span>⚡</span> Coba Pasang Lagi';
+                        }
                     }
                 }
             } catch (_) {}
-        }, 1500);
+        }, 600);
 
     } catch (err) {
         if (stepLabel) stepLabel.textContent = 'Gagal meluncurkan: ' + err.message;
