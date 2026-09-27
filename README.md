@@ -1,5 +1,17 @@
-# ⚡ Arch3r NVR (Ver. 11.0.9)
+# ⚡ Arch3r NVR (Ver. 11.1.0)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.1.0:
+- **Enterprise AI YOLO Lifecycle, PM2 Daemon Controller & Environment Doctor**:
+  1. **Dual-Strategy Daemon Lifecycle (`addons/ai-yolo/index.js` & `server.js`)**:
+     - Mengubah siklus hidup daemon Python YOLO agar diprioritaskan menggunakan **PM2** (`pm2 start ... --name arch3r-ai-yolo`), dengan fallback otomatis ke *direct spawn* terisolasi.
+     - Port daemon disinkronkan ke **port 5055** yang bersih dari konflik port 8000 Node.js.
+     - Tombol Start/Stop (`▶️` / `⏹️`) di halaman Addons terhubung langsung ke lifecycle controller dan merilis port secara tuntas (`killPort`).
+  2. **Dokter Lingkungan AI STB Terpadu di Modal Addon (`script.js`)**:
+     - Modal konfigurasi (icon gerigi `⚙️`) kini dilengkapi panel **Dokter Lingkungan AI Armbian STB** yang secara transparan menampilkan status ketersediaan Python, OpenCV, Torch, PyTorch, dan bobot model `yolov8n.pt`.
+     - Ditambahkan tombol pintasan langsung ke **Studio AI Vision & Area ROI**.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.1.0** (naik ke minor sesuai aturan semver strict maksimal patch 9).
 
 ### 📋 Changelog Pembaruan Ver. 11.0.9:
 - **Universal Addon Toggle Controller & Unified Addons Management UI**:

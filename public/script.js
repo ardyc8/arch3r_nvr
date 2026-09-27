@@ -9887,11 +9887,13 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
 
     // --- 1. SPESIFIKASI: AI YOLOv8 Human Detection Addon ---
     if (addonId === 'ai_yolo' || addonId === 'ai-yolo') {
-        const isRunning = statusData ? statusData.active : true;
+        const isRunning = statusData ? (statusData.active || statusData.running) : false;
         const currentCam = configObj.camera_id || '';
         const confPercent = Math.round((configObj.confidence_threshold !== undefined ? configObj.confidence_threshold : 0.50) * 100);
         const frameSkip = configObj.frame_skip || 15;
         const streamType = configObj.stream_type || 'sub';
+        const aiEngine = (statusData && statusData.engine) || 'YOLOv8 ARM64 Engine';
+        const aiPort = (statusData && statusData.port) || 5055;
 
         let camOptionsHtml = '<option value="">-- Analisis Semua Kamera / Standar --</option>';
         availableCams.forEach(cam => {
@@ -9903,23 +9905,43 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
             <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3);">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                     <div>
-                        <strong style="color:#60a5fa; font-size:1rem; display:block;">🧠 Mesin AI: YOLOv8n (Ultra-Lightweight ARM64)</strong>
-                        <span style="font-size:0.85rem; color:var(--text-muted);">Dioptimalkan untuk SoC Amlogic STB Linux Armbian (Zero-Crash Guard)</span>
+                        <strong style="color:#60a5fa; font-size:1rem; display:block;">🧠 ${aiEngine}</strong>
+                        <span style="font-size:0.82rem; color:var(--text-muted); font-family:monospace;">Port: ${aiPort} &bull; Mode: ${statusData?.mode || 'Daemon'}</span>
                     </div>
-                    <span style="padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isRunning ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isRunning ? '#22c55e' : '#ef4444'}; border: 1px solid ${isRunning ? '#22c55e' : '#ef4444'};">
-                        ${isRunning ? '🟢 Layanan Aktif' : '⚪ Siaga / Mati'}
-                    </span>
+                    <div style="display:flex; gap:0.4rem; align-items:center;">
+                        <span style="padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isRunning ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isRunning ? '#22c55e' : '#ef4444'}; border: 1px solid ${isRunning ? '#22c55e' : '#ef4444'};">
+                            ${isRunning ? '🟢 Daemon Aktif' : '⚪ Siaga / Mati'}
+                        </span>
+                    </div>
                 </div>
-                <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm btn-primary" onclick="closeAddonConfigModal(); openYoloAiPage('${currentCam}')" style="display:flex; align-items:center; gap:0.3rem; background:#2563eb; border-color:#2563eb;">
-                        <span>🎯</span> Buka Halaman YOLO AI Vision & Area Grid
+                <div style="display:flex; gap:0.5rem; margin-top:0.85rem; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="closeAddonConfigModal(); openYoloAiPage('${currentCam}')" style="display:flex; align-items:center; gap:0.35rem; background:#2563eb; border-color:#2563eb; font-weight:600;">
+                        <span>🎯</span> Buka Studio AI Vision & Area ROI
                     </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="testAIYoloAlarm()" style="display:flex; align-items:center; gap:0.3rem;">
-                        <span>🔔</span> Uji Alarm / Test Webhook
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAddonState('ai_yolo', ${!isRunning})" style="display:flex; align-items:center; gap:0.35rem;">
+                        <span>${isRunning ? '⏹️' : '▶️'}</span> ${isRunning ? 'Matikan Daemon' : 'Nyalakan Daemon'}
                     </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="restartAIYoloService()" style="display:flex; align-items:center; gap:0.3rem;">
-                        <span>⚡</span> Terapkan & Restart Service
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="restartAIYoloService()" style="display:flex; align-items:center; gap:0.35rem;">
+                        <span>⚡</span> Restart Service
                     </button>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="testAIYoloAlarm()" style="display:flex; align-items:center; gap:0.35rem;">
+                        <span>🔔</span> Uji Alarm
+                    </button>
+                </div>
+            </div>
+
+            <!-- DOKTER LINGKUNGAN AI & CHECKLIST DEPENDENSI STB -->
+            <div style="margin-bottom: 1.25rem; padding: 0.9rem; border-radius: 6px; background: rgba(0,0,0,0.25); border: 1px solid var(--border);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                    <strong style="font-size:0.88rem; color:#cbd5e1; display:flex; align-items:center; gap:0.4rem;">
+                        <span>🩺</span> Dokter Lingkungan AI Armbian STB
+                    </strong>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="checkYoloModulesReadiness()" style="font-size:0.75rem; padding:2px 8px;">
+                        🔄 Cek Ulang
+                    </button>
+                </div>
+                <div id="yolo-modules-checklist-container" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:0.5rem; font-size:0.8rem; color:#94a3b8;">
+                    <div style="padding:0.4rem; background:rgba(255,255,255,0.03); border-radius:4px;">Memeriksa status dependensi Python...</div>
                 </div>
             </div>
 

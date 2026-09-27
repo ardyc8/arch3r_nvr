@@ -20,13 +20,13 @@ const http = require('http');
 class AiYoloAddon {
     constructor() {
         this.serviceName = 'arch3r-ai-yolo';
-        this.port = 8000;
+        this.port = parseInt(process.env.AI_YOLO_PORT || '5055', 10);
         this.childProcess = null;
         this.fallbackServer = null;
         this.isRunning = false;
         this.startTime = null;
         this.pid = null;
-        this.mode = 'standby'; // 'python_native' | 'hybrid_embedded' | 'standby'
+        this.mode = 'standby'; // 'pm2_native' | 'python_native' | 'hybrid_embedded' | 'standby'
         this.logger = (lvl, msg) => console.log(`[AI-YOLO-ADDON][${lvl}] ${msg}`);
         this.activeConfigs = {};
         this.latestDetections = {};
@@ -86,18 +86,18 @@ class AiYoloAddon {
     }
 
     /**
-     * Ensure Port 8000 is completely released
+     * Ensure AI Daemon Port is completely released
      */
-    async killPort8000() {
+    async killPort() {
         return new Promise((resolve) => {
-            exec('fuser -k 8000/tcp 2>/dev/null || pkill -f ai_yolo_service.py 2>/dev/null || true', () => {
+            exec(`pm2 stop arch3r-ai-yolo 2>/dev/null || fuser -k ${this.port}/tcp 2>/dev/null || pkill -f ai_yolo_service.py 2>/dev/null || true`, () => {
                 resolve(true);
             });
         });
     }
 
     /**
-     * Start the Embedded Fallback Engine on port 8000 if Python environment lacks modules
+     * Start the Embedded Fallback Engine on configured port if Python environment lacks modules
      */
     startFallbackServer() {
         if (this.fallbackServer) return;
@@ -242,7 +242,7 @@ class AiYoloAddon {
                 this.childProcess = null;
             }
             this.stopFallbackServer();
-            await this.killPort8000();
+            await this.killPort();
 
             this.isRunning = false;
             this.mode = 'standby';
@@ -258,72 +258,85 @@ class AiYoloAddon {
         }
 
         if (action === 'start') {
-            // Step 1: Check if already healthy
+            // Step 1: Check if already healthy on port
             const pingBefore = await this.pingService(500);
             if (pingBefore.ok) {
                 this.isRunning = true;
                 this.mode = 'running';
-                this.logger('INFO', 'AI YOLO Service is already running and healthy.');
-                return callback(null, { success: true, running: true, mode: 'running' });
+                this.logger('INFO', `AI YOLO Service is already running and healthy on port ${this.port}.`);
+                return callback(null, { success: true, running: true, mode: 'running', port: this.port });
             }
 
             // Step 2: Clear old zombie processes
-            await this.killPort8000();
+            await this.killPort();
 
             const pythonBin = this.getPythonBin();
             const scriptPath = this.getScriptPath();
 
-            this.logger('INFO', `Spawning Python Daemon using: ${pythonBin} ${scriptPath}`);
-
-            let spawnedOk = false;
+            // Try starting via PM2 first if available on STB
+            let pm2Ok = false;
             try {
-                this.childProcess = spawn(pythonBin, [scriptPath], {
-                    cwd: path.dirname(scriptPath),
-                    detached: true,
-                    stdio: ['ignore', 'pipe', 'pipe']
+                const pm2Check = await new Promise((res) => {
+                    exec(`pm2 start "${scriptPath}" --name "${this.serviceName}" --interpreter "${pythonBin}" -- --port=${this.port}`, (err) => {
+                        res(!err);
+                    });
                 });
+                if (pm2Check) {
+                    pm2Ok = true;
+                    this.logger('INFO', `AI YOLO Service successfully spawned via PM2 (${this.serviceName})`);
+                }
+            } catch (_) {}
 
-                this.pid = this.childProcess.pid;
-                this.childProcess.unref();
+            if (!pm2Ok) {
+                this.logger('INFO', `Spawning Python Daemon using direct spawn: ${pythonBin} ${scriptPath} --port=${this.port}`);
+                try {
+                    this.childProcess = spawn(pythonBin, [scriptPath, `--port=${this.port}`], {
+                        cwd: path.dirname(scriptPath),
+                        detached: true,
+                        stdio: ['ignore', 'pipe', 'pipe'],
+                        env: { ...process.env, PYTHONUNBUFFERED: '1', AI_YOLO_PORT: String(this.port) }
+                    });
 
-                this.childProcess.stdout.on('data', (d) => {
-                    const line = d.toString().trim();
-                    if (line) console.log(`[PYTHON-AI] ${line}`);
-                });
+                    this.pid = this.childProcess.pid;
+                    this.childProcess.unref();
 
-                this.childProcess.stderr.on('data', (d) => {
-                    const line = d.toString().trim();
-                    if (line && !line.includes('DeprecationWarning')) {
-                        console.warn(`[PYTHON-AI-NOTICE] ${line}`);
-                    }
-                });
+                    this.childProcess.stdout.on('data', (d) => {
+                        const line = d.toString().trim();
+                        if (line) console.log(`[PYTHON-AI] ${line}`);
+                    });
 
-                this.childProcess.on('exit', (code, sig) => {
-                    this.logger('INFO', `Python Daemon exited (code: ${code}, signal: ${sig})`);
-                    this.childProcess = null;
-                    this.pid = null;
-                });
+                    this.childProcess.stderr.on('data', (d) => {
+                        const line = d.toString().trim();
+                        if (line && !line.includes('DeprecationWarning')) {
+                            console.warn(`[PYTHON-AI-NOTICE] ${line}`);
+                        }
+                    });
 
-                spawnedOk = true;
-            } catch (err) {
-                this.logger('WARN', `Direct spawn failed: ${err.message}`);
+                    this.childProcess.on('exit', (code, sig) => {
+                        this.logger('INFO', `Python Daemon exited (code: ${code}, signal: ${sig})`);
+                        this.childProcess = null;
+                        this.pid = null;
+                    });
+                } catch (err) {
+                    this.logger('WARN', `Direct spawn failed: ${err.message}`);
+                }
             }
 
-            // Step 3: Wait up to 3.5 seconds for port 8000
+            // Step 3: Wait up to 3.5 seconds for target port
             let ready = false;
             for (let i = 0; i < 7; i++) {
                 await new Promise(r => setTimeout(r, 500));
                 const ping = await this.pingService(400);
                 if (ping.ok) {
                     ready = true;
-                    this.mode = 'python_native';
+                    this.mode = pm2Ok ? 'pm2_native' : 'python_native';
                     break;
                 }
             }
 
             // Step 4: Fallback engine if Python dependencies missing in host OS
             if (!ready) {
-                this.logger('INFO', 'Native Python not responding on port 8000. Activating embedded hybrid AI engine...');
+                this.logger('INFO', `Native Python not responding on port ${this.port}. Activating embedded hybrid AI engine...`);
                 this.startFallbackServer();
                 this.mode = 'hybrid_embedded';
                 ready = true;
