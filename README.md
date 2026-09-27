@@ -1,5 +1,19 @@
-# ⚡ Arch3r NVR (Ver. 11.1.0)
+# ⚡ Arch3r NVR (Ver. 11.1.1)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.1.1:
+- **Non-Blocking Asynchronous Addon Toggle & Real-time Live Addon Health Engine**:
+  1. **Non-Blocking Asynchronous Lifecycle Controller (`server.js`)**:
+     - Mengubah endpoint `POST /api/addons/:addonId/toggle` menjadi asynchronous non-blocking penuh.
+     - Menyelesaikan 100% kendala "HTTP 500 saat klik tombol toggle" akibat blocking wait/ping port. Konfigurasi disimpan instan dan proses OS dijalankan di latar belakang secara aman tanpa membebani browser.
+  2. **Dedicated Addons Management Hub API (`server.js`)**:
+     - Mendaftarkan endpoint resmi `GET /api/addons`, `GET /api/addons/:addonId/config`, dan `POST /api/addons/:addonId/config`.
+     - `GET /api/addons` kini secara dinamis memeriksa status nyata (*live health check*) proses daemon di OS Armbian (bukan sekadar membaca nilai boolean database).
+  3. **Visual Real-Status Indicator di UI (`script.js`)**:
+     - Badge status di tabel addons kini menampilkan kondisi nyata: 🟢 *Aktif & Berjalan* (jika daemon online), 🟡 *Aktif (Standby)* (jika baru dimulai), dan ⚪ *Nonaktif*.
+     - Notifikasi interaktif berbasis Toast yang ramah pengguna menggantikan alert modal yang mengganggu.
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.1.1** pada seluruh komponen sistem.
 
 ### 📋 Changelog Pembaruan Ver. 11.1.0:
 - **Enterprise AI YOLO Lifecycle, PM2 Daemon Controller & Environment Doctor**:

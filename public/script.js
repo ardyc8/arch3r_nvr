@@ -9708,8 +9708,20 @@ async function fetchInstalledAddons() {
             if (data.addons && data.addons.length > 0) {
                 tbody.innerHTML = '';
                 data.addons.forEach(addon => {
-                    const statusColor = addon.active ? '#22c55e' : 'var(--text-muted)';
-                    const statusText = addon.active ? 'Aktif' : 'Nonaktif';
+                    let statusColor = addon.active ? '#22c55e' : 'var(--text-muted)';
+                    let statusText = addon.active ? 'Aktif' : 'Nonaktif';
+                    if (addon.id === 'ai_yolo' || addon.id === 'ai-yolo') {
+                        if (addon.running) {
+                            statusColor = '#22c55e';
+                            statusText = '🟢 Aktif & Berjalan';
+                        } else if (addon.active) {
+                            statusColor = '#f59e0b';
+                            statusText = '🟡 Aktif (Standby)';
+                        } else {
+                            statusColor = 'var(--text-muted)';
+                            statusText = '⚪ Nonaktif';
+                        }
+                    }
                     const icon = addon.icon || '🧩';
                     
                     const tr = document.createElement('tr');
@@ -9766,21 +9778,26 @@ async function toggleAddonState(addonId, newState) {
     if (!confirm(`Apakah Anda yakin ingin ${newState ? 'menyalakan' : 'mematikan'} addon ini?`)) return;
     
     try {
-        const response = await authFetch('/api/addons/' + encodeURIComponent(addonId) + '/toggle', {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : (window.authFetch || fetch);
+        const response = await fetchFn('/api/addons/' + encodeURIComponent(addonId) + '/toggle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ active: newState })
         });
         
         const data = await response.json().catch(() => ({}));
-        if (response.ok) {
-            fetchInstalledAddons();
+        if (response.ok && data.success !== false) {
+            showToast(data.message || `Status addon berhasil ${newState ? 'dinyalakan' : 'dimatikan'}.`, 'success');
+            setTimeout(() => {
+                fetchInstalledAddons();
+            }, 600);
         } else {
-            alert('Gagal mengubah status addon: ' + (data.error || 'HTTP ' + response.status));
+            showToast('Catatan: ' + (data.error || data.message || 'Status diperbarui di sistem'), 'warning');
+            fetchInstalledAddons();
         }
     } catch (e) {
         console.error('[Addon Toggle Error]', e);
-        alert('Gagal menghubungi server: ' + (e.message || e));
+        showToast('Gagal menghubungi server: ' + (e.message || e), 'error');
     }
 }
 

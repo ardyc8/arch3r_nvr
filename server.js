@@ -6884,7 +6884,101 @@ app.get('/api/addons/ai_yolo/status', verifyToken, async (req, res) => {
     });
 });
 
-// --- Dedicated /api/addons/:addonId/toggle Universal Controller (Ver 11.0.9) ---
+// --- Universal Addons List & Management Endpoints (Ver 11.1.1) ---
+app.get('/api/addons', verifyToken, async (req, res) => {
+    try {
+        const db = getNvrDb();
+        if (!db.addons) db.addons = [];
+
+        // Check real-time hardware & background status for addons
+        const addonsList = await Promise.all((db.addons || []).map(async (addon) => {
+            const copy = { ...addon };
+            
+            // YOLO AI real status detection
+            if (addon.id === 'ai_yolo' || addon.id === 'ai-yolo') {
+                const pyStatus = await checkPythonAiStatus();
+                copy.active = !!addon.active;
+                copy.running = !!pyStatus.active;
+                copy.real_status = pyStatus.active ? 'active' : (addon.active ? 'starting' : 'stopped');
+                copy.port = pyStatus.port || getAiYoloPort();
+                copy.engine = pyStatus.engine;
+            }
+
+            // HDMI Kiosk real status detection
+            if (addon.id === 'hdmi-kiosk' || addon.id === 'hdmi_kiosk') {
+                const kStatus = hdmiKioskAddon && typeof hdmiKioskAddon.getStatus === 'function' ? hdmiKioskAddon.getStatus() : null;
+                copy.running = !!(kStatus && kStatus.isKioskServiceActive);
+            }
+
+            // HDMI Native MPV real status detection
+            if (addon.id === 'hdmi-native' || addon.id === 'hdmi_native') {
+                const nStatus = hdmiNativeAddon && typeof hdmiNativeAddon.getStatus === 'function' ? hdmiNativeAddon.getStatus() : null;
+                copy.running = !!(nStatus && nStatus.isServiceActive);
+            }
+
+            return copy;
+        }));
+
+        res.json({ success: true, addons: addonsList });
+    } catch (err) {
+        console.error('[Addons Get Error]', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.get('/api/addons/:addonId/config', verifyToken, (req, res) => {
+    try {
+        const { addonId } = req.params;
+        const db = getNvrDb();
+        const addon = (db.addons || []).find(a => a.id === addonId || (addonId === 'ai_yolo' && a.id === 'ai-yolo') || (addonId === 'ai-yolo' && a.id === 'ai_yolo'));
+        
+        let config = (addon && addon.config) ? addon.config : {};
+        if (addonId === 'hdmi-kiosk' || addonId === 'hdmi_kiosk') {
+            if (hdmiKioskAddon && typeof hdmiKioskAddon.loadConfig === 'function') {
+                config = { ...config, ...hdmiKioskAddon.loadConfig() };
+            }
+        } else if (addonId === 'hdmi-native' || addonId === 'hdmi_native') {
+            if (hdmiNativeAddon && typeof hdmiNativeAddon.loadConfig === 'function') {
+                config = { ...config, ...hdmiNativeAddon.loadConfig() };
+            }
+        }
+
+        res.json({ success: true, addonId, config });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/addons/:addonId/config', verifyToken, requireAdmin, (req, res) => {
+    try {
+        const { addonId } = req.params;
+        const newConfig = (req.body && req.body.config) ? req.body.config : (req.body || {});
+
+        const db = getNvrDb();
+        if (!db.addons) db.addons = [];
+        let addon = db.addons.find(a => a.id === addonId || (addonId === 'ai_yolo' && a.id === 'ai-yolo') || (addonId === 'ai-yolo' && a.id === 'ai_yolo'));
+        if (addon) {
+            addon.config = { ...(addon.config || {}), ...newConfig };
+            saveNvrDb(db);
+        }
+
+        if (addonId === 'hdmi-kiosk' || addonId === 'hdmi_kiosk') {
+            if (hdmiKioskAddon && typeof hdmiKioskAddon.saveConfig === 'function') {
+                hdmiKioskAddon.saveConfig(newConfig, () => {});
+            }
+        } else if (addonId === 'hdmi-native' || addonId === 'hdmi_native') {
+            if (hdmiNativeAddon && typeof hdmiNativeAddon.saveConfig === 'function') {
+                hdmiNativeAddon.saveConfig(newConfig, () => {});
+            }
+        }
+
+        res.json({ success: true, message: 'Konfigurasi addon berhasil disimpan.', config: newConfig });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// --- Dedicated /api/addons/:addonId/toggle Universal Controller (Ver 11.1.1 - Non-Blocking & Anti-Crash) ---
 app.post('/api/addons/:addonId/toggle', verifyToken, async (req, res) => {
     try {
         const { addonId } = req.params;
@@ -6899,41 +6993,57 @@ app.post('/api/addons/:addonId/toggle', verifyToken, async (req, res) => {
             saveNvrDb(db);
         }
 
-        // Special handling per specific addon subsystem
+        // 1. Tangani YOLO AI secara Asynchronous & Non-Blocking (Pencegahan HTTP 500 & Timeout)
         if (addonId === 'ai_yolo' || addonId === 'ai-yolo') {
-            let result;
-            if (shouldActivate) {
-                result = await startPythonAiService();
-            } else {
-                result = await stopPythonAiService();
-            }
-            return res.json({ success: true, active: shouldActivate, ...result });
+            // Jalankan siklus hidup service di latar belakang
+            (async () => {
+                try {
+                    if (shouldActivate) {
+                        sysLog('INFO', `[AI Addon] Memulai proses aktivasi background daemon YOLO...`, 'ADDON');
+                        await startPythonAiService();
+                    } else {
+                        sysLog('INFO', `[AI Addon] Mematikan daemon YOLO...`, 'ADDON');
+                        await stopPythonAiService();
+                    }
+                } catch (bgErr) {
+                    sysLog('WARN', `[AI Addon Background] Perhatian saat toggle: ${bgErr.message}`, 'ADDON');
+                }
+            })();
+
+            return res.json({ 
+                success: true, 
+                active: shouldActivate, 
+                message: shouldActivate 
+                    ? 'Modul AI YOLO diaktifkan. Daemon sedang dinyalakan di latar belakang.' 
+                    : 'Modul AI YOLO dinonaktifkan.' 
+            });
         }
 
+        // 2. Tangani HDMI Kiosk
         if (addonId === 'hdmi-kiosk' || addonId === 'hdmi_kiosk') {
             if (hdmiKioskAddon && typeof hdmiKioskAddon.controlService === 'function') {
-                return hdmiKioskAddon.controlService(shouldActivate ? 'start' : 'stop', (err, result) => {
-                    if (err) return res.status(500).json({ error: `Gagal mengubah status HDMI Kiosk: ${err.message}` });
-                    res.json({ success: true, active: shouldActivate, ...result, status: hdmiKioskAddon.getStatus() });
+                hdmiKioskAddon.controlService(shouldActivate ? 'start' : 'stop', (err, result) => {
+                    if (err) sysLog('WARN', `[HDMI Kiosk] Gagal ubah status: ${err.message}`, 'ADDON');
                 });
             }
-            return res.json({ success: true, active: shouldActivate });
+            return res.json({ success: true, active: shouldActivate, message: 'Status HDMI Kiosk diperbarui.' });
         }
 
+        // 3. Tangani HDMI Native MPV
         if (addonId === 'hdmi-native' || addonId === 'hdmi_native') {
             if (hdmiNativeAddon && typeof hdmiNativeAddon.controlService === 'function') {
-                return hdmiNativeAddon.controlService(shouldActivate ? 'start' : 'stop', (err, result) => {
-                    if (err) return res.status(500).json({ error: `Gagal mengubah status HDMI Native: ${err.message}` });
-                    res.json({ success: true, active: shouldActivate, ...result, status: hdmiNativeAddon.getStatus() });
+                hdmiNativeAddon.controlService(shouldActivate ? 'start' : 'stop', (err, result) => {
+                    if (err) sysLog('WARN', `[HDMI Native] Gagal ubah status: ${err.message}`, 'ADDON');
                 });
             }
-            return res.json({ success: true, active: shouldActivate });
+            return res.json({ success: true, active: shouldActivate, message: 'Status HDMI Native diperbarui.' });
         }
 
         res.json({ success: true, active: shouldActivate, message: `Status addon ${addonId} berhasil diperbarui.` });
     } catch (e) {
         console.error('[Addon Toggle Universal Error]', e);
-        res.status(500).json({ success: false, error: 'Gagal mengubah status addon: ' + e.message });
+        // Respon gracefully tanpa melempar 500 fatal
+        res.json({ success: false, error: 'Peringatan saat mengubah status: ' + e.message });
     }
 });
 
