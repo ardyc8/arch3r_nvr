@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 10.9.9 - Universal Multi-Timezone Auto Synchronizer & Zero-UTC Offset Error Correction.",
+  "description": "Arch3r NVR Ver. 11.0.0 - Real Continuous AI Inference Pipeline, High-Resolution Frame Analysis & Subtle Heatmap Glow.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

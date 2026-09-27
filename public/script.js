@@ -11257,6 +11257,47 @@ function toggleYoloCameraStatus(camId) {
 }
 window.toggleYoloCameraStatus = toggleYoloCameraStatus;
 
+function openYoloCameraSettings(camId) {
+    if (!camId) return;
+    activeYoloSettingsCamId = String(camId);
+    localStorage.setItem('arch3r_yolo_active_cam_id', activeYoloSettingsCamId);
+
+    const yoloMainView = document.getElementById('yolo-main-list-view');
+    const yoloSettingsView = document.getElementById('yolo-settings-view');
+
+    if (yoloMainView) yoloMainView.style.display = 'none';
+    if (yoloSettingsView) yoloSettingsView.style.display = 'block';
+
+    // Update camera name header in workspace
+    const camNameHeader = document.getElementById('yolo-selected-cam-name');
+    let cName = `Kamera #${camId}`;
+    if (typeof cameras !== 'undefined' && Array.isArray(cameras)) {
+        const found = cameras.find(c => String(c.id) === String(camId));
+        if (found && found.name) cName = found.name;
+    }
+    if (camNameHeader) camNameHeader.textContent = cName;
+
+    // Load parameters & bind video stream
+    loadYoloCameraSettingsData(camId);
+    attachYoloVideoPreview('yolo-view-video-element');
+    startYoloLiveCanvasStreamLoop();
+    initYoloViewCanvasRoiEditing();
+
+    // Start Real-time continuous inference loop (Automatic every 800ms)
+    if (yoloTelemetryTimer) clearInterval(yoloTelemetryTimer);
+    fetchRealYoloDetections();
+    yoloTelemetryTimer = setInterval(() => {
+        const settingsView = document.getElementById('yolo-settings-view');
+        if (settingsView && settingsView.style.display !== 'none') {
+            fetchRealYoloDetections();
+        } else {
+            clearInterval(yoloTelemetryTimer);
+            yoloTelemetryTimer = null;
+        }
+    }, 800);
+}
+window.openYoloCameraSettings = openYoloCameraSettings;
+
 let activeYoloSettingsTab = 'view';
 let isYoloEditMode = false;
 let isYoloHeatmapActive = false;
@@ -11277,7 +11318,7 @@ let offscreenInferCanvas = null;
 async function triggerLiveCanvasScreenInference(camId, videoEl) {
     if (isCanvasInferBusy || !videoEl || videoEl.paused || videoEl.readyState < 2) return;
     const now = Date.now();
-    if (now - lastCanvasInferTime < 400) return; // 2.5 FPS throttled for STB/Client efficiency
+    if (now - lastCanvasInferTime < 500) return; // 2 FPS throttled for STB/Client stability
 
     try {
         isCanvasInferBusy = true;
@@ -11286,13 +11327,23 @@ async function triggerLiveCanvasScreenInference(camId, videoEl) {
         if (!offscreenInferCanvas) {
             offscreenInferCanvas = document.createElement('canvas');
         }
-        offscreenInferCanvas.width = 640;
-        offscreenInferCanvas.height = 360;
+        // Use crisp 720p 16:9 frame buffer (960x540) for significantly higher detection accuracy
+        offscreenInferCanvas.width = 960;
+        offscreenInferCanvas.height = 540;
         const ctx = offscreenInferCanvas.getContext('2d');
-        ctx.drawImage(videoEl, 0, 0, 640, 360);
+        ctx.drawImage(videoEl, 0, 0, 960, 540);
 
-        const imgB64 = offscreenInferCanvas.toDataURL('image/jpeg', 0.65);
+        const imgB64 = offscreenInferCanvas.toDataURL('image/jpeg', 0.78);
         const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+
+        // Read active target classes filter
+        const targetClasses = [];
+        if (document.getElementById('yolo-view-filter-person')?.checked !== false) targetClasses.push('person');
+        if (document.getElementById('yolo-view-filter-car')?.checked !== false) targetClasses.push('car');
+        if (document.getElementById('yolo-view-filter-motorcycle')?.checked !== false) targetClasses.push('motorcycle');
+        if (document.getElementById('yolo-view-filter-animal')?.checked) targetClasses.push('dog', 'cat', 'bird', 'horse', 'cow');
+
+        const confVal = (parseFloat(document.getElementById('yolo-threshold-slider')?.value || '45')) / 100;
 
         const resp = await fetch('/api/ai/infer_frame', {
             method: 'POST',
@@ -11303,20 +11354,22 @@ async function triggerLiveCanvasScreenInference(camId, videoEl) {
             body: JSON.stringify({
                 camera_id: camId,
                 image_base64: imgB64,
-                conf_threshold: (parseFloat(document.getElementById('yolo-threshold-slider')?.value || '40')) / 100
+                conf_threshold: confVal,
+                target_classes: targetClasses.length > 0 ? targetClasses : ['person', 'car', 'motorcycle'],
+                roi_box: currentYoloRoi || { x: 10, y: 10, w: 80, h: 80 }
             })
         });
 
         if (resp.ok) {
             const data = await resp.json();
-            if (data && Array.isArray(data.detections) && data.detections.length > 0) {
+            if (data && Array.isArray(data.detections)) {
                 activeRealYoloDetections = data.detections;
                 const latEl = document.getElementById('yolo-stat-latency');
                 if (latEl && data.latency_ms) latEl.textContent = `${Math.round(data.latency_ms)}ms`;
                 const extLatEl = document.getElementById('yolo-hud-latency');
                 if (extLatEl && data.latency_ms) extLatEl.textContent = `⚡ ${Math.round(data.latency_ms)}ms`;
                 const fpsEl = document.getElementById('yolo-hud-fps');
-                if (fpsEl) fpsEl.textContent = `Live Screen (Canvas)`;
+                if (fpsEl) fpsEl.textContent = `Live Stream`;
             }
         }
     } catch (e) {
@@ -11801,7 +11854,7 @@ function drawYoloBoundingBoxHeatmap(ctx, canvasWidth, canvasHeight, roiPx, curre
     if (!isYoloHeatmapActive) return;
 
     const now = Date.now();
-    const HEATMAP_MAX_AGE_MS = 6500; // 6.5s retention for smooth motion trails
+    const HEATMAP_MAX_AGE_MS = 3200; // 3.2s clean decay (prevents screen smudge & visual clutter)
 
     // 1. Ingest newly detected objects into spatial heatmap history
     if (Array.isArray(currentFrameDetections) && currentFrameDetections.length > 0) {
@@ -11811,8 +11864,8 @@ function drawYoloBoundingBoxHeatmap(ctx, canvasWidth, canvasHeight, roiPx, curre
             const midX = b.x + b.w / 2;
             const midY = b.y + b.h / 2;
 
-            // Throttle duplicate points within same proximity (<22px within 140ms)
-            const isNear = yoloHeatmapHistory.some(pt => (now - pt.timestamp < 140) && Math.hypot(pt.x - midX, pt.y - midY) < 22);
+            // Throttle duplicate points within same proximity (<28px within 180ms)
+            const isNear = yoloHeatmapHistory.some(pt => (now - pt.timestamp < 180) && Math.hypot(pt.x - midX, pt.y - midY) < 28);
             if (!isNear) {
                 yoloHeatmapHistory.push({
                     x: midX,
@@ -11830,7 +11883,7 @@ function drawYoloBoundingBoxHeatmap(ctx, canvasWidth, canvasHeight, roiPx, curre
     // 2. Prune expired points
     yoloHeatmapHistory = yoloHeatmapHistory.filter(pt => (now - pt.timestamp) < HEATMAP_MAX_AGE_MS);
 
-    // 3. Render Additive Thermal Spots (Rendered inside current stage transform)
+    // 3. Render Subtle Ambient Thermal Glow (Non-blocking, elegant & transparent)
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
 
@@ -11844,23 +11897,24 @@ function drawYoloBoundingBoxHeatmap(ctx, canvasWidth, canvasHeight, roiPx, curre
 
         if (pt.isInsideRoi) pointsInRoi++;
 
-        // Calculate dynamic thermal radius based on bounding box dimension
-        const radius = Math.max(35, Math.min(130, (pt.w + pt.h) * 0.45));
+        // Subtle, tight thermal radius focused at object base/center (Max 55px radius)
+        const radius = Math.max(22, Math.min(65, (pt.w + pt.h) * 0.22));
         const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, radius);
 
-        const baseAlpha = lifeRatio * 0.62 * pt.weight;
+        // Low base alpha (0.24 max) so underlying CCTV video & object details remain 100% visible
+        const baseAlpha = lifeRatio * 0.24 * pt.weight;
 
         if (pt.isInsideRoi) {
-            // High-Priority ROI Intrusion / Focus Zone: Hot Crimson & Amber
+            // High-Priority ROI Intrusion / Focus Zone: Soft Amber & Warm Glow
             grad.addColorStop(0.0, `rgba(239, 68, 68, ${baseAlpha})`);
-            grad.addColorStop(0.35, `rgba(249, 115, 22, ${baseAlpha * 0.75})`);
-            grad.addColorStop(0.70, `rgba(234, 179, 8, ${baseAlpha * 0.35})`);
+            grad.addColorStop(0.40, `rgba(249, 115, 22, ${baseAlpha * 0.65})`);
+            grad.addColorStop(0.80, `rgba(234, 179, 8, ${baseAlpha * 0.25})`);
             grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
         } else {
-            // Background / Non-ROI detections: Cool Electric Cyan & Indigo
-            grad.addColorStop(0.0, `rgba(56, 189, 248, ${baseAlpha * 0.65})`);
-            grad.addColorStop(0.40, `rgba(14, 165, 233, ${baseAlpha * 0.4})`);
-            grad.addColorStop(0.75, `rgba(99, 102, 241, ${baseAlpha * 0.2})`);
+            // Background / Non-ROI detections: Soft Ambient Cyan Glow
+            grad.addColorStop(0.0, `rgba(56, 189, 248, ${baseAlpha * 0.7})`);
+            grad.addColorStop(0.45, `rgba(14, 165, 233, ${baseAlpha * 0.35})`);
+            grad.addColorStop(0.85, `rgba(99, 102, 241, ${baseAlpha * 0.15})`);
             grad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
         }
 

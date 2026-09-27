@@ -1,5 +1,17 @@
-# ⚡ Arch3r NVR (Ver. 10.9.9)
+# ⚡ Arch3r NVR (Ver. 11.0.0)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.0.0:
+- **Real Continuous AI Inference Pipeline, High-Resolution Frame Analysis & Subtle Heatmap Glow**:
+  1. **Automated Real-Time AI Inference Loop (`public/script.js`)**:
+     - Mengeliminasi ketergantungan pada tombol simulasi "Uji Target". Pipeline inferensi otomatis berjalan mandiri setiap 800ms memindai frame stream CCTV asli.
+     - Buffer frame grabber dinaikkan ke resolusi jernih 960x540 (kualitas 78%) untuk akurasi pendeteksian target nyata yang jauh lebih tajam dan bebas salah deteksi.
+     - Sinkronisasi otomatis filter kelas target (`person`, `car`, `motorcycle`, `animal`) dan zona perimeter ROI.
+  2. **Refined Subtle & Non-Intrusive Heatmap (`public/script.js`)**:
+     - Mengurangi opasitas pendaran termal dari `0.62` ke `0.24` sehingga fisik objek dan rekaman CCTV asli tetap 100% terlihat jelas tanpa silau atau terhalang warna pekat.
+     - Memperkecil radius pendaran (maksimal 65px) serta mempercepat durasi peluruhan jejak (decay dari 6,5s ke 3,2s) agar layar tidak tertutup kabut tebal.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.0.0** (naik ke major version sesuai aturan Semantic Versioning Strict setelah 10.9.9).
 
 ### 📋 Changelog Pembaruan Ver. 10.9.9:
 - **Universal Multi-Timezone Auto Synchronizer & Zero-UTC Offset Error Correction**:

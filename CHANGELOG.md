@@ -1,5 +1,17 @@
 # Changelog
 
+## [Ver 11.0.0] - 2026-09-26
+### Real Continuous AI Inference Pipeline, High-Resolution Frame Analysis & Subtle Heatmap Glow
+- **Automated Real-Time AI Inference Loop (`public/script.js`):**
+  - **Eliminasi Ketergantungan Tombol Simulasi**: Menghapus keharusan menekan tombol "Uji Target" agar AI bekerja. Engine kini otomatis melakukan inferensi berkelanjutan secara real-time (setiap 800ms) begitu kamera aktif dipantau di layar.
+  - **High-Definition Inference Buffer (960x540 / 78% Quality)**: Menaikkan resolusi frame grabber dari `640x360` ke rasio jernih `960x540` dengan kompresi berkualitas tinggi (0.78) untuk mengenali objek jarak jauh secara jauh lebih presisi dan mengurangi *false positives*.
+  - **Synchronized Class & ROI Ingestion**: Pipeline otomatis membaca filter target aktif (`person`, `car`, `motorcycle`, `animal`) dan zona perimeter ROI aktif saat melakukan inferensi frame.
+- **Refined Subtle & Non-Intrusive Heatmap (`public/script.js`):**
+  - **Transparansi Halus (Low Alpha)**: Menurunkan opasitas maksimal dari `0.62` ke `0.24` sehingga detail fisik objek, kendaraan, dan rekaman CCTV asli di baliknya tetap 100% terlihat jelas tanpa silau atau terhalang warna pekat.
+  - **Radius Proporsional & Fast Decay**: Memperkecil radius pendaran termal menjadi maksimal 65px (berfokus di titik pijak/pusat massa objek) dan mempercepat masa retensi jejak dari 6,5 detik menjadi 3,2 detik, mencegah terjadinya penumpukan kabut merah/oranye tebal di layar.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.0.0** (naik ke major version sesuai aturan Semantic Versioning Strict setelah 10.9.9).
+
 ## [Ver 10.9.9] - 2026-09-26
 ### Universal Multi-Timezone Auto Synchronizer & Zero-UTC Offset Error Correction
 - **Koreksi Cap Waktu Lokal Otomatis (`public/script.js`):**
