@@ -2405,31 +2405,57 @@ function resolveStoragePath(camPath) {
 
 function getActualBaseStoragePath(skipAutoDetect = false) {
     const dbData = getNvrDb();
+    let configuredPath = '';
     if (dbData && dbData.recording_path && dbData.recording_path.trim() !== '') {
-        return dbData.recording_path.trim();
+        configuredPath = dbData.recording_path.trim();
+    } else {
+        const settings = getSettings();
+        if (settings.globalStoragePath && settings.globalStoragePath.trim() !== '') {
+            configuredPath = settings.globalStoragePath.trim();
+        }
     }
-    const settings = getSettings();
-    if (settings.globalStoragePath && settings.globalStoragePath.trim() !== '') {
-        return settings.globalStoragePath.trim();
+
+    // Jika ada path yang disetel, periksa apakah path / mount point-nya masih aktif terpasang secara fisik
+    if (configuredPath && isStorageSafeForWriting(configuredPath)) {
+        return configuredPath;
     }
-    return baseStoragePath;
+
+    // Jika path yang disetel ternyata drive eksternal yang sudah dicabut/berganti nama,
+    // lakukan auto-deteksi dinamis ke harddisk eksternal aktif yang sedang ter-mount di /media/devmon atau /media atau /mnt
+    if (!skipAutoDetect) {
+        try {
+            const detected = detectStorageDevices();
+            const activeExternal = detected.find(d => d.category === 'External' && isStorageSafeForWriting(d.mountPath));
+            if (activeExternal && activeExternal.mountPath) {
+                return activeExternal.mountPath;
+            }
+        } catch (_) {}
+    }
+
+    return configuredPath || baseStoragePath;
 }
 
 // 🛡️ ARCH3R NVR CENTRALIZED STORAGE ROUTER
 // Otomatis menempatkan rekaman di root [Penyimpanan]/Arch3r_NVR/[ID_Kamera]
+// Menjamin fleksibilitas: jika path kustom kamera sudah mati (unmounted), otomatis diwariskan ke Harddisk Aktif saat ini
 function getEffectiveCameraStoragePath(cam) {
     const camId = (cam && cam.id) ? String(cam.id).trim() : '1';
     let base = getActualBaseStoragePath();
     
+    // Periksa apakah kamera memiliki storagePath khusus yang MASIH valid & ter-mount secara fisik
     if (cam && cam.storagePath && typeof cam.storagePath === 'string') {
         const trimmed = cam.storagePath.trim();
         if (trimmed !== '' && trimmed !== 'default' && trimmed !== 'auto') {
-            base = resolveStoragePath(trimmed);
+            const resolvedCustom = resolveStoragePath(trimmed);
+            // Hanya gunakan custom path kamera jika mount point-nya BENAR-BENAR ada secara fisik
+            if (isStorageSafeForWriting(resolvedCustom)) {
+                base = resolvedCustom;
+            }
         }
     }
     
     // Normalisasi: jika base sudah berakhiran atau mengandung Arch3r_NVR / ID kamera lama
-    // Contoh: "/media/devmon/New Volume/Arch3r_NVR/cam_atas_depan" -> "/media/devmon/New Volume"
+    // Contoh: "/media/devmon/ArcHDD/Arch3r_NVR/cam_atas_depan" -> "/media/devmon/ArcHDD"
     const archIdx = base.indexOf('Arch3r_NVR');
     if (archIdx !== -1) {
         let rootBeforeArch = base.substring(0, archIdx).replace(/[/\\]+$/, '');
@@ -2443,11 +2469,8 @@ function getEffectiveCameraStoragePath(cam) {
 // 🛡️ PROTEKSI ANTI-BOCOR eMMC STB
 // Memastikan harddisk eksternal benar-benar ter-mount sebelum menulis, mencegah pembuatan folder hantu di internal eMMC
 function isStorageSafeForWriting(targetFullPath) {
-    if (!targetFullPath) return false;
+    if (!targetFullPath || typeof targetFullPath !== 'string') return false;
     
-    // Jika folder tujuan sudah ada di disk, berarti aman
-    if (fs.existsSync(targetFullPath)) return true;
-
     // Jika target adalah drive eksternal di /media/devmon/ atau /media/ atau /mnt/
     if (targetFullPath.startsWith('/media/') || targetFullPath.startsWith('/mnt/')) {
         const parts = targetFullPath.split(path.sep).filter(Boolean);
@@ -2458,12 +2481,21 @@ function isStorageSafeForWriting(targetFullPath) {
             mountPoint = path.sep + path.join(parts[0], parts[1]);
         }
         
-        // Jika folder mount point tidak ada secara fisik, tolak penulisan folder
+        // Jika folder mount point tidak ada secara fisik di Linux OS, tolak penulisan folder
         if (mountPoint && !fs.existsSync(mountPoint)) {
             return false;
         }
+        return true;
     }
-    return true;
+
+    // Jika bukan di /media atau /mnt (misal path lokal default), aman jika direktori ada atau parent ada
+    if (fs.existsSync(targetFullPath)) return true;
+    try {
+        const parent = path.dirname(targetFullPath);
+        return fs.existsSync(parent);
+    } catch (_) {
+        return false;
+    }
 }
 
 // Database Initialization
