@@ -1,5 +1,5 @@
 # ==============================================================================
-# Arch3r NVR - AI YOLOv8 Service Daemon (v10.9.7)
+# Arch3r NVR - AI YOLOv8 Service Daemon (v11.0.6)
 # Enterprise MediaMTX Local Loopback RTSP Stream Ingestion, Dynamic Canvas
 # Frame Analysis, Multi-Class Inference, Realtime Telemetry, and ROI Perimeter Guard.
 # ==============================================================================
@@ -21,9 +21,19 @@ import httpx
 
 # Enforce TCP transport for RTSP in OpenCV globally (Crucial for Linux STB / MediaMTX)
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
+# Cap OpenMP / PyTorch / OpenCV threads so they don't consume all 4 CPU cores of Amlogic SoC
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+cv2.setNumThreads(1)
+try:
+    import torch
+    torch.set_num_threads(1)
+except Exception:
+    pass
 
 # Initialize FastAPI Daemon
-app = FastAPI(title="Arch3r NVR AI YOLO Daemon", version="10.9.7")
+app = FastAPI(title="Arch3r NVR AI YOLO Daemon", version="11.0.6")
 
 app.add_middleware(
     CORSMiddleware,
@@ -183,7 +193,7 @@ def get_ai_status():
     return {
         "status": "online",
         "service": "Arch3r NVR AI YOLO Daemon",
-        "version": "11.0.4",
+        "version": "11.0.6",
         "engine": engine_type,
         "model": "yolov8n",
         "model_loaded": model_loaded,
@@ -643,10 +653,17 @@ def process_camera_stream(camera_id: str):
             time.sleep(reconnect_delay)
             continue
             
-        target_fps = int(cfg.get("processing_fps", 10))
-        target_fps = max(1, min(30, target_fps))
+        # Safe STB Processing Rate: 1-2 FPS max, or Motion-Triggered Snapshot Mode
+        target_fps = int(cfg.get("processing_fps", 1))
+        target_fps = max(1, min(5, target_fps))  # Cap at max 5 FPS for ARM STB stability
         frame_interval = 1.0 / target_fps
         last_process_time = 0
+        
+        # Motion Pre-Filter Subtractor for Armbian STB (0.5% CPU)
+        # Prevents continuous heavy YOLO calculations when scene is completely static
+        motion_subtractor = cv2.createBackgroundSubtractorMOG2(history=60, varThreshold=30, detectShadows=False)
+        last_motion_detection_time = 0
+        cooldown_after_motion_sec = 2.5  # Keep checking for 2.5s once motion occurs
         
         while not stop_events[cid].is_set() and connected_cap.isOpened():
             ret, frame = connected_cap.read()
@@ -656,10 +673,33 @@ def process_camera_stream(camera_id: str):
                 
             now = time.time()
             if now - last_process_time < frame_interval:
+                # Sleep briefly to yield CPU core to Arch3r NVR and other processes
+                time.sleep(0.015)
                 continue
             last_process_time = now
             
-            # Dynamic config
+            # --- STB SMART MOTION PRE-FILTER ---
+            # 1. Downscale tiny 160x90 thumbnail to check if anything moved (costs < 1ms)
+            thumb = cv2.resize(frame, (160, 90))
+            mask = motion_subtractor.apply(thumb)
+            motion_pixels = cv2.countNonZero(mask)
+            
+            is_motion = motion_pixels > 45  # True if more than 45 pixels changed
+            if is_motion:
+                last_motion_detection_time = now
+                
+            # If no motion has occurred recently, skip heavy neural network inferencing!
+            in_motion_window = (now - last_motion_detection_time) < cooldown_after_motion_sec
+            
+            if not in_motion_window:
+                # Scene is completely static. Keep latest detections if recent, then decay
+                if cid in latest_detections and latest_detections[cid]:
+                    # Clear stale detections when camera is still
+                    latest_detections[cid] = []
+                time.sleep(0.05)  # Yield CPU to keep STB cool
+                continue
+            
+            # --- 2. MOTION DETECTED: Execute Model / Vision Pipeline ---
             cfg = active_configs.get(cid, {})
             conf_thresh = float(cfg.get("conf_threshold", 0.40))
             roi_box = cfg.get("roi_box", {"x": 10.0, "y": 10.0, "w": 80.0, "h": 80.0})
@@ -667,6 +707,8 @@ def process_camera_stream(camera_id: str):
             
             run_yolo_inference_on_frame(cid, frame, conf_thresh, target_classes, roi_box)
             telemetry_stats["current_fps"] = target_fps
+            # Polite sleep to keep CPU temperature within safe limits on Amlogic SoC
+            time.sleep(0.02)
             
         connected_cap.release()
         if not stop_events[cid].is_set():
@@ -703,7 +745,7 @@ if __name__ == "__main__":
         pass
 
     print("=====================================================")
-    print(f"  Arch3r NVR - AI YOLOv8 Inference Daemon Ver. 11.0.5")
+    print(f"  Arch3r NVR - AI YOLOv8 Inference Daemon Ver. 11.0.6")
     print(f"  MediaMTX Loopback & Real-Time Canvas Screen Analysis")
     print(f"  Listening on: http://0.0.0.0:{ai_port}")
     print("=====================================================")

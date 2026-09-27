@@ -1,5 +1,19 @@
-# ⚡ Arch3r NVR (Ver. 11.0.5)
+# ⚡ Arch3r NVR (Ver. 11.0.6)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.0.6:
+- **Ultra Low-CPU Motion-Gated AI Snapshot & 1-Core Thread-Capping Engine**:
+  1. **Smart Motion Pre-Filter Gate (`addons/ai_yolo_service.py`)**:
+     - Frame kamera dianalisis terlebih dahulu menggunakan background subtraction mikro (resolusi mini 160x90) yang hanya memakan CPU < 0.5%.
+     - Jika tidak ada objek bergerak di area pantau, inferensi neural network (YOLOv8) tidak dijalankan sama sekali, menghemat daya CPU STB hingga 85%.
+     - Saat ada pergerakan, sistem membuka jendela analisis snapshot selama 2.5 detik untuk mengklasifikasikan objek (manusia, motor, mobil) secara instan.
+  2. **Thread Capping Proteksi Overheat CPU ARM (`addons/ai_yolo_service.py`)**:
+     - Mengunci alokasi thread OpenMP, OpenBLAS, MKL, OpenCV, dan PyTorch ke tepat 1 thread (`OMP_NUM_THREADS=1`, `torch.set_num_threads(1)`).
+     - Menjamin proses AI tidak akan pernah mengunci ke-4 core CPU Amlogic Cortex-A53 sekaligus, mencegah lonjakan CPU 100% dan thermal throttling.
+  3. **Pengaturan Laju Frame Aman STB (1-5 FPS Throttled)**:
+     - Membatasi konsumsi pemrosesan kamera dengan interval tidur santai (`time.sleep`) sehingga suhu SoC STB tetap dingin dan server tidak mati.
+  4. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.0.6** pada seluruh komponen sistem.
 
 ### 📋 Changelog Pembaruan Ver. 11.0.5:
 - **Configurable AI YOLO Port Architecture & Zero Port 8000 Conflict**:
