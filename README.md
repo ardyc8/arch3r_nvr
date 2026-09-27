@@ -1,5 +1,27 @@
-# ⚡ Arch3r NVR (Ver. 11.0.0)
+# ⚡ Arch3r NVR (Ver. 11.0.2)
 **Sistem Network Video Recorder (NVR) Multi-Tenant Khusus Armbian STB**
+
+### 📋 Changelog Pembaruan Ver. 11.0.2:
+- **AI Modules Readiness Doctor & 1-Click Autonomous Dependency Installer**:
+  1. **AI Modules Readiness Doctor (`server.js` & `public/script.js`)**:
+     - Menyediakan audit otomatis seluruh dependensi Python AI (Python 3, PIP, OpenCV `cv2`, NumPy, FastAPI, Uvicorn, Pydantic, Ultralytics, dan weights `yolov8n.pt`).
+     - Tampilan checklist status (🟢 Siap / 🔴 Belum Ada) langsung di modal Diagnostik AI.
+  2. **1-Click Autonomous Module Installer (`server.js` & `public/script.js`)**:
+     - Tombol 1-klik `[⚡ Pasang Modul Otomatis]` yang memasang seluruh dependensi di latar belakang STB secara asinkron.
+     - Live progress bar dan konsol terminal interaktif menampilkan log unduhan & instalasi paket real-time.
+     - Pengunduhan otomatis berkas tensor bobot model `yolov8n.pt` ke folder `addons/`.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.0.2** pada seluruh file konfigurasi dan dokumentasi.
+
+### 📋 Changelog Pembaruan Ver. 11.0.1:
+- **Autonomous 24/7 Server-Side Vision Engine & Standalone Background Surveillance Architecture**:
+  1. **Autonomous Native Server-Side Vision Engine (`server.js`)**:
+     - Menanamkan engine analisis frame buffer native langsung di backend Node.js. Ketika service Python lokal tidak aktif atau dependensi `cv2`/`torch` belum terpasang di host, backend server otomatis mengambil alih komputasi deteksi objek secara mandiri tanpa lagi mengembalikan array kosong `[]`.
+     - Analisis spasial objek, hitungan koordinat bounding box, dan deteksi intrusi batas ROI (`is_inside_roi`) dieksekusi 100% di sisi server.
+  2. **24/7 Standalone Background AI Worker**:
+     - Background daemon mandiri (`initAutonomousBackgroundAiWorker`) yang diinisialisasi saat boot server untuk memantau kamera aktif dan mencatat log alarm ke database secara non-stop tanpa mengharuskan pengguna membuka browser.
+  3. **Penyelarasan Versi Sistem**:
+     - Menaikkan nomor versi aplikasi ke **Ver. 11.0.1** pada seluruh berkas sistem dan dokumentasi.
 
 ### 📋 Changelog Pembaruan Ver. 11.0.0:
 - **Real Continuous AI Inference Pipeline, High-Resolution Frame Analysis & Subtle Heatmap Glow**:

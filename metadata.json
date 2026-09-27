@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.0.0 - Real Continuous AI Inference Pipeline, High-Resolution Frame Analysis & Subtle Heatmap Glow.",
+  "description": "Arch3r NVR Ver. 11.0.2 - AI Dependency Doctor & 1-Click Autonomous Module Installer for Linux Armbian STB.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -11369,7 +11369,9 @@ async function triggerLiveCanvasScreenInference(camId, videoEl) {
                 const extLatEl = document.getElementById('yolo-hud-latency');
                 if (extLatEl && data.latency_ms) extLatEl.textContent = `⚡ ${Math.round(data.latency_ms)}ms`;
                 const fpsEl = document.getElementById('yolo-hud-fps');
-                if (fpsEl) fpsEl.textContent = `Live Stream`;
+                if (fpsEl) fpsEl.textContent = data.count > 0 ? `Server Vision (${data.count} Objek)` : `Server Vision`;
+                const engineEl = document.getElementById('yolo-stat-engine');
+                if (engineEl) engineEl.textContent = 'Server AI';
             }
         }
     } catch (e) {
@@ -13361,8 +13363,149 @@ async function runYoloAiDiagnosticsProbe() {
             `;
         }
     }
+
+    // Automatically check AI modules readiness during probe
+    checkYoloModulesReadiness();
 }
 window.runYoloAiDiagnosticsProbe = runYoloAiDiagnosticsProbe;
+
+// --- AI MODULES READINESS DOCTOR & 1-CLICK INSTALLER CONTROLLER ---
+let yoloInstallPollingTimer = null;
+
+async function checkYoloModulesReadiness() {
+    const container = document.getElementById('yolo-modules-checklist-container');
+    if (!container) return;
+
+    const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+    try {
+        const resp = await fetch('/api/ai/modules/status', {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        const data = await resp.json();
+
+        if (data && data.success && Array.isArray(data.modules)) {
+            container.innerHTML = '';
+            data.modules.forEach(m => {
+                const isOk = m.installed;
+                const row = document.createElement('div');
+                row.style.cssText = 'padding:0.6rem 0.85rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;';
+                row.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span style="font-size:0.9rem;">${isOk ? '🟢' : (m.required ? '🔴' : '🟡')}</span>
+                        <div>
+                            <div style="font-size:0.8rem; font-weight:700; color:#f8fafc;">
+                                ${m.name} ${m.required ? '<span style="font-size:0.65rem; color:#f87171; font-weight:normal;">*Wajib</span>' : '<span style="font-size:0.65rem; color:#94a3b8; font-weight:normal;">Opsional</span>'}
+                            </div>
+                            <div style="font-size:0.7rem; color:${isOk ? '#4ade80' : '#94a3b8'};">
+                                ${m.version}
+                            </div>
+                        </div>
+                    </div>
+                    <span class="badge" style="font-size:0.68rem; font-weight:700; padding:2px 7px; border-radius:4px; background:${isOk ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isOk ? '#4ade80' : '#f87171'}; border:1px solid ${isOk ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'};">
+                        ${isOk ? 'Siap' : 'Belum Ada'}
+                    </span>
+                `;
+                container.appendChild(row);
+            });
+
+            // Update 1-Click button state
+            const installBtn = document.getElementById('btn-1click-install-modules');
+            if (installBtn) {
+                if (data.all_ready) {
+                    installBtn.style.background = '#2563eb';
+                    installBtn.style.borderColor = '#1d4ed8';
+                    installBtn.innerHTML = '<span>✅</span> Modul Siap (Klik untuk Perbaiki)';
+                } else {
+                    installBtn.style.background = '#10b981';
+                    installBtn.style.borderColor = '#059669';
+                    installBtn.innerHTML = '<span>⚡</span> Pasang Modul Otomatis (1-Click)';
+                }
+            }
+        }
+    } catch (e) {
+        container.innerHTML = `
+            <div style="padding:0.75rem; color:#f87171; font-size:0.75rem; text-align:center;">
+                ⚠️ Gagal memeriksa pustaka AI: ${e.message}
+            </div>
+        `;
+    }
+}
+window.checkYoloModulesReadiness = checkYoloModulesReadiness;
+
+async function start1ClickModulesInstallation() {
+    const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
+    const progressBox = document.getElementById('yolo-module-install-progress-box');
+    const stepLabel = document.getElementById('yolo-install-step-label');
+    const pctLabel = document.getElementById('yolo-install-pct-label');
+    const progressBar = document.getElementById('yolo-install-progress-bar');
+    const consoleLog = document.getElementById('yolo-install-console-log');
+    const installBtn = document.getElementById('btn-1click-install-modules');
+
+    if (progressBox) progressBox.style.display = 'block';
+    if (installBtn) {
+        installBtn.disabled = true;
+        installBtn.innerHTML = '<span>⏳</span> Sedang Memasang...';
+    }
+
+    try {
+        const resp = await fetch('/api/ai/modules/install', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+        });
+        const data = await resp.json();
+        
+        if (typeof showToast === 'function') {
+            showToast('🚀 Pemasangan modul AI diluncurkan di latar belakang STB...', 'info');
+        }
+
+        // Poll progress every 1.5s
+        if (yoloInstallPollingTimer) clearInterval(yoloInstallPollingTimer);
+        yoloInstallPollingTimer = setInterval(async () => {
+            try {
+                const pResp = await fetch('/api/ai/modules/install-progress', {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+                const pData = await pResp.json();
+
+                if (pData && pData.success) {
+                    if (stepLabel) stepLabel.textContent = pData.currentStep || 'Sedang memproses...';
+                    if (pctLabel) pctLabel.textContent = `${pData.progressPct || 0}%`;
+                    if (progressBar) progressBar.style.width = `${pData.progressPct || 0}%`;
+                    
+                    if (consoleLog && Array.isArray(pData.logs)) {
+                        consoleLog.innerHTML = pData.logs.join('<br>');
+                        consoleLog.scrollTop = consoleLog.scrollHeight;
+                    }
+
+                    if (pData.completed || !pData.running) {
+                        clearInterval(yoloInstallPollingTimer);
+                        yoloInstallPollingTimer = null;
+                        if (installBtn) {
+                            installBtn.disabled = false;
+                            installBtn.innerHTML = '<span>⚡</span> Pasang Modul Otomatis (1-Click)';
+                        }
+                        if (typeof showToast === 'function') {
+                            showToast('🎉 Pemasangan modul selesai! Memverifikasi sistem...', 'success');
+                        }
+                        checkYoloModulesReadiness();
+                        runYoloAiDiagnosticsProbe();
+                    }
+                }
+            } catch (_) {}
+        }, 1500);
+
+    } catch (err) {
+        if (stepLabel) stepLabel.textContent = 'Gagal meluncurkan: ' + err.message;
+        if (installBtn) {
+            installBtn.disabled = false;
+            installBtn.innerHTML = '<span>⚡</span> Coba Pasang Lagi';
+        }
+    }
+}
+window.start1ClickModulesInstallation = start1ClickModulesInstallation;
 
 async function toggleYoloAiDaemonPower() {
     const token = localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';

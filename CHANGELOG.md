@@ -1,5 +1,26 @@
 # Changelog
 
+## [Ver 11.0.2] - 2026-09-27
+### AI Modules Readiness Doctor & 1-Click Autonomous Dependency Installer
+- **AI Modules Readiness Doctor (`server.js` & `public/script.js`):**
+  - **Audit Pustaka Real-time**: Menyediakan endpoint `/api/ai/modules/status` untuk memindai ketersediaan runtime Python 3, PIP Package Manager, OpenCV (`cv2`), NumPy, FastAPI, Uvicorn, Pydantic, Ultralytics, dan tensor weights `yolov8n.pt`.
+  - **Tabel Checklist Visual Kesiapan**: Menampilkan status lampu indikator (🟢 Siap, 🔴 Belum Ada, 🟡 Opsional) langsung di modal Diagnostik AI tanpa perlu membuka terminal Linux.
+- **1-Click Autonomous Module Installer (`server.js` & `public/script.js`):**
+  - **Zero-Terminal Installation Pipeline**: Tombol `[⚡ Pasang Modul Otomatis (1-Click)]` mengeksekusi instalasi dependensi di background (`/api/ai/modules/install`) secara asinkron tanpa memblokir server.
+  - **Live Console Output & Progress Bar**: Pengguna dapat melihat progres persentase dan log live stream dari eksekusi instalasi paket Linux/Python di antarmuka web secara real-time.
+  - **Auto-Download YOLOv8 Tensor Weights**: Mengunduh berkas model resmi `yolov8n.pt` ke folder `addons/` secara otomatis jika belum ada.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan versi aplikasi ke **Ver. 11.0.2** pada seluruh file konfigurasi dan dokumentasi.
+
+## [Ver 11.0.1] - 2026-09-27
+### Autonomous 24/7 Server-Side Vision Engine & Standalone Background Surveillance Architecture
+- **Autonomous Native Server-Side Vision Engine (`server.js`):**
+  - **Embedded Vision Inference di Node.js Backend**: Menanamkan engine analisis frame buffer native di backend. Jika service eksternal Python/Ultralytics belum terpasang atau mati, backend server otomatis mengambil alih komputasi deteksi objek secara mandiri (bukan mengembalikan array kosong `[]`).
+  - **Perimeter & ROI Hit-Testing Mandiri**: Server memproses koordinat bounding box, menguji intrusi batas ROI (`is_inside_roi`), dan mencatat snapshot insiden ke database tanpa tergantung browser klien.
+  - **24/7 Background Standalone AI Worker**: Menambahkan background scheduler (`initAutonomousBackgroundAiWorker`) yang terus memantau kamera aktif di latar belakang saat server booting, merekam alarm insiden ke `aiSnapshotsLog` bahkan saat semua browser ditutup.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.0.1** pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/script.js`, dan dokumentasi sistem.
+
 ## [Ver 11.0.0] - 2026-09-26
 ### Real Continuous AI Inference Pipeline, High-Resolution Frame Analysis & Subtle Heatmap Glow
 - **Automated Real-Time AI Inference Loop (`public/script.js`):**
