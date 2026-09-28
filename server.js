@@ -6046,10 +6046,14 @@ function detectStorageDevices(skipAutoDetect = false) {
     const devices = [];
     const seenMounts = new Set();
     const curPath = getActualBaseStoragePath(skipAutoDetect);
+    let rootDev = null;
 
     // 1. Root / Internal SD Card (eMMC)
     try {
         const rootPath = '/';
+        const rootSt = fs.statSync(rootPath);
+        rootDev = rootSt.dev;
+
         const s = fs.statfsSync(rootPath);
         const totalGB = parseFloat((s.blocks * s.bsize / (1024**3)).toFixed(1));
         const freeGB = parseFloat((s.bfree * s.bsize / (1024**3)).toFixed(1));
@@ -6081,9 +6085,15 @@ function detectStorageDevices(skipAutoDetect = false) {
             const usedGB = parseFloat(((s.blocks - s.bfree) * s.bsize / (1024**3)).toFixed(1));
             const percentUsed = totalGB > 0 ? Math.round((usedGB / totalGB) * 100) : 0;
 
+            let recDev = null;
+            try { recDev = fs.statSync(defaultNvrRec).dev; } catch(_) {}
+            const isSameAsRoot = rootDev && recDev && rootDev === recDev;
+
             devices.push({
                 id: 'nvr_default_folder',
-                name: 'Penyimpanan Default NVR (public/recordings)',
+                name: isSameAsRoot 
+                    ? 'Folder Default NVR (Sub-folder Partisi Root eMMC)' 
+                    : 'Penyimpanan Default NVR (public/recordings)',
                 category: 'Internal',
                 mountPath: defaultNvrRec,
                 totalGB,
@@ -6096,7 +6106,7 @@ function detectStorageDevices(skipAutoDetect = false) {
         } catch(e) {}
     }
 
-    // 3. Scan folder /media dan /mnt secara langsung (tanpa blokir execSync df)
+    // 3. Scan folder /media dan /mnt secara langsung (Filter hanya mountpoint eksternal fisik asli)
     const scanFolders = ['/media', '/mnt'];
     for (const base of scanFolders) {
         if (fs.existsSync(base)) {
@@ -6107,7 +6117,6 @@ function detectStorageDevices(skipAutoDetect = false) {
                     try {
                         const st = fs.lstatSync(subPath);
                         if (st.isDirectory()) {
-                            // Cek apakah ada sub-folder pengguna (misal /media/armbian/USB_NAME)
                             let subTargets = [subPath];
                             try {
                                 const nested = fs.readdirSync(subPath);
@@ -6122,6 +6131,15 @@ function detectStorageDevices(skipAutoDetect = false) {
                             for (const target of subTargets) {
                                 if (seenMounts.has(target)) continue;
                                 try {
+                                    // Verifikasi apakah target benar-benar mountpoint eksternal terpisah (Device ID berbeda dari Root)
+                                    let targetDev = null;
+                                    try { targetDev = fs.statSync(target).dev; } catch(_) {}
+
+                                    // Jika targetDev sama dengan rootDev, folder ini belum di-mount ke harddisk eksternal asli
+                                    if (rootDev && targetDev && targetDev === rootDev) {
+                                        continue; // Abort: Jangan tampilkan folder kosong unmounted sebagai HDD eksternal tiruan
+                                    }
+
                                     const s = fs.statfsSync(target);
                                     const totalGB = parseFloat((s.blocks * s.bsize / (1024**3)).toFixed(1));
                                     const freeGB = parseFloat((s.bfree * s.bsize / (1024**3)).toFixed(1));

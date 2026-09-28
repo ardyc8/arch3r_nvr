@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 11.3.9] - 2026-09-28
+### Physical Storage Mount Point Device Filter & Sub-folder Partition Distinction
+- **Penyaringan Perangkat Penyimpanan Fisik Nyata (`server.js`):**
+  - **Penjelasan Masalah & Solusi Teknis:** Pada sistem operasi Linux, direktori seperti `public/recordings` (penyimpanan default NVR) maupun folder di `/media` / `/mnt` yang belum di-mount ke drive fisik baru berada di dalam partisi fisik yang sama dengan Root (`/`). Oleh karena itu, perintah sistem `fs.statfsSync()` pada folder tersebut mengembalikan kapasitas total, sisa ruang, dan % penggunaan yang sama persis dengan eMMC/SD Card Internal.
+  - **Identifikasi Device ID (`statSync().dev`):** Menambahkan verifikasi Device ID (`st.dev`). Folder di `/media` atau `/mnt` yang memiliki Device ID sama dengan Root `/` dipastikan merupakan folder lokal biasa (belum terpasang Harddisk/USB fisik), sehingga otomatis disaring agar tidak membingungkan pengguna dengan tampilan "HDD Tiruan" berukuran sama.
+  - **Pembeda Sub-folder Partisi Root:** Menambahkan label tegas `Folder Default NVR (Sub-folder Partisi Root eMMC)` apabila folder `public/recordings` berada di dalam partisi eMMC yang sama dengan OS Root, sehingga pengguna memahami secara tepat mengapa kapasitasnya sama dengan Internal Storage.
+
 ## [Ver 11.3.8] - 2026-09-28
 ### Interactive Accordion Dropdown System Stats Widget (Parent Overall + Child Breakdown)
 - **Komponen Accordion Dropdown Sidebar Widget (`public/index.html`, `public/script.js`):**
