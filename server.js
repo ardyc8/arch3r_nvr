@@ -6495,8 +6495,27 @@ app.get(['/addons/yolo-ai', '/addons/yolo-ai/*', '/yolo-ai'], (req, res) => {
     res.sendFile(path.join(publicDir, 'index.html'));
 });
 
-// Serve UI & Static Assets
-app.use(express.static(publicDir));
+// Serve UI & Static Assets (with explicit no-cache headers for HTML/JS/CSS to prevent browser caching stale scripts)
+app.use((req, res, next) => {
+    if (req.url.endsWith('.html') || req.url.endsWith('.js') || req.url.endsWith('.css') || req.url === '/' || req.url === '') {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+    next();
+});
+
+app.use(express.static(publicDir, {
+    etag: false,
+    maxAge: 0,
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        }
+    }
+}));
 
 // App Initialization
 function boot() {

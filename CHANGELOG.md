@@ -1,5 +1,11 @@
 # Changelog
 
+## [Ver 11.4.9] - 2026-09-28
+### Anti-Stale Static Asset Cache Headers & Cache-Buster Synchronization
+- **Eliminasi Masalah Browser Caching pada File UI (`server.js`, `public/index.html`):**
+  - **Injeksi No-Cache Headers pada Express Static**: Menambahkan header `Cache-Control: no-cache, no-store, must-revalidate`, `Pragma: no-cache`, `Expires: 0` pada setiap request file `.html`, `.js`, dan `.css` agar browser klien dan TV Kiosk tidak menahan file antarmuka lama.
+  - **Sinkronisasi Cache-Buster Query String**: Memperbarui seluruh tag pemanggil `<script src="script.js?v=11.4.9">`, `<script src="version_sync.js?v=11.4.9">`, dan `<link href="style.css?v=11.4.9">` untuk memaksa browser mengunduh script dan struktur DOM modal Network Manager terbaru secara instan.
+
 ## [Ver 11.4.8] - 2026-09-28
 ### Zero-Lockout Transparent Proxy-ARP Relay, Auto-Purge Dangling Bridges & Safe Dual-Interface Routing
 - **Eliminasi Total Pembuatan Profil L2 Bridge `br0` di NetworkManager (`addons/network-manager/lib/nmcli_driver.js`):**
