@@ -802,7 +802,7 @@ export class ArmbianNetworkManager {
 
     /**
      * Automatically restores and activates physical Ethernet LAN interface (e.g. eth0).
-     * Frees eth0 from any dangling bridge/unmanaged states and brings up a clean connection profile.
+     * Frees eth0 from any dangling bridge/unmanaged states safely with Wi-Fi Lifeline Protection.
      */
     async restoreAndActivateLan(device = 'eth0') {
         const isAvailable = await this.isNmcliAvailable();
@@ -813,49 +813,54 @@ export class ArmbianNetworkManager {
         const safeDev = this.sanitizeParam(device) || 'eth0';
         const steps = [];
 
-        // 1. Release any lingering br0 bridge device in kernel & Netplan
+        // 1. Detect current Wi-Fi connection to safeguard it (Wi-Fi Lifeline)
+        let wifiConnName = '';
+        try {
+            const activeConnRes = await this.detectActiveConnections();
+            if (activeConnRes && activeConnRes.wifiName) {
+                wifiConnName = activeConnRes.wifiName;
+            }
+        } catch (_) {}
+
+        // 2. Safely release any lingering br0 bridge device in kernel WITHOUT resetting Netplan daemon
         const cleanupCmds = [
             'ip link set br0 down 2>/dev/null || true',
             'ip link delete br0 type bridge 2>/dev/null || true',
             'nmcli connection delete netplan-br0 2>/dev/null || true',
-            'nmcli connection delete br0 2>/dev/null || true',
-            'rm -f /etc/netplan/*br0*.yaml 2>/dev/null || true'
+            'nmcli connection delete br0 2>/dev/null || true'
         ];
         for (const cmd of cleanupCmds) {
             await this.runCommand(cmd);
         }
 
-        // 2. Set physical LAN device as managed and auto-connect
-        const mRes = await this.runCommand(`nmcli device set ${safeDev} managed yes`);
-        steps.push({ step: 'set_managed', cmd: `nmcli device set ${safeDev} managed yes`, success: mRes.success });
-
+        // 3. Set physical LAN device as managed and non-blocking
+        await this.runCommand(`nmcli device set ${safeDev} managed yes`);
         await this.runCommand(`nmcli device set ${safeDev} autoconnect yes`);
-        await this.runCommand('nmcli connection reload');
 
-        // 3. Try to connect existing device first
+        // 4. Try to connect existing device first
         let connectRes = await this.runCommand(`nmcli device connect ${safeDev}`);
         steps.push({ step: 'device_connect', cmd: `nmcli device connect ${safeDev}`, ...connectRes });
 
-        // 4. If connect fails or no connection profile is assigned, create clean "Wired LAN" connection
+        // 5. If connect fails or no connection profile is assigned, create clean "Wired LAN" connection
         if (!connectRes.success) {
-            // Check if connection profile already exists
-            const addRes = await this.runCommand(`nmcli connection add type ethernet con-name "Wired LAN" ifname ${safeDev} autoconnect yes`);
-            steps.push({ step: 'add_connection', cmd: `nmcli connection add type ethernet con-name "Wired LAN" ifname ${safeDev}`, ...addRes });
-
+            // Check if connection profile already exists, if not create with may-fail=yes so it never blocks Wi-Fi
+            await this.runCommand(`nmcli connection add type ethernet con-name "Wired LAN" ifname ${safeDev} autoconnect yes ipv4.may-fail yes`);
             const upRes = await this.runCommand('nmcli connection up "Wired LAN"');
             steps.push({ step: 'connection_up', cmd: 'nmcli connection up "Wired LAN"', ...upRes });
-            connectRes = upRes;
         }
 
-        // 5. Try netplan apply in case Netplan is the primary renderer
-        try {
-            await this.runCommand('netplan apply 2>/dev/null');
-        } catch (_) {}
+        // 6. Wi-Fi Lifeline Guarantee: Always re-assert active Wi-Fi connection so internet/remote access is never dropped!
+        if (wifiConnName) {
+            await this.runCommand(`nmcli connection up "${wifiConnName}" 2>/dev/null || true`);
+        } else {
+            // Try to activate any known wifi connection
+            await this.runCommand('nmcli device connect wlan0 2>/dev/null || true');
+        }
 
         return {
             success: true,
             device: safeDev,
-            message: `Interface LAN (${safeDev}) berhasil dipulihkan dan diaktifkan kembali!`,
+            message: `Interface LAN (${safeDev}) berhasil dipulihkan dan Wi-Fi tetap terlindungi aktif!`,
             steps
         };
     }

@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 11.5.3] - 2026-09-28
+### Wi-Fi Lifeline Guard & Non-Blocking Safe LAN Auto-Recovery Engine
+- **Perlindungan Jalur Wi-Fi (Wi-Fi Lifeline Protection) (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Eliminasi Total Pemanggilan Netplan Apply**: Menghapus eksekusi `netplan apply` yang dapat mereset *wireless daemon* dan memutus koneksi Wi-Fi aktif.
+  - **Wi-Fi Lifeline Assertion**: Memastikan proses pemulihan LAN (`restoreAndActivateLan`) selalu mendeteksi dan mempertahankan koneksi Wi-Fi (`wlan0`) aktif sebagai prioritas utama.
+  - **Non-Blocking LAN Activation (`ipv4.may-fail yes`)**: Profil LAN baru kini disetel dengan `ipv4.may-fail yes` sehingga jika kabel LAN tidak terhubung ke DHCP server, sistem tidak akan memblokir atau menonaktifkan jalur default gateway Wi-Fi.
+
 ## [Ver 11.5.2] - 2026-09-28
 ### Physical Ethernet LAN Auto-Recovery Engine & Unlinked Device Visualizer
 - **Pemulihan & Deteksi Otomatis Hardware LAN Fisik (`addons/network-manager/lib/nmcli_driver.js`, `addons/network-manager/index.js`):**
