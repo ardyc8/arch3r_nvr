@@ -14825,3 +14825,129 @@ function closeYoloCameraSettings() {
     if (settingsView) settingsView.style.display = 'none';
 }
 window.closeYoloCameraSettings = closeYoloCameraSettings;
+
+// --- ARCH3R NVR CAMERA & LAN/WAN NETWORK DIAGNOSTICS UI ENGINE ---
+window.openDiagnosticsModal = function() {
+    const modal = document.getElementById('diagnosticsModalOverlay');
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
+    window.runAllCameraDiagnostics();
+};
+
+window.closeDiagnosticsModal = function() {
+    const modal = document.getElementById('diagnosticsModalOverlay');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+};
+
+window.runAllCameraDiagnostics = async function() {
+    const listEl = document.getElementById('diagnosticsResultsList');
+    const indicatorEl = document.getElementById('diagStatusIndicator');
+
+    if (indicatorEl) indicatorEl.textContent = '⏳ Menjalankan tes koneksi & latensi RTSP TCP...';
+    if (listEl) {
+        listEl.innerHTML = `
+            <div style="text-align:center; padding:2rem; background:#0f172a; border-radius:8px; border:1px solid #1e293b; color:#38bdf8;">
+                <div class="state-spinner" style="margin:0 auto 1rem auto;"></div>
+                <h4 style="margin:0; font-size:0.95rem;">Memindai Latensi & Stabilitas RTSP TCP...</h4>
+                <p style="margin:0.25rem 0 0 0; font-size:0.8rem; color:#94a3b8;">Menguji port 554 & performa stream pada seluruh kamera terdaftar...</p>
+            </div>
+        `;
+    }
+
+    try {
+        const res = await authFetch('/api/cameras/diagnostics/all');
+        const data = await res.json();
+
+        if (res.ok && data.success && Array.isArray(data.diagnostics)) {
+            if (indicatorEl) indicatorEl.textContent = `✅ Diagnosa Selesai (${data.diagnostics.length} kamera diuji)`;
+            
+            if (data.diagnostics.length === 0) {
+                if (listEl) {
+                    listEl.innerHTML = `
+                        <div style="text-align:center; padding:2rem; background:#0f172a; border-radius:8px; border:1px solid #1e293b; color:#94a3b8; font-size:0.85rem;">
+                            Belum ada kamera yang terdaftar pada sistem NVR ini.
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            if (listEl) {
+                listEl.innerHTML = data.diagnostics.map(diag => renderDiagnosticCardHTML(diag)).join('');
+            }
+        } else {
+            throw new Error(data.error || 'Gagal mengambil data diagnosa');
+        }
+    } catch (e) {
+        if (indicatorEl) indicatorEl.textContent = '❌ Kesalahan Diagnosa';
+        if (listEl) {
+            listEl.innerHTML = `
+                <div style="padding:1rem; background:rgba(239,68,68,0.1); border:1px solid #dc2626; border-radius:8px; color:#f8f7f1; font-size:0.85rem;">
+                    ❌ Kesalahan: ${e.message}
+                </div>
+            `;
+        }
+    }
+};
+
+function renderDiagnosticCardHTML(diag) {
+    const isOnline = diag.rtspPortOpen;
+    const badgeColor = isOnline ? '#10b981' : '#ef4444';
+    const badgeText = isOnline ? '🟢 RTSP ONLINE (TCP)' : '🔴 UNREACHABLE';
+
+    let pingColor = '#ef4444';
+    if (diag.pingStatus === 'excellent') pingColor = '#10b981';
+    else if (diag.pingStatus === 'good') pingColor = '#22c55e';
+    else if (diag.pingStatus === 'fair') pingColor = '#eab308';
+
+    const latText = diag.latencyMs >= 0 ? `${diag.latencyMs} ms` : 'Offline / Error';
+
+    return `
+        <div style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:1rem; display:flex; flex-direction:column; gap:0.65rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.6rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <strong style="color:#f8fafc; font-size:0.95rem;">${diag.cameraName}</strong>
+                    <span style="font-size:0.75rem; padding:2px 8px; border-radius:4px; background:rgba(255,255,255,0.06); color:#94a3b8; font-family:monospace;">${diag.host}</span>
+                    <span style="font-size:0.72rem; padding:2px 6px; border-radius:4px; background:rgba(30,41,59,0.8); color:#38bdf8; font-weight:600;">${diag.networkType}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <span style="font-size:0.75rem; font-weight:600; padding:2px 8px; border-radius:4px; background:rgba(0,0,0,0.4); color:${badgeColor}; border:1px solid ${badgeColor};">${badgeText}</span>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:0.5rem; background:rgba(11,17,32,0.6); padding:0.6rem; border-radius:6px; font-size:0.78rem;">
+                <div>
+                    <span style="color:#64748b; display:block;">Latensi PING:</span>
+                    <strong style="color:${pingColor}; font-size:0.85rem;">${latText}</strong>
+                </div>
+                <div>
+                    <span style="color:#64748b; display:block;">Codec Video:</span>
+                    <strong style="color:#38bdf8;">${diag.codec}</strong>
+                </div>
+                <div>
+                    <span style="color:#64748b; display:block;">Resolusi / FPS:</span>
+                    <strong style="color:#cbd5e1;">${diag.resolution} @ ${diag.fps}</strong>
+                </div>
+                <div>
+                    <span style="color:#64748b; display:block;">Sub-Stream (SD):</span>
+                    <strong style="color:${diag.hasSubStream ? '#34d399' : '#f59e0b'};">${diag.hasSubStream ? 'Tersedia ✅' : 'Tidak Ada ⚠️'}</strong>
+                </div>
+                <div>
+                    <span style="color:#64748b; display:block;">Transmisi RTSP:</span>
+                    <strong style="color:#a78bfa;">${diag.rtspTransport}</strong>
+                </div>
+            </div>
+
+            <!-- Recommendations -->
+            <div style="background:rgba(30,41,59,0.3); padding:0.55rem 0.75rem; border-radius:6px; font-size:0.78rem; color:#cbd5e1; line-height:1.4;">
+                ${(diag.recommendations || []).map(r => `<div style="margin-bottom:2px;">${r}</div>`).join('')}
+            </div>
+        </div>
+    `;
+}

@@ -5423,6 +5423,147 @@ app.post('/api/onvif/diagnose-profiles', verifyToken, async (req, res) => {
     }
 });
 
+// --- ARCH3R NVR CAMERA & NETWORK DIAGNOSTICS ENGINE ---
+async function runCameraDiagnostics(cam) {
+    const { host } = parseCameraPtzTarget(cam);
+    const mainRtsp = formatStreamUrl(cam.mainStreamUrl);
+    const subRtsp = formatStreamUrl(cam.subStreamUrl);
+    
+    let hostIp = host || '127.0.0.1';
+    let isLan = /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.|localhost)/i.test(hostIp);
+    let networkType = isLan ? 'LAN (Lokal STB)' : 'WAN / Internet (P2P)';
+
+    // Measure TCP socket ping / latency to host IP
+    const t0 = Date.now();
+    const rtspPort = 554;
+    const rtspOpen = await checkPortOpen(hostIp, rtspPort, 1500);
+    const latencyMs = Date.now() - t0;
+
+    let pingStatus = 'unreachable';
+    if (rtspOpen) {
+        if (latencyMs < 25) pingStatus = 'excellent';
+        else if (latencyMs < 80) pingStatus = 'good';
+        else if (latencyMs < 200) pingStatus = 'fair';
+        else pingStatus = 'poor';
+    }
+
+    // Check ONVIF port
+    const onvifPorts = [8899, 80, 8080, 2020, 8000];
+    let openOnvifPort = null;
+    for (const p of onvifPorts) {
+        if (await checkPortOpen(hostIp, p, 400)) {
+            openOnvifPort = p;
+            break;
+        }
+    }
+
+    // Probe RTSP stream
+    let codec = 'Unknown';
+    let resolution = 'Unknown';
+    let fps = 'Unknown';
+    let probeSuccess = false;
+
+    if (mainRtsp) {
+        try {
+            const ffprobeArgs = [
+                '-v', 'error',
+                '-err_detect', 'ignore_err',
+                '-rtsp_transport', 'tcp',
+                '-analyzeduration', '2000000',
+                '-probesize', '2000000',
+                '-show_entries', 'stream=index,codec_name,codec_type,width,height,r_frame_rate',
+                '-of', 'json',
+                mainRtsp
+            ];
+            const pResult = await new Promise((resolve) => {
+                execFile('ffprobe', ffprobeArgs, { timeout: 3500 }, (err, stdout) => {
+                    if (err || !stdout) return resolve(null);
+                    try { resolve(JSON.parse(stdout)); } catch (_) { resolve(null); }
+                });
+            });
+            if (pResult && Array.isArray(pResult.streams)) {
+                const v = pResult.streams.find(s => s.codec_type === 'video');
+                if (v) {
+                    probeSuccess = true;
+                    codec = (v.codec_name || 'h264').toUpperCase();
+                    if (v.width && v.height) resolution = `${v.width}x${v.height}`;
+                    if (v.r_frame_rate) {
+                        const parts = v.r_frame_rate.split('/');
+                        if (parts.length === 2 && parseInt(parts[1], 10) > 0) {
+                            fps = Math.round(parseInt(parts[0], 10) / parseInt(parts[1], 10)).toString();
+                        }
+                    }
+                }
+            }
+        } catch (_) {}
+    }
+
+    const hasSubStream = Boolean(subRtsp && subRtsp.trim() && subRtsp.trim() !== mainRtsp.trim());
+
+    // Smart recommendations
+    const recs = [];
+    if (pingStatus === 'excellent' || pingStatus === 'good') {
+        recs.push(`✅ Latensi sinyal LAN sangat baik (${latencyMs} ms). Transmisi RTSP via TCP berjalan lancar.`);
+    } else if (pingStatus === 'fair' || pingStatus === 'poor') {
+        recs.push(`⚠️ Latensi jaringan cukup tinggi (${latencyMs} ms). Periksa kestabilan sinyal Wi-Fi atau kabel LAN kamera.`);
+    } else {
+        recs.push(`❌ Port RTSP (554) pada IP ${hostIp} tidak merespons. Periksa koneksi kabel LAN, daya kamera, atau IP Address.`);
+    }
+
+    if (hasSubStream) {
+        recs.push(`💡 Sub-Stream (SD) terdeteksi & aktif. Menggunakan Sub-Stream di Grid Multi-Kamera akan mencegah buffering & menghemat CPU STB.`);
+    } else {
+        recs.push(`⚠️ Sub-Stream (SD) belum dikonfigurasi. Disarankan menambahkan Sub-Stream URL pada pengaturan kamera untuk tampilan multi-grid.`);
+    }
+
+    return {
+        cameraId: cam.id,
+        cameraName: cam.name || `Kamera #${cam.id}`,
+        host: hostIp,
+        networkType,
+        rtspPortOpen: rtspOpen,
+        latencyMs: rtspOpen ? latencyMs : -1,
+        pingStatus,
+        onvifPort: openOnvifPort,
+        codec,
+        resolution,
+        fps,
+        hasSubStream,
+        probeSuccess,
+        rtspTransport: 'TCP (Lossless)',
+        recommendations: recs
+    };
+}
+
+// Endpoint Diagnosa Tunggal Kamera
+app.get('/api/cameras/:id/diagnostics', verifyToken, async (req, res) => {
+    try {
+        const authorizedCams = getAuthorizedCamerasForReq(req);
+        const cam = authorizedCams.find(c => String(c.id) === String(req.params.id));
+        if (!cam) return res.status(404).json({ error: 'Kamera tidak ditemukan atau tidak memiliki izin' });
+
+        const diag = await runCameraDiagnostics(cam);
+        res.json({ success: true, diagnostics: diag });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Gagal menjalankan diagnosa kamera: ' + e.message });
+    }
+});
+
+// Endpoint Diagnosa Seluruh Kamera
+app.get('/api/cameras/diagnostics/all', verifyToken, async (req, res) => {
+    try {
+        const authorizedCams = getAuthorizedCamerasForReq(req);
+        if (!authorizedCams || authorizedCams.length === 0) {
+            return res.json({ success: true, diagnostics: [] });
+        }
+
+        const results = await Promise.all(authorizedCams.map(cam => runCameraDiagnostics(cam)));
+        res.json({ success: true, count: results.length, diagnostics: results });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Gagal menjalankan diagnosa massal: ' + e.message });
+    }
+});
+
 // Helper function to test TCP port with timeout
 function checkPortOpen(host, port, timeoutMs = 750) {
     return new Promise((resolve) => {

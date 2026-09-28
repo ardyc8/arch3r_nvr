@@ -256,6 +256,9 @@
                                     </button>
                                 </div>
                                 <div class="nvr-grid-actions-right">
+                                    <button id="btnOpenDiagnosticsModal" class="nvr-tool-btn" onclick="window.openDiagnosticsModal()" title="Diagnosa Jaringan LAN/WAN & Stream Kamera">
+                                        <span class="nvr-icon">🩺</span>
+                                    </button>
                                     <button id="btnPlayerRefresh" class="nvr-tool-btn" onclick="window.refreshAllStreams()" title="Muat Ulang Semua Aliran (Refresh)">
                                         <span class="nvr-icon">🔄</span>
                                     </button>
@@ -547,6 +550,42 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: DIAGNOSA JARINGTON LAN/WAN & STREAM KAMERA -->
+            <div id="diagnosticsModalOverlay" class="ota-modal-overlay">
+                <div class="ota-modal-dialog" style="max-width:820px; max-height:90vh; display:flex; flex-direction:column;">
+                    <div class="ota-modal-header" style="background:#0f172a; border-bottom:1px solid #1e293b; padding:1rem 1.25rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:1.25rem;">🩺</span>
+                            <div>
+                                <h3 style="margin:0; font-size:1.05rem; color:#f8fafc; font-weight:600;">Diagnosa Jaringan LAN/WAN & Stream Kamera</h3>
+                                <p style="margin:0; font-size:0.75rem; color:#94a3b8;">Inspeksi latensi, stabilitas RTSP TCP, dan alokasi Sub-Stream per kamera</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="window.closeDiagnosticsModal()" class="btn-sm btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-color:#334155;">✕ Tutup</button>
+                    </div>
+                    <div class="ota-modal-body" style="background:#0b1120; padding:1.25rem; overflow-y:auto; flex:1;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <button type="button" onclick="window.runAllCameraDiagnostics()" class="btn btn-primary" style="padding:0.5rem 1rem; font-size:0.82rem; font-weight:600;">
+                                    ⚡ Jalankan Diagnosa Semua Kamera
+                                </button>
+                                <span id="diagStatusIndicator" style="font-size:0.78rem; color:#94a3b8;">Siap menguji...</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:#64748b;">
+                                <span>Protokol Stream: <strong style="color:#38bdf8;">RTSP Over TCP (Lossless)</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- Result Container -->
+                        <div id="diagnosticsResultsList" style="display:flex; flex-direction:column; gap:0.85rem;">
+                            <div style="text-align:center; padding:2rem; background:#0f172a; border-radius:8px; border:1px solid #1e293b; color:#64748b; font-size:0.85rem;">
+                                Klik "Jalankan Diagnosa Semua Kamera" di atas untuk memeriksa latensi PING, status port RTSP 554, dan alokasi Sub-Stream per kamera.
+                            </div>
                         </div>
                     </div>
                 </div>

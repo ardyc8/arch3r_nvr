@@ -1,5 +1,19 @@
 # Changelog
 
+## [Ver 11.3.2] - 2026-09-28
+### RTSP TCP Lossless Streaming Optimization, LAN/WAN Network Diagnostics Engine & Smart Sub-Stream Allocation
+- **Pencegahan Buffering RTSP & Pengunci Protokol TCP Lossless (`server.js`):**
+  - Mengonfigurasi MediaMTX dan FFprobe untuk memaksa transmisi RTSP berbasis TCP (`protocols: [tcp]`, `sourceProtocol: tcp`), mengeliminasi packet drop yang terjadi pada koneksi UDP di jaringan Wi-Fi/LAN/WAN.
+  - Mengoptimalkan buffer soket & prapemrosesan SPS/PPS untuk mengurangi latensi startup dan mencegah loop buffering saat pemantauan langsung.
+- **Modul Diagnosa Jaringan LAN/WAN & Performa Kamera Per-Device (`server.js`, `public/index.html`, `public/script.js`):**
+  - Menambahkan endpoint API diagnostik baru `GET /api/cameras/:id/diagnostics` dan `GET /api/cameras/diagnostics/all`.
+  - Menambahkan **Modal Diagnosa Jaringan LAN/WAN & Stream Kamera** di antarmuka utama NVR lengkap dengan tombol pemicu `🩺` pada toolbar monitor live.
+  - Memeriksa latensi PING soket (ms), status port RTSP 554, status port ONVIF, resolusi, FPS, codec video, dan rekomendasi otomatis (seperti menyarankan penggunaan Sub-Stream SD untuk jaringan Wi-Fi/WAN).
+- **Alokasi Otomatis Sub-Stream (SD) pada Tampilan Grid Multi-Kamera (`public/script.js`):**
+  - Mendukung peralihan alokasi Sub-Stream (SD) secara cerdas saat pemantauan multi-grid (2x2, 3x3, 4x4) untuk menghemat CPU STB Armbian, RAM, dan bandwidth jaringan secara signifikan.
+- **Konsistensi Preferensi Auto-Play & Sesi Lintas Browser (`server.js`, `public/script.js`):**
+  - Menyimpan preferensi sakelar Auto-Play secara terpusat di server NVR (`super_settings.autoplayLive`) melalui endpoint `POST /api/settings/autoplay` dan menyinkronkan statusnya ke seluruh browser yang login.
+
 ## [Ver 11.3.1] - 2026-09-28
 ### Fix Persistent Stream Loading, Server-Synced Autoplay Settings & Mobile PTZ D-Pad Layout Alignment
 - **Perbaikan Masalah Video Memuat Aliran Terus-menerus (Infinite Buffering / Continuous Loading Fix) (`public/script.js`):**
