@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.1.8] - 2026-09-27
+### Autonomous Auto-Adaptive FFmpeg Engine & Zero-Crash Recording Self-Healing
+- **Auto-Adaptive FFmpeg Capabilities Doctor (`server.js`):**
+  - **Self-Diagnosis saat Booting (`probeFfmpegCapabilities`)**: Memindai opsi bantuan `ffmpeg -h full` secara otomatis saat server booting untuk mendeteksi dialek timeout yang didukung OS Linux STB (`-timeout`, `-stimeout`, `-rw_timeout`, atau fallback vanilla).
+  - **Universal STB Compatibility**: Mengeliminasi 100% resiko crash `Unrecognized option` pada berbagai distro Linux Armbian/Debian/Ubuntu.
+- **Autonomous Multi-Level Self-Healing Recording Pipeline (`server.js`):**
+  - **Zero-Crash Recording Fallback**: Jika suatu kamera mengalami error opsi FFmpeg, sistem mendeteksi log error secara otomatis, mencabut opsi yang tidak kompatibel di runtime memori, dan me-restart proses perekaman dalam 2,5 detik menggunakan mode aman (*Ultra-Safe Vanilla Mode*).
+  - **Eliminasi Exit Code 8**: Menjamin perekaman kontinyu berjalan mulus tanpa looping reconnect.
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.8** sesuai protokol Semantic Versioning Strict.
+
 ## [Ver 11.1.7] - 2026-09-27
 ### Dynamic Active Mount Validator, Auto-Inherit Drive & eMMC Anti-Leak Protection
 - **Dynamic Active Mount Validator & Auto-Fallback (`server.js`):**

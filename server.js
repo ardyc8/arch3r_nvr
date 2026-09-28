@@ -2504,6 +2504,11 @@ function initDB() {
     // Synchronize loaded data to ensure primary and persistent shadow storages are active
     saveNvrDb(data);
     sysLog('INFO', `JSON Split-DB Initialized (Admins: ${data.administrators?.length || 0}, Cameras: ${data.cameras?.length || 0})`, 'DATABASE');
+    
+    // Probe FFmpeg capabilities on boot for auto-adaptive recording args
+    try {
+        probeFfmpegCapabilities();
+    } catch (_) {}
 }
 
 // Auth Middleware
@@ -3513,7 +3518,53 @@ function syncMediaMtxConfig() {
     }
 }
 
-// --- FFMPEG RECORDING ENGINE (LIGHTWEIGHT STREAM COPY ONLY) ---
+// --- FFMPEG RECORDING ENGINE (AUTONOMOUS ADAPTIVE ZERO-CRASH ENGINE) ---
+// Deteksi kemampuan opsi FFmpeg di OS Linux STB secara otomatis saat startup
+let ffmpegCapabilities = {
+    probed: false,
+    rtspTimeoutFlag: null, // 'timeout' | 'stimeout' | 'rw_timeout' | null
+    supportsPreferTcp: false,
+    supportsNobuffer: true,
+    safeInputArgs: []
+};
+
+function probeFfmpegCapabilities() {
+    if (ffmpegCapabilities.probed) return ffmpegCapabilities;
+    ffmpegCapabilities.probed = true;
+
+    try {
+        const helpOutput = execSync('ffmpeg -h full 2>&1 || ffmpeg -h 2>&1', { timeout: 3000 }).toString();
+        
+        // 1. Deteksi Opsi Timeout Soket RTSP yang didukung build FFmpeg ini
+        if (helpOutput.includes('-timeout') && (helpOutput.includes('set timeout of socket I/O operations') || helpOutput.includes('maximum timeout'))) {
+            ffmpegCapabilities.rtspTimeoutFlag = '-timeout';
+        } else if (helpOutput.includes('-stimeout')) {
+            ffmpegCapabilities.rtspTimeoutFlag = '-stimeout';
+        } else if (helpOutput.includes('-rw_timeout')) {
+            ffmpegCapabilities.rtspTimeoutFlag = '-rw_timeout';
+        } else {
+            ffmpegCapabilities.rtspTimeoutFlag = null; // Fallback ke vanilla RTSP transport
+        }
+
+        // 2. Deteksi Opsi RTSP Flags
+        ffmpegCapabilities.supportsPreferTcp = helpOutput.includes('prefer_tcp');
+        ffmpegCapabilities.supportsNobuffer = helpOutput.includes('nobuffer');
+
+        sysLog('INFO', `[FFmpeg Doctor] Auto-Adaptive FFmpeg Capabilities probed: Timeout Flag = ${ffmpegCapabilities.rtspTimeoutFlag || 'none (vanilla)'}, Prefer-TCP = ${ffmpegCapabilities.supportsPreferTcp}, Nobuffer = ${ffmpegCapabilities.supportsNobuffer}`, 'SYSTEM');
+    } catch (e) {
+        // Safe fallback jika execSync gagal
+        ffmpegCapabilities.rtspTimeoutFlag = null;
+        ffmpegCapabilities.supportsPreferTcp = false;
+        ffmpegCapabilities.supportsNobuffer = false;
+        sysLog('WARN', `[FFmpeg Doctor] Gagal memindai opsi lengkap FFmpeg (${e.message}), beralih ke mode Universal Safe RTSP`, 'SYSTEM');
+    }
+
+    return ffmpegCapabilities;
+}
+
+// Track camera recording attempt mode (0: Full Optimized, 1: Adaptive Timeout, 2: Ultra Safe Vanilla)
+const camRecordingFallbackLevel = new Map();
+
 // FFmpeg digunakan KHUSUS untuk perekaman lokal/USB dengan -c:v copy -c:a copy
 function spawnRecordingFFmpeg(cam) {
     if (!cam || !cam.enabled) return;
@@ -3543,7 +3594,10 @@ function spawnRecordingFFmpeg(cam) {
 
     const segSec = cam.segmentDurationSec || 900;
     const isDemo = sourceUrl === 'demo';
-    
+    const fallbackLevel = camRecordingFallbackLevel.get(cam.id) || 0;
+
+    // Inisialisasi deteksi kapabilitas jika belum dipindai
+    const caps = probeFfmpegCapabilities();
 
     let inputArgs = [];
     if (isDemo) {
@@ -3553,17 +3607,40 @@ function spawnRecordingFFmpeg(cam) {
         ];
     } else {
         const isRtsp = typeof sourceUrl === 'string' && sourceUrl.startsWith('rtsp://');
-        inputArgs = [
-            ...(isRtsp ? [
-                '-rtsp_transport', 'tcp',
-                '-rtsp_flags', 'prefer_tcp',
-                '-stimeout', '10000000', // 10s socket timeout in microseconds (prevents RTSP packet drop / hang)
-                '-analyzeduration', '5000000', // 5s analyze buffer for SPS/PPS detection
-                '-probesize', '5000000', // 5MB probe buffer
-                '-fflags', '+genpts+nobuffer+discardcorrupt'
-            ] : []),
-            '-i', sourceUrl
-        ];
+        if (isRtsp) {
+            // Level 2 (Ultra Safe Vanilla Mode): Murni hanya -rtsp_transport tcp -i URL tanpa argumen tambahan yang bisa memicu 'Unrecognized option'
+            if (fallbackLevel >= 2) {
+                inputArgs = [
+                    '-rtsp_transport', 'tcp',
+                    '-i', sourceUrl
+                ];
+            } else {
+                // Level 0 & 1: Dynamic Auto-Probed Safe Arguments
+                const dynamicArgs = ['-rtsp_transport', 'tcp'];
+
+                if (caps.supportsPreferTcp && fallbackLevel === 0) {
+                    dynamicArgs.push('-rtsp_flags', 'prefer_tcp');
+                }
+
+                // Masukkan opsi timeout hanya jika benar-benar didukung oleh FFmpeg STB
+                if (caps.rtspTimeoutFlag) {
+                    dynamicArgs.push(caps.rtspTimeoutFlag, '10000000'); // 10 detik
+                }
+
+                dynamicArgs.push(
+                    '-analyzeduration', '5000000',
+                    '-probesize', '5000000',
+                    '-fflags', '+genpts+discardcorrupt'
+                );
+
+                inputArgs = [
+                    ...dynamicArgs,
+                    '-i', sourceUrl
+                ];
+            }
+        } else {
+            inputArgs = ['-i', sourceUrl];
+        }
     }
 
     // Parameter Audio Transcoding / Passthrough untuk perekaman MP4
@@ -3602,7 +3679,7 @@ function spawnRecordingFFmpeg(cam) {
         path.join(recBase, "%Y-%m-%d_%H-%M-%S.mp4")
     ];
 
-    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (${isDemo ? 'libx264' : 'copy'}${audioArgs[0] === '-an' ? ' -an' : ' +' + (cam.audioCodec || 'aac')}) [${useSub ? 'SD/Sub' : 'HD/Main'}] -> ${recBase}`, 'CAMERA');
+    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (${isDemo ? 'libx264' : 'copy'}${audioArgs[0] === '-an' ? ' -an' : ' +' + (cam.audioCodec || 'aac')}) [${useSub ? 'SD/Sub' : 'HD/Main'}] [Mode: ${fallbackLevel === 0 ? 'Optimal' : (fallbackLevel === 1 ? 'Adaptive' : 'Ultra-Safe')}] -> ${recBase}`, 'CAMERA');
 
     const child = spawn('ffmpeg', args);
     child.killedByUser = false;
@@ -3621,17 +3698,36 @@ function spawnRecordingFFmpeg(cam) {
         }
 
         if (!child.killedByUser) {
-            sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Err: ${child.lastErr} Reconnect otomatis...`, 'CAMERA');
+            const isOptionError = child.lastErr && (child.lastErr.includes('Unrecognized option') || child.lastErr.includes('Option not found') || child.lastErr.includes('Error splitting the argument list'));
+            
+            if (isOptionError) {
+                // Auto-healing: Jika terdeteksi opsi tidak dikenali, naikkan level fallback dan nonaktifkan opsi bermasalah secara permanen di runtime
+                const currentLevel = camRecordingFallbackLevel.get(cam.id) || 0;
+                camRecordingFallbackLevel.set(cam.id, Math.min(2, currentLevel + 1));
+                
+                if (child.lastErr.includes('stimeout') || child.lastErr.includes('timeout')) {
+                    ffmpegCapabilities.rtspTimeoutFlag = null; // Matikan opsi timeout global untuk kamera berikutnya
+                }
+                if (child.lastErr.includes('prefer_tcp')) {
+                    ffmpegCapabilities.supportsPreferTcp = false;
+                }
+
+                sysLog('WARN', `[${cam.id}] Terdeteksi argumen FFmpeg tidak didukung di STB (${child.lastErr.slice(0, 100)}). Auto-healing aktif: Mengalihkan kamera ke mode ${currentLevel + 1 >= 2 ? 'Ultra-Safe Vanilla' : 'Adaptive'}...`, 'CAMERA');
+            } else {
+                sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Err: ${child.lastErr.slice(0, 140)} Reconnect otomatis...`, 'CAMERA');
+            }
+
             const timerKey = `rec_${cam.id}`;
             if (reconnectTimers[timerKey]) clearTimeout(reconnectTimers[timerKey]);
             
-            const jitter = Math.floor(Math.random() * 5000); // 0 to 5 seconds jitter
+            // Reconnect cepat 2.5 detik jika terjadi kegagalan argumen, atau 10 detik dengan jitter jika putus koneksi jaringan
+            const retryDelay = isOptionError ? 2500 : (10000 + Math.floor(Math.random() * 5000));
             reconnectTimers[timerKey] = setTimeout(() => {
                 const currentCam = getCameras().find(c => c.id === cam.id);
                 if (currentCam && currentCam.enabled && currentCam.recordMode === 'continuous') {
                     spawnRecordingFFmpeg(currentCam);
                 }
-            }, 10000 + jitter);
+            }, retryDelay);
         }
     });
 

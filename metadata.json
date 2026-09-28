@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.1.7 - Dynamic Active Mount Validator, Auto-Inherit Drive & eMMC Anti-Leak Protection.",
+  "description": "Arch3r NVR Ver. 11.1.8 - Auto-Adaptive FFmpeg Engine & Zero-Crash Recording Self-Healing.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
