@@ -15073,6 +15073,7 @@ window.openNetMgrModal = function() {
     populateNetMgrCamSelect();
     window.fetchNetMgrConnections();
     renderNetMgrCameraRoutes();
+    window.checkArch3rBridgeStatusUI();
 };
 
 window.closeNetMgrModal = function() {
@@ -15080,6 +15081,119 @@ window.closeNetMgrModal = function() {
     if (modal) {
         modal.classList.remove('active');
         modal.style.display = 'none';
+    }
+};
+
+window.checkArch3rBridgeStatusUI = async function() {
+    const badge = document.getElementById('arch3rBridgeBadge');
+    const logBox = document.getElementById('arch3rBridgeLogBox');
+    try {
+        const res = await authFetch('/api/addons/network-manager/bridge/status');
+        const data = await res.json();
+        if (data.active) {
+            if (badge) {
+                badge.style.background = 'rgba(16,185,129,0.2)';
+                badge.style.borderColor = '#059669';
+                badge.style.color = '#34d399';
+                badge.textContent = '🟢 BRIDGE AKTIF (br0)';
+            }
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🟢 Status Bridge: AKTIF ("br0" terhubung ke LAN & Wi-Fi). Isolasi router ISP berhasil dilewati.`;
+        } else {
+            if (badge) {
+                badge.style.background = 'rgba(100,116,139,0.2)';
+                badge.style.borderColor = '#64748b';
+                badge.style.color = '#94a3b8';
+                badge.textContent = '⚪ INAKTIF';
+            }
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚪ Status Bridge: INAKTIF ("br0" belum dikonfigurasi).`;
+        }
+    } catch (e) {
+        if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚠️ Gagal memeriksa status bridge: ${e.message}`;
+    }
+};
+
+window.enableArch3rBridgeUI = async function() {
+    const badge = document.getElementById('arch3rBridgeBadge');
+    const logBox = document.getElementById('arch3rBridgeLogBox');
+    if (badge) {
+        badge.style.background = 'rgba(245,158,11,0.2)';
+        badge.style.borderColor = '#d97706';
+        badge.style.color = '#fbbf24';
+        badge.textContent = '⏳ PROSES MEMBANGUN BRIDGE...';
+    }
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Menginisialisasi arch3rBridge ("br0")... Memindai interface LAN & Wi-Fi aktif...`;
+
+    try {
+        const res = await authFetch('/api/addons/network-manager/bridge/enable', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            if (badge) {
+                badge.style.background = 'rgba(16,185,129,0.2)';
+                badge.style.borderColor = '#059669';
+                badge.style.color = '#34d399';
+                badge.textContent = '🟢 BRIDGE AKTIF (br0)';
+            }
+            const stepLog = (data.steps || []).map(s => `• ${s.step}: ${s.success ? '✓' : '✕'} ${s.cmd || ''}`).join('<br>');
+            if (logBox) {
+                logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}<br>${stepLog}`;
+            }
+            showToast('⚡ arch3rBridge ("br0") Berhasil Diaktifkan! LAN & Wi-Fi Terikat ke Network Bridge.', 'success');
+            await window.fetchNetMgrConnections();
+        } else {
+            if (badge) {
+                badge.style.background = 'rgba(239,68,68,0.2)';
+                badge.style.borderColor = '#dc2626';
+                badge.style.color = '#f87171';
+                badge.textContent = '🔴 GAGAL MEMBANGUN BRIDGE';
+            }
+            const errMsg = data.error || 'Gagal mengaktifkan bridge.';
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal: ${errMsg}`;
+            alert(`Gagal mengaktifkan arch3rBridge: ${errMsg}`);
+        }
+    } catch (e) {
+        if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
+        alert(`Error: ${e.message}`);
+    }
+};
+
+window.disableArch3rBridgeUI = async function() {
+    if (!confirm('Apakah Anda yakin ingin membongkar arch3rBridge ("br0") dan mengembalikan koneksi individual LAN & Wi-Fi?')) return;
+
+    const badge = document.getElementById('arch3rBridgeBadge');
+    const logBox = document.getElementById('arch3rBridgeLogBox');
+    if (badge) {
+        badge.style.background = 'rgba(245,158,11,0.2)';
+        badge.style.borderColor = '#d97706';
+        badge.style.color = '#fbbf24';
+        badge.textContent = '⏳ MENGHAPUS BRIDGE...';
+    }
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Menghentikan "br0" dan memulihkan koneksi individual...`;
+
+    try {
+        const res = await authFetch('/api/addons/network-manager/bridge/disable', { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            if (badge) {
+                badge.style.background = 'rgba(100,116,139,0.2)';
+                badge.style.borderColor = '#64748b';
+                badge.style.color = '#94a3b8';
+                badge.textContent = '⚪ INAKTIF';
+            }
+            if (logBox) {
+                logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🛑 ${data.message} (Restored LAN: ${data.lanRestored || 'auto'}, Wi-Fi: ${data.wifiRestored || 'auto'})`;
+            }
+            showToast('🛑 arch3rBridge ("br0") Berhasil Dibongkar & Koneksi Individual Dipulihkan.', 'info');
+            await window.fetchNetMgrConnections();
+        } else {
+            const errMsg = data.error || 'Gagal menghapus bridge.';
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal: ${errMsg}`;
+            alert(`Gagal menghapus arch3rBridge: ${errMsg}`);
+        }
+    } catch (e) {
+        if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
+        alert(`Error: ${e.message}`);
     }
 };
 
