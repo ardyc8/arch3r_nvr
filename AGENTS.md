@@ -20,21 +20,22 @@ Anda adalah Senior Ahli Web Developer, Pakar Linux Armbian untuk STB Android, Sp
 - **RBAC**: Superadmin & Administrator MUST always receive unrestricted camera/recording lists. Do not accidentally filter them out.
 - **UI Cleanliness**: Keep login minimal. NO hardcoded quick-demo credentials (e.g., "Uji Coba Cepat"). NO mock data for charts, logs, or recordings.
 
-### 2. VERSIONING & CHANGELOG OTOMATIS (MANDATORI, MUTLAK & SETIAP RESPONS)
-- Setiap kali Anda mengedit, memperbarui, atau menambahkan kode sekecil apa pun, Anda WAJIB menaikkan nomor versi aplikasi secara otomatis (misal: 11.2.4 menjadi 11.2.5).
-- Cari variabel versi yang ada pada kode (`package.json`, `metadata.json`, `public/version_sync.js`, dll). Ubah angka tersebut langsung di dalam kode hasil edit Anda.
-- **WAJIB MENULISKAN CHANGELOG (LOG UPDATE) LENGKAP PADA SETIAP OUTPUT RESPONS**:
-  - Dilarang keras mengakhiri respons tanpa blok Changelog.
-  - Setiap akhir/awal respons Anda, Anda WAJIB menyertakan blok log dengan format:
+### 2. VERSIONING & CHANGELOG KHUSUS MODIFIKASI KODE (ON CODE EDIT ONLY)
+- **Kenaikan Versi & Changelog HANYA dieksekusi saat ada modifikasi, penambahan, atau perbaikan kode nyata.**
+- **Saat Sesi Diskusi / Tanya-Jawab / Analisis:** Dilarang menaikkan nomor versi dan dilarang menyertakan blok changelog jika tidak ada file kode yang diubah/dibuat.
+- Setiap kali Anda selesai mengedit, memperbarui, atau menambahkan kode sekecil apa pun atas instruksi user:
+  - Anda WAJIB menaikkan nomor versi aplikasi secara otomatis (misal: 11.4.7 menjadi 11.4.8).
+  - Cari variabel versi yang ada pada kode (`package.json`, `metadata.json`, `public/version_sync.js`, dll). Ubah angka tersebut langsung di dalam kode hasil edit Anda.
+  - **WAJIB MENULISKAN BLOK CHANGELOG DI AKHIR RESPONS:**
     ```markdown
     ### 🚀 Log Pembaruan (Changelog Ver. X.X.X)
     - **[Ver X.X.X] Fixed / Added / Changed / Optimized: ...**
       - Detail poin 1...
       - Detail poin 2...
     ```
-- **WAJIB SINKRONISASI FILE CHANGELOG.MD**:
-  - Setiap perubahan kode harus langsung dicatat di bagian paling atas file `CHANGELOG.md`.
-  - Format di `CHANGELOG.md` harus memuat nomor versi baru, tanggal, dan ringkasan teknis yang jelas.
+  - **WAJIB SINKRONISASI FILE CHANGELOG.MD**:
+    - Setiap perubahan kode harus langsung dicatat di bagian paling atas file `CHANGELOG.md`.
+    - Format di `CHANGELOG.md` harus memuat nomor versi baru, tanggal, dan ringkasan teknis yang jelas.
 
 ### 3. KOMPATIBILITAS ARMBIAN & MIGRASI DUMMY DATA
 - Aplikasi ini dirancang untuk produksi di lingkungan STB Linux Armbian yang memiliki keterbatasan resource.
