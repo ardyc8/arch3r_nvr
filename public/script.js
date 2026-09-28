@@ -10110,8 +10110,9 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
         const isHdmiConn = statusData ? !!statusData.isHdmiConnected : false;
         const isKioskAct = statusData ? !!statusData.isKioskServiceActive : false;
         const sysPath = (statusData && statusData.detectedSysPath) || '/sys/class/drm/...';
+        const preset = configObj.preset || 'live_grid';
         const liveSt = (statusData && statusData.liveState) || {};
-        const activePreset = liveSt.preset || configObj.preset || 'grid_4';
+        const activePreset = liveSt.preset || preset || 'grid_4';
         const activeCamId = liveSt.target_cam_id || configObj.target_cam_id || 'all';
         const isTourActive = !!liveSt.tour;
 

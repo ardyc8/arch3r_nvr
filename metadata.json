@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.2.4 - Zero-Crash FFmpeg Recording Engine, AU Headers Tolerance & AVOption Bitrate Clean.",
+  "description": "Arch3r NVR Ver. 11.2.5 - Fixed HDMI Kiosk Preset ReferenceError & Reinforced AGENTS.md Changelog Protocols.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

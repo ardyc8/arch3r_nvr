@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.2.5] - 2026-09-28
+### Fixed HDMI Kiosk Preset ReferenceError & Reinforced AGENTS.md Protocol
+- **Perbaikan Modal Pengaturan HDMI Kiosk (`public/script.js`):**
+  - Mengembalikan deklarasi variabel `preset` (`const preset = configObj.preset || 'live_grid';`) di fungsi `openHdmiKioskModal()`.
+  - Mengeliminasi error JavaScript `ReferenceError: preset is not defined` yang terjadi saat pengguna menekan tombol gerigi/pengaturan Addon HDMI Kiosk.
+  - Memastikan form tab Pengaturan Kiosk dapat dimuat dengan sempurna, termasuk pemetaan opsi preset default (`live_grid`, `live_grid_3x3`, `single_cam`, `full_dashboard`) dan selector kamera tunggal.
+- **Pembaruan Aturan Sistem & Protokol Agen (`AGENTS.md`):**
+  - Mempertegas bagian 2 di `AGENTS.md`: Menetapkan kewajiban mutlak untuk selalu menyertakan blok Changelog resmi di setiap akhir/awal respons chat asisten.
+  - Menetapkan aturan ketat sinkronisasi berkas `CHANGELOG.md`, `package.json`, `metadata.json`, dan `version_sync.js` untuk setiap update.
+
 ## [Ver 11.2.4] - 2026-09-28
 ### Zero-Crash FFmpeg Recording Engine, AU Headers Tolerance & AVOption Bitrate Clean
 - **Eliminasi Warning AVOption Bitrate & Exit Code 234 (`server.js`):**
