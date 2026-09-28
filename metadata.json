@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.4.9 - Anti-Stale Static Cache Headers, Zero-Lockout Proxy-ARP Relay & Safe NMCLI Driver.",
+  "description": "Arch3r NVR Ver. 11.5.0 - Dynamic Modal Injection Engine, Zero-Lockout Proxy-ARP Relay, Wi-Fi Manager & Safe NMCLI Driver.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

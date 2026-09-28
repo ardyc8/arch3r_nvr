@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 11.5.0] - 2026-09-28
+### Dynamic DOM Injection Engine for Network Manager Modal & 100% Stale-Free UI
+- **Injeksi DOM Dinamis Mandiri pada Modal Network Manager (`ensureNetMgrModalDOM`, `public/script.js`):**
+  - **Jaminan Tampilan Terupdate 100%**: Mengimplementasikan `ensureNetMgrModalDOM()` yang secara dinamis membangun dan menginjeksi ulang seluruh struktur HTML modal Network Manager (`#netMgrModalOverlay`) setiap kali tombol "🌐 Network Router" atau "⚙️ Konfigurasi" dibuka.
+  - **Kebal Cache & File Konflik**: Menjamin bahwa seluruh komponen baru (1. 📶 Manajer & Pemindai Sinyal Wi-Fi STB Bebas SSH, 2. ⚡ arch3rBridge Transparent Proxy-ARP Relay Zero-Lockout, 3. 🔌 Status Interface & Set Prioritas Metric 50/500, 4. 🎯 Pengikatan Rute IP Kamera & Subnet CIDR) selalu tampil utuh dan segar di browser, bahkan jika file HTML lokal di STB belum tersinkronisasi atau tertahan cache browser.
+  - **Dukungan Halaman Multi-View**: Menghilangkan ketergantungan pada struktur statis `index.html` sehingga modal dapat dipanggil dari berbagai konteks antarmuka.
+
 ## [Ver 11.4.9] - 2026-09-28
 ### Anti-Stale Static Asset Cache Headers & Cache-Buster Synchronization
 - **Eliminasi Masalah Browser Caching pada File UI (`server.js`, `public/index.html`):**
