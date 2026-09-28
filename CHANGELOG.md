@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.5.2] - 2026-09-28
+### Physical Ethernet LAN Auto-Recovery Engine & Unlinked Device Visualizer
+- **Pemulihan & Deteksi Otomatis Hardware LAN Fisik (`addons/network-manager/lib/nmcli_driver.js`, `addons/network-manager/index.js`):**
+  - **Deteksi Hardware Fisik (`device status`)**: Driver kini memindai status hardware OS Linux (`nmcli device status`) secara langsung, mendeteksi port fisik `eth0` / `en*` yang terlepas, disconnected, atau unmanaged akibat pelepasan bridge `br0`.
+  - **Method `restoreAndActivateLan(device)`**: Melepaskan hardware `eth0` dari penguasaan bridge lama di kernel (`ip link delete br0`), mengaktifkan `managed yes` & `autoconnect yes`, menghubungkan device, dan membuat profil koneksi `"Wired LAN"` bersih secara otomatis.
+  - **Endpoint REST API Baru**: Menambahkan `POST /api/addons/network-manager/lan/restore`.
+- **Integrasi Tombol Pemulih LAN pada Antarmuka (`public/script.js`, `public/index.html`):**
+  - **Tombol 1-Click "🔌 Pulihkan LAN (eth0)"**: Tersemat di header bagian antarmuka NetworkManager untuk memulihkan koneksi kabel fisik yang hilang seketika.
+  - **Tombol "⚡ Aktifkan LAN"**: Muncul otomatis pada kartu perangkat fisik Ethernet yang belum terhubung atau berstatus disconnected.
+
 ## [Ver 11.5.1] - 2026-09-28
 ### Ghost / Inactive Connection Purge Engine & 1-Click Interface Cleanup
 - **Pembersihan Profil Ghost / Duplikat NetworkManager (`addons/network-manager/lib/nmcli_driver.js`, `addons/network-manager/index.js`):**

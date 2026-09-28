@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.5.1 - Ghost Connection Purge Engine, Zero-Lockout Proxy-ARP Relay, Wi-Fi Manager & Safe NMCLI Driver.",
+  "description": "Arch3r NVR Ver. 11.5.2 - Physical Ethernet LAN Auto-Recovery Engine, Zero-Lockout Proxy-ARP Relay & Ghost Purge.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

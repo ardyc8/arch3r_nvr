@@ -181,9 +181,52 @@ export class ArmbianNetworkManager {
             }
         }
 
+        // Check physical devices via `nmcli device status` to catch unmanaged/disconnected eth0
+        const devRes = await this.runCommand('nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device status');
+        const physicalDevices = [];
+        if (devRes.success && devRes.stdout) {
+            const devLines = devRes.stdout.split('\n').filter(l => l.trim().length > 0);
+            for (const dLine of devLines) {
+                const dParts = dLine.split(/(?<!\\):/);
+                if (dParts.length >= 3) {
+                    const devName = dParts[0].trim();
+                    const devType = dParts[1].trim().toLowerCase();
+                    const devState = dParts[2].trim();
+                    const devConn = dParts[3] ? dParts[3].trim() : '--';
+
+                    const isEth = devType.includes('ethernet') || devName.startsWith('eth') || devName.startsWith('en') || devName.startsWith('end');
+                    const isWf = devType.includes('wifi') || devName.startsWith('wlan');
+
+                    physicalDevices.push({
+                        device: devName,
+                        type: isEth ? 'ethernet' : (isWf ? 'wifi' : devType),
+                        state: devState,
+                        connection: devConn === '--' ? '' : devConn
+                    });
+
+                    // If physical Ethernet device exists (e.g., eth0) but has no active connection profile in `connections`,
+                    // inject a visible unlinked/disconnected entry so user can recover it with 1-click!
+                    if (isEth && !connections.some(c => c.device === devName)) {
+                        const unlinkedLanObj = {
+                            name: devConn !== '--' && devConn ? devConn : `Physical Device (${devName})`,
+                            type: 'ethernet',
+                            rawType: 'ethernet',
+                            device: devName,
+                            state: devState || 'disconnected',
+                            uuid: '',
+                            active: devState === 'connected',
+                            unlinked: true
+                        };
+                        connections.push(unlinkedLanObj);
+                        if (!lanConn) lanConn = unlinkedLanObj;
+                    }
+                }
+            }
+        }
+
         // Get IP details per interface if devices are active
         for (const conn of connections) {
-            if (conn.device) {
+            if (conn.device && conn.device !== 'N/A' && conn.device !== '--') {
                 const ipRes = await this.runCommand(`nmcli -t -f IP4.ADDRESS,IP4.GATEWAY device show "${conn.device}"`);
                 if (ipRes.success) {
                     const ipLines = ipRes.stdout.split('\n');
@@ -202,6 +245,7 @@ export class ArmbianNetworkManager {
             success: true,
             available: true,
             connections,
+            devices: physicalDevices,
             lan: lanConn,
             wifi: wifiConn,
             count: connections.length
@@ -753,6 +797,66 @@ export class ArmbianNetworkManager {
             purged,
             failed,
             message: `Pembersihan selesai! ${purged.length} profil koneksi usang/duplikat berhasil dihapus.`
+        };
+    }
+
+    /**
+     * Automatically restores and activates physical Ethernet LAN interface (e.g. eth0).
+     * Frees eth0 from any dangling bridge/unmanaged states and brings up a clean connection profile.
+     */
+    async restoreAndActivateLan(device = 'eth0') {
+        const isAvailable = await this.isNmcliAvailable();
+        if (!isAvailable) {
+            return { success: false, error: 'nmcli is not installed on this system.' };
+        }
+
+        const safeDev = this.sanitizeParam(device) || 'eth0';
+        const steps = [];
+
+        // 1. Release any lingering br0 bridge device in kernel & Netplan
+        const cleanupCmds = [
+            'ip link set br0 down 2>/dev/null || true',
+            'ip link delete br0 type bridge 2>/dev/null || true',
+            'nmcli connection delete netplan-br0 2>/dev/null || true',
+            'nmcli connection delete br0 2>/dev/null || true',
+            'rm -f /etc/netplan/*br0*.yaml 2>/dev/null || true'
+        ];
+        for (const cmd of cleanupCmds) {
+            await this.runCommand(cmd);
+        }
+
+        // 2. Set physical LAN device as managed and auto-connect
+        const mRes = await this.runCommand(`nmcli device set ${safeDev} managed yes`);
+        steps.push({ step: 'set_managed', cmd: `nmcli device set ${safeDev} managed yes`, success: mRes.success });
+
+        await this.runCommand(`nmcli device set ${safeDev} autoconnect yes`);
+        await this.runCommand('nmcli connection reload');
+
+        // 3. Try to connect existing device first
+        let connectRes = await this.runCommand(`nmcli device connect ${safeDev}`);
+        steps.push({ step: 'device_connect', cmd: `nmcli device connect ${safeDev}`, ...connectRes });
+
+        // 4. If connect fails or no connection profile is assigned, create clean "Wired LAN" connection
+        if (!connectRes.success) {
+            // Check if connection profile already exists
+            const addRes = await this.runCommand(`nmcli connection add type ethernet con-name "Wired LAN" ifname ${safeDev} autoconnect yes`);
+            steps.push({ step: 'add_connection', cmd: `nmcli connection add type ethernet con-name "Wired LAN" ifname ${safeDev}`, ...addRes });
+
+            const upRes = await this.runCommand('nmcli connection up "Wired LAN"');
+            steps.push({ step: 'connection_up', cmd: 'nmcli connection up "Wired LAN"', ...upRes });
+            connectRes = upRes;
+        }
+
+        // 5. Try netplan apply in case Netplan is the primary renderer
+        try {
+            await this.runCommand('netplan apply 2>/dev/null');
+        } catch (_) {}
+
+        return {
+            success: true,
+            device: safeDev,
+            message: `Interface LAN (${safeDev}) berhasil dipulihkan dan diaktifkan kembali!`,
+            steps
         };
     }
 

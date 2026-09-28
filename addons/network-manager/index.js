@@ -48,6 +48,20 @@ router.post('/purge-inactive', async (req, res) => {
     }
 });
 
+// 1d. Restore and activate physical Ethernet LAN interface (e.g. eth0)
+router.post('/lan/restore', async (req, res) => {
+    try {
+        const { device } = req.body;
+        const result = await nmDriver.restoreAndActivateLan(device || 'eth0');
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // 2. Scan surrounding Wi-Fi networks (SSID, Signal %, Security)
 router.get('/wifi/scan', async (req, res) => {
     try {
