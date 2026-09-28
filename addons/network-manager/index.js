@@ -99,5 +99,41 @@ router.get('/routes/system', async (req, res) => {
     }
 });
 
+// 7. Enable Arch3r Bridge (Bypass ISP Router Isolation)
+router.post('/bridge/enable', async (req, res) => {
+    try {
+        const result = await nmDriver.enableArch3rBridge();
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 8. Disable Arch3r Bridge (Tear down br0 & restore LAN/Wi-Fi)
+router.post('/bridge/disable', async (req, res) => {
+    try {
+        const result = await nmDriver.disableArch3rBridge();
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 9. Get Arch3r Bridge Status
+router.get('/bridge/status', async (req, res) => {
+    try {
+        const result = await nmDriver.getArch3rBridgeStatus();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 export default router;
 export { nmDriver };

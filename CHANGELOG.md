@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 11.4.0] - 2026-09-28
+### arch3rBridge Local Network Bridging Driver & ISP Router Isolation Bypass
+- **Integrasi Fitur `arch3rBridge` (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Fungsi `enableArch3rBridge()`**: Mendeteksi secara dinamis nama interface LAN (`eth0`) dan Wi-Fi (`wlan0`) aktif, lalu membuat bridge Linux `br0` (`nmcli connection add type bridge con-name br0 ifname br0`), melakukan binding slave `br0-lan` dan `br0-wifi` ke master `br0`, serta mengaktifkan koneksi bridge (`nmcli connection up br0`) untuk menembus isolasi router ISP.
+  - **Fungsi `disableArch3rBridge()`**: Menghapus slave `br0-lan` & `br0-wifi`, menghapus master `br0`, lalu mengaktifkan kembali koneksi LAN & Wi-Fi original secara dinamis (`nmcli connection up`).
+  - **Fungsi `getArch3rBridgeStatus()`**: Memeriksa status keaktifan interface bridge `br0` secara *real-time*.
+- **REST API Endpoints (`addons/network-manager/index.js`):**
+  - Mengintegrasikan endpoint `POST /api/addons/network-manager/bridge/enable`, `POST /api/addons/network-manager/bridge/disable`, dan `GET /api/addons/network-manager/bridge/status` dengan penanganan error berbasis Promise dan output JSON yang bersih.
+
 ## [Ver 11.3.9] - 2026-09-28
 ### Physical Storage Mount Point Device Filter & Sub-folder Partition Distinction
 - **Penyaringan Perangkat Penyimpanan Fisik Nyata (`server.js`):**

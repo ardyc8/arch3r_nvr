@@ -485,4 +485,179 @@ export class ArmbianNetworkManager {
 
         return { success: true, routes, count: routes.length };
     }
+
+    /**
+     * 6. enableArch3rBridge()
+     * Pro-level feature to completely bypass ISP router isolation via local network bridging.
+     * Dynamically detects active LAN and Wi-Fi interface names, then sequentially creates:
+     * - Bridge connection "br0"
+     * - Bridge slave "br0-lan" bound to LAN interface
+     * - Bridge slave "br0-wifi" bound to Wi-Fi interface
+     * - Activates "br0" connection
+     */
+    async enableArch3rBridge() {
+        const isAvailable = await this.isNmcliAvailable();
+        if (!isAvailable) {
+            return {
+                success: false,
+                error: 'nmcli (NetworkManager CLI) is not installed on this system.'
+            };
+        }
+
+        const detected = await this.detectActiveConnections();
+        if (!detected.success) {
+            return {
+                success: false,
+                error: `Failed to detect active network connections for bridging: ${detected.error}`
+            };
+        }
+
+        const lanDevice = this.sanitizeParam(detected.lan?.device || 'eth0');
+        const wifiDevice = this.sanitizeParam(detected.wifi?.device || 'wlan0');
+
+        if (!lanDevice || !wifiDevice) {
+            return {
+                success: false,
+                error: `Could not determine active LAN and Wi-Fi interface devices for bridge (LAN: "${lanDevice}", Wi-Fi: "${wifiDevice}"). Both active LAN and Wi-Fi interfaces are required.`
+            };
+        }
+
+        const steps = [];
+
+        // Step 1: Create bridge connection br0
+        const cmdAddBridge = 'nmcli connection add type bridge con-name br0 ifname br0';
+        const resBridge = await this.runCommand(cmdAddBridge);
+        steps.push({ step: 'create_bridge_br0', cmd: cmdAddBridge, ...resBridge });
+        if (!resBridge.success && !resBridge.stderr?.includes('already exists')) {
+            return {
+                success: false,
+                error: `Failed to create bridge connection "br0": ${resBridge.stderr || resBridge.error}`,
+                steps
+            };
+        }
+
+        // Step 2: Bind LAN interface as bridge-slave
+        const cmdAddLanSlave = `nmcli connection add type bridge-slave con-name br0-lan ifname "${lanDevice}" master br0`;
+        const resLanSlave = await this.runCommand(cmdAddLanSlave);
+        steps.push({ step: 'bind_lan_slave', cmd: cmdAddLanSlave, ...resLanSlave });
+        if (!resLanSlave.success && !resLanSlave.stderr?.includes('already exists')) {
+            return {
+                success: false,
+                error: `Failed to bind LAN interface "${lanDevice}" to bridge "br0": ${resLanSlave.stderr || resLanSlave.error}`,
+                steps
+            };
+        }
+
+        // Step 3: Bind Wi-Fi interface as bridge-slave
+        const cmdAddWifiSlave = `nmcli connection add type bridge-slave con-name br0-wifi ifname "${wifiDevice}" master br0`;
+        const resWifiSlave = await this.runCommand(cmdAddWifiSlave);
+        steps.push({ step: 'bind_wifi_slave', cmd: cmdAddWifiSlave, ...resWifiSlave });
+        if (!resWifiSlave.success && !resWifiSlave.stderr?.includes('already exists')) {
+            return {
+                success: false,
+                error: `Failed to bind Wi-Fi interface "${wifiDevice}" to bridge "br0": ${resWifiSlave.stderr || resWifiSlave.error}`,
+                steps
+            };
+        }
+
+        // Step 4: Bring bridge connection UP
+        const cmdUpBridge = 'nmcli connection up br0';
+        const resUpBridge = await this.runCommand(cmdUpBridge);
+        steps.push({ step: 'bring_up_bridge', cmd: cmdUpBridge, ...resUpBridge });
+        if (!resUpBridge.success) {
+            return {
+                success: false,
+                error: `Failed to bring up bridge connection "br0": ${resUpBridge.stderr || resUpBridge.error}`,
+                steps
+            };
+        }
+
+        return {
+            success: true,
+            activeBridge: 'br0',
+            lanInterface: lanDevice,
+            wifiInterface: wifiDevice,
+            message: `Arch3r Bridge ("br0") successfully created and activated! ISP router isolation bypassed for LAN (${lanDevice}) and Wi-Fi (${wifiDevice}).`,
+            steps
+        };
+    }
+
+    /**
+     * 7. disableArch3rBridge()
+     * Safely tears down the "br0" bridge and restores individual LAN and Wi-Fi connections:
+     * - Deletes slave connections "br0-lan" and "br0-wifi"
+     * - Deletes main bridge connection "br0"
+     * - Restores original dynamic LAN and Wi-Fi connections using nmcli connection up
+     */
+    async disableArch3rBridge() {
+        const isAvailable = await this.isNmcliAvailable();
+        if (!isAvailable) {
+            return {
+                success: false,
+                error: 'nmcli (NetworkManager CLI) is not installed on this system.'
+            };
+        }
+
+        const steps = [];
+
+        // Step 1: Delete slave connections
+        const resDelLanSlave = await this.runCommand('nmcli connection delete br0-lan');
+        steps.push({ step: 'delete_br0_lan', ...resDelLanSlave });
+
+        const resDelWifiSlave = await this.runCommand('nmcli connection delete br0-wifi');
+        steps.push({ step: 'delete_br0_wifi', ...resDelWifiSlave });
+
+        // Step 2: Delete main bridge connection
+        const resDelBridge = await this.runCommand('nmcli connection delete br0');
+        steps.push({ step: 'delete_br0', ...resDelBridge });
+
+        // Step 3: Automatically detect and restore original LAN & Wi-Fi connections
+        const detected = await this.detectActiveConnections();
+        const safeLanName = this.sanitizeParam(detected.lanName);
+        const safeWifiName = this.sanitizeParam(detected.wifiName);
+
+        if (safeLanName) {
+            const resUpLan = await this.runCommand(`nmcli connection up "${safeLanName}"`);
+            steps.push({ step: 'restore_lan', connection: safeLanName, ...resUpLan });
+        }
+
+        if (safeWifiName) {
+            const resUpWifi = await this.runCommand(`nmcli connection up "${safeWifiName}"`);
+            steps.push({ step: 'restore_wifi', connection: safeWifiName, ...resUpWifi });
+        }
+
+        return {
+            success: true,
+            message: 'Arch3r Bridge ("br0") successfully torn down and individual network connections restored.',
+            lanRestored: safeLanName || null,
+            wifiRestored: safeWifiName || null,
+            steps
+        };
+    }
+
+    /**
+     * 8. getArch3rBridgeStatus()
+     * Checks if bridge "br0" exists and is active in NetworkManager or OS network interfaces
+     */
+    async getArch3rBridgeStatus() {
+        const isAvailable = await this.isNmcliAvailable();
+        if (!isAvailable) {
+            return { success: false, active: false, message: 'nmcli is not installed' };
+        }
+
+        const res = await this.runCommand('nmcli -t -f NAME,TYPE,DEVICE,STATE connection show br0');
+        if (res.success && res.stdout) {
+            const parts = res.stdout.split(/(?<!\\):/);
+            const active = parts.length >= 4 && parts[2] !== '--' && parts[2] !== '' && !parts[3].includes('deactivated');
+            return {
+                success: true,
+                active,
+                name: 'br0',
+                device: parts[2] || 'br0',
+                state: parts[3] || 'active'
+            };
+        }
+
+        return { success: true, active: false, name: 'br0', state: 'inactive' };
+    }
 }

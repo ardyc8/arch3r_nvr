@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.3.9 - Physical Storage Mount Point Device Filter & Sub-folder Partition Distinction.",
+  "description": "Arch3r NVR Ver. 11.4.0 - arch3rBridge Local Network Bridging Driver & ISP Router Isolation Bypass.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
