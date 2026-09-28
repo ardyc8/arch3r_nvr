@@ -642,6 +642,9 @@ async function checkAuth() {
                         localStorage.setItem('nvr_username', kData.username);
                         currentUserRole = kData.role;
                         currentUsername = kData.username;
+                        if (kData.config) {
+                            window._kioskBootConfig = kData.config;
+                        }
 
                         if (userApp) userApp.style.display = 'none';
                         if (adminApp) adminApp.style.display = 'flex';
@@ -3129,6 +3132,20 @@ async function fetchCameras() {
             populateCameraSelects();
             if(typeof renderRecordCameraList === 'function') renderRecordCameraList();
             if(typeof renderUserCamCheckboxes === 'function') renderUserCamCheckboxes('newUserCamCheckboxes');
+
+            // Jika dalam mode Kiosk Display, terapkan preset konfigurasi awal TV (misal Single Cam - Kamera Depan)
+            if (window.isKioskDisplay && !window._kioskInitialStateApplied) {
+                window._kioskInitialStateApplied = true;
+                try {
+                    const savedCfg = window._kioskBootConfig;
+                    if (savedCfg && (savedCfg.preset || savedCfg.target_cam_id)) {
+                        applyKioskStateChanges({
+                            preset: savedCfg.preset,
+                            target_cam_id: savedCfg.target_cam_id
+                        });
+                    }
+                } catch (_) {}
+            }
         } catch (err) {
         }
     }
@@ -10286,8 +10303,12 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                     </div>
 
                     <div style="background:rgba(0,0,0,0.15); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
-                        <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Pengaturan Sistem, Pembersihan Browser & Penghemat Daya:</strong>
+                        <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Pengaturan Sistem, Pembersihan Browser & Navigasi Kursor:</strong>
                         <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                            <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                                <input type="checkbox" name="show_mouse_cursor" value="true" ${configObj.show_mouse_cursor !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#38bdf8;">
+                                <span>🖱️ <strong>Kursor Mouse Fisik:</strong> Tampilkan panah mouse di TV saat mouse USB dicolokkan ke STB</span>
+                            </label>
                             <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
                                 <input type="checkbox" name="hardened_mode" value="true" ${configObj.hardened_mode !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#10b981;">
                                 <span>🛡️ <strong>Mode Kiosk Bersih:</strong> Matikan Google Translate, dialog error, info-bar, dan pop-up sandi</span>

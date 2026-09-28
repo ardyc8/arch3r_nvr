@@ -100,6 +100,7 @@ class HdmiKioskAddon {
             let extraFlags = '';
             if (isHardened) {
                 extraFlags += `            --disable-features=Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider \\
+            --disable-translate \\
             --disable-infobars \\
             --disable-session-crashed-bubble \\
             --noerrdialogs \\
@@ -114,6 +115,7 @@ class HdmiKioskAddon {
             --disable-popup-blocking \\
             --disable-prompt-on-repost \\
             --disable-sync \\
+            --simulate-outdated-no-au='Tue, 31 Dec 2099 23:59:59 GMT' \\
             --metrics-recording-only \\
             --no-pings \\
             --disable-pinch \\
@@ -124,11 +126,16 @@ class HdmiKioskAddon {
                 extraFlags += `            --incognito \\\n`;
             }
 
+            const isMouseVisible = cfg.show_mouse_cursor !== false;
+
             const scriptContent = `#!/bin/bash
 export DISPLAY=:0
 xset -dpms 2>/dev/null || true
 xset s off 2>/dev/null || true
 xset s noblank 2>/dev/null || true
+
+# Pengaturan Kursor Mouse di Layar TV
+${isMouseVisible ? '# Kursor mouse aktif untuk navigasi fisik STB\nkillall unclutter 2>/dev/null || true' : '# Sembunyikan kursor jika tidak digerakkan\nwhich unclutter >/dev/null 2>&1 && unclutter -idle 3 -root &'}
 
 # Jalankan window manager ringan
 if which matchbox-window-manager >/dev/null 2>&1; then

@@ -6435,9 +6435,18 @@ function broadcastKioskEvent(eventData) {
     }
 }
 
+// Inisialisasi awal membaca konfigurasi tersimpan di addons/hdmi-kiosk/config.json
+let initialKioskCfg = {};
+try {
+    const cfgPath = path.join(__dirname, 'addons', 'hdmi-kiosk', 'config.json');
+    if (fs.existsSync(cfgPath)) {
+        initialKioskCfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    }
+} catch (_) {}
+
 let kioskLiveState = {
-    preset: 'grid_4',
-    target_cam_id: 'all',
+    preset: initialKioskCfg.preset || 'grid_4',
+    target_cam_id: initialKioskCfg.target_cam_id || 'all',
     refresh_seq: 0,
     reload_seq: 0,
     tour: false,

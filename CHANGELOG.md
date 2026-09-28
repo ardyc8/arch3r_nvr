@@ -1,5 +1,22 @@
 # Changelog
 
+## [Ver 11.2.1] - 2026-09-27
+### Seamless Zero-Gap Kiosk TV Grid, Mouse Cursor Visibility & Anti-Translate Engine
+- **Inisialisasi Otomatis Preset Kiosk Default (`server.js`, `public/script.js`):**
+  - Menginisialisasi `kioskLiveState` di backend langsung dari `config.json` yang tersimpan.
+  - Memastikan layar TV STB otomatis mengeksekusi preset default (misalnya *Kamera Tunggal Fullscreen - Kamera Depan*) saat pertama kali booting tanpa harus memencet remote HP.
+- **Tampilan Grid TV Rapat & Seamless (Zero-Gap) (`public/style.css`):**
+  - Meniadakan jarak renggang (gap hitam), padding, margin, dan border tebal pada mode Kiosk TV.
+  - Video kini memenuhi 100% sel grid (`object-fit: fill`) sehingga terlihat rapat, presisi, dan proporsional di layar TV.
+- **Pembersihan Total Google Translate & Dialog Error (`index.html`, `public/index.html`, `addons/hdmi-kiosk/index.js`):**
+  - Menambahkan atribut anti-translate (`translate="no"`, `class="notranslate"`, `<meta name="google" content="notranslate">`).
+  - Menambahkan flag Chromium lengkap di launcher script STB (`--disable-translate`, `--disable-features=Translate`, `--simulate-outdated-no-au`).
+- **Dukungan Kursor Mouse Fisik USB (`public/style.css`, `public/script.js`, `addons/hdmi-kiosk/index.js`):**
+  - Menambahkan opsi konfigurasi kursor mouse fisik di tab Pengaturan Kiosk.
+  - Memastikan kursor mouse (`cursor: default`) tetap terlihat saat mouse dicolokkan ke port USB STB.
+- **Penyelarasan Versi Sistem:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.2.1** sesuai Semantic Versioning Strict.
+
 ## [Ver 11.2.0] - 2026-09-27
 ### Clean HDMI Kiosk Runtime & Zero-Syntax Scope Fix
 - **Perbaikan Syntax Scope (`public/script.js`):**

@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.2.0 - Clean HDMI Kiosk Runtime & Zero-Syntax Scope Fix.",
+  "description": "Arch3r NVR Ver. 11.2.1 - Seamless Zero-Gap Kiosk TV Grid, Mouse Cursor Visibility & Anti-Translate Engine.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
