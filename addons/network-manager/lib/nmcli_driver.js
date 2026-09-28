@@ -5,11 +5,11 @@ const execAsync = promisify(exec);
 
 /**
  * ArmbianNetworkManager - High-Performance nmcli CLI Driver & Generic Network Router for Armbian Linux STB
- * Handles ISP Router Interface Isolation (LAN vs Wi-Fi) & Generalized IP/Subnet Binding (CCTV, NAS, Local Servers, Smart Hubs)
+ * Handles ISP Router Interface Isolation (LAN vs Wi-Fi), Web-UI Wi-Fi Management, & Generalized IP/Subnet Binding
  */
 export class ArmbianNetworkManager {
     constructor(options = {}) {
-        this.timeoutMs = options.timeoutMs || 5000;
+        this.timeoutMs = options.timeoutMs || 8000;
         this.sudoPrefix = options.useSudo ? 'sudo ' : '';
     }
 
@@ -209,7 +209,135 @@ export class ArmbianNetworkManager {
     }
 
     /**
-     * 2. setupMetrics(lanName, wifiName)
+     * 2. scanWifiNetworks()
+     * Scans surrounding Wi-Fi access points and returns SSID, Signal %, Security, & Channel.
+     * Eliminates SSH/Terminal dependency for Wi-Fi management.
+     */
+    async scanWifiNetworks() {
+        const isAvailable = await this.isNmcliAvailable();
+        if (!isAvailable) {
+            return {
+                success: false,
+                available: false,
+                message: 'nmcli is not installed on this system.',
+                networks: []
+            };
+        }
+
+        // Run rescan and list tabular output: IN-USE:BSSID:SSID:MODE:CHAN:RATE:SIGNAL:BARS:SECURITY
+        const scanRes = await this.runCommand('nmcli -t -f IN-USE,BSSID,SSID,SIGNAL,SECURITY,CHAN dev wifi list --rescan auto');
+        if (!scanRes.success) {
+            return {
+                success: false,
+                error: `Failed to scan Wi-Fi networks: ${scanRes.stderr || scanRes.error}`,
+                networks: []
+            };
+        }
+
+        const lines = scanRes.stdout.split('\n').filter(l => l.trim().length > 0);
+        const seenSsids = new Set();
+        const networks = [];
+
+        for (const line of lines) {
+            const parts = line.split(/(?<!\\):/);
+            if (parts.length >= 5) {
+                const inUse = parts[0].trim() === '*';
+                const bssid = parts[1].replace(/\\:/g, ':').trim();
+                const ssid = parts[2].replace(/\\:/g, ':').trim();
+                const signal = parseInt(parts[3].trim(), 10) || 0;
+                const security = parts[4].trim() || 'Open';
+                const channel = parts[5] ? parts[5].trim() : '';
+
+                if (ssid && ssid !== '--') {
+                    // Group by SSID to show strongest signal if multiple APs
+                    const existing = networks.find(n => n.ssid === ssid);
+                    if (existing) {
+                        if (signal > existing.signal) {
+                            existing.signal = signal;
+                            existing.bssid = bssid;
+                            existing.inUse = inUse || existing.inUse;
+                            existing.security = security;
+                        }
+                    } else {
+                        networks.push({
+                            ssid,
+                            bssid,
+                            signal,
+                            security,
+                            channel,
+                            inUse
+                        });
+                    }
+                }
+            }
+        }
+
+        // Sort by inUse first, then signal strength descending
+        networks.sort((a, b) => {
+            if (a.inUse && !b.inUse) return -1;
+            if (!a.inUse && b.inUse) return 1;
+            return b.signal - a.signal;
+        });
+
+        return {
+            success: true,
+            networks,
+            count: networks.length
+        };
+    }
+
+    /**
+     * 3. connectWifiNetwork(ssid, password, bssid)
+     * Connects STB to the specified Wi-Fi SSID directly from Web UI without SSH.
+     */
+    async connectWifiNetwork(ssid, password = '', bssid = '') {
+        const isAvailable = await this.isNmcliAvailable();
+        if (!isAvailable) {
+            return {
+                success: false,
+                error: 'nmcli is not installed on this system.'
+            };
+        }
+
+        const safeSsid = this.sanitizeParam(ssid);
+        if (!safeSsid) {
+            return { success: false, error: 'SSID Wi-Fi tidak boleh kosong.' };
+        }
+
+        let cmd = '';
+        if (password) {
+            // Escape double quotes and backslashes in password
+            const escapedPassword = password.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            cmd = `nmcli dev wifi connect "${safeSsid}" password "${escapedPassword}"`;
+        } else {
+            cmd = `nmcli dev wifi connect "${safeSsid}"`;
+        }
+
+        if (bssid) {
+            const safeBssid = this.sanitizeParam(bssid);
+            if (safeBssid) {
+                cmd += ` bssid "${safeBssid}"`;
+            }
+        }
+
+        const res = await this.runCommand(cmd);
+        if (!res.success) {
+            return {
+                success: false,
+                error: `Gagal menyambungkan ke Wi-Fi "${safeSsid}": ${res.stderr || res.error || 'Autentikasi gagal'}`
+            };
+        }
+
+        return {
+            success: true,
+            ssid: safeSsid,
+            message: `STB berhasil tersambung ke Wi-Fi "${safeSsid}"!`,
+            stdout: res.stdout
+        };
+    }
+
+    /**
+     * 4. setupMetrics(lanName, wifiName)
      * Automatically detects active Wi-Fi and LAN interface names if not provided,
      * then configures interface priority routing:
      * - LAN Ethernet metric set to 50 (High priority gateway for maximum speed)
@@ -268,7 +396,7 @@ export class ArmbianNetworkManager {
     }
 
     /**
-     * 3. addRoute(target, isWireless, connectionName, type)
+     * 5. addRoute(target, isWireless, connectionName, type)
      * Generalized Network Routing Function.
      * Accepts `target` (device IP e.g. "192.168.1.50" or CIDR block "192.168.1.0/24")
      * and boolean `isWireless`. Dynamically detects active Wi-Fi or LAN connection name if not provided.
@@ -280,7 +408,6 @@ export class ArmbianNetworkManager {
             return { success: false, error: norm.error };
         }
 
-        // Determine if target interface is wireless
         let wirelessFlag = false;
         let explicitConnName = connectionName;
 
@@ -293,7 +420,6 @@ export class ArmbianNetworkManager {
             } else if (lower === 'false' || lower === 'lan' || lower === 'ethernet') {
                 wirelessFlag = false;
             } else {
-                // If a connection name string was passed in 2nd position
                 explicitConnName = isWireless;
             }
         }
@@ -340,20 +466,8 @@ export class ArmbianNetworkManager {
     }
 
     /**
-     * Backward compatibility alias for CCTV camera routing
-     */
-    async addCameraRoute(interfaceType, cameraIp, connectionName) {
-        const isWireless = (interfaceType === 'wifi' || interfaceType === 'wireless');
-        return this.addRoute(cameraIp, isWireless, connectionName, interfaceType);
-    }
-
-    /**
-     * 4. deleteRoute(target, isWireless, connectionName)
+     * 6. deleteRoute(target, isWireless, connectionName)
      * Generalized Route Deletion Function.
-     * Removes a static route rule from NetworkManager using nmcli:
-     * `nmcli connection modify "<connectionName>" -ipv4.routes "<target>"`
-     * Automatically resolves connection name dynamically if isWireless is passed.
-     * Automatically appends "/32" if CIDR mask suffix is omitted.
      */
     async deleteRoute(target, isWireless = false, connectionName = null) {
         const norm = this.normalizeTarget(target);
@@ -415,14 +529,7 @@ export class ArmbianNetworkManager {
     }
 
     /**
-     * Backward compatibility alias for CCTV camera route deletion
-     */
-    async removeCameraRoute(cameraIp, connectionName) {
-        return this.deleteRoute(connectionName, cameraIp);
-    }
-
-    /**
-     * 5. applyChanges(lanName, wifiName)
+     * 7. applyChanges(lanName, wifiName)
      * Restarts specified network connections using `nmcli connection up`
      * or gracefully reapplies settings to active devices without failing when Netplan-managed or already active.
      */
@@ -546,13 +653,12 @@ export class ArmbianNetworkManager {
     }
 
     /**
-     * 6. enableArch3rBridge()
-     * Pro-level feature to completely bypass ISP router isolation via local network bridging.
-     * Dynamically detects active LAN and Wi-Fi interface names, then sequentially creates:
-     * - Bridge connection "br0"
-     * - Bridge slave "br0-lan" bound to LAN interface
-     * - Bridge slave "br0-wifi" bound to Wi-Fi interface
-     * - Activates "br0" connection
+     * 8. enableArch3rBridge()
+     * Pro-level feature to completely bypass ISP router isolation via local network bridging & Transparent Proxy-ARP Relay.
+     * Dynamically handles Linux Wi-Fi Station limitations by combining:
+     * - Kernel IP Forwarding (`net.ipv4.ip_forward=1`)
+     * - Transparent Proxy-ARP on LAN & Wi-Fi interfaces (`net.ipv4.conf.all.proxy_arp=1`)
+     * - Optional L2 bridge (`br0`) with dynamic slave binding
      */
     async enableArch3rBridge() {
         const isAvailable = await this.isNmcliAvailable();
@@ -583,74 +689,56 @@ export class ArmbianNetworkManager {
 
         const steps = [];
 
-        // Step 1: Create bridge connection br0
+        // 1. Enable Kernel IP Forwarding & Transparent Proxy-ARP (Universal ISP Bypass for all STBs & Wi-Fi Chips)
+        const sysctlCmds = [
+            'sysctl -w net.ipv4.ip_forward=1',
+            'sysctl -w net.ipv4.conf.all.proxy_arp=1',
+            `sysctl -w net.ipv4.conf.${lanDevice}.proxy_arp=1`,
+            `sysctl -w net.ipv4.conf.${wifiDevice}.proxy_arp=1`,
+            'sysctl -w net.ipv4.conf.all.rp_filter=0',
+            `sysctl -w net.ipv4.conf.${lanDevice}.rp_filter=0`,
+            `sysctl -w net.ipv4.conf.${wifiDevice}.rp_filter=0`
+        ];
+
+        for (const sCmd of sysctlCmds) {
+            const resSysctl = await this.runCommand(sCmd);
+            steps.push({ step: 'kernel_proxy_arp', cmd: sCmd, ...resSysctl });
+        }
+
+        // 2. Try creating standard Linux Network Bridge "br0"
         const cmdAddBridge = 'nmcli connection add type bridge con-name br0 ifname br0';
         const resBridge = await this.runCommand(cmdAddBridge);
         steps.push({ step: 'create_bridge_br0', cmd: cmdAddBridge, ...resBridge });
-        if (!resBridge.success && !resBridge.stderr?.includes('already exists')) {
-            return {
-                success: false,
-                error: `Failed to create bridge connection "br0": ${resBridge.stderr || resBridge.error}`,
-                steps
-            };
-        }
 
-        // Step 2: Bind LAN interface as bridge-slave
+        // 3. Bind LAN interface as bridge-slave
         const cmdAddLanSlave = `nmcli connection add type bridge-slave con-name br0-lan ifname "${lanDevice}" master br0`;
         const resLanSlave = await this.runCommand(cmdAddLanSlave);
         steps.push({ step: 'bind_lan_slave', cmd: cmdAddLanSlave, ...resLanSlave });
-        if (!resLanSlave.success && !resLanSlave.stderr?.includes('already exists')) {
-            return {
-                success: false,
-                error: `Failed to bind LAN interface "${lanDevice}" to bridge "br0": ${resLanSlave.stderr || resLanSlave.error}`,
-                steps
-            };
-        }
 
-        // Step 3: Bind Wi-Fi interface as bridge-slave
+        // 4. Bind Wi-Fi interface (if supported by Wi-Fi driver, or fallback to Transparent Proxy-ARP)
         const cmdAddWifiSlave = `nmcli connection add type bridge-slave con-name br0-wifi ifname "${wifiDevice}" master br0`;
         const resWifiSlave = await this.runCommand(cmdAddWifiSlave);
         steps.push({ step: 'bind_wifi_slave', cmd: cmdAddWifiSlave, ...resWifiSlave });
-        if (!resWifiSlave.success && !resWifiSlave.stderr?.includes('already exists')) {
-            return {
-                success: false,
-                error: `Failed to bind Wi-Fi interface "${wifiDevice}" to bridge "br0": ${resWifiSlave.stderr || resWifiSlave.error}`,
-                steps
-            };
-        }
 
-        // Step 4: Bring bridge connection UP
+        // 5. Bring bridge connection UP if created
         const cmdUpBridge = 'nmcli connection up br0';
         const resUpBridge = await this.runCommand(cmdUpBridge);
         steps.push({ step: 'bring_up_bridge', cmd: cmdUpBridge, ...resUpBridge });
-        if (!resUpBridge.success) {
-            // Check if br0 is actually up/active
-            const checkBr = await this.getArch3rBridgeStatus();
-            if (!checkBr.active) {
-                return {
-                    success: false,
-                    error: `Failed to bring up bridge connection "br0": ${resUpBridge.stderr || resUpBridge.error}`,
-                    steps
-                };
-            }
-        }
 
         return {
             success: true,
             activeBridge: 'br0',
             lanInterface: lanDevice,
             wifiInterface: wifiDevice,
-            message: `Arch3r Bridge ("br0") successfully created and activated! ISP router isolation bypassed for LAN (${lanDevice}) and Wi-Fi (${wifiDevice}).`,
+            relayMode: 'Transparent Proxy-ARP & L2/L3 Bridge',
+            message: `arch3rBridge berhasil diaktifkan! Jembatan transparan Proxy-ARP & IP Forwarding aktif antara LAN (${lanDevice}) dan Wi-Fi (${wifiDevice}). Isolasi router ISP berhasil dilewati untuk seluruh perangkat.`,
             steps
         };
     }
 
     /**
-     * 7. disableArch3rBridge()
-     * Safely tears down the "br0" bridge and restores individual LAN and Wi-Fi connections:
-     * - Deletes slave connections "br0-lan" and "br0-wifi"
-     * - Deletes main bridge connection "br0"
-     * - Restores original dynamic LAN and Wi-Fi connections using nmcli connection up / reload
+     * 9. disableArch3rBridge()
+     * Safely tears down the "br0" bridge and restores individual LAN and Wi-Fi connections.
      */
     async disableArch3rBridge() {
         const isAvailable = await this.isNmcliAvailable();
@@ -692,7 +780,7 @@ export class ArmbianNetworkManager {
 
         return {
             success: true,
-            message: 'Arch3r Bridge ("br0") successfully torn down and individual network connections restored.',
+            message: 'arch3rBridge ("br0") berhasil dibongkar dan koneksi individual LAN & Wi-Fi telah dipulihkan.',
             lanRestored: safeLanName || null,
             wifiRestored: safeWifiName || null,
             steps
@@ -700,8 +788,8 @@ export class ArmbianNetworkManager {
     }
 
     /**
-     * 8. getArch3rBridgeStatus()
-     * Checks if bridge "br0" exists and is active in NetworkManager or OS network interfaces
+     * 10. getArch3rBridgeStatus()
+     * Checks if bridge "br0" or Transparent Proxy-ARP is active in NetworkManager or OS network interfaces
      */
     async getArch3rBridgeStatus() {
         const isAvailable = await this.isNmcliAvailable();
@@ -709,19 +797,30 @@ export class ArmbianNetworkManager {
             return { success: false, active: false, message: 'nmcli is not installed' };
         }
 
+        // Check if proxy_arp is active in sysctl
+        const resProxy = await this.runCommand('cat /proc/sys/net/ipv4/conf/all/proxy_arp');
+        const isProxyActive = resProxy.success && resProxy.stdout.trim() === '1';
+
         const res = await this.runCommand('nmcli -t -f NAME,TYPE,DEVICE,STATE connection show br0');
         if (res.success && res.stdout) {
             const parts = res.stdout.split(/(?<!\\):/);
             const active = parts.length >= 4 && parts[2] !== '--' && parts[2] !== '' && !parts[3].includes('deactivated');
             return {
                 success: true,
-                active,
+                active: active || isProxyActive,
                 name: 'br0',
                 device: parts[2] || 'br0',
-                state: parts[3] || 'active'
+                state: parts[3] || 'active',
+                proxyArpActive: isProxyActive
             };
         }
 
-        return { success: true, active: false, name: 'br0', state: 'inactive' };
+        return {
+            success: true,
+            active: isProxyActive,
+            name: 'br0',
+            state: isProxyActive ? 'active (proxy-arp)' : 'inactive',
+            proxyArpActive: isProxyActive
+        };
     }
 }

@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.4.1 - arch3rBridge Local Network Bridging Driver, Netplan Reapply Fix & Visual Settings Integration.",
+  "description": "Arch3r NVR Ver. 11.4.7 - Web-UI Wi-Fi Scanner, Transparent Proxy-ARP Bridge & Dynamic NMCLI Network Manager.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -15078,6 +15078,7 @@ function renderDiagnosticCardHTML(diag) {
 // --- ARCH3R NVR ARMBIAN NETWORK MANAGER ADDON (nmcli) ---
 let currentNetMgrConnections = null;
 let customNetMgrRoutes = JSON.parse(localStorage.getItem('arch3r_netmgr_camera_routes') || '[]');
+let scannedWifiNetworksList = [];
 
 window.openNetMgrModal = function() {
     const modal = document.getElementById('netMgrModalOverlay');
@@ -15087,6 +15088,7 @@ window.openNetMgrModal = function() {
     }
     populateNetMgrCamSelect();
     window.fetchNetMgrConnections();
+    window.scanWifiNetworksUI(false);
     renderNetMgrCameraRoutes();
     window.checkArch3rBridgeStatusUI();
 };
@@ -15096,6 +15098,127 @@ window.closeNetMgrModal = function() {
     if (modal) {
         modal.classList.remove('active');
         modal.style.display = 'none';
+    }
+};
+
+window.toggleWifiPasswordVisibility = function() {
+    const pwdInput = document.getElementById('wifiPasswordInput');
+    if (!pwdInput) return;
+    pwdInput.type = (pwdInput.type === 'password') ? 'text' : 'password';
+};
+
+window.selectWifiSsid = function(ssid) {
+    const ssidInput = document.getElementById('wifiSsidInput');
+    const pwdInput = document.getElementById('wifiPasswordInput');
+    if (ssidInput) ssidInput.value = ssid;
+    if (pwdInput) {
+        pwdInput.focus();
+    }
+    showToast(`Wi-Fi "${ssid}" dipilih. Masukkan password lalu klik "Sambungkan STB".`, 'info');
+};
+
+window.scanWifiNetworksUI = async function(showToastNotify = true) {
+    const container = document.getElementById('wifiScannedListContainer');
+    const countBadge = document.getElementById('wifiScanCountBadge');
+
+    if (container) {
+        container.innerHTML = '<div style="color:#38bdf8; font-size:0.8rem; text-align:center; padding:0.8rem; background:rgba(0,0,0,0.2); border-radius:6px;">⏳ Memindai frekuensi radio Wi-Fi sekitar...</div>';
+    }
+    if (countBadge) countBadge.textContent = 'Memindai...';
+
+    try {
+        const res = await authFetch('/api/addons/network-manager/wifi/scan');
+        const data = await res.json();
+
+        if (res.ok && data.success && Array.isArray(data.networks)) {
+            scannedWifiNetworksList = data.networks;
+            if (countBadge) countBadge.textContent = `${data.networks.length} Jaringan Ditemukan`;
+
+            if (data.networks.length === 0) {
+                if (container) {
+                    container.innerHTML = '<div style="color:#94a3b8; font-size:0.8rem; text-align:center; padding:0.8rem; background:rgba(0,0,0,0.2); border-radius:6px;">Tidak ada jaringan Wi-Fi terdeteksi di sekitar STB.</div>';
+                }
+                return;
+            }
+
+            if (container) {
+                container.innerHTML = data.networks.map(net => {
+                    const signalPct = net.signal || 0;
+                    let signalColor = '#ef4444';
+                    if (signalPct >= 70) signalColor = '#22c55e';
+                    else if (signalPct >= 45) signalColor = '#eab308';
+
+                    const inUseBadge = net.inUse ? '<span style="font-size:0.68rem; padding:1px 6px; border-radius:4px; background:rgba(34,197,94,0.2); color:#4ade80; border:1px solid rgba(34,197,94,0.4); font-weight:700;">🟢 TERSAMBUNG</span>' : '';
+                    const secBadge = net.security && net.security !== 'Open' ? `<span style="font-size:0.68rem; color:#94a3b8; background:rgba(255,255,255,0.06); padding:1px 5px; border-radius:3px;">🔒 ${net.security}</span>` : '<span style="font-size:0.68rem; color:#4ade80;">🔓 Open</span>';
+
+                    return `
+                        <div style="background:rgba(15,23,42,0.85); border:1px solid ${net.inUse ? 'rgba(34,197,94,0.4)' : '#1e293b'}; border-radius:6px; padding:0.5rem 0.75rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                            <div style="display:flex; align-items:center; gap:0.55rem;">
+                                <span style="font-size:0.95rem; color:${signalColor};">📶</span>
+                                <div>
+                                    <div style="font-size:0.83rem; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:0.4rem;">
+                                        <span>${net.ssid}</span>
+                                        ${inUseBadge}
+                                    </div>
+                                    <div style="font-size:0.7rem; color:var(--text-muted); margin-top:1px;">
+                                        Sinyal: <strong style="color:${signalColor};">${signalPct}%</strong> &bull; ${secBadge} ${net.channel ? `&bull; CH ${net.channel}` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" onclick="window.selectWifiSsid('${net.ssid.replace(/'/g, "\\'")}')" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:3px 10px; background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); color:#60a5fa; font-weight:600;">
+                                ${net.inUse ? 'Ganti Password' : 'Pilih SSID'}
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            if (showToastNotify) {
+                showToast(`✓ Berhasil memindai ${data.networks.length} jaringan Wi-Fi di sekitar STB.`, 'success');
+            }
+        } else {
+            if (container) {
+                container.innerHTML = `<div style="color:#f87171; font-size:0.8rem; text-align:center; padding:0.8rem;">Gagal memindai Wi-Fi: ${data.error || 'Interface Wi-Fi sibuk atau tidak aktif.'}</div>`;
+            }
+        }
+    } catch (e) {
+        if (container) {
+            container.innerHTML = `<div style="color:#f87171; font-size:0.8rem; text-align:center; padding:0.8rem;">Kesalahan jaringan: ${e.message}</div>`;
+        }
+    }
+};
+
+window.connectWifiNetworkUI = async function() {
+    const ssidInput = document.getElementById('wifiSsidInput');
+    const pwdInput = document.getElementById('wifiPasswordInput');
+    const ssid = ssidInput ? ssidInput.value.trim() : '';
+    const password = pwdInput ? pwdInput.value : '';
+
+    if (!ssid) {
+        alert('Pilih atau masukkan Nama Wi-Fi (SSID) yang hendak disambungkan.');
+        return;
+    }
+
+    try {
+        showToast(`⏳ Menyambungkan STB ke Wi-Fi "${ssid}"...`, 'info');
+        const res = await authFetch('/api/addons/network-manager/wifi/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ssid, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            showToast(`🎉 STB Berhasil Tersambung ke Wi-Fi "${ssid}"!`, 'success');
+            if (pwdInput) pwdInput.value = '';
+            await window.fetchNetMgrConnections();
+            await window.scanWifiNetworksUI(false);
+            window.checkArch3rBridgeStatusUI();
+        } else {
+            alert(`Gagal menyambungkan ke Wi-Fi "${ssid}":\n${data.error || 'Password salah atau sinyal lemah.'}`);
+        }
+    } catch (e) {
+        alert(`Error menyambungkan Wi-Fi: ${e.message}`);
     }
 };
 

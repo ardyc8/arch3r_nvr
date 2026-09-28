@@ -2650,7 +2650,55 @@
             <!-- Modal Body (Scrollable) -->
             <div style="padding:1.25rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:1.25rem;">
                 
-                <!-- FITUR UTAMA 1: ARCH3RBRIDGE (BYPASS ISOLASI ROUTER ISP) -->
+                <!-- FITUR UTAMA 1: PEMINDAI & SAMBUNGAN WI-FI STB (BEBAS SSH) -->
+                <div style="background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.3); border-radius:10px; padding:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:1.2rem;">📶</span>
+                            <strong style="color:#60a5fa; font-size:0.95rem;">Manajer & Sambungan Wi-Fi STB (Bebas SSH)</strong>
+                        </div>
+                        <button type="button" onclick="window.scanWifiNetworksUI()" class="btn btn-sm btn-primary" style="background:#2563eb; border-color:#3b82f6; font-size:0.78rem; padding:0.35rem 0.75rem; display:flex; align-items:center; gap:0.3rem;">
+                            <span>🔍</span> Pindai Sinyal Wi-Fi Sekitar
+                        </button>
+                    </div>
+
+                    <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
+                        Pindai sinyal Wi-Fi di sekitar STB Linux Armbian dan sambungkan ke router ISP secara langsung dari Web UI tanpa perlu membuka SSH Terminal (Putty).
+                    </p>
+
+                    <!-- Form Sambung Cepat Wi-Fi -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem; background:rgba(0,0,0,0.25); padding:0.85rem; border-radius:8px; border:1px solid var(--border, #334155);">
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Nama Wi-Fi (SSID):</label>
+                            <input type="text" id="wifiSsidInput" placeholder="Pilih dari daftar atau ketik SSID" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Password Wi-Fi:</label>
+                            <div style="position:relative; display:flex; align-items:center;">
+                                <input type="password" id="wifiPasswordInput" placeholder="Password Wi-Fi (Kosong jika Open)" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem 2.2rem 0.45rem 0.45rem; border-radius:6px; font-size:0.8rem; box-sizing:border-box;">
+                                <button type="button" onclick="window.toggleWifiPasswordVisibility()" style="position:absolute; right:6px; background:none; border:none; color:#94a3b8; cursor:pointer; font-size:0.9rem;" title="Lihat Password">👁️</button>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:flex-end;">
+                            <button type="button" onclick="window.connectWifiNetworkUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.82rem; padding:0.45rem 1rem; width:100%; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                                <span>🚀</span> Sambungkan STB
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Daftar Wi-Fi Terdeteksi -->
+                    <div style="font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.4rem; display:flex; justify-content:space-between; align-items:center;">
+                        <span>Daftar Sinyal Wi-Fi Terdeteksi:</span>
+                        <span id="wifiScanCountBadge" style="font-size:0.7rem; color:#94a3b8;">Klik "Pindai Sinyal" untuk mencari</span>
+                    </div>
+                    <div id="wifiScannedListContainer" style="display:flex; flex-direction:column; gap:0.45rem; max-height:160px; overflow-y:auto;">
+                        <div style="color:#64748b; font-size:0.8rem; text-align:center; padding:0.8rem; background:rgba(0,0,0,0.2); border-radius:6px;">
+                            Tekan tombol <strong>"Pindai Sinyal Wi-Fi Sekitar"</strong> di atas untuk melihat daftar jaringan.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FITUR UTAMA 2: ARCH3RBRIDGE (BYPASS ISOLASI ROUTER ISP) -->
                 <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
                         <div style="display:flex; align-items:center; gap:0.5rem;">
@@ -2663,12 +2711,12 @@
                     </div>
 
                     <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
-                        Jembatani interface Ethernet LAN (eth0) dan Wi-Fi (wlan0) secara terpadu ke dalam Linux Network Bridge (<strong>br0</strong>) untuk melewati aturan isolasi perangkat pada router ISP secara langsung.
+                        Jembatani interface Ethernet LAN (eth0) dan Wi-Fi (wlan0) secara terpadu ke dalam Linux Network Bridge (<strong>br0</strong>) & Transparent Proxy-ARP untuk melewati aturan isolasi perangkat pada router ISP secara langsung untuk seluruh perangkat di jaringan.
                     </p>
 
                     <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.85rem;">
                         <button type="button" id="btnEnableBridgeUI" onclick="window.enableArch3rBridgeUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.83rem; padding:0.45rem 1rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>⚡</span> Aktifkan arch3rBridge (br0)
+                            <span>⚡</span> Aktifkan arch3rBridge (br0 / Proxy-ARP)
                         </button>
                         <button type="button" id="btnDisableBridgeUI" onclick="window.disableArch3rBridgeUI()" class="btn btn-secondary" style="color:#f87171; border-color:#dc2626; background:rgba(239,68,68,0.08); font-weight:600; font-size:0.83rem; padding:0.45rem 1rem; display:flex; align-items:center; gap:0.4rem;">
                             <span>🛑</span> Nonaktifkan & Pulihkan Individual
@@ -2684,7 +2732,7 @@
                     </div>
                 </div>
 
-                <!-- FITUR UTAMA 2: DAFTAR KONEKSI NMCLI AKTIF & ROUTE METRICS -->
+                <!-- FITUR UTAMA 3: DAFTAR KONEKSI NMCLI AKTIF & ROUTE METRICS -->
                 <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
                         <strong style="color:#f8fafc; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
@@ -2700,7 +2748,7 @@
                     </div>
                 </div>
 
-                <!-- FITUR UTAMA 3: STATIC ROUTE CAMERA / SUBNET BINDING -->
+                <!-- FITUR UTAMA 4: STATIC ROUTE CAMERA / SUBNET BINDING -->
                 <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
                     <strong style="color:#f8fafc; font-size:0.9rem; display:block; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem;">
                         🎯 Pengikatan Static Route Kamera / Subnet CIDR

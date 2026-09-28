@@ -1,5 +1,18 @@
 # Changelog
 
+## [Ver 11.4.7] - 2026-09-28
+### Web-UI Wi-Fi Scanner & Connector, Transparent Proxy-ARP Bridge & Dynamic NMCLI Driver
+- **Pemindai & Sambungan Wi-Fi Langsung dari Web UI (`addons/network-manager/lib/nmcli_driver.js`, `addons/network-manager/index.js`):**
+  - **Fungsi `scanWifiNetworks()`**: Memindai sinyal radio Wi-Fi sekitar (`nmcli dev wifi list`) dan mengelompokkan SSID, BSSID, kekuatan sinyal (%), status keamanan (WPA2/WPA3/Open), dan channel secara dinamis.
+  - **Fungsi `connectWifiNetwork(ssid, password)`**: Mengizinkan pengguna menghubungkan STB ke jaringan Wi-Fi baru langsung dari Web UI Arch3r NVR tanpa perlu membuka terminal SSH / PuTTY.
+  - **Dukungan Bebas Hardcode & Netplan Agnostik**: Driver membaca profil NetworkManager aktif secara dinamis sehingga pergantian nama SSID maupun password pada router ISP tidak merusak konfigurasi sistem.
+- **Arsitektur Jembatan Transparan Proxy-ARP (`enableArch3rBridge`):**
+  - **Bypass Isolasi Router ISP Tanpa Mode AP**: Kamera CCTV tetap terhubung langsung ke router ISP sehingga akses cloud aplikasi HP bawaan vendor CCTV (Ezviz, Tuya, Imou, V380) tetap lancar saat STB offline.
+  - **Transparent L2/L3 Proxy-ARP Relay**: Mengaktifkan `ip_forward=1` dan `proxy_arp=1` pada interface fisik `eth0` (LAN) dan `wlan0` (Wi-Fi) di level kernel Linux Armbian STB, menjembatani seluruh perangkat di jaringan (PC, Laptop, NVR, Smart TV) untuk berkomunikasi lintas interface.
+- **Antarmuka Pengguna Visual Jaringan (`public/index.html`, `public/script.js`):**
+  - **Kartu Manajer & Sambungan Wi-Fi STB**: Dilengkapi tombol `🔍 Pindai Sinyal Wi-Fi Sekitar`, daftar sinyal dengan indikator dBm/persen, formulir input password dengan fitur intip sandi (👁️), dan tombol eksekusi sambung satu klik.
+  - **Zero-Config UX Kamera**: Form Tambah Kamera dan Scan IP tetap bersih tanpa mengharuskan pengguna memilih jalur LAN atau Wi-Fi secara manual.
+
 ## [Ver 11.4.1] - 2026-09-28
 ### arch3rBridge Dedicated Modal Card, Netplan Reapply Fallback & Addons Integration
 - **Penyempurnaan Driver Eksekusi Jaringan & Netplan Resilience (`addons/network-manager/lib/nmcli_driver.js`):**
