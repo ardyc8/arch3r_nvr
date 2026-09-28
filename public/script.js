@@ -15209,9 +15209,12 @@ function ensureNetMgrModalDOM() {
                         <strong style="color:#f8fafc; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
                             <span>🔌</span> Interface NetworkManager (nmcli) &amp; Prioritas Route Metrics
                         </strong>
-                        <div style="display:flex; gap:0.4rem; align-items:center;">
+                        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
                             <button type="button" onclick="window.fetchNetMgrConnections()" class="btn btn-sm btn-secondary" style="font-size:0.78rem; padding:0.35rem 0.65rem;" title="Segarkan Interface">
                                 🔄
+                            </button>
+                            <button type="button" onclick="window.purgeInactiveNetMgrProfiles()" class="btn btn-sm btn-secondary" style="background:rgba(239,68,68,0.12); color:#f87171; border-color:#dc2626; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:600;" title="Hapus profil duplikat / ghost lama seperti Wired connection tak terpakai atau netplan-br0">
+                                🧹 Bersihkan Ghost Profiles
                             </button>
                             <button type="button" onclick="window.setupNetMgrMetrics()" class="btn btn-sm btn-primary" style="background:#2563eb; font-size:0.78rem; padding:0.35rem 0.75rem;">
                                 ⚡ Set Priorities (LAN=50, Wi-Fi=500)
@@ -15593,12 +15596,19 @@ window.fetchNetMgrConnections = async function() {
                 const badgeBg = conn.active ? 'rgba(16,185,129,0.2)' : 'rgba(100,116,139,0.2)';
                 const badgeBorder = conn.active ? '#059669' : '#475569';
                 const badgeText = conn.active ? '#34d399' : '#94a3b8';
+                const isGhost = !conn.active || !conn.device || conn.device === 'N/A' || conn.device === '--';
+                const targetId = conn.uuid || conn.name;
 
                 return `
-                    <div style="background:rgba(15,23,42,0.6); border:1px solid #1e293b; border-radius:6px; padding:0.75rem; display:flex; flex-direction:column; gap:0.35rem;">
+                    <div style="background:rgba(15,23,42,0.6); border:1px solid ${isGhost ? 'rgba(239,68,68,0.25)' : '#1e293b'}; border-radius:6px; padding:0.75rem; display:flex; flex-direction:column; gap:0.35rem; position:relative;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <strong style="color:#f8fafc; font-size:0.85rem;">${icon}</strong>
-                            <span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; background:${badgeBg}; border:1px solid ${badgeBorder}; color:${badgeText}; font-weight:600;">${conn.state.toUpperCase()}</span>
+                            <div style="display:flex; align-items:center; gap:0.35rem;">
+                                <span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; background:${badgeBg}; border:1px solid ${badgeBorder}; color:${badgeText}; font-weight:600;">${conn.state.toUpperCase()}</span>
+                                ${isGhost && conn.name !== 'lo' ? `
+                                    <button type="button" onclick="window.deleteNetMgrConnection('${targetId.replace(/'/g, "\\'")}', '${conn.name.replace(/'/g, "\\'")}')" title="Hapus profil ghost/tidak aktif ini" style="background:rgba(239,68,68,0.15); border:1px solid #dc2626; color:#f87171; border-radius:4px; font-size:0.68rem; padding:1px 6px; cursor:pointer; font-weight:600;">🗑️ Hapus</button>
+                                ` : ''}
+                            </div>
                         </div>
                         <div style="font-size:0.78rem; color:#cbd5e1; font-family:monospace;">Nama: <strong>${conn.name}</strong></div>
                         <div style="font-size:0.75rem; color:#94a3b8;">Device: <code>${conn.device || 'N/A'}</code> ${conn.ip ? `&bull; IP: <strong style="color:#38bdf8;">${conn.ip}</strong>` : ''}</div>
@@ -15610,6 +15620,49 @@ window.fetchNetMgrConnections = async function() {
         if (container) {
             container.innerHTML = `<div style="color:#f87171; font-size:0.8rem; padding:1rem; text-align:center;">Gagal membaca koneksi nmcli: ${e.message}</div>`;
         }
+    }
+};
+
+window.deleteNetMgrConnection = async function(idOrName, displayName) {
+    const label = displayName || idOrName;
+    if (!confirm(`Apakah Anda yakin ingin menghapus profil koneksi NetworkManager "${label}"?`)) return;
+
+    try {
+        showToast(`⏳ Menghapus profil koneksi "${label}"...`, 'info');
+        const res = await authFetch(`/api/addons/network-manager/connections/${encodeURIComponent(idOrName)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            showToast(`🗑️ Profil koneksi "${label}" berhasil dihapus!`, 'success');
+            await window.fetchNetMgrConnections();
+        } else {
+            alert(`Gagal menghapus profil: ${data.error || 'Error'}`);
+        }
+    } catch (e) {
+        alert(`Error menghapus profil: ${e.message}`);
+    }
+};
+
+window.purgeInactiveNetMgrProfiles = async function() {
+    if (!confirm('Apakah Anda yakin ingin membersihkan semua profil ghost / duplikat yang tidak aktif (seperti "Wired connection 1" yang tidak terpasang atau sisa netplan-br0)?')) return;
+
+    try {
+        showToast('🧹 Membersihkan seluruh profil ghost/duplikat tidak aktif...', 'info');
+        const res = await authFetch('/api/addons/network-manager/purge-inactive', {
+            method: 'POST'
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            showToast(`✅ ${data.message}`, 'success');
+            await window.fetchNetMgrConnections();
+        } else {
+            alert(`Gagal membersihkan profil: ${data.error || 'Error'}`);
+        }
+    } catch (e) {
+        alert(`Error membersihkan profil: ${e.message}`);
     }
 };
 

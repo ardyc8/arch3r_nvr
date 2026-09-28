@@ -675,6 +675,88 @@ export class ArmbianNetworkManager {
     }
 
     /**
+     * Deletes a specific NetworkManager connection profile by name or UUID.
+     */
+    async deleteConnection(nameOrUuid) {
+        const isAvailable = await this.isNmcliAvailable();
+        if (!isAvailable) {
+            return { success: false, error: 'nmcli is not installed on this system.' };
+        }
+
+        const safeTarget = this.sanitizeParam(nameOrUuid);
+        if (!safeTarget) {
+            return { success: false, error: 'Nama atau UUID koneksi tidak boleh kosong.' };
+        }
+
+        const res = await this.runCommand(`nmcli connection delete "${safeTarget}"`);
+        if (!res.success) {
+            return {
+                success: false,
+                error: `Gagal menghapus koneksi "${safeTarget}": ${res.stderr || res.error}`
+            };
+        }
+
+        return {
+            success: true,
+            target: safeTarget,
+            message: `Profil koneksi "${safeTarget}" berhasil dihapus secara permanen.`
+        };
+    }
+
+    /**
+     * Scans and purges all inactive/ghost/duplicate NetworkManager profiles
+     * (e.g. inactive "Wired connection 1", dangling "netplan-br0", disconnected profiles).
+     */
+    async purgeInactiveProfiles() {
+        const isAvailable = await this.isNmcliAvailable();
+        if (!isAvailable) {
+            return { success: false, error: 'nmcli is not installed on this system.' };
+        }
+
+        const connRes = await this.getConnections();
+        if (!connRes.success || !Array.isArray(connRes.connections)) {
+            return { success: false, error: connRes.error || 'Gagal membaca daftar koneksi.' };
+        }
+
+        const purged = [];
+        const failed = [];
+
+        // Identify inactive profiles (device is empty or state is not activated)
+        // Also look for netplan-br0 or duplicate Wired connections without active device
+        for (const conn of connRes.connections) {
+            const isGhost = !conn.active || !conn.device || conn.name.includes('netplan-br0') || conn.name.includes('br0-lan') || conn.name.includes('br0-wifi');
+            // Do not delete active physical loopback
+            if (conn.name === 'lo' || conn.type === 'loopback') continue;
+
+            if (isGhost) {
+                const identifier = conn.uuid || conn.name;
+                const delRes = await this.runCommand(`nmcli connection delete "${this.sanitizeParam(identifier)}"`);
+                if (delRes.success) {
+                    purged.push({ name: conn.name, uuid: conn.uuid, type: conn.type });
+                } else {
+                    failed.push({ name: conn.name, uuid: conn.uuid, error: delRes.stderr || delRes.error });
+                }
+            }
+        }
+
+        // Also clean any lingering Netplan br0 yaml files if any
+        try {
+            await this.runCommand('rm -f /etc/netplan/*br0*.yaml');
+        } catch (_) {}
+
+        // Reload NetworkManager connection daemon
+        await this.runCommand('nmcli connection reload');
+
+        return {
+            success: true,
+            purgedCount: purged.length,
+            purged,
+            failed,
+            message: `Pembersihan selesai! ${purged.length} profil koneksi usang/duplikat berhasil dihapus.`
+        };
+    }
+
+    /**
      * 8. enableArch3rBridge()
      * 100% Zero-Lockout Transparent Proxy-ARP & Kernel IP Forwarding Relay.
      * Completely eliminates persistent L2 br0 slave profiles to guarantee STB physical IPs, SSH,

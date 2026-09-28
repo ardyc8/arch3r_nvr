@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.5.1] - 2026-09-28
+### Ghost / Inactive Connection Purge Engine & 1-Click Interface Cleanup
+- **Pembersihan Profil Ghost / Duplikat NetworkManager (`addons/network-manager/lib/nmcli_driver.js`, `addons/network-manager/index.js`):**
+  - **Identifikasi Profil Tidak Aktif (Ghost Profiles)**: Menambahkan method `purgeInactiveProfiles()` untuk menyisir dan menghapus profil koneksi `Wired connection 1`, `netplan-br0`, dan profil bridge usang yang berstatus `Device: N/A` (`--`) akibat eksperimen bridging atau auto-generation Linux sebelumnya.
+  - **Method `deleteConnection(nameOrUuid)`**: Memungkinkan penghapusan profil koneksi NetworkManager spesifik via CLI `nmcli connection delete "<id>"`.
+  - **Endpoint REST API Baru**: Menambahkan `POST /api/addons/network-manager/purge-inactive` dan `DELETE /api/addons/network-manager/connections/:id`.
+- **Integrasi Tombol Pembersih pada Web UI (`public/script.js`, `public/index.html`):**
+  - **Tombol 1-Click "🧹 Bersihkan Ghost Profiles"**: Tersemat di header bagian antarmuka NetworkManager untuk memicu pembersihan massal seluruh profil mati secara instan.
+  - **Tombol Hapus Individual ("🗑️ Hapus")**: Tampil otomatis pada setiap kartu interface yang berstatus `Device: N/A` / tidak aktif untuk memberikan kontrol granular bagi pengguna.
+
 ## [Ver 11.5.0] - 2026-09-28
 ### Dynamic DOM Injection Engine for Network Manager Modal & 100% Stale-Free UI
 - **Injeksi DOM Dinamis Mandiri pada Modal Network Manager (`ensureNetMgrModalDOM`, `public/script.js`):**

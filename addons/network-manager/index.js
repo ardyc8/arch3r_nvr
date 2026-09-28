@@ -21,6 +21,33 @@ router.get('/connections', async (req, res) => {
     }
 });
 
+// 1b. Delete a specific connection profile (e.g. ghost / duplicate connection)
+router.delete('/connections/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await nmDriver.deleteConnection(id);
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 1c. Purge all inactive, duplicate, or dangling ghost connection profiles
+router.post('/purge-inactive', async (req, res) => {
+    try {
+        const result = await nmDriver.purgeInactiveProfiles();
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // 2. Scan surrounding Wi-Fi networks (SSID, Signal %, Security)
 router.get('/wifi/scan', async (req, res) => {
     try {
