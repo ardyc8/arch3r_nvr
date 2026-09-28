@@ -15257,9 +15257,14 @@ function ensureNetMgrModalDOM() {
                         </div>
                     </div>
 
-                    <button type="button" onclick="window.addNetMgrRoute()" class="btn btn-primary" style="background:#0284c7; border-color:#0369a1; font-weight:600; font-size:0.82rem; padding:0.45rem 1rem; width:100%; margin-bottom:0.85rem;">
-                        ➕ Ikat Static Route ke Interface
-                    </button>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.85rem;">
+                        <button type="button" onclick="window.addNetMgrRoute()" class="btn btn-primary" style="flex:1; background:#0284c7; border-color:#0369a1; font-weight:600; font-size:0.82rem; padding:0.45rem 1rem;">
+                            ➕ Ikat Kamera / Subnet Ini
+                        </button>
+                        <button type="button" onclick="window.bindAllCamerasToInterface()" class="btn btn-primary" style="flex:1; background:#7c3aed; border-color:#6d28d9; font-weight:700; font-size:0.82rem; padding:0.45rem 1rem;" title="Ikat seluruh kamera yang terdaftar di NVR ke interface terpilih secara otomatis">
+                            ⚡ Ikat SEMUA Kamera Sekaligus
+                        </button>
+                    </div>
 
                     <div style="font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.4rem;">Daftar Static Route Kamera Aktif:</div>
                     <div id="netMgrCameraRoutesContainer" style="display:flex; flex-direction:column; gap:0.5rem; max-height:140px; overflow-y:auto;">
@@ -15901,7 +15906,63 @@ window.addNetMgrRoute = async function() {
     }
 };
 
-window.addNetMgrCameraRoute = window.addNetMgrRoute;
+window.bindAllCamerasToInterface = async function() {
+    const targetSel = document.getElementById('netMgrTargetInterfaceSelect');
+    const interfaceType = targetSel ? targetSel.value : 'wifi';
+
+    const camList = window.cameras || cameras || [];
+    if (!Array.isArray(camList) || camList.length === 0) {
+        alert('Tidak ada kamera terdaftar di database NVR untuk diikat.');
+        return;
+    }
+
+    if (!confirm(`Ikat seluruh (${camList.length}) kamera terdaftar ke interface ${interfaceType.toUpperCase()}?`)) return;
+
+    if (!currentNetMgrConnections || !currentNetMgrConnections.success) {
+        await window.fetchNetMgrConnections();
+    }
+
+    const conn = interfaceType === 'wifi' ? currentNetMgrConnections?.wifi : currentNetMgrConnections?.lan;
+    let connectionName = conn ? conn.name : '';
+    if (!connectionName) {
+        connectionName = prompt(`Masukkan nama koneksi NetworkManager untuk ${interfaceType.toUpperCase()} (misal: "${interfaceType === 'wifi' ? 'STB-WiFi' : 'Wired connection 1'}"):`) || '';
+    }
+    if (!connectionName) {
+        alert('Nama koneksi NetworkManager tidak boleh kosong.');
+        return;
+    }
+
+    let successCount = 0;
+    showToast(`⏳ Mengikat ${camList.length} kamera ke ${connectionName}...`, 'info');
+
+    for (const cam of camList) {
+        const rawIp = cam.ipAddress || (typeof extractRtspCredentials === 'function' ? extractRtspCredentials(cam.mainStreamUrl || '').host : '');
+        if (!rawIp) continue;
+
+        try {
+            const res = await authFetch('/api/addons/network-manager/routes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ connectionName, target: rawIp, type: interfaceType })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                successCount++;
+                const formattedTarget = data.target || (rawIp.includes('/') ? rawIp : `${rawIp}/32`);
+                const existingIdx = customNetMgrRoutes.findIndex(r => r.target === formattedTarget || r.cameraIp === rawIp);
+                if (existingIdx !== -1) {
+                    customNetMgrRoutes[existingIdx] = { target: formattedTarget, interfaceType, connectionName };
+                } else {
+                    customNetMgrRoutes.push({ target: formattedTarget, interfaceType, connectionName });
+                }
+            }
+        } catch (_) {}
+    }
+
+    localStorage.setItem('arch3r_netmgr_camera_routes', JSON.stringify(customNetMgrRoutes));
+    renderNetMgrCameraRoutes();
+    showToast(`🎉 Berhasil mengikat ${successCount} kamera ke ${connectionName} (${interfaceType.toUpperCase()})! Klik "Terapkan Perubahan" untuk memuat ke kernel.`, 'success');
+};
 
 window.deleteNetMgrRoute = async function(target, connectionName) {
     if (!confirm(`Hapus static route "${target}" dari koneksi "${connectionName}"?`)) return;

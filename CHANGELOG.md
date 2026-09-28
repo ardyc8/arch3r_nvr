@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 11.6.1] - 2026-09-28
+### 1-Click All-Cameras Static Route Binding & Camera Routing Synchronization
+- **Fitur 1-Click Ikat SEMUA Kamera (`public/script.js` - `window.bindAllCamerasToInterface`):**
+  - Menambahkan tombol instan **`⚡ Ikat SEMUA Kamera Sekaligus`** pada modal Network Manager.
+  - Memindai seluruh daftar kamera yang tersimpan di database NVR dan secara otomatis mendaftarkan rute statis host (`/32`) untuk setiap IP kamera ke interface yang dipilih (LAN atau Wi-Fi) dalam satu kali klik.
+  - Memastikan seluruh kamera (seperti Kamera Depan `192.168.1.6` dan kamera lainnya) memiliki tiket rute host eksplisit yang sama persis seperti kamera Ruang Tamu `192.168.1.5`.
+
 ## [Ver 11.6.0] - 2026-09-28
 ### Full Masquerade NAT Relay & Proxy-ARP CCTV Multi-Cam Traversal
 - **Injeksi IPTables Full Masquerade NAT (`addons/network-manager/lib/nmcli_driver.js`):**

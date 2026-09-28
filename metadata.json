@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.6.0 - Full Masquerade NAT Relay, Proxy-ARP CCTV Multi-Cam Traversal & Stream Auto-Healer.",
+  "description": "Arch3r NVR Ver. 11.6.1 - 1-Click All-Cameras Static Route Binding, Full Masquerade NAT Relay & Proxy-ARP Multi-Cam Traversal.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
