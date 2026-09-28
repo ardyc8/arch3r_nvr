@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 11.5.5] - 2026-09-28
+### Self-Healing Kernel Link Up & Armbian NetworkManager Auto-Managed Enforcer
+- **Otomatisasi Self-Healing Link Fisik (`addons/network-manager/lib/nmcli_driver.js`, `install.sh`):**
+  - **Auto Kernel Interface Up**: Menambahkan perintah kernel `ip link set eth0 up` dan `ip link set end0 up` secara otomatis saat driver memulihkan atau menginisialisasi port LAN, mencegah kondisi `state DOWN` pada kernel Linux.
+  - **Injeksi Konfigurasi Global NetworkManager (`/etc/NetworkManager/conf.d/10-manage-all.conf`)**: Memastikan NetworkManager pada distro Armbian/Debian selalu mengelola seluruh hardware interface fisik (`unmanaged-devices=none` dan `managed=true`).
+  - **Instalasi Bersih STB Baru (`install.sh`)**: Menambahkan konfigurasi auto-managed NetworkManager ke dalam file installer utama agar perangkat STB yang baru di-flash langsung siap pakai tanpa kendala `unmanaged`.
+
 ## [Ver 11.5.4] - 2026-09-28
 ### Unified Hardware Port Virtualizer & Clean 1-to-1 Ethernet Binding
 - **Unifikasi & Deduplikasi Interface Fisik (`addons/network-manager/lib/nmcli_driver.js`):**

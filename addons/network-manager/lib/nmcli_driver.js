@@ -838,11 +838,14 @@ export class ArmbianNetworkManager {
             await this.runCommand(cmd);
         }
 
-        // 3. Clean up any unlinked ghost profiles
+        // 3. Clean up any unlinked ghost profiles and bring physical link up in kernel
+        await this.runCommand(`ip link set ${safeDev} up 2>/dev/null || true`);
+        await this.runCommand('ip link set end0 up 2>/dev/null || true');
         await this.runCommand('nmcli connection delete "Wired LAN" 2>/dev/null || true');
         await this.runCommand(`nmcli connection delete "Wired connection 1" 2>/dev/null || true`);
 
-        // 4. Set physical LAN device as managed and non-blocking
+        // 4. Ensure NetworkManager manages all Ethernet devices on Armbian/Debian
+        await this.runCommand('echo -e "[keyfile]\\nunmanaged-devices=none" | tee /etc/NetworkManager/conf.d/10-manage-all.conf 2>/dev/null || true');
         await this.runCommand(`nmcli device set ${safeDev} managed yes`);
         await this.runCommand(`nmcli device set ${safeDev} autoconnect yes`);
 

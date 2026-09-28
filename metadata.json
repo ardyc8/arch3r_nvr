@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.5.4 - Unified Hardware Port Virtualizer, Clean 1-to-1 Ethernet Binding & Auto-Managed Engine.",
+  "description": "Arch3r NVR Ver. 11.5.5 - Self-Healing Kernel Link Up, Armbian NetworkManager Auto-Managed Enforcer & Zero-Lockout Proxy-ARP.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

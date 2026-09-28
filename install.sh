@@ -14,9 +14,14 @@ fi
 
 # 2. Instalasi Paket Dasar OS (FFmpeg sangat wajib untuk fitur rekaman NVR)
 echo ""
-echo "[1/5] Memperbarui sistem & menginstal dependensi dasar (FFmpeg, wget, tar)..."
+echo "[1/5] Memperbarui sistem & menginstal dependensi dasar (FFmpeg, wget, tar, network-manager)..."
 apt-get update
-apt-get install -y ffmpeg wget curl tar
+apt-get install -y ffmpeg wget curl tar network-manager
+
+# Konfigurasi NetworkManager agar otomatis mengelola interface fisik Ethernet (eth0/end0) di STB
+mkdir -p /etc/NetworkManager/conf.d/
+echo -e "[keyfile]\nunmanaged-devices=none" > /etc/NetworkManager/conf.d/10-manage-all.conf
+sed -i 's/managed=false/managed=true/g' /etc/NetworkManager/NetworkManager.conf 2>/dev/null || true
 
 # 3. Instalasi MediaMTX (Otomatis mendeteksi arsitektur STB: arm64/aarch64 atau armhf)
 echo ""
