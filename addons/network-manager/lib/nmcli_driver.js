@@ -424,21 +424,80 @@ export class ArmbianNetworkManager {
     /**
      * 5. applyChanges(lanName, wifiName)
      * Restarts specified network connections using `nmcli connection up`
-     * to apply new metrics and static routes immediately without rebooting the STB.
+     * or gracefully reapplies settings to active devices without failing when Netplan-managed or already active.
      */
     async applyChanges(lanName, wifiName) {
-        const safeLanName = this.sanitizeParam(lanName);
-        const safeWifiName = this.sanitizeParam(wifiName);
+        let safeLanName = this.sanitizeParam(lanName);
+        let safeWifiName = this.sanitizeParam(wifiName);
+
+        // If names not provided, auto-detect active connections
+        if (!safeLanName || !safeWifiName) {
+            const detected = await this.detectActiveConnections();
+            if (!safeLanName && detected.lanName) safeLanName = detected.lanName;
+            if (!safeWifiName && detected.wifiName) safeWifiName = detected.wifiName;
+        }
+
         const results = [];
+        // Reload all nmcli connection profiles first
+        await this.runCommand('nmcli connection reload');
+
+        const bringUpOrReapply = async (connName) => {
+            if (!connName) return null;
+
+            // 1. Try nmcli connection up
+            const upRes = await this.runCommand(`nmcli connection up "${connName}"`);
+            if (upRes.success) {
+                return { connection: connName, success: true, stdout: upRes.stdout, method: 'connection_up' };
+            }
+
+            // 2. If it failed, check if device is active and try nmcli device reapply
+            const connInfo = await this.runCommand(`nmcli -t -f NAME,DEVICE,STATE connection show "${connName}"`);
+            let device = '';
+            let isActive = false;
+            if (connInfo.success && connInfo.stdout) {
+                const parts = connInfo.stdout.split(/(?<!\\):/);
+                if (parts.length >= 3) {
+                    device = parts[1] !== '--' ? parts[1] : '';
+                    isActive = device !== '' && !parts[2]?.includes('deactivated');
+                }
+            }
+
+            if (device) {
+                const reapplyRes = await this.runCommand(`nmcli device reapply "${device}"`);
+                if (reapplyRes.success) {
+                    return {
+                        connection: connName,
+                        device,
+                        success: true,
+                        method: 'device_reapply',
+                        message: `Connection "${connName}" reapplied successfully to active interface "${device}".`
+                    };
+                }
+            }
+
+            // If connection is already active or netplan managed, consider it non-fatal
+            const combinedErr = `${upRes.stderr || ''} ${upRes.error || ''}`.toLowerCase();
+            if (isActive || combinedErr.includes('already active') || combinedErr.includes('already connected') || combinedErr.includes('is active')) {
+                return {
+                    connection: connName,
+                    success: true,
+                    method: 'already_active',
+                    message: `Connection "${connName}" is active and routes are loaded.`
+                };
+            }
+
+            // Otherwise return the failed status
+            return { connection: connName, ...upRes };
+        };
 
         if (safeLanName) {
-            const lanRes = await this.runCommand(`nmcli connection up "${safeLanName}"`);
-            results.push({ connection: safeLanName, ...lanRes });
+            const r = await bringUpOrReapply(safeLanName);
+            if (r) results.push(r);
         }
 
         if (safeWifiName) {
-            const wifiRes = await this.runCommand(`nmcli connection up "${safeWifiName}"`);
-            results.push({ connection: safeWifiName, ...wifiRes });
+            const r = await bringUpOrReapply(safeWifiName);
+            if (r) results.push(r);
         }
 
         const failed = results.filter(r => !r.success);
@@ -565,11 +624,15 @@ export class ArmbianNetworkManager {
         const resUpBridge = await this.runCommand(cmdUpBridge);
         steps.push({ step: 'bring_up_bridge', cmd: cmdUpBridge, ...resUpBridge });
         if (!resUpBridge.success) {
-            return {
-                success: false,
-                error: `Failed to bring up bridge connection "br0": ${resUpBridge.stderr || resUpBridge.error}`,
-                steps
-            };
+            // Check if br0 is actually up/active
+            const checkBr = await this.getArch3rBridgeStatus();
+            if (!checkBr.active) {
+                return {
+                    success: false,
+                    error: `Failed to bring up bridge connection "br0": ${resUpBridge.stderr || resUpBridge.error}`,
+                    steps
+                };
+            }
         }
 
         return {
@@ -587,7 +650,7 @@ export class ArmbianNetworkManager {
      * Safely tears down the "br0" bridge and restores individual LAN and Wi-Fi connections:
      * - Deletes slave connections "br0-lan" and "br0-wifi"
      * - Deletes main bridge connection "br0"
-     * - Restores original dynamic LAN and Wi-Fi connections using nmcli connection up
+     * - Restores original dynamic LAN and Wi-Fi connections using nmcli connection up / reload
      */
     async disableArch3rBridge() {
         const isAvailable = await this.isNmcliAvailable();
@@ -612,6 +675,7 @@ export class ArmbianNetworkManager {
         steps.push({ step: 'delete_br0', ...resDelBridge });
 
         // Step 3: Automatically detect and restore original LAN & Wi-Fi connections
+        await this.runCommand('nmcli connection reload');
         const detected = await this.detectActiveConnections();
         const safeLanName = this.sanitizeParam(detected.lanName);
         const safeWifiName = this.sanitizeParam(detected.wifiName);

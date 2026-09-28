@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.4.1] - 2026-09-28
+### arch3rBridge Dedicated Modal Card, Netplan Reapply Fallback & Addons Integration
+- **Penyempurnaan Driver Eksekusi Jaringan & Netplan Resilience (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Penanganan Error Profil Netplan / Active Connection:** Pada STB Linux Armbian dengan Netplan, perintah `nmcli connection up "netplan-wlan0-..."` sering mengembalikan error ketika koneksi sedang aktif atau dikelola oleh Netplan.
+  - **Mekanisme `bringUpOrReapply` Cerdas:** Driver kini menjalankan `nmcli connection reload` terlebih dahulu, mencoba `nmcli connection up`, dan jika terjadi penolakan akibat koneksi aktif / Netplan, otomatis mengeksekusi `nmcli device reapply <device>` secara halus tanpa memunculkan error palsu ke UI pengguna.
+  - **Graceful Error Handling pada Bridge:** Mengoptimalkan toleransi pada `enableArch3rBridge()` dan `disableArch3rBridge()` untuk memverifikasi keaktifan interface `br0` di kernel secara adaptif.
+- **Integrasi Antarmuka Visual arch3rBridge (`public/index.html`, `public/script.js`):**
+  - **Dedicated Card arch3rBridge di Modal Network Manager (`#netMgrModalOverlay`):** Menambahkan kartu kontrol arch3rBridge lengkap dengan badge `#arch3rBridgeBadge` (`⚪ INAKTIF` vs `🟢 BRIDGE AKTIF (br0)`), tombol eksekusi `⚡ Aktifkan arch3rBridge (Bypass Isolasi)`, `🛑 Bongkar Bridge & Pulihkan`, `🔄 Cek Status`, dan terminal log *real-time* `#arch3rBridgeLogBox`.
+  - **Tombol Pintas di Marketplace Addons (`public/script.js`):** Menambahkan tombol `🌐 Network Router` langsung pada tabel Addons terinstal untuk akses instan satu klik.
+  - **Routing Konfigurasi Otomatis:** Membuka langsung modal Network Manager & arch3rBridge saat pengguna mengklik tombol pengaturan (⚙️) modul `network-manager`.
+
 ## [Ver 11.4.0] - 2026-09-28
 ### arch3rBridge Local Network Bridging Driver, ISP Router Isolation Bypass & Visual UI
 - **Integrasi Fitur `arch3rBridge` (`addons/network-manager/lib/nmcli_driver.js`):**

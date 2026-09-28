@@ -10327,6 +10327,11 @@ async function fetchInstalledAddons() {
                                         <span>🎯</span> Studio AI
                                     </button>
                                 ` : ''}
+                                ${(addon.id === 'network-manager' || addon.id === 'network_manager') ? `
+                                    <button class="btn-sm btn-primary" onclick="window.openNetMgrModal()" title="Buka Network Manager & arch3rBridge" style="display:inline-flex; align-items:center; gap:0.35rem; background:#10b981; border-color:#059669; font-weight:600; padding:0.3rem 0.8rem; border-radius:6px; box-shadow:0 2px 6px rgba(16,185,129,0.35);">
+                                        <span>🌐</span> Network Router
+                                    </button>
+                                ` : ''}
                                 <button class="btn-sm btn-secondary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan Global">⚙️</button>
                                 <button class="btn-sm btn-secondary" onclick="toggleAddonState('${addon.id}', ${!addon.active})" title="${addon.active ? 'Matikan' : 'Nyalakan'}">
                                     ${addon.active ? '⏹️' : '▶️'}
@@ -10459,6 +10464,16 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
     if (!container) return;
 
     const availableCams = window.cameras || [];
+
+    // --- SPESIFIKASI: Dual-Interface Network Router & arch3rBridge Addon ---
+    if (addonId === 'network-manager' || addonId === 'network_manager') {
+        const modal = document.getElementById('addonConfigModalOverlay');
+        if (modal) modal.style.display = 'none';
+        if (typeof window.openNetMgrModal === 'function') {
+            window.openNetMgrModal();
+        }
+        return;
+    }
 
     // --- SPESIFIKASI: Katalog Template RTSP & IPC Vendor Addon ---
     if (addonId === 'camera-templates' || addonId === 'camera_templates') {
