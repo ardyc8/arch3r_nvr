@@ -6313,7 +6313,7 @@ app.get('/api/addons/hdmi-kiosk/status', verifyToken, (req, res) => {
     if (!hdmiKioskAddon) {
         return res.json({ installed: false, enabled: false, message: 'Add-on HDMI belum terinstal' });
     }
-    res.json({ installed: true, ...hdmiKioskAddon.getStatus() });
+    res.json({ installed: true, ...hdmiKioskAddon.getStatus(), liveState: kioskLiveState });
 });
 
 app.get('/api/addons/hdmi-kiosk/diagnostics', verifyToken, (req, res) => {

@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.2.3] - 2026-09-28
+### Zero Horizontal Gap NVR Grid & Active State Remote Controller Feedback
+- **Eliminasi Gap Baris Horizontal Layar TV (`public/style.css`):**
+  - Mengubah row layout pada mode Kiosk menjadi `grid-template-rows: repeat(N, 1fr) !important` dengan pembagian fraksional mutlak, melenyapkan perbedaan perhitungan piksel pada monitor TV.
+  - Memperbaiki struktur `.cam-cell` dan inner `div` agar mengisi `height: 100% !important; max-height: 100% !important;` dengan `overflow: hidden;`.
+  - Mengunci elemen `<video>` dengan `position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: fill !important;`, sehingga 100% gap horizontal di antara baris video lenyap.
+  - Menjadikan OSD nama kamera mengambang (`position: absolute; top: 6px; left: 6px; z-index: 20;`) sehingga tidak mendorong dimensi fisik video.
+- **Indikator Tombol Remote Aktif / Highlight di HP (`public/script.js`, `server.js`):**
+  - Mengintegrasikan `liveState` ke dalam endpoint `/api/addons/hdmi-kiosk/status` sehingga saat modal remote dibuka di HP, tombol preset yang sedang aktif di TV (`1×1`, `2×2`, `1+5 PIP`, `3×3`, `4×4`, atau kamera tunggal) langsung menyala (highlight biru/glow).
+  - Menambahkan feedback visual instan saat tombol remote ditekan di HP: tombol yang diklik langsung menyala aktif dan tombol lainnya meredup seketika tanpa jeda.
+
 ## [Ver 11.2.2] - 2026-09-28
 ### Professional NVR Matrix Grids (1x1, 2x2, 1+5 PIP, 3x3, 4x4) & Instant TV Viewport Fitting
 - **Matriks CCTV NVR Profesional Murni (`public/style.css`):**

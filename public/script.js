@@ -10110,15 +10110,19 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
         const isHdmiConn = statusData ? !!statusData.isHdmiConnected : false;
         const isKioskAct = statusData ? !!statusData.isKioskServiceActive : false;
         const sysPath = (statusData && statusData.detectedSysPath) || '/sys/class/drm/...';
-        const preset = configObj.preset || 'live_grid';
+        const liveSt = (statusData && statusData.liveState) || {};
+        const activePreset = liveSt.preset || configObj.preset || 'grid_4';
+        const activeCamId = liveSt.target_cam_id || configObj.target_cam_id || 'all';
+        const isTourActive = !!liveSt.tour;
 
         let camOptionsHtml = '<option value="">-- Pilih Kamera Fullscreen --</option>';
         let camRemoteBtnsHtml = '';
         availableCams.forEach((cam, idx) => {
             const isSel = String(cam.id) === String(configObj.target_cam_id) ? 'selected' : '';
+            const isCamActive = (activePreset === 'single' || activePreset === 'grid_1' || activePreset === 'single_cam') && String(activeCamId) === String(cam.id);
             camOptionsHtml += `<option value="${cam.id}" ${isSel}>${cam.name}</option>`;
             camRemoteBtnsHtml += `
-                <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'single', camId: '${cam.id}' })" style="padding:0.35rem 0.65rem; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; background:#1e293b; border-color:#334155; color:#e2e8f0; border-radius:4px;">
+                <button type="button" class="btn btn-sm ${isCamActive ? 'btn-primary kiosk-cam-btn-active' : 'btn-secondary'}" data-cam-id="${cam.id}" onclick="sendKioskRemoteCmd({ preset: 'single', camId: '${cam.id}' })" style="padding:0.35rem 0.65rem; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; ${isCamActive ? 'background:#2563eb; border-color:#38bdf8; color:#fff; box-shadow:0 0 8px rgba(56,189,248,0.5);' : 'background:#1e293b; border-color:#334155; color:#e2e8f0;'} border-radius:4px;">
                     <span>📹</span> ${cam.name || 'Kamera ' + (idx + 1)}
                 </button>
             `;
@@ -10200,23 +10204,23 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                     <!-- 1. Pilihan Grid TV -->
                     <div style="margin-bottom:0.85rem;">
                         <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Pilih Tata Letak Matriks Layar TV (Standar NVR):</span>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap:0.45rem;">
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_1', camId: availableCams[0]?.id || 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                        <div id="kioskPresetButtonsContainer" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap:0.45rem;">
+                            <button type="button" data-kiosk-preset="grid_1" class="btn btn-sm ${activePreset === 'grid_1' || activePreset === 'single' || activePreset === 'single_cam' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_1', camId: availableCams[0]?.id || 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_1' || activePreset === 'single' || activePreset === 'single_cam' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>⏹️</span> 1×1 (Single)
                             </button>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_4', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                            <button type="button" data-kiosk-preset="grid_4" class="btn btn-sm ${activePreset === 'grid_4' || activePreset === 'live_grid' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_4', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_4' || activePreset === 'live_grid' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>🔲</span> 2×2 (4 Cam)
                             </button>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_6', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                            <button type="button" data-kiosk-preset="grid_6" class="btn btn-sm ${activePreset === 'grid_6' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_6', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_6' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>▦</span> 1+5 (PIP 6 Cam)
                             </button>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_9', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                            <button type="button" data-kiosk-preset="grid_9" class="btn btn-sm ${activePreset === 'grid_9' || activePreset === 'live_grid_3x3' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_9', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_9' || activePreset === 'live_grid_3x3' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>▦</span> 3×3 (9 Cam)
                             </button>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_16', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                            <button type="button" data-kiosk-preset="grid_16" class="btn btn-sm ${activePreset === 'grid_16' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_16', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_16' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>▦</span> 4×4 (16 Cam)
                             </button>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'tour_toggle', tourInterval: 10 })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);">
+                            <button type="button" id="btnKioskTour" class="btn btn-sm ${isTourActive ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ action: 'tour_toggle', tourInterval: 10 })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${isTourActive ? 'background:#f59e0b; border-color:#fbbf24; color:#000; font-weight:700;' : 'background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);'}">
                                 <span>🔄</span> Auto-Tour
                             </button>
                         </div>
@@ -10225,7 +10229,7 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                     <!-- 2. Alihkan Langsung ke Kamera Tertentu -->
                     <div style="margin-bottom:0.85rem;">
                         <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Fokus Kamera Tertentu (1×1 Penuh di TV):</span>
-                        <div style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:115px; overflow-y:auto; padding:0.25rem 0;">
+                        <div id="kioskCamListContainer" style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:115px; overflow-y:auto; padding:0.25rem 0;">
                             ${camRemoteBtnsHtml}
                         </div>
                     </div>
@@ -10647,6 +10651,65 @@ function toggleKioskCamSelector(val) {
 
 async function sendKioskRemoteCmd(payload) {
     try {
+        // Update highlight visual tombol remote di HP seketika
+        if (payload.preset) {
+            const presetBtns = document.querySelectorAll('#kioskPresetButtonsContainer button[data-kiosk-preset]');
+            presetBtns.forEach(btn => {
+                const p = btn.getAttribute('data-kiosk-preset');
+                const isMatch = (p === payload.preset) || (payload.preset === 'single' && p === 'grid_1');
+                if (isMatch) {
+                    btn.className = 'btn btn-sm btn-primary';
+                    btn.style.background = '#2563eb';
+                    btn.style.borderColor = '#60a5fa';
+                    btn.style.boxShadow = '0 0 10px rgba(59,130,246,0.6)';
+                } else {
+                    btn.className = 'btn btn-sm btn-secondary';
+                    btn.style.background = '';
+                    btn.style.borderColor = '';
+                    btn.style.boxShadow = '';
+                }
+            });
+
+            // Update highlight tombol kamera jika single cam
+            const camBtns = document.querySelectorAll('#kioskCamListContainer button[data-cam-id]');
+            camBtns.forEach(cBtn => {
+                const cId = cBtn.getAttribute('data-cam-id');
+                if ((payload.preset === 'single' || payload.preset === 'grid_1') && payload.camId && String(cId) === String(payload.camId)) {
+                    cBtn.className = 'btn btn-sm btn-primary kiosk-cam-btn-active';
+                    cBtn.style.background = '#2563eb';
+                    cBtn.style.borderColor = '#38bdf8';
+                    cBtn.style.color = '#fff';
+                    cBtn.style.boxShadow = '0 0 8px rgba(56,189,248,0.5)';
+                } else {
+                    cBtn.className = 'btn btn-sm btn-secondary';
+                    cBtn.style.background = '#1e293b';
+                    cBtn.style.borderColor = '#334155';
+                    cBtn.style.color = '#e2e8f0';
+                    cBtn.style.boxShadow = '';
+                }
+            });
+        }
+
+        if (payload.action === 'tour_toggle') {
+            const btnTour = document.getElementById('btnKioskTour');
+            if (btnTour) {
+                const isNowActive = !btnTour.classList.contains('btn-primary');
+                if (isNowActive) {
+                    btnTour.className = 'btn btn-sm btn-primary';
+                    btnTour.style.background = '#f59e0b';
+                    btnTour.style.borderColor = '#fbbf24';
+                    btnTour.style.color = '#000';
+                    btnTour.style.fontWeight = '700';
+                } else {
+                    btnTour.className = 'btn btn-sm btn-secondary';
+                    btnTour.style.background = 'rgba(245,158,11,0.15)';
+                    btnTour.style.borderColor = 'rgba(245,158,11,0.3)';
+                    btnTour.style.color = '#fbbf24';
+                    btnTour.style.fontWeight = '600';
+                }
+            }
+        }
+
         if (payload.action === 'fullscreen_enter') {
             payload.fullscreen_action = 'enter';
         } else if (payload.action === 'fullscreen_exit') {
