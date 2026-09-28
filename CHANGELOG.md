@@ -1,5 +1,23 @@
 # Changelog
 
+## [Ver 11.2.2] - 2026-09-28
+### Professional NVR Matrix Grids (1x1, 2x2, 1+5 PIP, 3x3, 4x4) & Instant TV Viewport Fitting
+- **Matriks CCTV NVR Profesional Murni (`public/style.css`):**
+  - Mengunci pembagian layout TV ke standar industri CCTV NVR:
+    - **1×1 (Single)**: 100vw × 100vh penuh (Ultra Fullscreen).
+    - **2×2 (4 Kamera)**: 2 kolom sama lebar × 2 baris sama tinggi (50vw × 50vh) tanpa sisa ruang kosong di bawah.
+    - **1+5 (6 Kamera PIP)**: 1 kamera utama besar (span 2x2) + 5 kamera pendamping (1x1) khas NVR komersial.
+    - **3×3 (9 Kamera)**: 3 kolom × 3 baris presisi (33.33vw × 33.33vh).
+    - **4×4 (16 Kamera)**: 4 kolom × 4 baris presisi (25vw × 25vh).
+  - Menghapus batasan `aspect-ratio` statis pada mode TV Kiosk sehingga video ditarik rapat dari ujung atas ke ujung bawah monitor (`object-fit: fill`), mengeliminasi 100% gap hitam.
+- **Logika Fullscreen Instan Zero-Permission (`public/script.js`, `server.js`):**
+  - Mengubah logika remote Fullscreen menjadi **Monitor Murni TV** (`.kiosk-display-mode`) dan **Dashboard Menu TV** (`.kiosk-dashboard-active`).
+  - Mengatasi pemblokiran `requestFullscreen()` oleh browser Chromium STB saat dikendalikan dari remote HP secara instan (<50ms via SSE).
+- **Penyimpanan Permanen Preset Remote (`server.js`):**
+  - Setiap perubahan preset dari remote HP otomatis disimpan ke `addons/hdmi-kiosk/config.json` agar tetap bertahan saat STB reboot.
+- **Penyelarasan UI Remote Control (`public/script.js`):**
+  - Menyesuaikan label dan tombol remote di tab HDMI Kiosk: `[1×1]`, `[2×2]`, `[1+5 PIP]`, `[3×3]`, `[4×4]`.
+
 ## [Ver 11.2.1] - 2026-09-27
 ### Seamless Zero-Gap Kiosk TV Grid, Mouse Cursor Visibility & Anti-Translate Engine
 - **Inisialisasi Otomatis Preset Kiosk Default (`server.js`, `public/script.js`):**

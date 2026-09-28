@@ -6499,6 +6499,15 @@ app.post('/api/addons/hdmi-kiosk/remote-cmd', verifyToken, requireAdmin, (req, r
     
     if (preset) {
         kioskLiveState.preset = preset;
+        try {
+            const cfgPath = path.join(__dirname, 'addons', 'hdmi-kiosk', 'config.json');
+            if (fs.existsSync(cfgPath)) {
+                const curCfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+                curCfg.preset = preset;
+                if (camId !== undefined) curCfg.target_cam_id = camId;
+                fs.writeFileSync(cfgPath, JSON.stringify(curCfg, null, 2));
+            }
+        } catch (_) {}
     }
     if (camId !== undefined) {
         kioskLiveState.target_cam_id = camId;

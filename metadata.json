@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.2.1 - Seamless Zero-Gap Kiosk TV Grid, Mouse Cursor Visibility & Anti-Translate Engine.",
+  "description": "Arch3r NVR Ver. 11.2.2 - Professional NVR Matrix Grids (1x1, 2x2, 1+5 PIP, 3x3, 4x4) & Instant TV Viewport Fitting.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

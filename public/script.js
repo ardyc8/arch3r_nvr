@@ -496,8 +496,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 2b. Perintah Fullscreen / Exit Fullscreen Layar TV
+        // 2b. Perintah Fullscreen / Dashboard Mode Layar TV (Instant Zero-Permission Override)
         if (st.fullscreen_action) {
+            if (st.fullscreen_action === 'exit' || st.fullscreen_action === 'dashboard') {
+                document.body.classList.add('kiosk-dashboard-active');
+            } else {
+                document.body.classList.remove('kiosk-dashboard-active');
+            }
             if (st.fullscreen_action === 'enter' && !document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(() => {});
             } else if (st.fullscreen_action === 'exit' && document.fullscreenElement) {
@@ -546,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 5. Preset Tata Letak Grid TV (Instan < 50ms langsung merender grid)
+        // 5. Preset Tata Letak Grid TV (Standar Matriks Profesional NVR: 1x1, 2x2, 1+5, 3x3, 4x4)
         let targetGrid = currentGridCount || 4;
         let targetChannel = activeChannel || 'all';
 
@@ -568,19 +573,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Eksekusi perubahan ke mesin grid tampilan utama NVR di TV
-        if (targetChannel !== activeChannel || targetGrid !== currentGridCount) {
-            activeChannel = targetChannel;
-            currentGridCount = targetGrid;
-            gridPageIndex = 0;
+        activeChannel = targetChannel;
+        currentGridCount = targetGrid;
+        gridPageIndex = 0;
 
-            const camSelectEl = document.getElementById('camChannelSelect');
-            if (camSelectEl) camSelectEl.value = targetChannel;
+        const camSelectEl = document.getElementById('camChannelSelect');
+        if (camSelectEl) camSelectEl.value = targetChannel;
 
-            if (typeof window.setGridLayout === 'function') {
-                window.setGridLayout(targetGrid);
-            } else if (typeof window.updateGridDisplay === 'function') {
-                window.updateGridDisplay();
-            }
+        if (typeof window.setGridLayout === 'function') {
+            window.setGridLayout(targetGrid);
+        } else if (typeof window.updateGridDisplay === 'function') {
+            window.updateGridDisplay();
         }
     }
 
@@ -10196,29 +10199,32 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
 
                     <!-- 1. Pilihan Grid TV -->
                     <div style="margin-bottom:0.85rem;">
-                        <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Pilih Tata Letak Grid TV:</span>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap:0.45rem;">
+                        <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Pilih Tata Letak Matriks Layar TV (Standar NVR):</span>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap:0.45rem;">
                             <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_1', camId: availableCams[0]?.id || 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
-                                <span>⏹️</span> 1 Kamera
+                                <span>⏹️</span> 1×1 (Single)
                             </button>
                             <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_4', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
-                                <span>🔲</span> 4 Kamera (2x2)
+                                <span>🔲</span> 2×2 (4 Cam)
                             </button>
                             <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_6', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
-                                <span>▦</span> 6 Kamera (2x3)
+                                <span>▦</span> 1+5 (PIP 6 Cam)
                             </button>
                             <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_9', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
-                                <span>▦</span> 9 Kamera (3x3)
+                                <span>▦</span> 3×3 (9 Cam)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_16', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                                <span>▦</span> 4×4 (16 Cam)
                             </button>
                             <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'tour_toggle', tourInterval: 10 })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);">
-                                <span>🔄</span> Patroli / Tour
+                                <span>🔄</span> Auto-Tour
                             </button>
                         </div>
                     </div>
 
                     <!-- 2. Alihkan Langsung ke Kamera Tertentu -->
                     <div style="margin-bottom:0.85rem;">
-                        <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Alihkan Langsung ke Kamera Tertentu (Fullscreen TV):</span>
+                        <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Fokus Kamera Tertentu (1×1 Penuh di TV):</span>
                         <div style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:115px; overflow-y:auto; padding:0.25rem 0;">
                             ${camRemoteBtnsHtml}
                         </div>
@@ -10229,11 +10235,11 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                         <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'refresh' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
                             <span>🔄</span> Sambung Ulang Stream
                         </button>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'fullscreen_enter' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);" title="Jadikan tampilan layar TV penuh (Fullscreen)">
-                            <span>⛶</span> Layar Penuh TV
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'fullscreen_enter' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);" title="Mode Monitor TV Penuh (100% Layar Bersih)">
+                            <span>⛶</span> Monitor Murni TV
                         </button>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'fullscreen_exit' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;" title="Keluar dari layar penuh TV">
-                            <span>🗗</span> Keluar Layar Penuh
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'fullscreen_exit' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;" title="Tampilkan Menu Dashboard & Navigasi di Layar TV">
+                            <span>🗗</span> Dashboard Menu TV
                         </button>
                         <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'reload' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem; background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.3);" title="Muat ulang 1x halaman TV jika tampilan perlu update">
                             <span>⚡</span> Hard Reload TV
