@@ -469,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.applyKioskDisplayMode = applyKioskDisplayMode;
 
-    let lastReloadSeq = 0;
+    let lastReloadToken = sessionStorage.getItem('arch3r_last_kiosk_reload_token') || '';
     let kioskTourIntervalTimer = null;
     let kioskTourIndex = 0;
     let kioskEventSource = null;
@@ -477,9 +477,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyKioskStateChanges(st) {
         if (!st) return;
 
-        // 1. Hard Reload TV (Memaksa Chromium STB memuat ulang seluruh halaman)
-        if (st.reload_seq && st.reload_seq !== lastReloadSeq) {
-            lastReloadSeq = st.reload_seq;
+        // 1. Hard Reload TV (HANYA reload 1x menggunakan session token unik, mencegah infinite loop)
+        if (st.reload_token && st.reload_token !== lastReloadToken) {
+            lastReloadToken = st.reload_token;
+            try { sessionStorage.setItem('arch3r_last_kiosk_reload_token', st.reload_token); } catch(_) {}
             console.log('[KIOSK] Sinyal Hard Reload diterima dari Remote HP, memuat ulang layar TV...');
             window.location.reload(true);
             return;
@@ -488,8 +489,19 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Sambung Ulang Stream (Re-sync)
         if (st.refresh_seq && st.refresh_seq !== lastRefreshSeq) {
             lastRefreshSeq = st.refresh_seq;
-            if (typeof window.refreshAllStreams === 'function') {
-                window.refreshAllStreams();
+            if (typeof window.fetchCameras === 'function') {
+                window.fetchCameras();
+            } else if (typeof window.updateGridDisplay === 'function') {
+                window.updateGridDisplay();
+            }
+        }
+
+        // 2b. Perintah Fullscreen / Exit Fullscreen Layar TV
+        if (st.fullscreen_action) {
+            if (st.fullscreen_action === 'enter' && !document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else if (st.fullscreen_action === 'exit' && document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
             }
         }
 
@@ -513,12 +525,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!kioskTourIntervalTimer) {
                 const intervalSec = (st.tour_interval || 10) * 1000;
                 kioskTourIntervalTimer = setInterval(() => {
-                    if (Array.isArray(cameras) && cameras.length > 0) {
-                        kioskTourIndex = (kioskTourIndex + 1) % cameras.length;
-                        const nextCam = cameras[kioskTourIndex];
-                        if (nextCam && typeof window.onChannelDropdownChange === 'function') {
-                            window.onChannelDropdownChange(nextCam.id);
-                            if (typeof window.setGridLayout === 'function') {
+                    const camList = window.cameras || cameras || [];
+                    if (Array.isArray(camList) && camList.length > 0) {
+                        kioskTourIndex = (kioskTourIndex + 1) % camList.length;
+                        const nextCam = camList[kioskTourIndex];
+                        if (nextCam) {
+                            if (typeof window.onChannelDropdownChange === 'function') {
+                                window.onChannelDropdownChange(nextCam.id);
+                            } else if (typeof window.setGridLayout === 'function') {
                                 window.setGridLayout(1);
                             }
                         }
@@ -532,13 +546,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 5. Preset Tata Letak Grid TV (Instan < 50ms tanpa double-render & bebas kedip)
-        let targetGrid = selectedGridCount;
-        let targetChannel = activeChannel;
+        // 5. Preset Tata Letak Grid TV (Instan < 50ms langsung merender grid)
+        let targetGrid = currentGridCount || 4;
+        let targetChannel = activeChannel || 'all';
 
-        if (st.preset === 'grid_1' || st.preset === 'single') {
+        if (st.preset === 'grid_1' || st.preset === 'single' || st.preset === 'single_cam') {
             targetGrid = 1;
-            targetChannel = st.target_cam_id || 'all';
+            targetChannel = st.target_cam_id || (window.cameras && window.cameras[0]?.id) || 'all';
         } else if (st.preset === 'grid_4' || st.preset === 'live_grid') {
             targetGrid = 4;
             targetChannel = 'all';
@@ -553,13 +567,19 @@ document.addEventListener('DOMContentLoaded', () => {
             targetChannel = 'all';
         }
 
-        // Jalankan render TEPAT SATU KALI hanya jika layout atau kamera tujuan benar-benar berbeda
-        if (targetGrid !== selectedGridCount || targetChannel !== activeChannel) {
-            selectedGridCount = targetGrid;
+        // Eksekusi perubahan ke mesin grid tampilan utama NVR di TV
+        if (targetChannel !== activeChannel || targetGrid !== currentGridCount) {
             activeChannel = targetChannel;
-            if (channelSelect) channelSelect.value = targetChannel;
-            if (typeof updateGridDisplay === 'function') {
-                updateGridDisplay();
+            currentGridCount = targetGrid;
+            gridPageIndex = 0;
+
+            const camSelectEl = document.getElementById('camChannelSelect');
+            if (camSelectEl) camSelectEl.value = targetChannel;
+
+            if (typeof window.setGridLayout === 'function') {
+                window.setGridLayout(targetGrid);
+            } else if (typeof window.updateGridDisplay === 'function') {
+                window.updateGridDisplay();
             }
         }
     }
@@ -10065,7 +10085,7 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
         return;
     }
 
-    // --- 2. SPESIFIKASI: HDMI Monitor & Kiosk Service Addon ---
+    // --- 2. SPESIFIKASI: HDMI Monitor & Kiosk Service Addon (2-TAB ARCHITECTURE) ---
     if (addonId === 'hdmi-kiosk' || addonId === 'hdmi_kiosk') {
         const isHdmiConn = statusData ? !!statusData.isHdmiConnected : false;
         const isKioskAct = statusData ? !!statusData.isKioskServiceActive : false;
@@ -10088,188 +10108,211 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
         }
 
         container.innerHTML = `
-            <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3);">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                    <div>
-                        <strong style="color:#34d399; font-size:1rem; display:block;">📺 Telemetri Port HDMI & Layar TV/Monitor</strong>
-                        <span style="font-size:0.82rem; color:var(--text-muted); font-family:monospace;">Sysfs: ${sysPath}</span>
+            <!-- NAVIGATION 2-TAB HEADER -->
+            <div style="display:flex; gap:0.5rem; border-bottom:1px solid var(--border); margin-bottom:1.25rem; padding-bottom:0.25rem;">
+                <button type="button" id="tabBtnKioskRemote" class="btn btn-sm btn-primary" onclick="switchKioskAddonTab('remote')" style="font-weight:700; display:flex; align-items:center; gap:0.35rem; padding:0.45rem 1rem; border-radius:6px 6px 0 0;">
+                    <span>🎮</span> Remote Layar TV
+                </button>
+                <button type="button" id="tabBtnKioskSettings" class="btn btn-sm btn-secondary" onclick="switchKioskAddonTab('settings')" style="font-weight:600; display:flex; align-items:center; gap:0.35rem; padding:0.45rem 1rem; border-radius:6px 6px 0 0;">
+                    <span>⚙️</span> Pengaturan Kiosk
+                </button>
+            </div>
+
+            <!-- TAB 1: REMOTE PINTAR LAYAR TV -->
+            <div id="tabPaneKioskRemote">
+                <!-- TELEMETRI PORT HDMI & KONTROL OUTPUT -->
+                <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <strong style="color:#34d399; font-size:1rem; display:block;">📺 Status Port HDMI & Layar TV/Monitor</strong>
+                            <span style="font-size:0.82rem; color:var(--text-muted); font-family:monospace;">Sysfs: ${sysPath}</span>
+                        </div>
+                        <div style="display:flex; gap:0.5rem;">
+                            <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isHdmiConn ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isHdmiConn ? '#22c55e' : '#ef4444'}; border: 1px solid ${isHdmiConn ? '#22c55e' : '#ef4444'};">
+                                ${isHdmiConn ? '🟢 Kabel HDMI Terhubung' : '⚪ Kabel Terlepas (Headless)'}
+                            </span>
+                            <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isKioskAct ? 'rgba(59,130,246,0.15)' : 'rgba(156,163,175,0.15)'}; color:${isKioskAct ? '#60a5fa' : '#9ca3af'}; border: 1px solid ${isKioskAct ? '#60a5fa' : '#9ca3af'};">
+                                ${isKioskAct ? '🖥️ Layar Aktif' : '⏹️ Layar Siaga'}
+                            </span>
+                        </div>
                     </div>
-                    <div style="display:flex; gap:0.5rem;">
-                        <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isHdmiConn ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'}; color:${isHdmiConn ? '#22c55e' : '#ef4444'}; border: 1px solid ${isHdmiConn ? '#22c55e' : '#ef4444'};">
-                            ${isHdmiConn ? '🟢 Kabel HDMI Terhubung' : '⚪ Kabel Terlepas (Headless)'}
-                        </span>
-                        <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; background:${isKioskAct ? 'rgba(59,130,246,0.15)' : 'rgba(156,163,175,0.15)'}; color:${isKioskAct ? '#60a5fa' : '#9ca3af'}; border: 1px solid ${isKioskAct ? '#60a5fa' : '#9ca3af'};">
-                            ${isKioskAct ? '🖥️ Layar Aktif' : '⏹️ Layar Siaga'}
-                        </span>
+                    <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="toggleHdmiKioskOutput('start')" style="display:flex; align-items:center; gap:0.3rem;">
+                            <span>▶️</span> Nyalakan Output HDMI
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="toggleHdmiKioskOutput('stop')" style="display:flex; align-items:center; gap:0.3rem;">
+                            <span>⏹️</span> Matikan Output HDMI
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="refreshHdmiKioskStatus()" style="display:flex; align-items:center; gap:0.3rem;">
+                            <span>🔄</span> Cek Kabel Ulang
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="checkHdmiKioskDiagnostics()" style="display:flex; align-items:center; gap:0.3rem; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+                            <span>📋</span> Diagnostik & Log STB
+                        </button>
+                    </div>
+                    <div id="hdmiKioskDiagBox" style="display:none; margin-top:0.85rem; padding:0.85rem; border-radius:6px; background:#0b1329; border:1px solid #1e293b; font-size:0.82rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                            <strong style="color:#60a5fa; display:flex; align-items:center; gap:0.4rem;">
+                                <span>🔍</span> Hasil Diagnostik Kiosk Armbian STB
+                            </strong>
+                            <button type="button" onclick="document.getElementById('hdmiKioskDiagBox').style.display='none'" style="background:transparent; border:none; color:#94a3b8; cursor:pointer; font-size:1rem;">✖</button>
+                        </div>
+                        <div id="hdmiKioskDiagContent">Memeriksa status STB...</div>
                     </div>
                 </div>
-                <div style="display:flex; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm btn-primary" onclick="toggleHdmiKioskOutput('start')" style="display:flex; align-items:center; gap:0.3rem;">
-                        <span>▶️</span> Nyalakan Output HDMI
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleHdmiKioskOutput('stop')" style="display:flex; align-items:center; gap:0.3rem;">
-                        <span>⏹️</span> Matikan Output HDMI
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="refreshHdmiKioskStatus()" style="display:flex; align-items:center; gap:0.3rem;">
-                        <span>🔄</span> Cek Kabel Ulang
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="checkHdmiKioskDiagnostics()" style="display:flex; align-items:center; gap:0.3rem; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
-                        <span>📋</span> Diagnostik & Log STB
-                    </button>
-                </div>
-                <div id="hdmiKioskDiagBox" style="display:none; margin-top:0.85rem; padding:0.85rem; border-radius:6px; background:#0b1329; border:1px solid #1e293b; font-size:0.82rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                        <strong style="color:#60a5fa; display:flex; align-items:center; gap:0.4rem;">
-                            <span>🔍</span> Hasil Diagnostik Kiosk Armbian STB
+
+                <!-- REMOTE PINTAR LAYAR TV DARI SMARTPHONE (REAL-TIME KIOSK CONTROLLER) -->
+                <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid #3b82f6; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <strong style="color:#38bdf8; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
+                            <span>🎮</span> Remote Pintar Layar TV (HP Controller)
                         </strong>
-                        <button type="button" onclick="document.getElementById('hdmiKioskDiagBox').style.display='none'" style="background:transparent; border:none; color:#94a3b8; cursor:pointer; font-size:1rem;">✖</button>
+                        <div style="display:flex; gap:0.35rem;">
+                            <span style="font-size:0.7rem; padding:0.2rem 0.45rem; border-radius:4px; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); font-weight:600;">
+                                ⚡ WebRTC WHEP (~0.1s)
+                            </span>
+                            <span style="font-size:0.7rem; padding:0.2rem 0.45rem; border-radius:4px; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-weight:600;">
+                                📡 SSE Instan (&lt;50ms)
+                            </span>
+                        </div>
                     </div>
-                    <div id="hdmiKioskDiagContent">Memeriksa status STB...</div>
+
+                    <!-- 1. Pilihan Grid TV -->
+                    <div style="margin-bottom:0.85rem;">
+                        <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Pilih Tata Letak Grid TV:</span>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap:0.45rem;">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_1', camId: availableCams[0]?.id || 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                                <span>⏹️</span> 1 Kamera
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_4', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                                <span>🔲</span> 4 Kamera (2x2)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_6', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                                <span>▦</span> 6 Kamera (2x3)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_9', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
+                                <span>▦</span> 9 Kamera (3x3)
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'tour_toggle', tourInterval: 10 })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);">
+                                <span>🔄</span> Patroli / Tour
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2. Alihkan Langsung ke Kamera Tertentu -->
+                    <div style="margin-bottom:0.85rem;">
+                        <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Alihkan Langsung ke Kamera Tertentu (Fullscreen TV):</span>
+                        <div style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:115px; overflow-y:auto; padding:0.25rem 0;">
+                            ${camRemoteBtnsHtml}
+                        </div>
+                    </div>
+
+                    <!-- 3. Aksi Kontrol Cepat & Layar Penuh TV -->
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.75rem;">
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'refresh' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
+                            <span>🔄</span> Sambung Ulang Stream
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'fullscreen_enter' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem; background:rgba(59,130,246,0.15); color:#60a5fa; border-color:rgba(59,130,246,0.3);" title="Jadikan tampilan layar TV penuh (Fullscreen)">
+                            <span>⛶</span> Layar Penuh TV
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'fullscreen_exit' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;" title="Keluar dari layar penuh TV">
+                            <span>🗗</span> Keluar Layar Penuh
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'reload' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem; background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.3);" title="Muat ulang 1x halaman TV jika tampilan perlu update">
+                            <span>⚡</span> Hard Reload TV
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="toggleKioskBlackout()" id="btnKioskBlackout" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
+                            <span>🌙</span> Standby / Layar Hitam
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- REMOTE PINTAR LAYAR TV DARI SMARTPHONE (REAL-TIME KIOSK CONTROLLER) -->
-            <div style="margin-bottom: 1.25rem; padding: 1rem; border-radius: 6px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1px solid #3b82f6; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-                    <strong style="color:#38bdf8; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
-                        <span>🎮</span> Remote Pintar Layar TV (HP Controller)
-                    </strong>
-                    <div style="display:flex; gap:0.35rem;">
-                        <span style="font-size:0.7rem; padding:0.2rem 0.45rem; border-radius:4px; background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); font-weight:600;">
-                            ⚡ WebRTC WHEP (~0.1s)
-                        </span>
-                        <span style="font-size:0.7rem; padding:0.2rem 0.45rem; border-radius:4px; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); font-weight:600;">
-                            📡 SSE Instan (&lt;50ms)
-                        </span>
+            <!-- TAB 2: PENGATURAN & KONFIGURASI KIOSK -->
+            <div id="tabPaneKioskSettings" style="display:none;">
+                <form id="addonConfigForm">
+                    <div style="background:rgba(0,0,0,0.18); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
+                        <label style="display:block; margin-bottom:0.35rem; font-weight:600; font-size:0.88rem; color:var(--text);">
+                            🛡️ Hak Akses Sesi Tampilan TV (RBAC Keamanan):
+                        </label>
+                        <select name="role" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                            <option value="viewer" ${configObj.role !== 'admin' ? 'selected' : ''}>🔒 Kiosk Viewer (Hanya Live Stream Kamera - Terkunci Aman & Anti-Tamper)</option>
+                            <option value="admin" ${configObj.role === 'admin' ? 'selected' : ''}>🔓 Administrator (Akses Operasional Penuh)</option>
+                        </select>
+                        <small style="color:var(--text-muted); display:block; margin-top:0.35rem;">
+                            *Rekomendasi <strong>Kiosk Viewer</strong>: Mencegah siapapun yang mencolok mouse ke STB untuk menghapus rekaman, merusak konfigurasi kamera, atau membuka menu lisensi.
+                        </small>
                     </div>
-                </div>
 
-                <!-- 1. Pilihan Grid TV -->
-                <div style="margin-bottom:0.85rem;">
-                    <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Pilih Tata Letak Grid TV:</span>
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap:0.45rem;">
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_1', camId: availableCams[0]?.id || 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
-                            <span>⏹️</span> 1 Kamera
-                        </button>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_4', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
-                            <span>🔲</span> 4 Kamera (2x2)
-                        </button>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_6', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
-                            <span>▦</span> 6 Kamera (2x3)
-                        </button>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ preset: 'grid_9', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem;">
-                            <span>▦</span> 9 Kamera (3x3)
-                        </button>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'tour_toggle', tourInterval: 10 })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);">
-                            <span>🔄</span> Patroli / Tour
-                        </button>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Preset Tampilan Default Kiosk:</label>
+                            <select name="preset" id="kioskPresetSelect" onchange="toggleKioskCamSelector(this.value)" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                                <option value="live_grid" ${preset === 'live_grid' ? 'selected' : ''}>Grid 4 Kamera (2x2 Quad Live View)</option>
+                                <option value="live_grid_3x3" ${preset === 'live_grid_3x3' ? 'selected' : ''}>Grid 9 Kamera (3x3 Live View)</option>
+                                <option value="single_cam" ${preset === 'single_cam' ? 'selected' : ''}>Kamera Tunggal Fullscreen</option>
+                                <option value="full_dashboard" ${preset === 'full_dashboard' ? 'selected' : ''}>Tampilan Penuh Dashboard NVR</option>
+                            </select>
+                        </div>
+
+                        <div id="kioskSingleCamBox" style="display:${preset === 'single_cam' ? 'block' : 'none'};">
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Pilih Kamera Utama:</label>
+                            <select name="target_cam_id" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                                ${camOptionsHtml}
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                <!-- 2. Alihkan Langsung ke Kamera Tertentu -->
-                <div style="margin-bottom:0.85rem;">
-                    <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Alihkan Langsung ke Kamera Tertentu (Fullscreen TV):</span>
-                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:115px; overflow-y:auto; padding:0.25rem 0;">
-                        ${camRemoteBtnsHtml}
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                        <div>
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Resolusi Tampilan Layar:</label>
+                            <select name="resolution" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                                <option value="auto" ${configObj.resolution === 'auto' ? 'selected' : ''}>Otomatis (Sesuai EDID Layar TV/Monitor)</option>
+                                <option value="1080p" ${configObj.resolution === '1080p' ? 'selected' : ''}>1080p Full HD (1920x1080)</option>
+                                <option value="720p" ${configObj.resolution === '720p' ? 'selected' : ''}>720p HD (1280x720)</option>
+                                <option value="4k" ${configObj.resolution === '4k' ? 'selected' : ''}>4K UHD (3840x2160)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Rotasi Orientasi Layar:</label>
+                            <select name="rotation" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
+                                <option value="0" ${String(configObj.rotation) === '0' ? 'selected' : ''}>0° (Normal Horizontal Landscape)</option>
+                                <option value="90" ${String(configObj.rotation) === '90' ? 'selected' : ''}>90° (Vertical Signage Kanan)</option>
+                                <option value="180" ${String(configObj.rotation) === '180' ? 'selected' : ''}>180° (Terbalik Inverted)</option>
+                                <option value="270" ${String(configObj.rotation) === '270' ? 'selected' : ''}>270° (Vertical Signage Kiri)</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                <!-- 3. Aksi Kontrol Cepat TV -->
-                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,0.08); padding-top:0.75rem;">
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'refresh' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
-                        <span>🔄</span> Sambung Ulang Stream
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="sendKioskRemoteCmd({ action: 'reload' })" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem; background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.3);" title="Paksa muat ulang halaman TV jika tampilan macet atau perlu update">
-                        <span>⚡</span> Hard Reload TV
-                    </button>
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="toggleKioskBlackout()" id="btnKioskBlackout" style="display:flex; align-items:center; gap:0.3rem; font-size:0.78rem;">
-                        <span>🌙</span> Standby / Layar Hitam
-                    </button>
-                </div>
+                    <div style="background:rgba(0,0,0,0.15); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
+                        <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Pengaturan Sistem, Pembersihan Browser & Penghemat Daya:</strong>
+                        <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                            <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                                <input type="checkbox" name="hardened_mode" value="true" ${configObj.hardened_mode !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#10b981;">
+                                <span>🛡️ <strong>Mode Kiosk Bersih:</strong> Matikan Google Translate, dialog error, info-bar, dan pop-up sandi</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                                <input type="checkbox" name="incognito" value="true" ${configObj.incognito !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#10b981;">
+                                <span>🧹 <strong>Profil Bersih / Incognito:</strong> Bebas cache lama dan sesi kadaluwarsa setiap boot STB</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                                <input type="checkbox" name="auto_start" value="true" ${configObj.auto_start ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
+                                <span>Otomatis nyalakan tampilan HDMI saat STB Boot jika kabel terdeteksi</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
+                                <input type="checkbox" name="auto_restart_crash" value="true" ${configObj.auto_restart_crash !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
+                                <span>Auto-restart tampilan peramban Kiosk jika sesi grafis crash / tertutup</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">URL Tampilan Lokal (Default Port NVR):</label>
+                        <input type="text" name="display_url" value="${configObj.display_url || 'http://localhost:3000/?kiosk=1'}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px; font-family:monospace; font-size:0.85rem;">
+                    </div>
+                </form>
             </div>
-
-            <form id="addonConfigForm">
-                <div style="background:rgba(0,0,0,0.18); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
-                    <label style="display:block; margin-bottom:0.35rem; font-weight:600; font-size:0.88rem; color:var(--text);">
-                        🛡️ Hak Akses Sesi Tampilan TV (RBAC Keamanan):
-                    </label>
-                    <select name="role" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                        <option value="viewer" ${configObj.role !== 'admin' ? 'selected' : ''}>🔒 Kiosk Viewer (Hanya Live Stream Kamera - Terkunci Aman & Anti-Tamper)</option>
-                        <option value="admin" ${configObj.role === 'admin' ? 'selected' : ''}>🔓 Administrator (Akses Operasional Penuh)</option>
-                    </select>
-                    <small style="color:var(--text-muted); display:block; margin-top:0.35rem;">
-                        *Rekomendasi <strong>Kiosk Viewer</strong>: Mencegah siapapun yang mencolok mouse ke STB untuk menghapus rekaman, merusak konfigurasi kamera, atau membuka menu lisensi.
-                    </small>
-                </div>
-
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
-                    <div>
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Preset Tampilan Default Kiosk:</label>
-                        <select name="preset" id="kioskPresetSelect" onchange="toggleKioskCamSelector(this.value)" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                            <option value="live_grid" ${preset === 'live_grid' ? 'selected' : ''}>Grid 4 Kamera (2x2 Quad Live View)</option>
-                            <option value="live_grid_3x3" ${preset === 'live_grid_3x3' ? 'selected' : ''}>Grid 9 Kamera (3x3 Live View)</option>
-                            <option value="single_cam" ${preset === 'single_cam' ? 'selected' : ''}>Kamera Tunggal Fullscreen</option>
-                            <option value="full_dashboard" ${preset === 'full_dashboard' ? 'selected' : ''}>Tampilan Penuh Dashboard NVR</option>
-                        </select>
-                    </div>
-
-                    <div id="kioskSingleCamBox" style="display:${preset === 'single_cam' ? 'block' : 'none'};">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Pilih Kamera Utama:</label>
-                        <select name="target_cam_id" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                            ${camOptionsHtml}
-                        </select>
-                    </div>
-                </div>
-
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
-                    <div>
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Resolusi Tampilan Layar:</label>
-                        <select name="resolution" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                            <option value="auto" ${configObj.resolution === 'auto' ? 'selected' : ''}>Otomatis (Sesuai EDID Layar TV/Monitor)</option>
-                            <option value="1080p" ${configObj.resolution === '1080p' ? 'selected' : ''}>1080p Full HD (1920x1080)</option>
-                            <option value="720p" ${configObj.resolution === '720p' ? 'selected' : ''}>720p HD (1280x720)</option>
-                            <option value="4k" ${configObj.resolution === '4k' ? 'selected' : ''}>4K UHD (3840x2160)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Rotasi Orientasi Layar:</label>
-                        <select name="rotation" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                            <option value="0" ${String(configObj.rotation) === '0' ? 'selected' : ''}>0° (Normal Horizontal Landscape)</option>
-                            <option value="90" ${String(configObj.rotation) === '90' ? 'selected' : ''}>90° (Vertical Signage Kanan)</option>
-                            <option value="180" ${String(configObj.rotation) === '180' ? 'selected' : ''}>180° (Terbalik Inverted)</option>
-                            <option value="270" ${String(configObj.rotation) === '270' ? 'selected' : ''}>270° (Vertical Signage Kiri)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style="background:rgba(0,0,0,0.15); padding:1rem; border-radius:6px; border:1px solid var(--border); margin-bottom:1.25rem;">
-                    <strong style="display:block; margin-bottom:0.75rem; font-size:0.88rem; color:var(--text);">Pengaturan Sistem, Pembersihan Browser & Penghemat Daya:</strong>
-                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
-                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
-                            <input type="checkbox" name="hardened_mode" value="true" ${configObj.hardened_mode !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#10b981;">
-                            <span>🛡️ <strong>Mode Kiosk Bersih:</strong> Matikan Google Translate, dialog error, info-bar, dan pop-up sandi</span>
-                        </label>
-                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
-                            <input type="checkbox" name="incognito" value="true" ${configObj.incognito !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#10b981;">
-                            <span>🧹 <strong>Profil Bersih / Incognito:</strong> Bebas cache lama dan sesi kadaluwarsa setiap boot STB</span>
-                        </label>
-                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
-                            <input type="checkbox" name="auto_start" value="true" ${configObj.auto_start ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
-                            <span>Otomatis nyalakan tampilan HDMI saat STB Boot jika kabel terdeteksi</span>
-                        </label>
-                        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem;">
-                            <input type="checkbox" name="auto_restart_crash" value="true" ${configObj.auto_restart_crash !== false ? 'checked' : ''} style="width:16px; height:16px; accent-color:#3b82f6;">
-                            <span>Auto-restart tampilan peramban Kiosk jika sesi grafis crash / tertutup</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div>
-                    <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">URL Tampilan Lokal (Default Port NVR):</label>
-                    <input type="text" name="display_url" value="${configObj.display_url || 'http://localhost:3000/?kiosk=1'}" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px; font-family:monospace; font-size:0.85rem;">
-                </div>
-            </form>
         `;
         return;
     }
@@ -10538,6 +10581,38 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
     container.innerHTML = html;
 }
 
+function switchKioskAddonTab(tabName) {
+    const paneRemote = document.getElementById('tabPaneKioskRemote');
+    const paneSettings = document.getElementById('tabPaneKioskSettings');
+    const btnRemote = document.getElementById('tabBtnKioskRemote');
+    const btnSettings = document.getElementById('tabBtnKioskSettings');
+
+    if (tabName === 'remote') {
+        if (paneRemote) paneRemote.style.display = 'block';
+        if (paneSettings) paneSettings.style.display = 'none';
+        if (btnRemote) {
+            btnRemote.className = 'btn btn-sm btn-primary';
+            btnRemote.style.fontWeight = '700';
+        }
+        if (btnSettings) {
+            btnSettings.className = 'btn btn-sm btn-secondary';
+            btnSettings.style.fontWeight = '600';
+        }
+    } else {
+        if (paneRemote) paneRemote.style.display = 'none';
+        if (paneSettings) paneSettings.style.display = 'block';
+        if (btnRemote) {
+            btnRemote.className = 'btn btn-sm btn-secondary';
+            btnRemote.style.fontWeight = '600';
+        }
+        if (btnSettings) {
+            btnSettings.className = 'btn btn-sm btn-primary';
+            btnSettings.style.fontWeight = '700';
+        }
+    }
+}
+window.switchKioskAddonTab = switchKioskAddonTab;
+
 function toggleKioskCamSelector(val) {
     const box = document.getElementById('kioskSingleCamBox');
     if (box) box.style.display = (val === 'single_cam') ? 'block' : 'none';
@@ -10545,6 +10620,12 @@ function toggleKioskCamSelector(val) {
 
 async function sendKioskRemoteCmd(payload) {
     try {
+        if (payload.action === 'fullscreen_enter') {
+            payload.fullscreen_action = 'enter';
+        } else if (payload.action === 'fullscreen_exit') {
+            payload.fullscreen_action = 'exit';
+        }
+
         const res = await authFetch('/api/addons/hdmi-kiosk/remote-cmd', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

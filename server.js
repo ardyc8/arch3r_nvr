@@ -6486,7 +6486,7 @@ app.get('/api/addons/hdmi-kiosk/live-state', (req, res) => {
 });
 
 app.post('/api/addons/hdmi-kiosk/remote-cmd', verifyToken, requireAdmin, (req, res) => {
-    const { action, preset, camId, blackout, tour, tourInterval } = req.body;
+    const { action, preset, camId, blackout, tour, tourInterval, fullscreen_action } = req.body;
     
     if (preset) {
         kioskLiveState.preset = preset;
@@ -6498,7 +6498,12 @@ app.post('/api/addons/hdmi-kiosk/remote-cmd', verifyToken, requireAdmin, (req, r
         kioskLiveState.refresh_seq = (kioskLiveState.refresh_seq || 0) + 1;
     }
     if (action === 'reload') {
+        kioskLiveState.reload_token = Date.now().toString(); // Gunakan timestamp token agar TV hanya reload tepat 1 kali
         kioskLiveState.reload_seq = (kioskLiveState.reload_seq || 0) + 1;
+    }
+    if (fullscreen_action || action === 'fullscreen_enter' || action === 'fullscreen_exit') {
+        kioskLiveState.fullscreen_action = fullscreen_action || (action === 'fullscreen_enter' ? 'enter' : 'exit');
+        kioskLiveState.fullscreen_token = Date.now().toString();
     }
     if (typeof tour === 'boolean') {
         kioskLiveState.tour = tour;

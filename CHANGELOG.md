@@ -1,6 +1,24 @@
 # Changelog
 
-## [Ver 11.1.8] - 2026-09-27
+## [Ver 11.2.0] - 2026-09-27
+### Clean HDMI Kiosk Runtime & Zero-Syntax Scope Fix
+- **Perbaikan Syntax Scope (`public/script.js`):**
+  - Mengeliminasi duplikasi deklarasi variabel `let lastRefreshSeq` di modul runtime Kiosk.
+- **Penyelarasan Versi Sistem:**
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.2.0** sesuai Semantic Versioning Strict.
+
+## [Ver 11.1.9] - 2026-09-27
+### HDMI Kiosk 2-Tab Architecture & Real-Time TV Remote Synchronization
+- **Pemisahan Pop-up Pengaturan HDMI Kiosk Menjadi 2 Tab Mandiri (`script.js`):**
+  - **Tab 1: 🎮 Remote Layar TV**: Mengisolasi kontrol langsung TV (pilihan grid 1x1, 2x2, 2x3, 3x3, alih kamera perorangan, mode patroli, fullscreen & exit fullscreen, standby/layar hitam, dan hard reload).
+  - **Tab 2: ⚙️ Pengaturan Kiosk**: Menata formulir hak akses RBAC (Kiosk Viewer vs Admin), preset default, resolusi, rotasi orientasi, dan opsi pembersihan profil browser.
+- **Perbaikan Bug Infinite Hard Reload Loop (`server.js`, `script.js`):**
+  - Mengganti nomor urut sekuens reload dengan `reload_token` berbasis timestamp dan pencatatan di `sessionStorage` TV, memastikan layar TV hanya memuat ulang tepat 1 kali tanpa looping restart.
+- **Sinkronisasi Real-Time Grid TV & Fitur Fullscreen (`server.js`, `script.js`):**
+  - Mengintegrasikan sinyal preset remote langsung ke mesin grid tampilan utama NVR (`window.setGridLayout()` dan `window.onChannelDropdownChange()`).
+  - Menambahkan aksi **⛶ Layar Penuh TV** dan **🗗 Keluar Layar Penuh** yang dikendalikan secara instan dari HP via SSE (<50ms).
+- **Penyelarasan Versi Sistem**:
+  - Menaikkan nomor versi aplikasi ke **Ver. 11.1.9** sesuai Semantic Versioning Strict.
 ### Autonomous Auto-Adaptive FFmpeg Engine & Zero-Crash Recording Self-Healing
 - **Auto-Adaptive FFmpeg Capabilities Doctor (`server.js`):**
   - **Self-Diagnosis saat Booting (`probeFfmpegCapabilities`)**: Memindai opsi bantuan `ffmpeg -h full` secara otomatis saat server booting untuk mendeteksi dialek timeout yang didukung OS Linux STB (`-timeout`, `-stimeout`, `-rw_timeout`, atau fallback vanilla).
