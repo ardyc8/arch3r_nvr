@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 11.5.4] - 2026-09-28
+### Unified Hardware Port Virtualizer & Clean 1-to-1 Ethernet Binding
+- **Unifikasi & Deduplikasi Interface Fisik (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Eliminasi Kartu Duplikat (Zero-Duplicate Card)**: Menyatukan pemindaian hardware fisik (`device status`) dan profil sambungan NetworkManager (`connection show`). Setiap interface fisik (`eth0`, `wlan0`) kini dijamin hanya tampil tepat **1 buah kartu antarmuka** yang merepresentasikan port fisik aslinya.
+  - **Auto-Manage Background Enforcer**: Mendeteksi jika `eth0` berstatus `UNMANAGED` dan secara proaktif mengaktifkannya menjadi `MANAGED` (`nmcli device set eth0 managed yes`) tanpa membingungkan pengguna.
+  - **1-to-1 Clean Binding pada `restoreAndActivateLan`**: Menghapus profil unlinked/ghost lama dan mengikat langsung profil `eth0` ke port hardware fisik aslinya.
+- **Penyempurnaan Tampilan Visual Kartu Antarmuka (`public/script.js`):**
+  - Mengganti tombol ganda dengan tombol tunggal `⚡ Hubungkan` jika kabel belum mendapat IP.
+
 ## [Ver 11.5.3] - 2026-09-28
 ### Wi-Fi Lifeline Guard & Non-Blocking Safe LAN Auto-Recovery Engine
 - **Perlindungan Jalur Wi-Fi (Wi-Fi Lifeline Protection) (`addons/network-manager/lib/nmcli_driver.js`):**

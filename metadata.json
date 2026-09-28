@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.5.3 - Wi-Fi Lifeline Guard, Safe LAN Auto-Recovery Engine & Zero-Lockout Proxy-ARP.",
+  "description": "Arch3r NVR Ver. 11.5.4 - Unified Hardware Port Virtualizer, Clean 1-to-1 Ethernet Binding & Auto-Managed Engine.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

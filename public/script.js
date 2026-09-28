@@ -15596,29 +15596,26 @@ window.fetchNetMgrConnections = async function() {
                 const isLan = conn.type === 'ethernet';
                 const isWifi = conn.type === 'wifi';
                 const icon = isLan ? '🔌 Ethernet (LAN)' : (isWifi ? '📶 Wi-Fi' : '🌐 Interface');
-                const badgeBg = conn.active ? 'rgba(16,185,129,0.2)' : 'rgba(100,116,139,0.2)';
-                const badgeBorder = conn.active ? '#059669' : '#475569';
-                const badgeText = conn.active ? '#34d399' : '#94a3b8';
-                const isGhost = !conn.active || !conn.device || conn.device === 'N/A' || conn.device === '--';
-                const isUnlinkedLan = isLan && (!conn.active || conn.unlinked || !conn.ip);
-                const targetId = conn.uuid || conn.name;
+                const isConnected = conn.active || Boolean(conn.ip);
+                const badgeBg = isConnected ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)';
+                const badgeBorder = isConnected ? '#059669' : '#d97706';
+                const badgeText = isConnected ? '#34d399' : '#fbbf24';
+                const stateLabel = isConnected ? 'ACTIVATED' : (conn.state || 'DISCONNECTED').toUpperCase();
+                const needsActivation = isLan && (!isConnected || !conn.ip);
 
                 return `
-                    <div style="background:rgba(15,23,42,0.6); border:1px solid ${isUnlinkedLan ? 'rgba(245,158,11,0.3)' : (isGhost ? 'rgba(239,68,68,0.25)' : '#1e293b')}; border-radius:6px; padding:0.75rem; display:flex; flex-direction:column; gap:0.35rem; position:relative;">
+                    <div style="background:rgba(15,23,42,0.6); border:1px solid ${needsActivation ? 'rgba(245,158,11,0.3)' : '#1e293b'}; border-radius:6px; padding:0.75rem; display:flex; flex-direction:column; gap:0.35rem; position:relative;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <strong style="color:#f8fafc; font-size:0.85rem;">${icon}</strong>
                             <div style="display:flex; align-items:center; gap:0.35rem;">
-                                <span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; background:${badgeBg}; border:1px solid ${badgeBorder}; color:${badgeText}; font-weight:600;">${conn.state.toUpperCase()}</span>
-                                ${isUnlinkedLan ? `
-                                    <button type="button" onclick="window.restoreAndActivateLanUI('${conn.device || 'eth0'}')" title="Hubungkan dan aktifkan koneksi fisik LAN ini" style="background:rgba(16,185,129,0.2); border:1px solid #059669; color:#34d399; border-radius:4px; font-size:0.68rem; padding:1px 6px; cursor:pointer; font-weight:700;">⚡ Aktifkan LAN</button>
-                                ` : ''}
-                                ${isGhost && conn.name !== 'lo' && !conn.unlinked ? `
-                                    <button type="button" onclick="window.deleteNetMgrConnection('${targetId.replace(/'/g, "\\'")}', '${conn.name.replace(/'/g, "\\'")}')" title="Hapus profil ghost/tidak aktif ini" style="background:rgba(239,68,68,0.15); border:1px solid #dc2626; color:#f87171; border-radius:4px; font-size:0.68rem; padding:1px 6px; cursor:pointer; font-weight:600;">🗑️ Hapus</button>
+                                <span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; background:${badgeBg}; border:1px solid ${badgeBorder}; color:${badgeText}; font-weight:600;">${stateLabel}</span>
+                                ${needsActivation ? `
+                                    <button type="button" onclick="window.restoreAndActivateLanUI('${conn.device || 'eth0'}')" title="Hubungkan dan aktifkan koneksi kabel fisik ini" style="background:rgba(16,185,129,0.2); border:1px solid #059669; color:#34d399; border-radius:4px; font-size:0.68rem; padding:1px 6px; cursor:pointer; font-weight:700;">⚡ Hubungkan</button>
                                 ` : ''}
                             </div>
                         </div>
                         <div style="font-size:0.78rem; color:#cbd5e1; font-family:monospace;">Nama: <strong>${conn.name}</strong></div>
-                        <div style="font-size:0.75rem; color:#94a3b8;">Device: <code>${conn.device || 'N/A'}</code> ${conn.ip ? `&bull; IP: <strong style="color:#38bdf8;">${conn.ip}</strong>` : (isLan ? '<span style="color:#fbbf24;">(Belum Tersambung)</span>' : '')}</div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">Device: <code>${conn.device || 'N/A'}</code> ${conn.ip ? `&bull; IP: <strong style="color:#38bdf8;">${conn.ip}</strong>` : (isLan ? '<span style="color:#fbbf24;">(Kabel Belum Mendapat IP)</span>' : '')}</div>
                     </div>
                 `;
             }).join('');

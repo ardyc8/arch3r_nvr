@@ -126,106 +126,112 @@ export class ArmbianNetworkManager {
             };
         }
 
-        // Run tabular format command: NAME:TYPE:DEVICE:STATE:UUID
+        // 1. Get physical and virtual device status from OS: DEVICE:TYPE:STATE:CONNECTION
+        const devRes = await this.runCommand('nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device status');
+        // 2. Get connection profiles: NAME:TYPE:DEVICE:STATE:UUID
         const cmdRes = await this.runCommand('nmcli -t -f NAME,TYPE,DEVICE,STATE,UUID connection show');
-        if (!cmdRes.success) {
+
+        if (!devRes.success && !cmdRes.success) {
             return {
                 success: false,
                 available: true,
-                error: `Failed to execute nmcli: ${cmdRes.stderr || cmdRes.error}`,
+                error: `Failed to execute nmcli: ${devRes.stderr || cmdRes.stderr}`,
                 connections: [],
                 lan: null,
                 wifi: null
             };
         }
 
-        const lines = cmdRes.stdout.split('\n').filter(l => l.trim().length > 0);
-        const connections = [];
-        let lanConn = null;
-        let wifiConn = null;
-
-        for (const line of lines) {
-            // Note: nmcli -t escapes colons in connection names with backslash
+        const profileLines = cmdRes.success ? cmdRes.stdout.split('\n').filter(l => l.trim().length > 0) : [];
+        const rawProfiles = [];
+        for (const line of profileLines) {
             const parts = line.split(/(?<!\\):/);
             if (parts.length >= 4) {
-                const name = parts[0].replace(/\\:/g, ':').trim();
-                const type = parts[1].trim().toLowerCase();
-                const device = parts[2].trim();
-                const state = parts[3].trim();
-                const uuid = parts[4] ? parts[4].trim() : '';
-
-                const isEthernet = type.includes('ethernet') || type.includes('802-3-ethernet');
-                const isWifi = type.includes('wifi') || type.includes('802-11-wireless');
-                const isActive = device !== '--' && device !== '' && !state.includes('deactivated');
-
-                const connObj = {
-                    name,
-                    type: isEthernet ? 'ethernet' : (isWifi ? 'wifi' : type),
+                rawProfiles.push({
+                    name: parts[0].replace(/\\:/g, ':').trim(),
+                    type: parts[1].trim().toLowerCase(),
                     rawType: parts[1],
-                    device: device === '--' ? '' : device,
-                    state,
-                    uuid,
-                    active: isActive
-                };
-
-                connections.push(connObj);
-
-                // Identify active primary LAN and Wi-Fi
-                if (isActive) {
-                    if (isEthernet && !lanConn) lanConn = connObj;
-                    if (isWifi && !wifiConn) wifiConn = connObj;
-                } else {
-                    if (isEthernet && !lanConn) lanConn = connObj;
-                    if (isWifi && !wifiConn) wifiConn = connObj;
-                }
+                    device: parts[2].trim() === '--' ? '' : parts[2].trim(),
+                    state: parts[3].trim(),
+                    uuid: parts[4] ? parts[4].trim() : ''
+                });
             }
         }
 
-        // Check physical devices via `nmcli device status` to catch unmanaged/disconnected eth0
-        const devRes = await this.runCommand('nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device status');
-        const physicalDevices = [];
-        if (devRes.success && devRes.stdout) {
-            const devLines = devRes.stdout.split('\n').filter(l => l.trim().length > 0);
-            for (const dLine of devLines) {
-                const dParts = dLine.split(/(?<!\\):/);
-                if (dParts.length >= 3) {
-                    const devName = dParts[0].trim();
-                    const devType = dParts[1].trim().toLowerCase();
-                    const devState = dParts[2].trim();
-                    const devConn = dParts[3] ? dParts[3].trim() : '--';
+        const devLines = devRes.success ? devRes.stdout.split('\n').filter(l => l.trim().length > 0) : [];
+        const unifiedConnections = [];
+        const processedDevices = new Set();
+        let lanConn = null;
+        let wifiConn = null;
 
-                    const isEth = devType.includes('ethernet') || devName.startsWith('eth') || devName.startsWith('en') || devName.startsWith('end');
-                    const isWf = devType.includes('wifi') || devName.startsWith('wlan');
+        for (const dLine of devLines) {
+            const dParts = dLine.split(/(?<!\\):/);
+            if (dParts.length >= 3) {
+                const devName = dParts[0].trim();
+                const devType = dParts[1].trim().toLowerCase();
+                let devState = dParts[2].trim();
+                const devConnName = dParts[3] ? dParts[3].trim() : '--';
 
-                    physicalDevices.push({
-                        device: devName,
-                        type: isEth ? 'ethernet' : (isWf ? 'wifi' : devType),
-                        state: devState,
-                        connection: devConn === '--' ? '' : devConn
-                    });
+                processedDevices.add(devName);
 
-                    // If physical Ethernet device exists (e.g., eth0) but has no active connection profile in `connections`,
-                    // inject a visible unlinked/disconnected entry so user can recover it with 1-click!
-                    if (isEth && !connections.some(c => c.device === devName)) {
-                        const unlinkedLanObj = {
-                            name: devConn !== '--' && devConn ? devConn : `Physical Device (${devName})`,
-                            type: 'ethernet',
-                            rawType: 'ethernet',
-                            device: devName,
-                            state: devState || 'disconnected',
-                            uuid: '',
-                            active: devState === 'connected',
-                            unlinked: true
-                        };
-                        connections.push(unlinkedLanObj);
-                        if (!lanConn) lanConn = unlinkedLanObj;
-                    }
+                const isEthernet = devType.includes('ethernet') || devName.startsWith('eth') || devName.startsWith('en') || devName.startsWith('end');
+                const isWifi = devType.includes('wifi') || devName.startsWith('wlan');
+                const isLoopback = devType.includes('loopback') || devName === 'lo';
+
+                // If Ethernet is unmanaged, trigger managed state in background for seamless UX
+                if (isEthernet && devState.toLowerCase() === 'unmanaged') {
+                    this.runCommand(`nmcli device set "${devName}" managed yes`).catch(() => {});
                 }
+
+                // Match with active connection profile if any
+                const matchedProfile = rawProfiles.find(p => p.device === devName) ||
+                                       (devConnName !== '--' ? rawProfiles.find(p => p.name === devConnName) : null);
+
+                const isConnected = devState === 'connected' || (matchedProfile && matchedProfile.state === 'activated');
+                const displayName = matchedProfile ? matchedProfile.name : (devConnName !== '--' && devConnName ? devConnName : devName);
+
+                const connObj = {
+                    name: displayName,
+                    type: isEthernet ? 'ethernet' : (isWifi ? 'wifi' : (isLoopback ? 'loopback' : devType)),
+                    rawType: devType,
+                    device: devName,
+                    state: isConnected ? 'activated' : devState,
+                    uuid: matchedProfile ? matchedProfile.uuid : '',
+                    active: isConnected,
+                    unmanaged: devState.toLowerCase() === 'unmanaged'
+                };
+
+                unifiedConnections.push(connObj);
+
+                if (isEthernet && (!lanConn || isConnected)) lanConn = connObj;
+                if (isWifi && (!wifiConn || isConnected)) wifiConn = connObj;
+            }
+        }
+
+        // Add any remaining virtual/software connections (like bridges or vpn) that don't have physical devices
+        for (const prof of rawProfiles) {
+            if (prof.device && !processedDevices.has(prof.device)) {
+                processedDevices.add(prof.device);
+                const isEth = prof.type.includes('ethernet');
+                const isWf = prof.type.includes('wifi');
+                const isAct = prof.state === 'activated';
+                const connObj = {
+                    name: prof.name,
+                    type: isEth ? 'ethernet' : (isWf ? 'wifi' : prof.type),
+                    rawType: prof.rawType,
+                    device: prof.device,
+                    state: prof.state,
+                    uuid: prof.uuid,
+                    active: isAct
+                };
+                unifiedConnections.push(connObj);
+                if (isEth && (!lanConn || isAct)) lanConn = connObj;
+                if (isWf && (!wifiConn || isAct)) wifiConn = connObj;
             }
         }
 
         // Get IP details per interface if devices are active
-        for (const conn of connections) {
+        for (const conn of unifiedConnections) {
             if (conn.device && conn.device !== 'N/A' && conn.device !== '--') {
                 const ipRes = await this.runCommand(`nmcli -t -f IP4.ADDRESS,IP4.GATEWAY device show "${conn.device}"`);
                 if (ipRes.success) {
@@ -244,11 +250,10 @@ export class ArmbianNetworkManager {
         return {
             success: true,
             available: true,
-            connections,
-            devices: physicalDevices,
+            connections: unifiedConnections,
             lan: lanConn,
             wifi: wifiConn,
-            count: connections.length
+            count: unifiedConnections.length
         };
     }
 
@@ -833,20 +838,22 @@ export class ArmbianNetworkManager {
             await this.runCommand(cmd);
         }
 
-        // 3. Set physical LAN device as managed and non-blocking
+        // 3. Clean up any unlinked ghost profiles
+        await this.runCommand('nmcli connection delete "Wired LAN" 2>/dev/null || true');
+        await this.runCommand(`nmcli connection delete "Wired connection 1" 2>/dev/null || true`);
+
+        // 4. Set physical LAN device as managed and non-blocking
         await this.runCommand(`nmcli device set ${safeDev} managed yes`);
         await this.runCommand(`nmcli device set ${safeDev} autoconnect yes`);
 
-        // 4. Try to connect existing device first
+        // 5. Connect or create clean 1-to-1 profile for this physical interface
         let connectRes = await this.runCommand(`nmcli device connect ${safeDev}`);
         steps.push({ step: 'device_connect', cmd: `nmcli device connect ${safeDev}`, ...connectRes });
 
-        // 5. If connect fails or no connection profile is assigned, create clean "Wired LAN" connection
         if (!connectRes.success) {
-            // Check if connection profile already exists, if not create with may-fail=yes so it never blocks Wi-Fi
-            await this.runCommand(`nmcli connection add type ethernet con-name "Wired LAN" ifname ${safeDev} autoconnect yes ipv4.may-fail yes`);
-            const upRes = await this.runCommand('nmcli connection up "Wired LAN"');
-            steps.push({ step: 'connection_up', cmd: 'nmcli connection up "Wired LAN"', ...upRes });
+            await this.runCommand(`nmcli connection add type ethernet con-name "${safeDev}" ifname ${safeDev} autoconnect yes ipv4.may-fail yes 2>/dev/null || true`);
+            const upRes = await this.runCommand(`nmcli connection up "${safeDev}" 2>/dev/null || true`);
+            steps.push({ step: 'connection_up', cmd: `nmcli connection up "${safeDev}"`, ...upRes });
         }
 
         // 6. Wi-Fi Lifeline Guarantee: Always re-assert active Wi-Fi connection so internet/remote access is never dropped!
