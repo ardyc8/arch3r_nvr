@@ -1,5 +1,13 @@
 # Changelog
 
+## [Ver 11.5.8] - 2026-09-28
+### Interactive Wi-Fi Connect UX, Smooth Scroll, Auto-Focus & Dual-Homed Coexistence
+- **Peningkatan UX Interaktif Pemilihan Wi-Fi (`public/script.js`):**
+  - **Auto-Scroll & Glowing Focus (`window.selectWifiSsid`)**: Ketika pengguna mengklik *"Pilih SSID & Sambung"* atau kartu sinyal Wi-Fi di daftar hasil pemindaian, sistem secara otomatis menggulir (*smooth-scroll*) tampilan modal ke atas menuju kotak input password, memberikan efek animasi bercahaya (*blue glow pulse*), dan langsung memfokuskan kursor pada kotak input password.
+  - **Interaksi Kartu Wi-Fi Penuh**: Seluruh baris kartu Wi-Fi kini dapat diklik langsung untuk memilih SSID dan mengarahkan pengguna ke input password.
+- **Edukasi Arsitektur Dual-Homed (LAN & Wi-Fi Berdampingan):**
+  - Mengonfirmasi bahwa Linux Armbian pada STB **sangat mampu dan mendukung penuh** interface LAN fisik (`eth0`) dan Wi-Fi (`wlan0`) aktif berdampingan secara bersamaan, selama tabel prioritas routing (*metric*) dan kernel ARP diselaraskan (melalui tombol master `⚡ arch3rBridge` atau `⚡ Set Priorities`).
+
 ## [Ver 11.5.7] - 2026-09-28
 ### 1-Click Master Bridge Toggle, Virtual P2P Cleaner & Live Route Metric Badges
 - **Pembersihan Perangkat Virtual P2P & Wi-Fi Sekunder (`addons/network-manager/lib/nmcli_driver.js`):**

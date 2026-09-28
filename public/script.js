@@ -15138,7 +15138,7 @@ function ensureNetMgrModalDOM() {
                     </p>
 
                     <!-- Form Sambung Cepat Wi-Fi -->
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem; background:rgba(0,0,0,0.25); padding:0.85rem; border-radius:8px; border:1px solid var(--border, #334155);">
+                    <div id="wifiQuickConnectFormBox" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem; background:rgba(0,0,0,0.25); padding:0.85rem; border-radius:8px; border:1px solid var(--border, #334155);">
                         <div>
                             <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Nama Wi-Fi (SSID):</label>
                             <input type="text" id="wifiSsidInput" placeholder="Pilih dari daftar atau ketik SSID" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem; box-sizing:border-box;">
@@ -15306,14 +15306,36 @@ window.toggleWifiPasswordVisibility = function() {
     pwdInput.type = (pwdInput.type === 'password') ? 'text' : 'password';
 };
 
-window.selectWifiSsid = function(ssid) {
+window.selectWifiSsid = function(ssid, isSecured = true) {
     const ssidInput = document.getElementById('wifiSsidInput');
     const pwdInput = document.getElementById('wifiPasswordInput');
+    const formBox = document.getElementById('wifiQuickConnectFormBox');
+
     if (ssidInput) ssidInput.value = ssid;
+
     if (pwdInput) {
+        // Smoothly scroll the password form into view
+        if (formBox) {
+            formBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            pwdInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Apply animated visual highlight glow to password input
+        pwdInput.style.transition = 'all 0.3s ease';
+        pwdInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.6), 0 0 15px rgba(59, 130, 246, 0.4)';
+        pwdInput.style.borderColor = '#3b82f6';
         pwdInput.focus();
+
+        setTimeout(() => {
+            if (pwdInput) {
+                pwdInput.style.boxShadow = '';
+                pwdInput.style.borderColor = 'var(--border, #334155)';
+            }
+        }, 2500);
     }
-    showToast(`Wi-Fi "${ssid}" dipilih. Masukkan password lalu klik "Sambungkan STB".`, 'info');
+
+    showToast(`✓ Wi-Fi "${ssid}" dipilih. Masukkan password pada kotak di atas lalu klik "Sambungkan STB".`, 'info');
 };
 
 window.scanWifiNetworksUI = async function(showToastNotify = true) {
@@ -15351,7 +15373,7 @@ window.scanWifiNetworksUI = async function(showToastNotify = true) {
                     const secBadge = net.security && net.security !== 'Open' ? `<span style="font-size:0.68rem; color:#94a3b8; background:rgba(255,255,255,0.06); padding:1px 5px; border-radius:3px;">🔒 ${net.security}</span>` : '<span style="font-size:0.68rem; color:#4ade80;">🔓 Open</span>';
 
                     return `
-                        <div style="background:rgba(15,23,42,0.85); border:1px solid ${net.inUse ? 'rgba(34,197,94,0.4)' : '#1e293b'}; border-radius:6px; padding:0.5rem 0.75rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                        <div onclick="window.selectWifiSsid('${net.ssid.replace(/'/g, "\\'")}', ${net.security !== 'Open'})" style="background:rgba(15,23,42,0.85); border:1px solid ${net.inUse ? 'rgba(34,197,94,0.4)' : '#1e293b'}; border-radius:6px; padding:0.55rem 0.75rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='${net.inUse ? 'rgba(34,197,94,0.4)' : '#1e293b'}'">
                             <div style="display:flex; align-items:center; gap:0.55rem;">
                                 <span style="font-size:0.95rem; color:${signalColor};">📶</span>
                                 <div>
@@ -15364,8 +15386,8 @@ window.scanWifiNetworksUI = async function(showToastNotify = true) {
                                     </div>
                                 </div>
                             </div>
-                            <button type="button" onclick="window.selectWifiSsid('${net.ssid.replace(/'/g, "\\'")}')" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:3px 10px; background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); color:#60a5fa; font-weight:600;">
-                                ${net.inUse ? 'Ganti Password' : 'Pilih SSID'}
+                            <button type="button" onclick="event.stopPropagation(); window.selectWifiSsid('${net.ssid.replace(/'/g, "\\'")}', ${net.security !== 'Open'})" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:4px 11px; background:rgba(59,130,246,0.15); border-color:rgba(59,130,246,0.4); color:#60a5fa; font-weight:600; cursor:pointer;">
+                                ${net.inUse ? 'Ganti Password' : 'Pilih SSID &amp; Sambung'}
                             </button>
                         </div>
                     `;
