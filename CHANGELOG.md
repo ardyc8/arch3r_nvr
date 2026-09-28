@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 11.2.7] - 2026-09-28
+### Universal IPC Wallclock Timestamps, Muxing Queue Buffer & Anti-Assertion Engine
+- **Eliminasi Error Fatal `pts has no value` & Assertion SIGABRT (`server.js`):**
+  - Menghapus flag `+igndts` yang sebelumnya menyebabkan hilangnya referensi timestamp pada frame video kamera IP yang tidak memiliki PTS eksplisit (`pts has no value`).
+  - Menerapkan `-use_wallclock_as_timestamps 1` pada input RTSP untuk seluruh level rekaman (Optimal, Adaptive, Ultra-Safe). Fitur ini secara otomatis menghasilkan timestamp berbasis jam lokal sistem Linux/Armbian untuk setiap frame video/audio yang masuk, menyelesaikan masalah selisih durasi raksasa (`Packet duration is out of range`) dan `Assertion next_dts failed (Code: null)`.
+- **Optimalisasi Buffer Muxer Universal IPC (`server.js`):**
+  - Menambahkan `-max_muxing_queue_size 2048` pada pipeline segmenter MP4 untuk mencegah packet drop atau buffer overflow saat muxer menunggu keyframe pertama dari kamera.
+  - Mempertahankan integrasi transcode AAC 44.1kHz dan segmenter `movflags=+faststart+frag_keyframe+empty_moov+default_base_moof` untuk penulisan atom MP4 seketika.
+
 ## [Ver 11.2.6] - 2026-09-28
 ### Universal AAC Audio Resampler, MP4 Frag Keyframe Header Tolerance & DTS Ignore (igndts)
 - **Eliminasi Error Inisialisasi Header MP4 & Exit Code 234 (`server.js`):**

@@ -3608,16 +3608,17 @@ function spawnRecordingFFmpeg(cam) {
     } else {
         const isRtsp = typeof sourceUrl === 'string' && sourceUrl.startsWith('rtsp://');
         if (isRtsp) {
-            // Level 2 (Ultra Safe Vanilla Mode): Murni hanya -rtsp_transport tcp -i URL tanpa argumen tambahan
+            // Level 2 (Ultra Safe Vanilla Mode): Minimal RTSP TCP untuk kompatibilitas kamera lawas / ARM SoC
             if (fallbackLevel >= 2) {
                 inputArgs = [
                     '-rtsp_transport', 'tcp',
-                    '-fflags', '+genpts+igndts+discardcorrupt',
+                    '-fflags', '+genpts+discardcorrupt',
+                    '-use_wallclock_as_timestamps', '1',
                     '-i', sourceUrl
                 ];
             } else {
-                // Level 0 & 1: Dynamic Auto-Probed Safe Arguments
-                // Menambahkan buffer network & toleransi AU header untuk mencegah 'Error parsing AU headers'
+                // Level 0 & 1: Dynamic Auto-Probed Universal IPC Arguments
+                // Menambahkan buffer network & toleransi AU header untuk mencegah packet drop & jitter
                 const dynamicArgs = [
                     '-rtsp_transport', 'tcp',
                     '-buffer_size', '1024000',
@@ -3633,12 +3634,15 @@ function spawnRecordingFFmpeg(cam) {
                     dynamicArgs.push(caps.rtspTimeoutFlag, '10000000'); // 10 detik
                 }
 
-                // Gunakan +igndts (Ignore DTS) untuk mencegah crash "Non-monotonic DTS in output stream: previous: 0, current: 0"
-                // saat kamera RTSP mengirimkan timestamp dobel atau jitter
+                // Universal IPC Timestamping:
+                // 1. +genpts +discardcorrupt: Buat PTS jika hilang dan buang paket rusak.
+                // 2. -use_wallclock_as_timestamps 1: Menyelesaikan "pts has no value", "Packet duration is out of range",
+                //    serta "Non-monotonic DTS" secara tuntas pada kamera IP generic/OEM yang timestamp internalnya kacau.
                 dynamicArgs.push(
                     '-analyzeduration', '5000000',
                     '-probesize', '5000000',
-                    '-fflags', '+genpts+igndts+discardcorrupt'
+                    '-fflags', '+genpts+discardcorrupt',
+                    '-use_wallclock_as_timestamps', '1'
                 );
 
                 inputArgs = [
@@ -3647,7 +3651,11 @@ function spawnRecordingFFmpeg(cam) {
                 ];
             }
         } else {
-            inputArgs = ['-fflags', '+genpts+igndts+discardcorrupt', '-i', sourceUrl];
+            inputArgs = [
+                '-fflags', '+genpts+discardcorrupt',
+                '-use_wallclock_as_timestamps', '1',
+                '-i', sourceUrl
+            ];
         }
     }
 
@@ -3673,7 +3681,7 @@ function spawnRecordingFFmpeg(cam) {
 
     // Perintah copy video stream ringan dengan transcode audio standar MP4 + faststart moov atom khusus untuk perekaman lokal/USB
     // Catatan: TIDAK menyertakan opsi bitrate video global (-b / -b:v) saat '-c:v copy'
-    // Menggunakan segment_format_options 'movflags=+faststart+frag_keyframe+empty_moov+default_base_moof' untuk toleransi header MP4
+    // -max_muxing_queue_size 2048: Menghindari packet buffer overflow saat audio/video muxer menunggu keyframe
     const args = [
         '-y',
         '-loglevel', 'warning',
@@ -3683,6 +3691,7 @@ function spawnRecordingFFmpeg(cam) {
         '-c:v', isDemo ? 'libx264' : 'copy',
         ...(isDemo ? ['-preset', 'ultrafast'] : []),
         ...audioArgs,
+        '-max_muxing_queue_size', '2048',
         '-f', 'segment',
         '-segment_time', segSec.toString(),
         '-segment_format', 'mp4',

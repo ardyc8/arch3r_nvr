@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.2.6 - Universal AAC Audio Resampler, MP4 Frag Keyframe Header Tolerance & DTS Ignore (igndts).",
+  "description": "Arch3r NVR Ver. 11.2.7 - Universal IPC Wallclock Timestamps, Muxing Queue Buffer & Anti-Assertion Engine.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
