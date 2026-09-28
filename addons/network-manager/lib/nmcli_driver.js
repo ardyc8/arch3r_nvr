@@ -653,12 +653,32 @@ export class ArmbianNetworkManager {
     }
 
     /**
+     * Purges any leftover or dangling br0 / bridge-slave NetworkManager profiles
+     * and guarantees physical interfaces (eth0, wlan0) are in managed state.
+     */
+    async ensureSafeStateAndPurgeDanglingBridges() {
+        const steps = [];
+        try {
+            const delCmds = [
+                'nmcli connection delete br0-lan',
+                'nmcli connection delete br0-wifi',
+                'nmcli connection delete br0',
+                'nmcli device set eth0 managed yes',
+                'nmcli device set wlan0 managed yes'
+            ];
+            for (const cmd of delCmds) {
+                const res = await this.runCommand(cmd);
+                steps.push({ cmd, success: res.success });
+            }
+        } catch (_) {}
+        return { success: true, steps };
+    }
+
+    /**
      * 8. enableArch3rBridge()
-     * Pro-level feature to completely bypass ISP router isolation via local network bridging & Transparent Proxy-ARP Relay.
-     * Dynamically handles Linux Wi-Fi Station limitations by combining:
-     * - Kernel IP Forwarding (`net.ipv4.ip_forward=1`)
-     * - Transparent Proxy-ARP on LAN & Wi-Fi interfaces (`net.ipv4.conf.all.proxy_arp=1`)
-     * - Optional L2 bridge (`br0`) with dynamic slave binding
+     * 100% Zero-Lockout Transparent Proxy-ARP & Kernel IP Forwarding Relay.
+     * Completely eliminates persistent L2 br0 slave profiles to guarantee STB physical IPs, SSH,
+     * Tailscale, and DHCP survive reboots without ever locking out the device.
      */
     async enableArch3rBridge() {
         const isAvailable = await this.isNmcliAvailable();
@@ -669,11 +689,14 @@ export class ArmbianNetworkManager {
             };
         }
 
+        // 1. Purge any dangling br0 profiles from previous runs to keep disk clean
+        await this.ensureSafeStateAndPurgeDanglingBridges();
+
         const detected = await this.detectActiveConnections();
         if (!detected.success) {
             return {
                 success: false,
-                error: `Failed to detect active network connections for bridging: ${detected.error}`
+                error: `Failed to detect active network connections: ${detected.error}`
             };
         }
 
@@ -683,13 +706,13 @@ export class ArmbianNetworkManager {
         if (!lanDevice || !wifiDevice) {
             return {
                 success: false,
-                error: `Could not determine active LAN and Wi-Fi interface devices for bridge (LAN: "${lanDevice}", Wi-Fi: "${wifiDevice}"). Both active LAN and Wi-Fi interfaces are required.`
+                error: `Active LAN (${lanDevice}) and Wi-Fi (${wifiDevice}) interfaces are required.`
             };
         }
 
         const steps = [];
 
-        // 1. Enable Kernel IP Forwarding & Transparent Proxy-ARP (Universal ISP Bypass for all STBs & Wi-Fi Chips)
+        // 2. Kernel IP Forwarding & Transparent Proxy-ARP (Pure Kernel Layer - Zero NetworkManager slave risk)
         const sysctlCmds = [
             'sysctl -w net.ipv4.ip_forward=1',
             'sysctl -w net.ipv4.conf.all.proxy_arp=1',
@@ -697,7 +720,9 @@ export class ArmbianNetworkManager {
             `sysctl -w net.ipv4.conf.${wifiDevice}.proxy_arp=1`,
             'sysctl -w net.ipv4.conf.all.rp_filter=0',
             `sysctl -w net.ipv4.conf.${lanDevice}.rp_filter=0`,
-            `sysctl -w net.ipv4.conf.${wifiDevice}.rp_filter=0`
+            `sysctl -w net.ipv4.conf.${wifiDevice}.rp_filter=0`,
+            'sysctl -w net.ipv4.conf.all.send_redirects=0',
+            'sysctl -w net.ipv4.conf.all.accept_redirects=0'
         ];
 
         for (const sCmd of sysctlCmds) {
@@ -705,122 +730,87 @@ export class ArmbianNetworkManager {
             steps.push({ step: 'kernel_proxy_arp', cmd: sCmd, ...resSysctl });
         }
 
-        // 2. Try creating standard Linux Network Bridge "br0"
-        const cmdAddBridge = 'nmcli connection add type bridge con-name br0 ifname br0';
-        const resBridge = await this.runCommand(cmdAddBridge);
-        steps.push({ step: 'create_bridge_br0', cmd: cmdAddBridge, ...resBridge });
+        // 3. Bi-directional IPTables Forwarding between LAN and Wi-Fi
+        const iptablesCmds = [
+            `iptables -C FORWARD -i ${lanDevice} -o ${wifiDevice} -j ACCEPT 2>/dev/null || iptables -A FORWARD -i ${lanDevice} -o ${wifiDevice} -j ACCEPT`,
+            `iptables -C FORWARD -i ${wifiDevice} -o ${lanDevice} -j ACCEPT 2>/dev/null || iptables -A FORWARD -i ${wifiDevice} -o ${lanDevice} -j ACCEPT`,
+            `iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT`
+        ];
 
-        // 3. Bind LAN interface as bridge-slave
-        const cmdAddLanSlave = `nmcli connection add type bridge-slave con-name br0-lan ifname "${lanDevice}" master br0`;
-        const resLanSlave = await this.runCommand(cmdAddLanSlave);
-        steps.push({ step: 'bind_lan_slave', cmd: cmdAddLanSlave, ...resLanSlave });
-
-        // 4. Bind Wi-Fi interface (if supported by Wi-Fi driver, or fallback to Transparent Proxy-ARP)
-        const cmdAddWifiSlave = `nmcli connection add type bridge-slave con-name br0-wifi ifname "${wifiDevice}" master br0`;
-        const resWifiSlave = await this.runCommand(cmdAddWifiSlave);
-        steps.push({ step: 'bind_wifi_slave', cmd: cmdAddWifiSlave, ...resWifiSlave });
-
-        // 5. Bring bridge connection UP if created
-        const cmdUpBridge = 'nmcli connection up br0';
-        const resUpBridge = await this.runCommand(cmdUpBridge);
-        steps.push({ step: 'bring_up_bridge', cmd: cmdUpBridge, ...resUpBridge });
+        for (const iCmd of iptablesCmds) {
+            const resIp = await this.runCommand(iCmd);
+            steps.push({ step: 'iptables_forward', cmd: iCmd, ...resIp });
+        }
 
         return {
             success: true,
-            activeBridge: 'br0',
+            activeBridge: 'Proxy-ARP Relay',
             lanInterface: lanDevice,
             wifiInterface: wifiDevice,
-            relayMode: 'Transparent Proxy-ARP & L2/L3 Bridge',
-            message: `arch3rBridge berhasil diaktifkan! Jembatan transparan Proxy-ARP & IP Forwarding aktif antara LAN (${lanDevice}) dan Wi-Fi (${wifiDevice}). Isolasi router ISP berhasil dilewati untuk seluruh perangkat.`,
+            relayMode: 'Pure Transparent Proxy-ARP & Kernel IP Forwarding (Zero-Lockout)',
+            message: `arch3rBridge (Proxy-ARP Relay) aktif! Komunikasi kamera Wi-Fi (${wifiDevice}) dan LAN (${lanDevice}) terhubung langsung tanpa risiko penguncian port fisik saat reboot.`,
             steps
         };
     }
 
     /**
      * 9. disableArch3rBridge()
-     * Safely tears down the "br0" bridge and restores individual LAN and Wi-Fi connections.
+     * Safely disables Transparent Proxy-ARP and removes iptables forward rules.
      */
     async disableArch3rBridge() {
-        const isAvailable = await this.isNmcliAvailable();
-        if (!isAvailable) {
-            return {
-                success: false,
-                error: 'nmcli (NetworkManager CLI) is not installed on this system.'
-            };
-        }
+        const detected = await this.detectActiveConnections();
+        const lanDevice = this.sanitizeParam(detected.lan?.device || 'eth0');
+        const wifiDevice = this.sanitizeParam(detected.wifi?.device || 'wlan0');
 
         const steps = [];
 
-        // Step 1: Delete slave connections
-        const resDelLanSlave = await this.runCommand('nmcli connection delete br0-lan');
-        steps.push({ step: 'delete_br0_lan', ...resDelLanSlave });
-
-        const resDelWifiSlave = await this.runCommand('nmcli connection delete br0-wifi');
-        steps.push({ step: 'delete_br0_wifi', ...resDelWifiSlave });
-
-        // Step 2: Delete main bridge connection
-        const resDelBridge = await this.runCommand('nmcli connection delete br0');
-        steps.push({ step: 'delete_br0', ...resDelBridge });
-
-        // Step 3: Automatically detect and restore original LAN & Wi-Fi connections
-        await this.runCommand('nmcli connection reload');
-        const detected = await this.detectActiveConnections();
-        const safeLanName = this.sanitizeParam(detected.lanName);
-        const safeWifiName = this.sanitizeParam(detected.wifiName);
-
-        if (safeLanName) {
-            const resUpLan = await this.runCommand(`nmcli connection up "${safeLanName}"`);
-            steps.push({ step: 'restore_lan', connection: safeLanName, ...resUpLan });
+        // 1. Clear IPTables FORWARD rules
+        if (lanDevice && wifiDevice) {
+            await this.runCommand(`iptables -D FORWARD -i ${lanDevice} -o ${wifiDevice} -j ACCEPT 2>/dev/null`);
+            await this.runCommand(`iptables -D FORWARD -i ${wifiDevice} -o ${lanDevice} -j ACCEPT 2>/dev/null`);
         }
 
-        if (safeWifiName) {
-            const resUpWifi = await this.runCommand(`nmcli connection up "${safeWifiName}"`);
-            steps.push({ step: 'restore_wifi', connection: safeWifiName, ...resUpWifi });
+        // 2. Reset Proxy-ARP sysctl
+        const resetSysctl = [
+            'sysctl -w net.ipv4.conf.all.proxy_arp=0',
+            lanDevice ? `sysctl -w net.ipv4.conf.${lanDevice}.proxy_arp=0` : '',
+            wifiDevice ? `sysctl -w net.ipv4.conf.${wifiDevice}.proxy_arp=0` : ''
+        ].filter(Boolean);
+
+        for (const sCmd of resetSysctl) {
+            const res = await this.runCommand(sCmd);
+            steps.push({ step: 'reset_sysctl', cmd: sCmd, ...res });
         }
+
+        // 3. Purge any lingering bridge profiles
+        await this.ensureSafeStateAndPurgeDanglingBridges();
 
         return {
             success: true,
-            message: 'arch3rBridge ("br0") berhasil dibongkar dan koneksi individual LAN & Wi-Fi telah dipulihkan.',
-            lanRestored: safeLanName || null,
-            wifiRestored: safeWifiName || null,
+            message: 'arch3rBridge (Proxy-ARP Relay) berhasil dinonaktifkan. Jaringan STB kembali ke mode routing standar.',
             steps
         };
     }
 
     /**
      * 10. getArch3rBridgeStatus()
-     * Checks if bridge "br0" or Transparent Proxy-ARP is active in NetworkManager or OS network interfaces
+     * Checks if Transparent Proxy-ARP & IP Forwarding is active in kernel sysctl
      */
     async getArch3rBridgeStatus() {
-        const isAvailable = await this.isNmcliAvailable();
-        if (!isAvailable) {
-            return { success: false, active: false, message: 'nmcli is not installed' };
-        }
-
-        // Check if proxy_arp is active in sysctl
         const resProxy = await this.runCommand('cat /proc/sys/net/ipv4/conf/all/proxy_arp');
-        const isProxyActive = resProxy.success && resProxy.stdout.trim() === '1';
+        const resForward = await this.runCommand('cat /proc/sys/net/ipv4/ip_forward');
 
-        const res = await this.runCommand('nmcli -t -f NAME,TYPE,DEVICE,STATE connection show br0');
-        if (res.success && res.stdout) {
-            const parts = res.stdout.split(/(?<!\\):/);
-            const active = parts.length >= 4 && parts[2] !== '--' && parts[2] !== '' && !parts[3].includes('deactivated');
-            return {
-                success: true,
-                active: active || isProxyActive,
-                name: 'br0',
-                device: parts[2] || 'br0',
-                state: parts[3] || 'active',
-                proxyArpActive: isProxyActive
-            };
-        }
+        const isProxyActive = resProxy.success && resProxy.stdout.trim() === '1';
+        const isForwardActive = resForward.success && resForward.stdout.trim() === '1';
+        const isActive = isProxyActive && isForwardActive;
 
         return {
             success: true,
-            active: isProxyActive,
-            name: 'br0',
-            state: isProxyActive ? 'active (proxy-arp)' : 'inactive',
-            proxyArpActive: isProxyActive
+            active: isActive,
+            relayMode: 'Pure Transparent Proxy-ARP (Zero-Lockout)',
+            proxyArp: isProxyActive ? '1 (Active)' : '0 (Inactive)',
+            ipForward: isForwardActive ? '1 (Active)' : '0 (Inactive)',
+            state: isActive ? 'active (proxy-arp relay)' : 'inactive'
         };
     }
 }

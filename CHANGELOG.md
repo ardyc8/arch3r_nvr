@@ -1,5 +1,17 @@
 # Changelog
 
+## [Ver 11.4.8] - 2026-09-28
+### Zero-Lockout Transparent Proxy-ARP Relay, Auto-Purge Dangling Bridges & Safe Dual-Interface Routing
+- **Eliminasi Total Pembuatan Profil L2 Bridge `br0` di NetworkManager (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Mencegah Penguncian Port Fisik saat Reboot**: Menghapus pembuatan koneksi `br0` dan `bridge-slave (br0-lan / br0-wifi)` pada NetworkManager yang sebelumnya dapat mengunci port `eth0` dan menyebabkan hilangnya IP DHCP/SSH/Tailscale saat STB di-reboot.
+  - **100% Pure Transparent Proxy-ARP & Kernel IP Forwarding**: Jembatan komunikasi antara kamera Wi-Fi dan perangkat LAN kini berjalan murni di level kernel Linux STB (`sysctl net.ipv4.ip_forward=1`, `proxy_arp=1`, `rp_filter=0`) serta aturan bi-directional `iptables FORWARD`.
+  - **Jaminan Port Fisik Mandiri**: Interface `eth0` (LAN) dan `wlan0` (Wi-Fi) tetap memegang profil dan alamat IP aslinya secara permanen tanpa pernah diubah menjadi slave.
+- **Mekanisme Auto Self-Healing & Startup Cleaner (`ensureSafeStateAndPurgeDanglingBridges`, `addons/network-manager/index.js`):**
+  - **Pembersih Otomatis Profil Usang**: Saat server dimulai atau driver jaringan diinisialisasi, sistem secara proaktif mendeteksi dan menghapus sisa-sisa profil `br0-lan`, `br0-wifi`, dan `br0` lama jika ada di `/etc/NetworkManager/system-connections/`.
+  - **Enforce Managed State**: Memastikan interface `eth0` dan `wlan0` selalu dalam status `managed=yes` untuk mencegah kegagalan aktivasi koneksi NetworkManager.
+- **Pembaruan Antarmuka Pengguna & Feedback Visual (`public/index.html`, `public/script.js`):**
+  - **Kartu arch3rBridge Zero-Lockout**: Memperbarui deskripsi dan badge status menjadi `🟢 PROXY-ARP AKTIF (Zero-Lockout)` untuk memberikan indikasi jelas bahwa sistem berjalan aman tanpa menyentuh file koneksi fisik OS.
+
 ## [Ver 11.4.7] - 2026-09-28
 ### Web-UI Wi-Fi Scanner & Connector, Transparent Proxy-ARP Bridge & Dynamic NMCLI Driver
 - **Pemindai & Sambungan Wi-Fi Langsung dari Web UI (`addons/network-manager/lib/nmcli_driver.js`, `addons/network-manager/index.js`):**

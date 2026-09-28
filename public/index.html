@@ -2698,12 +2698,12 @@
                     </div>
                 </div>
 
-                <!-- FITUR UTAMA 2: ARCH3RBRIDGE (BYPASS ISOLASI ROUTER ISP) -->
+                <!-- FITUR UTAMA 2: ARCH3RBRIDGE (BYPASS ISOLASI ROUTER ISP - ZERO-LOCKOUT PROXY-ARP) -->
                 <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
                         <div style="display:flex; align-items:center; gap:0.5rem;">
                             <span style="font-size:1.2rem;">⚡</span>
-                            <strong style="color:#34d399; font-size:0.95rem;">arch3rBridge &mdash; Bypass Isolasi Router ISP</strong>
+                            <strong style="color:#34d399; font-size:0.95rem;">arch3rBridge &mdash; Transparent Proxy-ARP Relay (Zero-Lockout)</strong>
                         </div>
                         <span id="arch3rBridgeBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:3px 10px; font-weight:700;">
                             ⚪ INAKTIF
@@ -2711,15 +2711,15 @@
                     </div>
 
                     <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
-                        Jembatani interface Ethernet LAN (eth0) dan Wi-Fi (wlan0) secara terpadu ke dalam Linux Network Bridge (<strong>br0</strong>) & Transparent Proxy-ARP untuk melewati aturan isolasi perangkat pada router ISP secara langsung untuk seluruh perangkat di jaringan.
+                        Jembatani interface Ethernet LAN (eth0) dan Wi-Fi (wlan0) via <strong>Pure Transparent Proxy-ARP &amp; Kernel IP Forwarding</strong>. Menembus isolasi router ISP secara instan <strong>tanpa mengubah port fisik</strong> dan <strong>100% kebal reboot (tidak akan mengunci IP/SSH/Tailscale)</strong>.
                     </p>
 
                     <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.85rem;">
                         <button type="button" id="btnEnableBridgeUI" onclick="window.enableArch3rBridgeUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.83rem; padding:0.45rem 1rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>⚡</span> Aktifkan arch3rBridge (br0 / Proxy-ARP)
+                            <span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP Relay)
                         </button>
                         <button type="button" id="btnDisableBridgeUI" onclick="window.disableArch3rBridgeUI()" class="btn btn-secondary" style="color:#f87171; border-color:#dc2626; background:rgba(239,68,68,0.08); font-weight:600; font-size:0.83rem; padding:0.45rem 1rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>🛑</span> Nonaktifkan & Pulihkan Individual
+                            <span>🛑</span> Nonaktifkan arch3rBridge
                         </button>
                         <button type="button" onclick="window.checkArch3rBridgeStatusUI()" class="btn btn-secondary" style="font-size:0.83rem; padding:0.45rem 0.85rem; display:flex; align-items:center; gap:0.4rem;">
                             <span>🔄</span> Cek Status

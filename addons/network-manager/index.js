@@ -4,6 +4,9 @@ import { ArmbianNetworkManager } from './lib/nmcli_driver.js';
 const router = express.Router();
 const nmDriver = new ArmbianNetworkManager({ timeoutMs: 8000, useSudo: false });
 
+// Auto-purge any dangling br0 bridge profiles and ensure interfaces are managed on startup
+nmDriver.ensureSafeStateAndPurgeDanglingBridges().catch(() => {});
+
 /**
  * REST API Routes for Network Manager Addon
  */

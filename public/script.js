@@ -15233,9 +15233,9 @@ window.checkArch3rBridgeStatusUI = async function() {
                 badge.style.background = 'rgba(16,185,129,0.2)';
                 badge.style.borderColor = '#059669';
                 badge.style.color = '#34d399';
-                badge.textContent = '🟢 BRIDGE AKTIF (br0)';
+                badge.textContent = '🟢 PROXY-ARP AKTIF (Zero-Lockout)';
             }
-            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🟢 Status Bridge: AKTIF ("br0" terhubung ke LAN & Wi-Fi). Isolasi router ISP berhasil dilewati.`;
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🟢 Status Relay: AKTIF (Transparent Proxy-ARP & IP Forwarding). Isolasi router ISP berhasil dilewati tanpa modifikasi port fisik.`;
         } else {
             if (badge) {
                 badge.style.background = 'rgba(100,116,139,0.2)';
@@ -15243,10 +15243,10 @@ window.checkArch3rBridgeStatusUI = async function() {
                 badge.style.color = '#94a3b8';
                 badge.textContent = '⚪ INAKTIF';
             }
-            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚪ Status Bridge: INAKTIF ("br0" belum dikonfigurasi).`;
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚪ Status Relay: INAKTIF (STB beroperasi dalam mode routing standar).`;
         }
     } catch (e) {
-        if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚠️ Gagal memeriksa status bridge: ${e.message}`;
+        if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚠️ Gagal memeriksa status: ${e.message}`;
     }
 };
 
@@ -15257,9 +15257,9 @@ window.enableArch3rBridgeUI = async function() {
         badge.style.background = 'rgba(245,158,11,0.2)';
         badge.style.borderColor = '#d97706';
         badge.style.color = '#fbbf24';
-        badge.textContent = '⏳ PROSES MEMBANGUN BRIDGE...';
+        badge.textContent = '⏳ MENGAKTIFKAN RELAY...';
     }
-    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Menginisialisasi arch3rBridge ("br0")... Memindai interface LAN & Wi-Fi aktif...`;
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Mengaktifkan Pure Transparent Proxy-ARP Relay... Memvalidasi interface LAN & Wi-Fi...`;
 
     try {
         const res = await authFetch('/api/addons/network-manager/bridge/enable', { method: 'POST' });
@@ -15270,22 +15270,22 @@ window.enableArch3rBridgeUI = async function() {
                 badge.style.background = 'rgba(16,185,129,0.2)';
                 badge.style.borderColor = '#059669';
                 badge.style.color = '#34d399';
-                badge.textContent = '🟢 BRIDGE AKTIF (br0)';
+                badge.textContent = '🟢 PROXY-ARP AKTIF (Zero-Lockout)';
             }
             const stepLog = (data.steps || []).map(s => `• ${s.step}: ${s.success ? '✓' : '✕'} ${s.cmd || ''}`).join('<br>');
             if (logBox) {
                 logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}<br>${stepLog}`;
             }
-            showToast('⚡ arch3rBridge ("br0") Berhasil Diaktifkan! LAN & Wi-Fi Terikat ke Network Bridge.', 'success');
+            showToast('⚡ arch3rBridge (Proxy-ARP Relay) Berhasil Diaktifkan! Bebas Kunci Reboot.', 'success');
             await window.fetchNetMgrConnections();
         } else {
             if (badge) {
                 badge.style.background = 'rgba(239,68,68,0.2)';
                 badge.style.borderColor = '#dc2626';
                 badge.style.color = '#f87171';
-                badge.textContent = '🔴 GAGAL MEMBANGUN BRIDGE';
+                badge.textContent = '🔴 GAGAL MENGAKTIFKAN';
             }
-            const errMsg = data.error || 'Gagal mengaktifkan bridge.';
+            const errMsg = data.error || 'Gagal mengaktifkan relay.';
             if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal: ${errMsg}`;
             alert(`Gagal mengaktifkan arch3rBridge: ${errMsg}`);
         }
@@ -15296,7 +15296,7 @@ window.enableArch3rBridgeUI = async function() {
 };
 
 window.disableArch3rBridgeUI = async function() {
-    if (!confirm('Apakah Anda yakin ingin membongkar arch3rBridge ("br0") dan mengembalikan koneksi individual LAN & Wi-Fi?')) return;
+    if (!confirm('Apakah Anda yakin ingin menonaktifkan arch3rBridge (Proxy-ARP Relay)?')) return;
 
     const badge = document.getElementById('arch3rBridgeBadge');
     const logBox = document.getElementById('arch3rBridgeLogBox');
@@ -15304,9 +15304,9 @@ window.disableArch3rBridgeUI = async function() {
         badge.style.background = 'rgba(245,158,11,0.2)';
         badge.style.borderColor = '#d97706';
         badge.style.color = '#fbbf24';
-        badge.textContent = '⏳ MENGHAPUS BRIDGE...';
+        badge.textContent = '⏳ MENONAKTIFKAN...';
     }
-    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Menghentikan "br0" dan memulihkan koneksi individual...`;
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Mengembalikan sistem ke mode routing standar...`;
 
     try {
         const res = await authFetch('/api/addons/network-manager/bridge/disable', { method: 'POST' });
@@ -15320,14 +15320,14 @@ window.disableArch3rBridgeUI = async function() {
                 badge.textContent = '⚪ INAKTIF';
             }
             if (logBox) {
-                logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🛑 ${data.message} (Restored LAN: ${data.lanRestored || 'auto'}, Wi-Fi: ${data.wifiRestored || 'auto'})`;
+                logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🛑 ${data.message}`;
             }
-            showToast('🛑 arch3rBridge ("br0") Berhasil Dibongkar & Koneksi Individual Dipulihkan.', 'info');
+            showToast('🛑 arch3rBridge Dinonaktifkan.', 'info');
             await window.fetchNetMgrConnections();
         } else {
-            const errMsg = data.error || 'Gagal menghapus bridge.';
+            const errMsg = data.error || 'Gagal menonaktifkan bridge.';
             if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal: ${errMsg}`;
-            alert(`Gagal menghapus arch3rBridge: ${errMsg}`);
+            alert(`Gagal menonaktifkan arch3rBridge: ${errMsg}`);
         }
     } catch (e) {
         if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
