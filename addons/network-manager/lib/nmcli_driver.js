@@ -386,6 +386,53 @@ export class ArmbianNetworkManager {
     }
 
     /**
+     * Resolves an interface name or connection name to the exact active/valid NetworkManager connection profile name.
+     */
+    async resolveConnectionProfileName(nameOrDevice, preferredType = '') {
+        if (!nameOrDevice) return '';
+        const clean = this.sanitizeParam(nameOrDevice);
+
+        // 1. If clean is already a valid connection name or UUID, verify directly
+        const verifyCmd = await this.runCommand(`nmcli -g connection.id connection show "${clean}"`);
+        if (verifyCmd.success && verifyCmd.stdout) {
+            return verifyCmd.stdout.trim();
+        }
+
+        // 2. Query device show to get active connection profile attached to that device (e.g. wlan0, wlan1, eth0)
+        const devCmd = await this.runCommand(`nmcli -g GENERAL.CONNECTION device show "${clean}"`);
+        if (devCmd.success && devCmd.stdout && devCmd.stdout.trim() !== '--' && devCmd.stdout.trim() !== '') {
+            return devCmd.stdout.trim();
+        }
+
+        // 3. Scan all connections matching the device or preferred type
+        const connRes = await this.runCommand('nmcli -t -f NAME,TYPE,DEVICE connection show');
+        if (connRes.success && connRes.stdout) {
+            const lines = connRes.stdout.split('\n').filter(l => l.trim().length > 0);
+            for (const line of lines) {
+                const parts = line.split(/(?<!\\):/);
+                if (parts.length >= 3) {
+                    const cName = parts[0].replace(/\\:/g, ':').trim();
+                    const cType = parts[1].trim().toLowerCase();
+                    const cDev = parts[2].trim();
+
+                    // If device matches exactly
+                    if (cDev && (cDev === clean || cDev.startsWith(clean))) return cName;
+
+                    // If preferred type matches (e.g. wifi)
+                    if (preferredType === 'wifi' && (cType.includes('wifi') || cType.includes('wireless'))) {
+                        return cName;
+                    }
+                    if (preferredType === 'lan' && (cType.includes('ethernet') || cType.includes('802-3-ethernet'))) {
+                        return cName;
+                    }
+                }
+            }
+        }
+
+        return clean;
+    }
+
+    /**
      * 4. setupMetrics(lanName, wifiName)
      * Automatically detects active Wi-Fi and LAN interface names if not provided,
      * then configures interface priority routing:
@@ -393,22 +440,26 @@ export class ArmbianNetworkManager {
      * - Wi-Fi metric set to 500 (Fallback gateway when LAN is disconnected)
      */
     async setupMetrics(lanName = null, wifiName = null) {
-        let targetLan = lanName;
-        let targetWifi = wifiName;
+        let rawLan = lanName;
+        let rawWifi = wifiName;
 
         // Auto-detect active Wi-Fi and LAN connection names dynamically if missing
-        if (!targetLan || !targetWifi) {
+        if (!rawLan || !rawWifi) {
             const detected = await this.detectActiveConnections();
-            if (!targetLan) targetLan = detected.lanName;
-            if (!targetWifi) targetWifi = detected.wifiName;
+            if (!rawLan) rawLan = detected.lanName;
+            if (!rawWifi) rawWifi = detected.wifiName;
         }
 
-        if (!targetLan && !targetWifi) {
+        if (!rawLan && !rawWifi) {
             return {
                 success: false,
                 error: 'Could not automatically detect active LAN or Wi-Fi connections from nmcli connection show.'
             };
         }
+
+        // Resolve device names (e.g. wlan0, eth0) to actual connection profile names (e.g. netplan-wlan0-W_CTV, eth0)
+        const targetLan = await this.resolveConnectionProfileName(rawLan, 'lan');
+        const targetWifi = await this.resolveConnectionProfileName(rawWifi, 'wifi');
 
         const safeLanName = this.sanitizeParam(targetLan);
         const safeWifiName = this.sanitizeParam(targetWifi);
@@ -481,7 +532,8 @@ export class ArmbianNetworkManager {
             targetConnName = wirelessFlag ? detected.wifiName : detected.lanName;
         }
 
-        const safeConn = this.sanitizeParam(targetConnName);
+        const resolvedConnName = await this.resolveConnectionProfileName(targetConnName, wirelessFlag ? 'wifi' : 'lan');
+        const safeConn = this.sanitizeParam(resolvedConnName || targetConnName);
         if (!safeConn) {
             const interfaceTypeLabel = wirelessFlag ? 'Wi-Fi (Wireless)' : 'LAN (Ethernet)';
             return {
@@ -547,7 +599,8 @@ export class ArmbianNetworkManager {
             targetConnName = wirelessFlag ? detected.wifiName : detected.lanName;
         }
 
-        const safeConn = this.sanitizeParam(targetConnName);
+        const resolvedConnName = await this.resolveConnectionProfileName(targetConnName, wirelessFlag ? 'wifi' : 'lan');
+        const safeConn = this.sanitizeParam(resolvedConnName || targetConnName);
         if (!safeConn) {
             return {
                 success: false,
@@ -583,15 +636,18 @@ export class ArmbianNetworkManager {
      * or gracefully reapplies settings to active devices without failing when Netplan-managed or already active.
      */
     async applyChanges(lanName, wifiName) {
-        let safeLanName = this.sanitizeParam(lanName);
-        let safeWifiName = this.sanitizeParam(wifiName);
+        let rawLan = lanName;
+        let rawWifi = wifiName;
 
         // If names not provided, auto-detect active connections
-        if (!safeLanName || !safeWifiName) {
+        if (!rawLan || !rawWifi) {
             const detected = await this.detectActiveConnections();
-            if (!safeLanName && detected.lanName) safeLanName = detected.lanName;
-            if (!safeWifiName && detected.wifiName) safeWifiName = detected.wifiName;
+            if (!rawLan && detected.lanName) rawLan = detected.lanName;
+            if (!rawWifi && detected.wifiName) rawWifi = detected.wifiName;
         }
+
+        const safeLanName = this.sanitizeParam(await this.resolveConnectionProfileName(rawLan, 'lan'));
+        const safeWifiName = this.sanitizeParam(await this.resolveConnectionProfileName(rawWifi, 'wifi'));
 
         const results = [];
         // Reload all nmcli connection profiles first

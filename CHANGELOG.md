@@ -1,5 +1,11 @@
 # Changelog
 
+## [Ver 11.5.6] - 2026-09-28
+### Dynamic Profile Resolver & Device-to-Connection Auto-Mapper
+- **Resolusi Otomatis Nama Profil NetworkManager (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Fungsi `resolveConnectionProfileName(nameOrDevice, type)`**: Menghilangkan error `unknown connection 'wlan0'` / `'eth0'`. Jika sistem menerima nama device hardware fisik (`wlan0`, `wlan1`, `eth0`), driver secara dinamis memetakan dan mengambil nama profil NetworkManager yang aktif sesungguhnya (seperti `netplan-wlan0-W_CTV` atau `eth0`).
+  - **Integrasi Penuh pada Seluruh Operasi Routing**: Menerapkan resolusi profil otomatis pada `setupMetrics`, `addRoute`, `deleteRoute`, dan `applyChanges` sehingga penyetelan metric rute prioritas (LAN 50, Wi-Fi 500) selalu sukses tanpa memedulikan nama SSID Wi-Fi.
+
 ## [Ver 11.5.5] - 2026-09-28
 ### Self-Healing Kernel Link Up & Armbian NetworkManager Auto-Managed Enforcer
 - **Otomatisasi Self-Healing Link Fisik (`addons/network-manager/lib/nmcli_driver.js`, `install.sh`):**
