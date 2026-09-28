@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 11.3.7] - 2026-09-28
+### Separate Individual Multi-Disk Storage Widget & Total Combined Network Bandwidth
+- **Rincian Penyimpanan Terpisah / Individu (`server.js`, `public/index.html`, `public/script.js`):**
+  - **Sesuai Instruksi User (DILARANG DIGABUNG):** Penyimpanan tidak digabung dalam 1 total kapasitas, melainkan setiap drive fisik (Internal Root/eMMC/SD Card, Default Public Recordings, Harddisk Eksternal USB/SATA `/media/devmon/*`, dan Drive Kustom) dirender secara individual pada widget sidebar.
+  - Menambahkan container `#sidebarStorageList` yang menampilkan nama disk, mount point, persen penggunaan, kapasitas terpakai, kapasitas total, sisa ruang, dan progress bar visual khusus untuk setiap disk secara terpisah.
+- **Monitoring Bandwidth Jaringan Internet Total & Breakdown (`server.js`, `public/script.js`):**
+  - **Sesuai Instruksi User (DIAPLIKASIKAN DIGABUNG):** Kecepatan Download (Rx) dan Upload (Tx) digabung secara akumulatif dari seluruh interface aktif (`eth0` + `wlan0`), sehingga pengguna mengetahui secara tepat total bandwidth internet yang sedang digunakan secara *real-time*.
+  - Menyediakan rincian (*breakdown*) kecepatan per-interface di bawah indikator total jika terdapat lebih dari satu interface yang aktif secara bersamaan.
+
 ## [Ver 11.3.6] - 2026-09-28
 ### Network Manager Addon Marketplace Registration & Manifest Integration
 - **Pembuatan Berkas Manifes Resmi (`addons/network-manager/manifest.json`):**

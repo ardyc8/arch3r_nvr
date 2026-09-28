@@ -144,14 +144,21 @@
                     <div class="w-item"><span>CPU</span><strong id="wCpu">--%</strong></div>
                     <div class="w-item"><span>RAM</span><strong id="wRam">--%</strong></div>
                     <div class="w-item"><span>Suhu STB</span><strong id="wTemp">--°C</strong></div>
-                    <div class="w-item"><span>Storage</span><strong id="wStorage">--%</strong></div>
+                    <div class="w-item"><span>Storage Utama</span><strong id="wStorage">--%</strong></div>
                 </div>
-                <div class="widget-net">
-                    <div class="net-title">Network (<span id="wNetIf">eth0</span>)</div>
+                <!-- Container Rincian Disk Terpisah (Individu / HDD / USB / SD) -->
+                <div id="sidebarStorageList" style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed rgba(255,255,255,0.1); font-size:0.73rem;">
+                    <!-- Disk individu akan dirender terpisah di sini oleh JS -->
+                </div>
+                <div class="widget-net" style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed rgba(255,255,255,0.1);">
+                    <div class="net-title" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>🌐 Jaringan Total (<span id="wNetIf">eth0</span>)</span>
+                    </div>
                     <div class="net-speeds">
                         <span class="down">↓ <span id="wNetDown">0 KB/s</span></span>
                         <span class="up">↑ <span id="wNetUp">0 KB/s</span></span>
                     </div>
+                    <div id="wNetBreakdown" style="font-size:0.68rem; color:#94a3b8; margin-top:3px; font-family:monospace; word-break:break-all;"></div>
                 </div>
             </div>
 

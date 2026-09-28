@@ -1224,14 +1224,74 @@ async function updateHardwareStats() {
                 wStorage.style.color = (diskPct > 90) ? '#ef4444' : '#f8fafc';
             }
 
-            // 5. Network Rx/Tx
+            // Render Rincian Setiap Storage Device Secara Terpisah (DILARANG DIGABUNG)
+            const sidebarStorageList = document.getElementById('sidebarStorageList');
+            if (sidebarStorageList) {
+                const devices = Array.isArray(data.storageDevices) && data.storageDevices.length > 0
+                    ? data.storageDevices
+                    : (data.storage ? [data.storage] : []);
+
+                if (devices.length > 0) {
+                    let storageHtml = '';
+                    devices.forEach(dev => {
+                        const pct = dev.percentUsed !== undefined ? dev.percentUsed : 0;
+                        const pctColor = pct > 90 ? '#f87171' : (pct > 75 ? '#fbbf24' : '#38bdf8');
+                        let driveIcon = '💾';
+                        if (dev.category === 'External' || (dev.name && (dev.name.includes('HDD') || dev.name.includes('Harddisk')))) {
+                            driveIcon = '🗄️';
+                        } else if (dev.category === 'Internal' || dev.id === 'internal_root') {
+                            driveIcon = '⚡';
+                        }
+                        
+                        let shortName = dev.name || dev.mountPath || 'Storage';
+                        if (shortName.length > 24) shortName = shortName.substring(0, 22) + '…';
+
+                        storageHtml += `
+                            <div style="margin-bottom:0.35rem; background:rgba(15,23,42,0.4); padding:0.35rem 0.5rem; border-radius:4px; border:1px solid rgba(255,255,255,0.05);">
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-weight:600; font-size:0.72rem; color:#f1f5f9;">
+                                    <span title="${dev.name || ''}" style="display:inline-flex; align-items:center; gap:3px;">
+                                        <span>${driveIcon}</span> ${shortName}
+                                    </span>
+                                    <span style="color:${pctColor}; font-weight:700;">${pct}%</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; color:#94a3b8; font-size:0.67rem; margin-top:2px;">
+                                    <span>${dev.usedGB || 0}GB / ${dev.totalGB || 0}GB</span>
+                                    <span style="color:#64748b;">Sisa: ${dev.freeGB || 0}GB</span>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.1); height:3px; border-radius:2px; margin-top:3px; overflow:hidden;">
+                                    <div style="width:${Math.min(100, Math.max(0, pct))}%; height:100%; background:${pctColor}; border-radius:2px;"></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    sidebarStorageList.innerHTML = storageHtml;
+                    sidebarStorageList.style.display = 'block';
+                }
+            }
+
+            // 5. Total Combined Network Rx/Tx (GABUNGAN Eth + Wi-Fi)
             const wNetIf = document.getElementById('wNetIf');
             const wNetDown = document.getElementById('wNetDown');
             const wNetUp = document.getElementById('wNetUp');
+            const wNetBreakdown = document.getElementById('wNetBreakdown');
+
             if (data.network) {
                 if (wNetIf) wNetIf.textContent = data.network.interface || 'eth0';
                 if (wNetDown) wNetDown.textContent = data.network.rxSpeedFormatted || '0 KB/s';
                 if (wNetUp) wNetUp.textContent = data.network.txSpeedFormatted || '0 KB/s';
+
+                if (wNetBreakdown) {
+                    if (Array.isArray(data.network.interfaces) && data.network.interfaces.length > 1) {
+                        const breakdownText = data.network.interfaces.map(iface => {
+                            const icon = iface.type === 'wifi' ? '📶' : '🔌';
+                            return `${icon} ${iface.name}: ↓${iface.rxSpeedFormatted} ↑${iface.txSpeedFormatted}`;
+                        }).join(' | ');
+                        wNetBreakdown.textContent = breakdownText;
+                        wNetBreakdown.style.display = 'block';
+                    } else {
+                        wNetBreakdown.style.display = 'none';
+                    }
+                }
             }
         } catch (err) {
             // silent polling error

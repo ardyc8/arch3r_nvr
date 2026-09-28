@@ -5865,81 +5865,74 @@ setInterval(sampleCpuUsage, 2500);
 sampleCpuUsage();
 
 let cachedNetStats = {
-    interface: 'eth0',
+    interface: 'Total (eth0 + wlan0)',
     rxSpeedFormatted: '0 KB/s',
     txSpeedFormatted: '0 KB/s',
     rxSpeedBytes: 0,
-    txSpeedBytes: 0
+    txSpeedBytes: 0,
+    interfaces: []
 };
-let lastNetSample = null;
+let lastNetSampleMap = new Map();
 
 function sampleNetworkStats() {
     try {
         if (fs.existsSync('/proc/net/dev')) {
             const content = fs.readFileSync('/proc/net/dev', 'utf8');
             const lines = content.split('\n');
-            let candidateIf = null;
-            let totalRx = 0;
-            let totalTx = 0;
-            
-            const prefIf = getSettings().netInterface || 'auto';
+            const now = Date.now();
 
-            // Temukan interface aktif berdasarkan OS networkInterfaces (yang punya IPv4)
-            const os = require('os');
             const nics = os.networkInterfaces();
             const activeIfs = Object.keys(nics).filter(name => name !== 'lo' && nics[name].some(addr => !addr.internal && addr.family === 'IPv4'));
+
+            let totalAggregatedRxRate = 0;
+            let totalAggregatedTxRate = 0;
+            const interfaceList = [];
 
             for (const line of lines) {
                 if (!line.includes(':')) continue;
                 const [rawIf, rawData] = line.split(':');
                 const ifName = rawIf.trim();
-                if (ifName === 'lo') continue;
+                if (ifName === 'lo' || ifName.startsWith('docker') || ifName.startsWith('veth')) continue;
 
-                if (prefIf !== 'auto' && ifName !== prefIf) continue;
+                // Priority filter: physical interfaces with active IPv4 addresses or active interfaces
+                if (activeIfs.length > 0 && !activeIfs.includes(ifName)) continue;
 
                 const cols = rawData.trim().split(/\s+/);
                 const rx = parseInt(cols[0], 10) || 0;
                 const tx = parseInt(cols[8], 10) || 0;
 
-                if (prefIf === 'auto') {
-                    // Jika auto, prioritaskan yang punya IP aktif. Jika ada > 1, pilih yang eth/en dulu.
-                    if (activeIfs.includes(ifName)) {
-                        if (!candidateIf || (!candidateIf.startsWith('eth') && !candidateIf.startsWith('en') && (ifName.startsWith('eth') || ifName.startsWith('en')))) {
-                            candidateIf = ifName;
-                            totalRx = rx;
-                            totalTx = tx;
-                        }
-                    } else if (!candidateIf && activeIfs.length === 0) {
-                         // Fallback jika tidak terdeteksi IP
-                         candidateIf = ifName;
-                         totalRx = rx;
-                         totalTx = tx;
+                const lastSample = lastNetSampleMap.get(ifName);
+                if (lastSample) {
+                    const dt = (now - lastSample.time) / 1000;
+                    if (dt > 0) {
+                        const rxRate = Math.max(0, (rx - lastSample.rx) / dt);
+                        const txRate = Math.max(0, (tx - lastSample.tx) / dt);
+
+                        totalAggregatedRxRate += rxRate;
+                        totalAggregatedTxRate += txRate;
+
+                        const isWifi = ifName.includes('wlan') || ifName.includes('wifi') || ifName.includes('wl');
+                        interfaceList.push({
+                            name: ifName,
+                            type: isWifi ? 'wifi' : 'ethernet',
+                            rxSpeedFormatted: formatDataRate(rxRate),
+                            txSpeedFormatted: formatDataRate(txRate),
+                            rxSpeedBytes: Math.round(rxRate),
+                            txSpeedBytes: Math.round(txRate)
+                        });
                     }
-                } else {
-                    candidateIf = ifName;
-                    totalRx = rx;
-                    totalTx = tx;
                 }
+                lastNetSampleMap.set(ifName, { rx, tx, time: now });
             }
 
-            const now = Date.now();
-            if (candidateIf && lastNetSample && lastNetSample.interface === candidateIf) {
-                const dt = (now - lastNetSample.time) / 1000;
-                if (dt > 0) {
-                    const rxRate = Math.max(0, (totalRx - lastNetSample.rx) / dt);
-                    const txRate = Math.max(0, (totalTx - lastNetSample.tx) / dt);
-                    cachedNetStats = {
-                        interface: candidateIf,
-                        rxSpeedFormatted: formatDataRate(rxRate),
-                        txSpeedFormatted: formatDataRate(txRate),
-                        rxSpeedBytes: Math.round(rxRate),
-                        txSpeedBytes: Math.round(txRate)
-                    };
-                }
-            }
-            if (candidateIf) {
-                lastNetSample = { interface: candidateIf, rx: totalRx, tx: totalTx, time: now };
-            }
+            cachedNetStats = {
+                interface: interfaceList.length > 0 ? interfaceList.map(i => i.name).join(' + ') : 'eth0',
+                rxSpeedFormatted: formatDataRate(totalAggregatedRxRate),
+                txSpeedFormatted: formatDataRate(totalAggregatedTxRate),
+                rxSpeedBytes: Math.round(totalAggregatedRxRate),
+                txSpeedBytes: Math.round(totalAggregatedTxRate),
+                interfaces: interfaceList
+            };
         } else {
             const ifaces = os.networkInterfaces();
             let activeIf = 'eth0';
@@ -6206,6 +6199,7 @@ app.get('/api/system/stats', (req, res) => {
                 status: tempStatus
             },
             storage: getStorageUsageStats(),
+            storageDevices: detectStorageDevices(),
             network: cachedNetStats,
             uptime: getFormattedUptime(),
             hostname: os.hostname(),
