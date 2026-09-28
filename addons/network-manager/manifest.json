@@ -1,0 +1,9 @@
+{
+  "id": "network-manager",
+  "name": "Armbian Network Router (nmcli)",
+  "version": "1.0.0",
+  "icon": "🌐",
+  "description": "Manajemen rute antarmuka ganda (LAN & Wi-Fi) untuk STB Armbian Linux. Solusi isolasi router ISP & pengikatan rute IP/Subnet kamera, NAS, dan server lokal.",
+  "main": "index.js",
+  "system_protected": false
+}

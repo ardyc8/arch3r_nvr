@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 11.3.6] - 2026-09-28
+### Network Manager Addon Marketplace Registration & Manifest Integration
+- **Pembuatan Berkas Manifes Resmi (`addons/network-manager/manifest.json`):**
+  - Membuat berkas `manifest.json` untuk modul Network Manager agar terdaftar secara resmi sebagai kartu Addon di antarmuka Addons Marketplace NVR.
+- **Auto-Scanner Fallback di Server (`server.js`):**
+  - Mengintegrasikan pemeriksaan keberadaan modul `/addons/network-manager` ke dalam fungsi `scanAvailablePhysicalAddons()` di `server.js` sehingga kartu Addon Network Router otomatis terdeteksi dan tampil di menu Addons NVR.
+
 ## [Ver 11.3.5] - 2026-09-28
 ### Dynamic Wi-Fi (SSID) Connection Auto-Detection, Parameterless setupMetrics & addRoute(target, isWireless)
 - **Fungsi Pembantu Deteksi Koneksi Aktif (`detectActiveConnections`):**

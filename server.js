@@ -801,6 +801,20 @@ function scanAvailablePhysicalAddons() {
         });
     }
 
+    // Pastikan Network Manager terdeteksi dari /addons/network-manager jika belum terdaftar
+    const hasNetMgr = list.some(a => a.id === 'network-manager' || a.id === 'network_manager');
+    if (!hasNetMgr && fs.existsSync(path.join(addonsDir, 'network-manager'))) {
+        list.push({
+            id: 'network-manager',
+            name: 'Armbian Network Router (nmcli)',
+            version: '1.0.0',
+            icon: '🌐',
+            description: 'Manajemen rute antarmuka ganda (LAN & Wi-Fi) untuk STB Armbian Linux. Solusi isolasi router ISP & pengikatan rute IP/Subnet kamera, NAS, dan server lokal.',
+            main: 'index.js',
+            system_protected: false
+        });
+    }
+
     return list;
 }
 
