@@ -929,6 +929,7 @@ async function handleLogout() {
 
         initCameraTabs();
         startSystemMonitoring();
+        if (typeof updateAutoPlayUI === 'function') updateAutoPlayUI();
         fetchCameras();
         loadStorageDevices();
         fetchSystemSettings();
@@ -944,6 +945,7 @@ async function handleLogout() {
     // 3. MOBILE APP (PWA) LOGIC
     // =========================================================================
     function initMobileUserApp() {
+        if (typeof updateAutoPlayUI === 'function') updateAutoPlayUI();
         fetchCameras();
 
         // Mobile Grid Switcher
@@ -3716,60 +3718,192 @@ async function fetchCameras() {
         window.toggleCameraQuality(targetId);
     };
 
-    window.playAllStreams = function() {
-        const isUserApp = document.getElementById("userApp") && document.getElementById("userApp").style.display !== "none";
-        const gridContainer = isUserApp ? document.getElementById("mVideoGrid") : (document.getElementById("videoGrid") || document.getElementById("mVideoGrid"));
-        const videos = gridContainer ? gridContainer.querySelectorAll('.cam-player-video') : document.querySelectorAll('.cam-player-video');
-        
-        let startedCount = 0;
-        videos.forEach(v => {
-            if (v.paused) {
-                v.play().catch(() => {});
+    // --- AUTO-PLAY LIVE PREFERENCE & GLOBAL STREAM CONTROLLER (Ver. 11.3.0) ---
+    window.cameraSlotRegistry = window.cameraSlotRegistry || {};
+
+    function isAutoPlayLive() {
+        // Default adalah false (Standby / hemat CPU & Bandwidth STB)
+        return localStorage.getItem('nvr_autoplay_live') === 'true';
+    }
+    window.isAutoPlayLive = isAutoPlayLive;
+
+    function updateAutoPlayUI() {
+        const btn = document.getElementById('btnAutoPlayToggle');
+        const txt = document.getElementById('autoPlayStatusText');
+        const isAuto = isAutoPlayLive();
+        if (txt) {
+            txt.textContent = isAuto ? 'Auto: On' : 'Auto: Off';
+        }
+        if (btn) {
+            if (isAuto) {
+                btn.style.background = 'rgba(16,185,129,0.15)';
+                btn.style.borderColor = '#059669';
+                btn.style.color = '#34d399';
+                btn.title = '⚡ Auto-play Live: AKTIF (Stream langsung diputar saat buka monitor. Klik untuk menonaktifkan / hemat CPU)';
+            } else {
+                btn.style.background = 'rgba(100,116,139,0.15)';
+                btn.style.borderColor = '#64748b';
+                btn.style.color = '#94a3b8';
+                btn.title = '⚡ Auto-play Live: NONAKTIF (Default - Hemat CPU/Bandwidth STB. Klik untuk mengaktifkan)';
             }
-            startedCount++;
-        });
+        }
+    }
+    window.updateAutoPlayUI = updateAutoPlayUI;
+
+    window.toggleAutoPlayPreference = function() {
+        const current = isAutoPlayLive();
+        const next = !current;
+        localStorage.setItem('nvr_autoplay_live', next ? 'true' : 'false');
+        updateAutoPlayUI();
+        if (next) {
+            showToast('⚡ Auto-play Live DIAKTIFKAN: Kamera akan otomatis diputar saat membuka halaman monitor.', 'success');
+            window.playAllStreams();
+        } else {
+            showToast('⚡ Auto-play Live DINONAKTIFKAN: Kamera akan siaga (stop) saat membuka halaman monitor.', 'info');
+            window.pauseAllStreams();
+        }
+    };
+
+    window.startSingleSlotStream = function(videoId) {
+        if (!videoId) return;
+        const slot = window.cameraSlotRegistry ? window.cameraSlotRegistry[videoId] : null;
+        if (slot && slot.enabled && typeof playUltraStream === 'function') {
+            playUltraStream(slot.videoId, slot.hlsUrl, slot.streamPath);
+            const btnD = document.getElementById(slot.btnTileId);
+            const btnM = document.getElementById(slot.mBtnTileId);
+            if (btnD) btnD.textContent = '⏸️';
+            if (btnM) btnM.textContent = '⏸️';
+        }
+    };
+
+    window.playAllStreams = function() {
+        window.liveStreamsPlaying = true;
+        let startedCount = 0;
+
+        if (window.cameraSlotRegistry && Object.keys(window.cameraSlotRegistry).length > 0) {
+            for (const vidId in window.cameraSlotRegistry) {
+                const slot = window.cameraSlotRegistry[vidId];
+                if (slot && slot.enabled && typeof playUltraStream === 'function') {
+                    playUltraStream(slot.videoId, slot.hlsUrl, slot.streamPath);
+                    const btnD = document.getElementById(slot.btnTileId);
+                    const btnM = document.getElementById(slot.mBtnTileId);
+                    if (btnD) btnD.textContent = '⏸️';
+                    if (btnM) btnM.textContent = '⏸️';
+                    startedCount++;
+                }
+            }
+        } else {
+            const isUserApp = document.getElementById("userApp") && document.getElementById("userApp").style.display !== "none";
+            const gridContainer = isUserApp ? document.getElementById("mVideoGrid") : (document.getElementById("videoGrid") || document.getElementById("mVideoGrid"));
+            const videos = gridContainer ? gridContainer.querySelectorAll('.cam-player-video') : document.querySelectorAll('.cam-player-video');
+            videos.forEach(v => {
+                if (v.paused) v.play().catch(() => {});
+                startedCount++;
+            });
+        }
 
         const activeCamsCount = (cameras && Array.isArray(cameras) && cameras.length > 0)
             ? cameras.filter(c => c.enabled !== false).length
-            : (videos.length || 1);
+            : (startedCount || 1);
 
         showToast(`▶️ Memulai seluruh aliran live kamera (${activeCamsCount} kamera)`, 'success');
     };
 
     window.pauseAllStreams = function() {
+        window.liveStreamsPlaying = false;
+        
+        // Putus koneksi WebRTC & HLS player secara menyeluruh untuk benar-benar hemat CPU & RAM STB
+        if (typeof destroyHlsPlayers === 'function') {
+            destroyHlsPlayers();
+        }
+
         const isUserApp = document.getElementById("userApp") && document.getElementById("userApp").style.display !== "none";
         const gridContainer = isUserApp ? document.getElementById("mVideoGrid") : (document.getElementById("videoGrid") || document.getElementById("mVideoGrid"));
         const videos = gridContainer ? gridContainer.querySelectorAll('.cam-player-video') : document.querySelectorAll('.cam-player-video');
         
         videos.forEach(v => {
-            if (!v.paused) {
+            try {
                 v.pause();
-            }
+                v.srcObject = null;
+                v.removeAttribute('src');
+                v.load();
+            } catch (_) {}
         });
+
+        if (window.cameraSlotRegistry) {
+            for (const vidId in window.cameraSlotRegistry) {
+                const slot = window.cameraSlotRegistry[vidId];
+                if (typeof setStreamState === 'function') {
+                    setStreamState(vidId, 'standby', 'Stream Dihentikan (Hemat CPU)', 'Klik petak atau ▶️ untuk menonton');
+                }
+                const btnD = document.getElementById(slot.btnTileId);
+                const btnM = document.getElementById(slot.mBtnTileId);
+                if (btnD) btnD.textContent = '▶️';
+                if (btnM) btnM.textContent = '▶️';
+            }
+        }
 
         const activeCamsCount = (cameras && Array.isArray(cameras) && cameras.length > 0)
             ? cameras.filter(c => c.enabled !== false).length
             : (videos.length || 1);
 
-        showToast(`⏸️ Seluruh live stream dijeda (${activeCamsCount} kamera - Hemat CPU & Bandwidth)`, 'warning');
+        showToast(`⏹️ Seluruh live stream dihentikan (${activeCamsCount} kamera - Hemat CPU & Bandwidth STB)`, 'warning');
     };
 
     window.toggleTilePlayPause = function(camId) {
+        if (!camId) return;
+        let targetSlot = null;
+        let targetVidId = null;
+        if (window.cameraSlotRegistry) {
+            for (const vidId in window.cameraSlotRegistry) {
+                if (String(window.cameraSlotRegistry[vidId].camId) === String(camId)) {
+                    targetSlot = window.cameraSlotRegistry[vidId];
+                    targetVidId = vidId;
+                    break;
+                }
+            }
+        }
+
         const cell = document.getElementById('cell_' + camId) || document.getElementById('m_cell_' + camId);
-        if (!cell) return;
-        const vid = cell.querySelector('video');
+        const vid = cell ? cell.querySelector('video') : null;
+        const vidId = targetVidId || (vid ? vid.id : null);
         const btnD = document.getElementById('btn_tile_pp_' + camId);
         const btnM = document.getElementById('m_btn_tile_pp_' + camId);
-        if (vid) {
-            if (vid.paused) {
-                vid.play().catch(() => {});
-                if (btnD) btnD.textContent = '⏸️';
-                if (btnM) btnM.textContent = '⏸️';
-            } else {
-                vid.pause();
-                if (btnD) btnD.textContent = '▶️';
-                if (btnM) btnM.textContent = '▶️';
+
+        const isPlaying = Boolean(vidId && ((window.activeHlsPlayers && window.activeHlsPlayers[vidId]) || (window.activeWebRtcPlayers && window.activeWebRtcPlayers[vidId])));
+
+        if (isPlaying) {
+            if (vidId) {
+                if (window.activeHlsPlayers && window.activeHlsPlayers[vidId]) {
+                    try { window.activeHlsPlayers[vidId].destroy(); } catch (_) {}
+                    delete window.activeHlsPlayers[vidId];
+                }
+                if (window.activeWebRtcPlayers && window.activeWebRtcPlayers[vidId]) {
+                    try { window.activeWebRtcPlayers[vidId].close(); } catch (_) {}
+                    delete window.activeWebRtcPlayers[vidId];
+                }
+                if (typeof setStreamState === 'function') {
+                    setStreamState(vidId, 'standby', 'Stream Dihentikan', 'Klik ▶️ untuk memutar stream');
+                }
             }
+            if (vid) {
+                try {
+                    vid.pause();
+                    vid.srcObject = null;
+                    vid.removeAttribute('src');
+                    vid.load();
+                } catch (_) {}
+            }
+            if (btnD) btnD.textContent = '▶️';
+            if (btnM) btnM.textContent = '▶️';
+        } else {
+            if (targetSlot && typeof playUltraStream === 'function') {
+                playUltraStream(targetSlot.videoId, targetSlot.hlsUrl, targetSlot.streamPath);
+            } else if (vidId) {
+                window.startSingleSlotStream(vidId);
+            }
+            if (btnD) btnD.textContent = '⏸️';
+            if (btnM) btnM.textContent = '⏸️';
         }
     };
 
@@ -4044,13 +4178,16 @@ async function fetchCameras() {
 
         if (cellEl) {
             if (state === 'live' || state === 'ready') {
+                cellEl.classList.remove('is-stalled', 'is-disconnected', 'is-standby');
+            } else if (state === 'standby' || state === 'stopped') {
                 cellEl.classList.remove('is-stalled', 'is-disconnected');
+                cellEl.classList.add('is-standby');
             } else if (state === 'stalled' || state === 'reconnecting') {
                 cellEl.classList.add('is-stalled');
-                cellEl.classList.remove('is-disconnected');
+                cellEl.classList.remove('is-disconnected', 'is-standby');
             } else if (state === 'offline' || state === 'error') {
                 cellEl.classList.add('is-disconnected');
-                cellEl.classList.remove('is-stalled');
+                cellEl.classList.remove('is-stalled', 'is-standby');
             }
         }
 
@@ -4062,6 +4199,17 @@ async function fetchCameras() {
         if (state === 'live' || state === 'ready') {
             overlay.classList.add('hidden');
             if (spinEl) spinEl.style.display = 'none';
+        } else if (state === 'standby' || state === 'stopped') {
+            overlay.classList.remove('hidden');
+            if (spinEl) spinEl.style.display = 'none';
+            if (titleEl) {
+                titleEl.style.color = '#94a3b8';
+                titleEl.innerHTML = '<span style="display:inline-block; font-size:1.15rem; margin-right:4px;">▶️</span> Live Standby';
+            }
+            if (descEl) {
+                descEl.style.color = '#cbd5e1';
+                descEl.textContent = detail || message || 'Klik petak atau tombol ▶️ untuk memutar';
+            }
         } else if (state === 'connecting') {
             overlay.classList.remove('hidden');
             if (spinEl) spinEl.style.display = 'block';
@@ -4412,6 +4560,7 @@ async function fetchCameras() {
         }
         
         destroyHlsPlayers();
+        window.cameraSlotRegistry = {};
         
         let camsToShow = [];
         // Periksa apakah terdapat urutan kamera kustom yang dipilih (Slot Ordering) untuk Kiosk
@@ -4460,7 +4609,6 @@ async function fetchCameras() {
                 if (cam) {
                     cell.className = "cam-cell" + (cam.id === selectedCamIdForPtz ? " selected" : "");
                     cell.id = "cell_" + cam.id;
-                    cell.onclick = () => window.selectCellForPtz(cam.id);
                     
                     // Dual Stream Engine: Default is SD if distinct sub-stream exists, or HD if single main-stream
                     const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
@@ -4484,6 +4632,24 @@ async function fetchCameras() {
                         hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
                     }
                     const videoId = "cam_video_admin_" + i;
+
+                    window.cameraSlotRegistry[videoId] = {
+                        camId: cam.id,
+                        videoId: videoId,
+                        hlsUrl: hlsUrl,
+                        streamPath: streamPath,
+                        enabled: cam.enabled !== false,
+                        btnTileId: 'btn_tile_pp_' + cam.id,
+                        mBtnTileId: 'm_btn_tile_pp_' + cam.id
+                    };
+
+                    cell.onclick = () => {
+                        window.selectCellForPtz(cam.id);
+                        const isPlaying = Boolean((window.activeHlsPlayers && window.activeHlsPlayers[videoId]) || (window.activeWebRtcPlayers && window.activeWebRtcPlayers[videoId]));
+                        if (!isPlaying && typeof window.startSingleSlotStream === 'function') {
+                            window.startSingleSlotStream(videoId);
+                        }
+                    };
                     
                     cell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
@@ -4497,7 +4663,7 @@ async function fetchCameras() {
 
                             <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:4px; align-items:center;">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                <button type="button" id="btn_tile_pp_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Jeda Stream Ini" style="font-size:0.65rem; padding:2px 6px; border-radius:4px; cursor:pointer; background:rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.25);">⏸️</button>
+                                <button type="button" id="btn_tile_pp_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Hentikan Stream Ini" style="font-size:0.65rem; padding:2px 6px; border-radius:4px; cursor:pointer; background:rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.25);">▶️</button>
                                 <button type="button" id="badge_quality_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleCameraQuality('${cam.id}')" title="Klik untuk beralih kualitas SD / HD" style="font-size:0.65rem; padding:2px 7px; border-radius:4px; cursor:pointer; font-weight:700; background:${curQuality === 'HD' ? '#2563eb' : '#059669'}; color:#fff; border:1px solid rgba(255,255,255,0.3);">${curQuality}</button>
                             </div>
                             <div class="cam-title-bar" style="z-index:14;">
@@ -4520,7 +4686,19 @@ async function fetchCameras() {
                             vidEl.addEventListener('stalled', () => window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...'));
                             vidEl.addEventListener('error', () => window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus'));
                         }
-                        if (cam.enabled !== false) playUltraStream(videoId, hlsUrl, streamPath);
+
+                        const isKiosk = Boolean(window.isKioskDisplay || document.body.classList.contains('kiosk-display-mode'));
+                        const shouldPlay = isKiosk || (window.liveStreamsPlaying !== undefined ? window.liveStreamsPlaying : (typeof isAutoPlayLive === 'function' && isAutoPlayLive()));
+
+                        if (shouldPlay && cam.enabled !== false) {
+                            playUltraStream(videoId, hlsUrl, streamPath);
+                            const btnD = document.getElementById('btn_tile_pp_' + cam.id);
+                            if (btnD) btnD.textContent = '⏸️';
+                        } else {
+                            window.setStreamState(videoId, 'standby', 'Mode Siaga (Standby)', 'Klik petak atau tombol ▶️ untuk memutar stream');
+                            const btnD = document.getElementById('btn_tile_pp_' + cam.id);
+                            if (btnD) btnD.textContent = '▶️';
+                        }
                     });
                 } else {
                     cell.className = "cam-cell empty-cell";
@@ -4541,7 +4719,6 @@ async function fetchCameras() {
                 if (cam) {
                     mCell.className = "cam-cell" + (cam.id === selectedCamIdForPtz ? " selected" : "");
                     mCell.id = "m_cell_" + cam.id;
-                    mCell.onclick = () => window.selectCellForPtz(cam.id);
                     
                     const hasDistinctSub = Boolean(cam.subStreamUrl && cam.subStreamUrl.trim() !== '' && cam.subStreamUrl.trim() !== (cam.mainStreamUrl || '').trim());
                     let curQuality = window.camStreamQualities && window.camStreamQualities[cam.id];
@@ -4564,6 +4741,24 @@ async function fetchCameras() {
                         hlsUrl = cam.mainStreamUrl && cam.mainStreamUrl.startsWith('http') ? cam.mainStreamUrl : ('/stream/' + streamPath + '/index.m3u8?token=' + encodeURIComponent(getAuthToken()));
                     }
                     const videoId = "cam_video_mobile_" + i;
+
+                    window.cameraSlotRegistry[videoId] = {
+                        camId: cam.id,
+                        videoId: videoId,
+                        hlsUrl: hlsUrl,
+                        streamPath: streamPath,
+                        enabled: cam.enabled !== false,
+                        btnTileId: 'btn_tile_pp_' + cam.id,
+                        mBtnTileId: 'm_btn_tile_pp_' + cam.id
+                    };
+
+                    mCell.onclick = () => {
+                        window.selectCellForPtz(cam.id);
+                        const isPlaying = Boolean((window.activeHlsPlayers && window.activeHlsPlayers[videoId]) || (window.activeWebRtcPlayers && window.activeWebRtcPlayers[videoId]));
+                        if (!isPlaying && typeof window.startSingleSlotStream === 'function') {
+                            window.startSingleSlotStream(videoId);
+                        }
+                    };
                     
                     mCell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
@@ -4577,7 +4772,7 @@ async function fetchCameras() {
 
                             <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:4px; align-items:center;">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                <button type="button" id="m_btn_tile_pp_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Jeda Stream Ini" style="font-size:0.65rem; padding:2px 6px; border-radius:4px; cursor:pointer; background:rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.25);">⏸️</button>
+                                <button type="button" id="m_btn_tile_pp_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Hentikan Stream Ini" style="font-size:0.65rem; padding:2px 6px; border-radius:4px; cursor:pointer; background:rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.25);">▶️</button>
                                 <button type="button" id="m_badge_quality_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleCameraQuality('${cam.id}')" title="Klik untuk beralih kualitas SD / HD" style="font-size:0.65rem; padding:2px 7px; border-radius:4px; cursor:pointer; font-weight:700; background:${curQuality === 'HD' ? '#2563eb' : '#059669'}; color:#fff; border:1px solid rgba(255,255,255,0.3);">${curQuality}</button>
                             </div>
                             <div class="cam-title-bar" style="z-index:14;">
@@ -4600,7 +4795,19 @@ async function fetchCameras() {
                             vidEl.addEventListener('stalled', () => window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...'));
                             vidEl.addEventListener('error', () => window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus'));
                         }
-                        if (cam.enabled !== false) playUltraStream(videoId, hlsUrl, streamPath);
+
+                        const isKiosk = Boolean(window.isKioskDisplay || document.body.classList.contains('kiosk-display-mode'));
+                        const shouldPlay = isKiosk || (window.liveStreamsPlaying !== undefined ? window.liveStreamsPlaying : (typeof isAutoPlayLive === 'function' && isAutoPlayLive()));
+
+                        if (shouldPlay && cam.enabled !== false) {
+                            playUltraStream(videoId, hlsUrl, streamPath);
+                            const btnM = document.getElementById('m_btn_tile_pp_' + cam.id);
+                            if (btnM) btnM.textContent = '⏸️';
+                        } else {
+                            window.setStreamState(videoId, 'standby', 'Mode Siaga (Standby)', 'Klik petak atau tombol ▶️ untuk memutar stream');
+                            const btnM = document.getElementById('m_btn_tile_pp_' + cam.id);
+                            if (btnM) btnM.textContent = '▶️';
+                        }
                     });
                 } else {
                     mCell.className = "cam-cell empty-cell";
@@ -4617,6 +4824,9 @@ async function fetchCameras() {
         }
 
         inits.forEach(fn => fn());
+        if (typeof updateAutoPlayUI === 'function') {
+            updateAutoPlayUI();
+        }
     }
 
 

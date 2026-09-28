@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.2.9 - HDMI Kiosk 100vh Fullscreen Fix, Multi-Slot Ordering UI & Dual-Cam Audio/Video Stream Engine.",
+  "description": "Arch3r NVR Ver. 11.3.0 - Standby Default Live Monitor, Auto-Play Switcher & Compact Mobile Toolbar Icons.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

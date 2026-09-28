@@ -241,12 +241,18 @@
                                     <button class="nvr-grid-btn grid-btn active" data-grid="9" onclick="window.setGridLayout(9)" title="Layout 3x3">▦ 3x3</button>
                                     <button class="nvr-grid-btn grid-btn" data-grid="16" onclick="window.setGridLayout(16)" title="Layout 4x4">㗊 4x4</button>
                                 </div>
-                                <div class="nvr-stream-global-controls" style="display:flex; gap:6px; align-items:center;">
-                                    <button id="btnPlayAllStreams" class="nvr-tool-btn nvr-btn-stream-all" onclick="window.playAllStreams()" title="Putar Semua Live Stream (Play All)" style="background:rgba(16,185,129,0.15); border:1px solid #059669; color:#34d399; font-size:0.78rem; padding:4px 10px; display:inline-flex; align-items:center; gap:6px; font-weight:600; border-radius:4px; cursor:pointer; width:auto; height:28px;">
-                                        <span style="font-size:0.8rem; line-height:1;">▶️</span> <span>Putar Semua</span>
+                                <div class="nvr-stream-global-controls">
+                                    <button id="btnPlayAllStreams" class="nvr-tool-btn nvr-btn-stream-all nvr-btn-play-all" onclick="window.playAllStreams()" title="Putar Semua Live Stream (Play All)" style="background:rgba(16,185,129,0.15); border:1px solid #059669; color:#34d399; font-size:0.78rem; padding:4px 8px; display:inline-flex; align-items:center; gap:5px; font-weight:600; border-radius:4px; cursor:pointer; width:auto; height:28px;">
+                                        <span class="nvr-btn-icon" style="font-size:0.8rem; line-height:1;">▶️</span>
+                                        <span class="nvr-btn-label">Putar Semua</span>
                                     </button>
-                                    <button id="btnPauseAllStreams" class="nvr-tool-btn nvr-btn-stream-all" onclick="window.pauseAllStreams()" title="Jeda Semua Live Stream (Pause All / Hemat CPU)" style="background:rgba(239,68,68,0.15); border:1px solid #dc2626; color:#f87171; font-size:0.78rem; padding:4px 10px; display:inline-flex; align-items:center; gap:6px; font-weight:600; border-radius:4px; cursor:pointer; width:auto; height:28px;">
-                                        <span style="font-size:0.8rem; line-height:1;">⏸️</span> <span>Jeda Semua</span>
+                                    <button id="btnPauseAllStreams" class="nvr-tool-btn nvr-btn-stream-all nvr-btn-pause-all" onclick="window.pauseAllStreams()" title="Stop / Jeda Semua Live Stream (Hemat CPU & Bandwidth)" style="background:rgba(239,68,68,0.15); border:1px solid #dc2626; color:#f87171; font-size:0.78rem; padding:4px 8px; display:inline-flex; align-items:center; gap:5px; font-weight:600; border-radius:4px; cursor:pointer; width:auto; height:28px;">
+                                        <span class="nvr-btn-icon" style="font-size:0.8rem; line-height:1;">⏹️</span>
+                                        <span class="nvr-btn-label">Stop Semua</span>
+                                    </button>
+                                    <button id="btnAutoPlayToggle" class="nvr-tool-btn nvr-btn-stream-all nvr-btn-autoplay" onclick="window.toggleAutoPlayPreference()" title="Auto-Play Live saat Buka Monitor (Default: Off / Hemat Resource)" style="background:rgba(100,116,139,0.15); border:1px solid #64748b; color:#94a3b8; font-size:0.78rem; padding:4px 8px; display:inline-flex; align-items:center; gap:5px; font-weight:600; border-radius:4px; cursor:pointer; width:auto; height:28px;">
+                                        <span class="nvr-btn-icon" style="font-size:0.8rem; line-height:1;">⚡</span>
+                                        <span class="nvr-btn-label" id="autoPlayStatusText">Auto: Off</span>
                                     </button>
                                 </div>
                                 <div class="nvr-grid-actions-right">

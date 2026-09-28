@@ -604,22 +604,89 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 }
 
 /* Specific styling for Play All & Pause All buttons to avoid icon/text overlap */
+.nvr-stream-global-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
 .nvr-stream-global-controls .nvr-tool-btn,
 .nvr-btn-stream-all {
     width: auto !important;
     min-width: fit-content;
     height: 28px !important;
-    padding: 0 10px !important;
+    padding: 0 8px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
+    gap: 5px !important;
     white-space: nowrap !important;
     font-size: 0.78rem !important;
     font-weight: 600 !important;
     border-radius: 5px !important;
     cursor: pointer;
     box-sizing: border-box;
+    transition: all 0.15s ease;
+}
+.nvr-btn-stream-all .nvr-btn-icon {
+    font-size: 0.82rem;
+    line-height: 1;
+}
+.nvr-btn-stream-all .nvr-btn-label {
+    display: inline;
+}
+
+/* Standby Cell Indicator */
+.cam-cell.is-standby {
+    cursor: pointer;
+}
+.cam-cell.is-standby:hover {
+    border-color: #38bdf8 !important;
+}
+
+/* Responsif Toolbar untuk UI HP / Layar Sempit (Mobile Screen) */
+@media (max-width: 768px) {
+    .nvr-grid-toolbar-row {
+        padding: 4px 6px !important;
+        gap: 4px !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+    }
+    .nvr-grid-toolbar-row::-webkit-scrollbar {
+        display: none !important;
+    }
+    .nvr-grid-selector-group {
+        gap: 2px !important;
+        padding: 1px 2px !important;
+    }
+    .nvr-grid-selector-group .nvr-grid-btn {
+        padding: 2px 4px !important;
+        font-size: 0.68rem !important;
+        height: 26px !important;
+    }
+    .nvr-stream-global-controls {
+        gap: 4px !important;
+    }
+    .nvr-btn-stream-all {
+        padding: 0 4px !important;
+        min-width: 28px !important;
+        width: 28px !important;
+        height: 26px !important;
+        justify-content: center !important;
+    }
+    /* Sembunyikan teks label di HP sehingga tombol menjadi icon saja dan muat sempurna */
+    .nvr-btn-stream-all .nvr-btn-label {
+        display: none !important;
+    }
+    .nvr-grid-actions-right {
+        gap: 4px !important;
+    }
+    .nvr-grid-actions-right .nvr-tool-btn {
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 11px !important;
+    }
 }
 .nvr-tool-btn:hover {
     background: var(--accent-blue);

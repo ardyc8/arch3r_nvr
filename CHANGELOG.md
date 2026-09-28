@@ -1,5 +1,22 @@
 # Changelog
 
+## [Ver 11.3.0] - 2026-09-28
+### Standby Default Live Monitor, Auto-Play Switcher & Compact Mobile Toolbar Icons
+- **Mode Siaga Default Saat Buka Monitor Live (Standby / Zero-Overhead Initial Load) (`public/script.js`, `public/style.css`):**
+  - Mengubah perilaku default saat pertama kali membuka halaman monitor live menjadi **STOP / SIAGA (Standby)**, tidak lagi memutar seluruh aliran video kamera secara serentak secara otomatis.
+  - Menghemat pemakaian CPU STB Armbian, RAM, dan bandwidth jaringan pengguna secara drastis saat halaman pertama kali diakses.
+  - Setiap petak kamera menampilkan status OSD Siaga yang elegan dengan opsi putar per kamera (cukup klik petak atau tombol `▶️` pada kartu kamera untuk memulai kamera yang ingin ditonton).
+- **Pengalih Auto-play Cepat Terintegrasi (Auto-Play Switcher) (`public/index.html`, `public/script.js`):**
+  - Menambahkan tombol toggle `⚡ Auto: Off / Auto: On` pada toolbar pemantauan live stream.
+  - Pilihan pengguna disimpan secara persisten di `localStorage` (`nvr_autoplay_live`). Pengguna yang menginginkan stream langsung diputar dapat menyalakan toggle ini kapan saja dengan sekali sentuh.
+- **Penyempurnaan Tombol Stop Sebenarnya (True Stop vs Visual Pause) (`public/script.js`):**
+  - Tombol jeda/stop kini melakukan pemutusan koneksi WebRTC (`RTCPeerConnection.close()`) dan penghancuran instance HLS player (`hls.destroy()`) secara tuntas ke server RTSP MediaMTX, bukan sekadar `video.pause()`.
+  - Membebaskan thread decoding dan koneksi soket jaringan di STB Armbian secara riil saat dihentikan.
+- **UI Responsif HP / Mobile Tanpa Tombol Terpotong (`public/index.html`, `public/style.css`):**
+  - Menyusun ulang tombol global kontrol stream (`▶️ Putar Semua`, `⏹️ Stop Semua`, `⚡ Auto`) menjadi struktur icon-first dengan kelas `.nvr-btn-icon` dan `.nvr-btn-label`.
+  - Pada layar HP (lebar `<= 768px`), teks label otomatis disembunyikan sehingga tombol tampil rapi sebagai icon ramping (`▶️`, `⏹️`, `⚡`).
+  - Mencegah tombol di sebelahnya (`🔄 Refresh` dan `⛶ Layar Penuh`) terdorong keluar layar ke kanan, memastikan tata letak toolbar muat sempurna pada semua ukuran layar ponsel.
+
 ## [Ver 11.2.9] - 2026-09-28
 ### HDMI Kiosk 100vh Fullscreen Fix, Multi-Slot Ordering UI & Dual-Cam Audio/Video Stream Engine
 - **Eliminasi Total Gambar Kepotong & Celah Hitam pada Kiosk TV 1x1, 3x3, 4x4 (`public/style.css`):**
