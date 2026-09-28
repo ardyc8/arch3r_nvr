@@ -15141,17 +15141,21 @@ function ensureNetMgrModalDOM() {
                     <div id="wifiQuickConnectFormBox" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem; background:rgba(0,0,0,0.25); padding:0.85rem; border-radius:8px; border:1px solid var(--border, #334155);">
                         <div>
                             <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Nama Wi-Fi (SSID):</label>
-                            <input type="text" id="wifiSsidInput" placeholder="Pilih dari daftar atau ketik SSID" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem; box-sizing:border-box;">
+                            <input type="text" id="wifiSsidInput" placeholder="Pilih dari daftar atau ketik SSID" style="width:100%; background:#0f172a !important; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; caret-color:#38bdf8 !important; border:1px solid var(--border, #334155); padding:0.5rem 0.65rem; border-radius:6px; font-size:0.85rem; font-family:sans-serif; box-sizing:border-box; pointer-events:auto !important; user-select:text !important;" onkeydown="if(event.key==='Enter') window.connectWifiNetworkUI()">
                         </div>
                         <div>
-                            <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Password Wi-Fi:</label>
-                            <div style="position:relative; display:flex; align-items:center;">
-                                <input type="password" id="wifiPasswordInput" placeholder="Password Wi-Fi (Kosong jika Open)" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem 2.2rem 0.45rem 0.45rem; border-radius:6px; font-size:0.8rem; box-sizing:border-box;">
-                                <button type="button" onclick="window.toggleWifiPasswordVisibility()" style="position:absolute; right:6px; background:none; border:none; color:#94a3b8; cursor:pointer; font-size:0.9rem;" title="Lihat Password">👁️</button>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                                <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">Password Wi-Fi:</label>
+                                <span id="wifiPasswordCounterBadge" style="font-size:0.7rem; color:#38bdf8; font-family:monospace;">(0 karakter)</span>
+                            </div>
+                            <div style="position:relative; display:flex; align-items:center; gap:0.3rem;">
+                                <input type="text" id="wifiPasswordInput" placeholder="Ketik Password (Kosong jika Open)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="window.updateWifiPasswordCounter(this.value)" onkeydown="if(event.key==='Enter') window.connectWifiNetworkUI()" style="width:100%; background:#0f172a !important; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; caret-color:#38bdf8 !important; border:1px solid var(--border, #334155); padding:0.5rem 0.65rem; border-radius:6px; font-size:0.85rem; font-family:monospace; box-sizing:border-box; pointer-events:auto !important; user-select:text !important;">
+                                <button type="button" id="btnToggleWifiPwdVisibility" onclick="window.toggleWifiPasswordVisibility()" style="background:rgba(255,255,255,0.08); border:1px solid var(--border, #334155); color:#94a3b8; cursor:pointer; font-size:0.8rem; padding:0.45rem 0.6rem; border-radius:6px; white-space:nowrap;" title="Sembunyikan / Tampilkan Teks Password">👁️</button>
+                                <button type="button" onclick="window.promptWifiPasswordDialog()" style="background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.4); color:#60a5fa; cursor:pointer; font-size:0.78rem; padding:0.45rem 0.6rem; border-radius:6px; white-space:nowrap; font-weight:600;" title="Input Password lewat Kotak Dialog Browser (Sangat berguna untuk remote STB / TV)">⌨️ Prompt</button>
                             </div>
                         </div>
                         <div style="display:flex; align-items:flex-end;">
-                            <button type="button" onclick="window.connectWifiNetworkUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.82rem; padding:0.45rem 1rem; width:100%; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                            <button type="button" onclick="window.connectWifiNetworkUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.82rem; padding:0.5rem 1rem; width:100%; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
                                 <span>🚀</span> Sambungkan STB
                             </button>
                         </div>
@@ -15302,8 +15306,39 @@ window.closeNetMgrModal = function() {
 
 window.toggleWifiPasswordVisibility = function() {
     const pwdInput = document.getElementById('wifiPasswordInput');
+    const btn = document.getElementById('btnToggleWifiPwdVisibility');
     if (!pwdInput) return;
-    pwdInput.type = (pwdInput.type === 'password') ? 'text' : 'password';
+    if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        if (btn) btn.textContent = '👁️';
+    } else {
+        pwdInput.type = 'password';
+        if (btn) btn.textContent = '🔒';
+    }
+};
+
+window.updateWifiPasswordCounter = function(val) {
+    const badge = document.getElementById('wifiPasswordCounterBadge');
+    if (!badge) return;
+    const len = typeof val === 'string' ? val.length : 0;
+    badge.textContent = `(${len} karakter)`;
+    badge.style.color = len > 0 ? '#34d399' : '#38bdf8';
+};
+
+window.promptWifiPasswordDialog = function() {
+    const pwdInput = document.getElementById('wifiPasswordInput');
+    const ssidInput = document.getElementById('wifiSsidInput');
+    const currentSsid = ssidInput ? ssidInput.value : '';
+    const currentVal = pwdInput ? pwdInput.value : '';
+    const promptVal = prompt(`Ketikkan Password Wi-Fi untuk "${currentSsid || 'Jaringan'}" di sini:`, currentVal);
+    if (promptVal !== null) {
+        if (pwdInput) {
+            pwdInput.value = promptVal;
+            window.updateWifiPasswordCounter(promptVal);
+            pwdInput.focus();
+        }
+        showToast(`✓ Password Wi-Fi (${promptVal.length} karakter) dimasukkan. Klik "Sambungkan STB".`, 'success');
+    }
 };
 
 window.selectWifiSsid = function(ssid, isSecured = true) {

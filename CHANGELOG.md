@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.5.9] - 2026-09-28
+### STB Direct Input Engine, Native Password Dialog Prompt, Live Character Counter & Duplicate DOM Cleaner
+- **Eliminasi Total Duplikasi Modal DOM (`public/index.html`):**
+  - Menghapus blok hardcoded statis lama `#netMgrModalOverlay` dari `index.html` sehingga tidak terjadi konflik elemen ganda ID `#wifiPasswordInput` di memori browser.
+- **Peningkatan Form Input Password Wi-Fi (`public/script.js`):**
+  - **Live Visible Text & Caret Styling**: Mengaktifkan pengetikan teks langsung dengan styling warna kontras tinggi (`-webkit-text-fill-color: #ffffff`, `caret-color: #38bdf8`, `user-select: text`) untuk mencegah bug render pada browser STB / Linux Armbian / Android TV.
+  - **Live Character Counter (`#wifiPasswordCounterBadge`)**: Menampilkan indikator jumlah karakter yang sedang diketik secara real-time `(X karakter)` sehingga pengguna langsung tahu setiap kali tombol keyboard ditekan.
+  - **Tombol Cadangan `⌨️ Prompt` (`window.promptWifiPasswordDialog`)**: Menyediakan tombol input dialog browser instan (`prompt()`) sebagai alternatif jika keyboard fisik/remote TV mengalami kendala fokus pada elemen HTML5.
+  - **Shortcut Enter**: Menekan tombol Enter pada kolom SSID atau Password langsung mengeksekusi fungsi sambung (`window.connectWifiNetworkUI()`).
+
 ## [Ver 11.5.8] - 2026-09-28
 ### Interactive Wi-Fi Connect UX, Smooth Scroll, Auto-Focus & Dual-Homed Coexistence
 - **Peningkatan UX Interaktif Pemilihan Wi-Fi (`public/script.js`):**
