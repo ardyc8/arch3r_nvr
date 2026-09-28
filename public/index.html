@@ -144,21 +144,29 @@
                     <div class="w-item"><span>CPU</span><strong id="wCpu">--%</strong></div>
                     <div class="w-item"><span>RAM</span><strong id="wRam">--%</strong></div>
                     <div class="w-item"><span>Suhu STB</span><strong id="wTemp">--°C</strong></div>
-                    <div class="w-item"><span>Storage Utama</span><strong id="wStorage">--%</strong></div>
+                    <div class="w-item" id="wStorageHeaderBtn" style="cursor:pointer; user-select:none; transition:all 0.2s; border:1px solid transparent; border-radius:4px;" title="Klik untuk Tampil/Sembunyi Rincian Disk">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>Storage</span>
+                            <span id="wStorageToggleIcon" style="font-size:0.65rem; color:#94a3b8; transition:transform 0.2s;">▼</span>
+                        </div>
+                        <strong id="wStorage">--%</strong>
+                    </div>
                 </div>
-                <!-- Container Rincian Disk Terpisah (Individu / HDD / USB / SD) -->
-                <div id="sidebarStorageList" style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed rgba(255,255,255,0.1); font-size:0.73rem;">
+                <!-- Container Rincian Disk Terpisah (Individu / HDD / USB / SD) Dropdown -->
+                <div id="sidebarStorageList" style="display:none; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed rgba(255,255,255,0.1); font-size:0.73rem;">
                     <!-- Disk individu akan dirender terpisah di sini oleh JS -->
                 </div>
                 <div class="widget-net" style="margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed rgba(255,255,255,0.1);">
-                    <div class="net-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="net-title" id="wNetHeaderBtn" style="display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; padding:2px 0;" title="Klik untuk Tampil/Sembunyi Rincian Interface Jaringan">
                         <span>🌐 Jaringan Total (<span id="wNetIf">eth0</span>)</span>
+                        <span id="wNetToggleIcon" style="font-size:0.65rem; color:#94a3b8; transition:transform 0.2s;">▼</span>
                     </div>
-                    <div class="net-speeds">
+                    <div class="net-speeds" id="wNetSpeedsBtn" style="cursor:pointer; user-select:none;" title="Klik untuk Tampil/Sembunyi Rincian Interface Jaringan">
                         <span class="down">↓ <span id="wNetDown">0 KB/s</span></span>
                         <span class="up">↑ <span id="wNetUp">0 KB/s</span></span>
                     </div>
-                    <div id="wNetBreakdown" style="font-size:0.68rem; color:#94a3b8; margin-top:3px; font-family:monospace; word-break:break-all;"></div>
+                    <!-- Container Rincian Interface Jaringan Dropdown -->
+                    <div id="wNetBreakdown" style="display:none; font-size:0.68rem; color:#94a3b8; margin-top:4px; padding-top:4px; border-top:1px dotted rgba(255,255,255,0.1); font-family:monospace; word-break:break-all;"></div>
                 </div>
             </div>
 

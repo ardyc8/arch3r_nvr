@@ -1180,8 +1180,51 @@ async function handleLogout() {
     }
 
     // --- Real-time Hardware System Monitor (Armbian STB) ---
+    function initSidebarWidgetToggles() {
+        const wStorageHeaderBtn = document.getElementById('wStorageHeaderBtn');
+        const sidebarStorageList = document.getElementById('sidebarStorageList');
+        const wStorageToggleIcon = document.getElementById('wStorageToggleIcon');
+
+        if (wStorageHeaderBtn && sidebarStorageList) {
+            if (!wStorageHeaderBtn.dataset.toggleBound) {
+                wStorageHeaderBtn.dataset.toggleBound = 'true';
+                wStorageHeaderBtn.addEventListener('click', () => {
+                    const isHidden = sidebarStorageList.style.display === 'none' || !sidebarStorageList.style.display;
+                    sidebarStorageList.style.display = isHidden ? 'block' : 'none';
+                    if (wStorageToggleIcon) {
+                        wStorageToggleIcon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+                    }
+                });
+            }
+        }
+
+        const wNetHeaderBtn = document.getElementById('wNetHeaderBtn');
+        const wNetSpeedsBtn = document.getElementById('wNetSpeedsBtn');
+        const wNetBreakdown = document.getElementById('wNetBreakdown');
+        const wNetToggleIcon = document.getElementById('wNetToggleIcon');
+
+        const toggleNetBreakdown = () => {
+            if (!wNetBreakdown) return;
+            const isHidden = wNetBreakdown.style.display === 'none' || !wNetBreakdown.style.display;
+            wNetBreakdown.style.display = isHidden ? 'block' : 'none';
+            if (wNetToggleIcon) {
+                wNetToggleIcon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+            }
+        };
+
+        if (wNetHeaderBtn && !wNetHeaderBtn.dataset.toggleBound) {
+            wNetHeaderBtn.dataset.toggleBound = 'true';
+            wNetHeaderBtn.addEventListener('click', toggleNetBreakdown);
+        }
+        if (wNetSpeedsBtn && !wNetSpeedsBtn.dataset.toggleBound) {
+            wNetSpeedsBtn.dataset.toggleBound = 'true';
+            wNetSpeedsBtn.addEventListener('click', toggleNetBreakdown);
+        }
+    }
+
     function startSystemMonitoring() {
         if (sysStatsInterval) clearInterval(sysStatsInterval);
+        initSidebarWidgetToggles();
         updateHardwareStats();
         sysStatsInterval = setInterval(updateHardwareStats, 5000);
     }
@@ -1192,6 +1235,9 @@ async function updateHardwareStats() {
             if (!res.ok) return;
             const data = await res.json();
             if (!data) return;
+
+            // Ensure event listeners for dropdowns are attached
+            initSidebarWidgetToggles();
 
             // 1. CPU
             const wCpu = document.getElementById('wCpu');
@@ -1265,7 +1311,6 @@ async function updateHardwareStats() {
                         `;
                     });
                     sidebarStorageList.innerHTML = storageHtml;
-                    sidebarStorageList.style.display = 'block';
                 }
             }
 
@@ -1281,15 +1326,18 @@ async function updateHardwareStats() {
                 if (wNetUp) wNetUp.textContent = data.network.txSpeedFormatted || '0 KB/s';
 
                 if (wNetBreakdown) {
-                    if (Array.isArray(data.network.interfaces) && data.network.interfaces.length > 1) {
-                        const breakdownText = data.network.interfaces.map(iface => {
+                    if (Array.isArray(data.network.interfaces) && data.network.interfaces.length > 0) {
+                        let breakdownHtml = '';
+                        data.network.interfaces.forEach(iface => {
                             const icon = iface.type === 'wifi' ? '📶' : '🔌';
-                            return `${icon} ${iface.name}: ↓${iface.rxSpeedFormatted} ↑${iface.txSpeedFormatted}`;
-                        }).join(' | ');
-                        wNetBreakdown.textContent = breakdownText;
-                        wNetBreakdown.style.display = 'block';
-                    } else {
-                        wNetBreakdown.style.display = 'none';
+                            breakdownHtml += `
+                                <div style="display:flex; justify-content:space-between; align-items:center; padding:3px 6px; margin-bottom:3px; background:rgba(15,23,42,0.5); border-radius:4px; border:1px solid rgba(255,255,255,0.05);">
+                                    <span style="color:#e2e8f0; font-weight:600; font-size:0.68rem;">${icon} ${iface.name}</span>
+                                    <span style="font-size:0.68rem;"><span style="color:#38bdf8;">↓${iface.rxSpeedFormatted}</span> <span style="color:#60a5fa;">↑${iface.txSpeedFormatted}</span></span>
+                                </div>
+                            `;
+                        });
+                        wNetBreakdown.innerHTML = breakdownHtml;
                     }
                 }
             }

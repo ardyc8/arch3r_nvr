@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.3.7 - Separate Individual Multi-Disk Storage Widget & Total Combined Network Bandwidth Monitoring.",
+  "description": "Arch3r NVR Ver. 11.3.8 - Interactive Dropdown Accordion Sidebar System Stats (Overall Parent Summary + Toggleable Individual Child Disks & Network Interfaces).",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

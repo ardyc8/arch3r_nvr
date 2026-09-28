@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.3.8] - 2026-09-28
+### Interactive Accordion Dropdown System Stats Widget (Parent Overall + Child Breakdown)
+- **Komponen Accordion Dropdown Sidebar Widget (`public/index.html`, `public/script.js`):**
+  - **Tampilan Utama Menyeluruh (Parent):** Menampilkan ringkasan utama CPU, RAM, Suhu STB, % Storage Utama, serta Total Bandwidth Internet (↓ Download & ↑ Upload akumulatif) di posisi teratas widget sidebar.
+  - **Show/Hide Child Elements (Dropdown):** Menambahkan tombol toggle interaktif berserta indikator panah (▼/▲) pada header Storage dan Jaringan.
+  - **Rincian Child Storage & Network (`public/script.js`):**
+    - Saat item Storage diklik, rincian tiap disk (Root Internal eMMC/SD Card, USB/SATA HDD `/media/devmon/*`) muncul secara responsif di bawahnya (`#sidebarStorageList`).
+    - Saat header Jaringan Total diklik, rincian kecepatan bandwidth masing-masing interface fisik (`🔌 eth0`, `📶 wlan0`) terbuka rapi di bawahnya (`#wNetBreakdown`).
+  - **State Persistence:** Memastikan pembaruan data sistem *real-time* (polling setiap 5 detik) tidak menutup menu dropdown yang sedang dibuka oleh pengguna.
+
 ## [Ver 11.3.7] - 2026-09-28
 ### Separate Individual Multi-Disk Storage Widget & Total Combined Network Bandwidth
 - **Rincian Penyimpanan Terpisah / Individu (`server.js`, `public/index.html`, `public/script.js`):**
