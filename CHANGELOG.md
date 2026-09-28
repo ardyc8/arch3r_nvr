@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.2.6] - 2026-09-28
+### Universal AAC Audio Resampler, MP4 Frag Keyframe Header Tolerance & DTS Ignore (igndts)
+- **Eliminasi Error Inisialisasi Header MP4 & Exit Code 234 (`server.js`):**
+  - Mengganti parameter filter audio kompleks (`aresample`) dengan transcode audio AAC standar (`-c:a aac -b:a 64k -ar 44100`) universal.
+  - Mengeliminasi error fatal `Could not write header (incorrect codec parameters ?): Invalid argument` yang terjadi saat kamera IP (seperti V380 / Xiongmai G.711u/a) gagal menginisialisasi parameter atom MP4.
+  - Memperkaya `segment_format_options` dengan flag `movflags=+faststart+frag_keyframe+empty_moov+default_base_moof` sehingga container MP4 dapat langsung dituliskan header-nya meskipun paket audio pertama datang terlambat.
+- **Pencegahan Error Non-Monotonic DTS & Exit Code 0 (`server.js`):**
+  - Menerapkan flag input `-fflags +genpts+igndts+discardcorrupt` (termasuk flag `+igndts` - *Ignore DTS*).
+  - Mengabaikan timestamp decoding (DTS) dobel/rusak dari RTSP kamera IP (`previous: 0, current: 0`) dan merekonstruksinya secara bersih menggunakan PTS valid.
+  - Menghapus `-avoid_negative_ts make_zero` pada input RTSP yang berbenturan dengan segmenter, mengandalkan opsi bawaan segmenter `-reset_timestamps 1` untuk transisi waktu segmen yang mulus tanpa menghentikan FFmpeg.
+
 ## [Ver 11.2.5] - 2026-09-28
 ### Fixed HDMI Kiosk Preset ReferenceError & Reinforced AGENTS.md Protocol
 - **Perbaikan Modal Pengaturan HDMI Kiosk (`public/script.js`):**

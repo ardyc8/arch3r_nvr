@@ -3608,11 +3608,11 @@ function spawnRecordingFFmpeg(cam) {
     } else {
         const isRtsp = typeof sourceUrl === 'string' && sourceUrl.startsWith('rtsp://');
         if (isRtsp) {
-            // Level 2 (Ultra Safe Vanilla Mode): Murni hanya -rtsp_transport tcp -i URL tanpa argumen tambahan yang bisa memicu 'Unrecognized option'
+            // Level 2 (Ultra Safe Vanilla Mode): Murni hanya -rtsp_transport tcp -i URL tanpa argumen tambahan
             if (fallbackLevel >= 2) {
                 inputArgs = [
                     '-rtsp_transport', 'tcp',
-                    '-fflags', '+genpts+discardcorrupt',
+                    '-fflags', '+genpts+igndts+discardcorrupt',
                     '-i', sourceUrl
                 ];
             } else {
@@ -3633,11 +3633,12 @@ function spawnRecordingFFmpeg(cam) {
                     dynamicArgs.push(caps.rtspTimeoutFlag, '10000000'); // 10 detik
                 }
 
+                // Gunakan +igndts (Ignore DTS) untuk mencegah crash "Non-monotonic DTS in output stream: previous: 0, current: 0"
+                // saat kamera RTSP mengirimkan timestamp dobel atau jitter
                 dynamicArgs.push(
                     '-analyzeduration', '5000000',
                     '-probesize', '5000000',
-                    '-fflags', '+genpts+discardcorrupt',
-                    '-avoid_negative_ts', 'make_zero'
+                    '-fflags', '+genpts+igndts+discardcorrupt'
                 );
 
                 inputArgs = [
@@ -3646,13 +3647,14 @@ function spawnRecordingFFmpeg(cam) {
                 ];
             }
         } else {
-            inputArgs = ['-fflags', '+genpts+discardcorrupt', '-i', sourceUrl];
+            inputArgs = ['-fflags', '+genpts+igndts+discardcorrupt', '-i', sourceUrl];
         }
     }
 
     // Parameter Audio Transcoding / Passthrough untuk perekaman MP4
     // PENTING: Jangan gunakan opsi bitrate global '-b' atau '-b:a' saat tidak dibutuhkan / stream copy untuk mencegah:
     // "Codec AVOption b (set bitrate) has not been used for any stream" yang memicu FFmpeg exit code 234 di FFmpeg 5.x/6.x/7.x
+    // Gunakan konfigurasi audio standar tanpa filter 'aresample' agresif yang dapat memicu "Could not write header (incorrect codec parameters ?): Invalid argument"
     let audioArgs = ['-an'];
     let hasAudioMap = false;
     if (cam.audioEnabled !== false && cam.audioCodec !== 'none') {
@@ -3662,16 +3664,16 @@ function spawnRecordingFFmpeg(cam) {
         } else if (cam.audioCodec === 'opus') {
             audioArgs = ['-c:a', 'libopus', '-b:a', '64k'];
         } else {
-            // Default AAC transcode: Sangat optimal & kompatibel untuk kamera V380, ONVIF generic, Xiongmai (G.711u/PCMU/PCMA) ke browser HTML5
-            // Khusus: Gunakan profil aac standar dan hanya pasang -b:a secara eksplisit tanpa menimbulkan AVOption warning
+            // Default AAC transcode: Standar 44.1kHz stereo/mono universal, sangat kompatibel dengan container MP4 segmenter
             audioArgs = isDemo 
                 ? ['-c:a', 'aac', '-b:a', '128k'] 
-                : ['-c:a', 'aac', '-b:a', '64k', '-ar', '16000', '-ac', '1', '-af', 'aresample=async=1:min_hard_comp=0.100000:first_pts=0'];
+                : ['-c:a', 'aac', '-b:a', '64k', '-ar', '44100'];
         }
     }
 
     // Perintah copy video stream ringan dengan transcode audio standar MP4 + faststart moov atom khusus untuk perekaman lokal/USB
     // Catatan: TIDAK menyertakan opsi bitrate video global (-b / -b:v) saat '-c:v copy'
+    // Menggunakan segment_format_options 'movflags=+faststart+frag_keyframe+empty_moov+default_base_moof' untuk toleransi header MP4
     const args = [
         '-y',
         '-loglevel', 'warning',
@@ -3684,7 +3686,7 @@ function spawnRecordingFFmpeg(cam) {
         '-f', 'segment',
         '-segment_time', segSec.toString(),
         '-segment_format', 'mp4',
-        '-segment_format_options', 'movflags=+faststart',
+        '-segment_format_options', 'movflags=+faststart+frag_keyframe+empty_moov+default_base_moof',
         '-reset_timestamps', '1',
         '-strftime', '1',
         path.join(recBase, "%Y-%m-%d_%H-%M-%S.mp4")
