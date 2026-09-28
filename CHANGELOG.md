@@ -1,5 +1,17 @@
 # Changelog
 
+## [Ver 11.2.4] - 2026-09-28
+### Zero-Crash FFmpeg Recording Engine, AU Headers Tolerance & AVOption Bitrate Clean
+- **Eliminasi Warning AVOption Bitrate & Exit Code 234 (`server.js`):**
+  - Membersihkan parameter bitrate video/audio global saat perekaman menggunakan codec stream copy (`-c:v copy`).
+  - Mengeliminasi warning `Codec AVOption b (set bitrate (in bits/s)) has not been used for any stream` yang sebelumnya memicu exit code 234 / 0 pada segmenter FFmpeg versi modern.
+- **Toleransi Paket Audio RTSP & Solusi `Error parsing AU headers` (`server.js`):**
+  - Menambahkan buffer network socket `-buffer_size 1024000` dan `-max_delay 500000` pada input RTSP untuk meredam jitter dan desync paket audio AAC.
+  - Menerapkan `-fflags +genpts+discardcorrupt` dan `-avoid_negative_ts make_zero` di seluruh profil fallback perekaman sehingga FFmpeg secara otomatis membuang paket AU header yang cacat/terfragmentasi tanpa mematikan proses perekaman.
+  - Memperbarui filter audio resampling (`aresample=async=1:min_hard_comp=0.100000:first_pts=0`) untuk menjaga sinkronisasi audio-video saat terjadi fluktuasi timestamp dari IP kamera.
+- **Peningkatan Filter Log Kesalahan FFmpeg (`server.js`):**
+  - Mengabaikan log info rutin pembuatan file segmen MP4 normal (`Opening ... for writing`) agar log NVR tetap bersih dan hanya mencatat anomali yang relevan.
+
 ## [Ver 11.2.3] - 2026-09-28
 ### Zero Horizontal Gap NVR Grid & Active State Remote Controller Feedback
 - **Eliminasi Gap Baris Horizontal Layar TV (`public/style.css`):**

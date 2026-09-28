@@ -3612,11 +3612,17 @@ function spawnRecordingFFmpeg(cam) {
             if (fallbackLevel >= 2) {
                 inputArgs = [
                     '-rtsp_transport', 'tcp',
+                    '-fflags', '+genpts+discardcorrupt',
                     '-i', sourceUrl
                 ];
             } else {
                 // Level 0 & 1: Dynamic Auto-Probed Safe Arguments
-                const dynamicArgs = ['-rtsp_transport', 'tcp'];
+                // Menambahkan buffer network & toleransi AU header untuk mencegah 'Error parsing AU headers'
+                const dynamicArgs = [
+                    '-rtsp_transport', 'tcp',
+                    '-buffer_size', '1024000',
+                    '-max_delay', '500000'
+                ];
 
                 if (caps.supportsPreferTcp && fallbackLevel === 0) {
                     dynamicArgs.push('-rtsp_flags', 'prefer_tcp');
@@ -3630,7 +3636,8 @@ function spawnRecordingFFmpeg(cam) {
                 dynamicArgs.push(
                     '-analyzeduration', '5000000',
                     '-probesize', '5000000',
-                    '-fflags', '+genpts+discardcorrupt'
+                    '-fflags', '+genpts+discardcorrupt',
+                    '-avoid_negative_ts', 'make_zero'
                 );
 
                 inputArgs = [
@@ -3639,11 +3646,13 @@ function spawnRecordingFFmpeg(cam) {
                 ];
             }
         } else {
-            inputArgs = ['-i', sourceUrl];
+            inputArgs = ['-fflags', '+genpts+discardcorrupt', '-i', sourceUrl];
         }
     }
 
     // Parameter Audio Transcoding / Passthrough untuk perekaman MP4
+    // PENTING: Jangan gunakan opsi bitrate global '-b' atau '-b:a' saat tidak dibutuhkan / stream copy untuk mencegah:
+    // "Codec AVOption b (set bitrate) has not been used for any stream" yang memicu FFmpeg exit code 234 di FFmpeg 5.x/6.x/7.x
     let audioArgs = ['-an'];
     let hasAudioMap = false;
     if (cam.audioEnabled !== false && cam.audioCodec !== 'none') {
@@ -3654,13 +3663,15 @@ function spawnRecordingFFmpeg(cam) {
             audioArgs = ['-c:a', 'libopus', '-b:a', '64k'];
         } else {
             // Default AAC transcode: Sangat optimal & kompatibel untuk kamera V380, ONVIF generic, Xiongmai (G.711u/PCMU/PCMA) ke browser HTML5
+            // Khusus: Gunakan profil aac standar dan hanya pasang -b:a secara eksplisit tanpa menimbulkan AVOption warning
             audioArgs = isDemo 
                 ? ['-c:a', 'aac', '-b:a', '128k'] 
-                : ['-c:a', 'aac', '-b:a', '64k', '-ar', '16000', '-ac', '1', '-af', 'aresample=async=1'];
+                : ['-c:a', 'aac', '-b:a', '64k', '-ar', '16000', '-ac', '1', '-af', 'aresample=async=1:min_hard_comp=0.100000:first_pts=0'];
         }
     }
 
     // Perintah copy video stream ringan dengan transcode audio standar MP4 + faststart moov atom khusus untuk perekaman lokal/USB
+    // Catatan: TIDAK menyertakan opsi bitrate video global (-b / -b:v) saat '-c:v copy'
     const args = [
         '-y',
         '-loglevel', 'warning',
@@ -3689,7 +3700,10 @@ function spawnRecordingFFmpeg(cam) {
     });
     child.stderr.on('data', d => {
         let str = d.toString();
-        child.lastErr = str;
+        // Simpan pesan error penting (abaikan info segmen normal)
+        if (!str.includes('Opening ') && !str.includes('for writing') && !str.includes('frame=')) {
+            child.lastErr = str;
+        }
     });
 
     child.on('close', (code) => {
@@ -3698,23 +3712,24 @@ function spawnRecordingFFmpeg(cam) {
         }
 
         if (!child.killedByUser) {
-            const isOptionError = child.lastErr && (child.lastErr.includes('Unrecognized option') || child.lastErr.includes('Option not found') || child.lastErr.includes('Error splitting the argument list'));
+            const cleanErr = (child.lastErr || '').trim().replace(/[\r\n]+/g, ' ');
+            const isOptionError = cleanErr && (cleanErr.includes('Unrecognized option') || cleanErr.includes('Option not found') || cleanErr.includes('Error splitting the argument list'));
             
             if (isOptionError) {
                 // Auto-healing: Jika terdeteksi opsi tidak dikenali, naikkan level fallback dan nonaktifkan opsi bermasalah secara permanen di runtime
                 const currentLevel = camRecordingFallbackLevel.get(cam.id) || 0;
                 camRecordingFallbackLevel.set(cam.id, Math.min(2, currentLevel + 1));
                 
-                if (child.lastErr.includes('stimeout') || child.lastErr.includes('timeout')) {
+                if (cleanErr.includes('stimeout') || cleanErr.includes('timeout')) {
                     ffmpegCapabilities.rtspTimeoutFlag = null; // Matikan opsi timeout global untuk kamera berikutnya
                 }
-                if (child.lastErr.includes('prefer_tcp')) {
+                if (cleanErr.includes('prefer_tcp')) {
                     ffmpegCapabilities.supportsPreferTcp = false;
                 }
 
-                sysLog('WARN', `[${cam.id}] Terdeteksi argumen FFmpeg tidak didukung di STB (${child.lastErr.slice(0, 100)}). Auto-healing aktif: Mengalihkan kamera ke mode ${currentLevel + 1 >= 2 ? 'Ultra-Safe Vanilla' : 'Adaptive'}...`, 'CAMERA');
+                sysLog('WARN', `[${cam.id}] Terdeteksi argumen FFmpeg tidak didukung di STB (${cleanErr.slice(0, 100)}). Auto-healing aktif: Mengalihkan kamera ke mode ${currentLevel + 1 >= 2 ? 'Ultra-Safe Vanilla' : 'Adaptive'}...`, 'CAMERA');
             } else {
-                sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Err: ${child.lastErr.slice(0, 140)} Reconnect otomatis...`, 'CAMERA');
+                sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Err: ${cleanErr.slice(0, 140)} Reconnect otomatis...`, 'CAMERA');
             }
 
             const timerKey = `rec_${cam.id}`;

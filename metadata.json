@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.2.3 - Zero Horizontal Gap NVR Grid & Active State Remote Controller Feedback.",
+  "description": "Arch3r NVR Ver. 11.2.4 - Zero-Crash FFmpeg Recording Engine, AU Headers Tolerance & AVOption Bitrate Clean.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
