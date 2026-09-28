@@ -3612,16 +3612,19 @@ function spawnRecordingFFmpeg(cam) {
             if (fallbackLevel >= 2) {
                 inputArgs = [
                     '-rtsp_transport', 'tcp',
+                    '-analyzeduration', '10000000',
+                    '-probesize', '10000000',
                     '-fflags', '+genpts+discardcorrupt',
                     '-use_wallclock_as_timestamps', '1',
                     '-i', sourceUrl
                 ];
             } else {
                 // Level 0 & 1: Dynamic Auto-Probed Universal IPC Arguments
-                // Menambahkan buffer network & toleransi AU header untuk mencegah packet drop & jitter
+                // Tingkatkan analyzeduration & probesize ke 10 detik / 10MB untuk mengatasi "dimensions not set"
+                // pada kamera IP (seperti V380 / Fran Well) yang lambat mengirimkan SPS/PPS awal.
                 const dynamicArgs = [
                     '-rtsp_transport', 'tcp',
-                    '-buffer_size', '1024000',
+                    '-buffer_size', '2048000',
                     '-max_delay', '500000'
                 ];
 
@@ -3634,13 +3637,13 @@ function spawnRecordingFFmpeg(cam) {
                     dynamicArgs.push(caps.rtspTimeoutFlag, '10000000'); // 10 detik
                 }
 
-                // Universal IPC Timestamping:
-                // 1. +genpts +discardcorrupt: Buat PTS jika hilang dan buang paket rusak.
-                // 2. -use_wallclock_as_timestamps 1: Menyelesaikan "pts has no value", "Packet duration is out of range",
-                //    serta "Non-monotonic DTS" secara tuntas pada kamera IP generic/OEM yang timestamp internalnya kacau.
+                // Universal IPC Timestamping & SPS/PPS Detection:
+                // 1. analyzeduration 10M, probesize 10M: Memastikan resolusi (dimensions) terbaca sebelum header MP4 ditulis
+                // 2. +genpts +discardcorrupt: Buat PTS jika hilang dan buang paket rusak
+                // 3. -use_wallclock_as_timestamps 1: Menghasilkan timestamp monotonik berbasis jam sistem STB
                 dynamicArgs.push(
-                    '-analyzeduration', '5000000',
-                    '-probesize', '5000000',
+                    '-analyzeduration', '10000000',
+                    '-probesize', '10000000',
                     '-fflags', '+genpts+discardcorrupt',
                     '-use_wallclock_as_timestamps', '1'
                 );
@@ -3652,6 +3655,8 @@ function spawnRecordingFFmpeg(cam) {
             }
         } else {
             inputArgs = [
+                '-analyzeduration', '10000000',
+                '-probesize', '10000000',
                 '-fflags', '+genpts+discardcorrupt',
                 '-use_wallclock_as_timestamps', '1',
                 '-i', sourceUrl
@@ -3660,9 +3665,10 @@ function spawnRecordingFFmpeg(cam) {
     }
 
     // Parameter Audio Transcoding / Passthrough untuk perekaman MP4
-    // PENTING: Jangan gunakan opsi bitrate global '-b' atau '-b:a' saat tidak dibutuhkan / stream copy untuk mencegah:
-    // "Codec AVOption b (set bitrate) has not been used for any stream" yang memicu FFmpeg exit code 234 di FFmpeg 5.x/6.x/7.x
-    // Gunakan konfigurasi audio standar tanpa filter 'aresample' agresif yang dapat memicu "Could not write header (incorrect codec parameters ?): Invalid argument"
+    // PENTING: JANGAN PERNAH menyertakan opsi '-b' atau '-b:a' saat menggunakan '-map 0:a?' opsional.
+    // Jika kamera tidak memiliki stream audio, FFmpeg 5/6/7 akan mengeluarkan peringatan keras:
+    // "Codec AVOption b (set bitrate) has not been used for any stream" dan keluar dengan Exit Code 234 / 0.
+    // Gunakan '-c:a aac' murni dengan resampling sinkronisasi '-af aresample=async=1000' untuk menstabilkan DTS audio.
     let audioArgs = ['-an'];
     let hasAudioMap = false;
     if (cam.audioEnabled !== false && cam.audioCodec !== 'none') {
@@ -3670,18 +3676,21 @@ function spawnRecordingFFmpeg(cam) {
         if (cam.audioCodec === 'copy') {
             audioArgs = ['-c:a', 'copy'];
         } else if (cam.audioCodec === 'opus') {
-            audioArgs = ['-c:a', 'libopus', '-b:a', '64k'];
+            audioArgs = ['-c:a', 'libopus'];
         } else {
-            // Default AAC transcode: Standar 44.1kHz stereo/mono universal, sangat kompatibel dengan container MP4 segmenter
+            // Default AAC transcode: Sangat stabil untuk semua kamera (G.711u/a, AAC, PCM).
+            // Tanpa opsi bitrate -b:a agar zero-warning saat stream audio tidak ada atau hanya mono.
             audioArgs = isDemo 
-                ? ['-c:a', 'aac', '-b:a', '128k'] 
-                : ['-c:a', 'aac', '-b:a', '64k', '-ar', '44100'];
+                ? ['-c:a', 'aac'] 
+                : ['-c:a', 'aac', '-ar', '44100', '-af', 'aresample=async=1000'];
         }
     }
 
     // Perintah copy video stream ringan dengan transcode audio standar MP4 + faststart moov atom khusus untuk perekaman lokal/USB
-    // Catatan: TIDAK menyertakan opsi bitrate video global (-b / -b:v) saat '-c:v copy'
-    // -max_muxing_queue_size 2048: Menghindari packet buffer overflow saat audio/video muxer menunggu keyframe
+    // Catatan:
+    // - -bsf:v dump_extra: Menyuntikkan parameter SPS/PPS (dimensions) pada setiap keyframe secara dinamis
+    // - -max_muxing_queue_size 2048: Menghindari packet buffer overflow saat audio/video muxer menunggu keyframe
+    // - -avoid_negative_ts make_zero: Menghindari timestamp negatif pada audio/video
     const args = [
         '-y',
         '-loglevel', 'warning',
@@ -3690,6 +3699,7 @@ function spawnRecordingFFmpeg(cam) {
         ...(hasAudioMap ? ['-map', '0:a?'] : []),
         '-c:v', isDemo ? 'libx264' : 'copy',
         ...(isDemo ? ['-preset', 'ultrafast'] : []),
+        ...(!isDemo ? ['-bsf:v', 'dump_extra'] : []),
         ...audioArgs,
         '-max_muxing_queue_size', '2048',
         '-f', 'segment',

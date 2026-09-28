@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.2.8] - 2026-09-28
+### SPS/PPS Dimension Probe Injection (dump_extra), Zero-Bitrate AVOption Clean & Audio Resample Async Sync
+- **Eliminasi Total `dimensions not set` & `Could not write header` (Code: 234) (`server.js`):**
+  - Menaikkan durasi probe RTSP `analyzeduration` dan `probesize` ke 10 detik / 10MB (`10000000`) di semua profil fallback. Memastikan FFmpeg berhasil menerima dan mendekode SPS/PPS video frame pertama sebelum muxer MP4 mulai menulis header segmen.
+  - Menerapkan bitstream filter `-bsf:v dump_extra` pada perekaman stream copy untuk menyuntikkan ekstra header dimensi (width, height, profile) ke dalam setiap keyframe secara dinamis.
+- **Pembersihan Bersih `Codec AVOption b has not been used` (Code: 234 / 0) (`server.js`):**
+  - Menghapus opsi bitrate audio `-b:a` saat mapping audio bersifat opsional (`-map 0:a?`).
+  - Mengeliminasi warning fatal FFmpeg 5.x/6.x/7.x pada kamera yang tidak menyiarkan stream audio (`cam_rtamu`, `cam_atas_depan`).
+- **Stabilisasi DTS Audio & Eliminasi `Non-monotonic DTS in output stream 0:1` (`server.js`):**
+  - Menambahkan filter sinkronisasi audio `-af aresample=async=1000` dengan clock audio 44.1kHz (`-ar 44100`). Filter ini secara otomatis meratakan drift timestamp audio kamera IP tanpa membuat frame audio melompat mundur.
+
 ## [Ver 11.2.7] - 2026-09-28
 ### Universal IPC Wallclock Timestamps, Muxing Queue Buffer & Anti-Assertion Engine
 - **Eliminasi Error Fatal `pts has no value` & Assertion SIGABRT (`server.js`):**
