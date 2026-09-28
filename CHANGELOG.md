@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 11.6.0] - 2026-09-28
+### Full Masquerade NAT Relay & Proxy-ARP CCTV Multi-Cam Traversal
+- **Injeksi IPTables Full Masquerade NAT (`addons/network-manager/lib/nmcli_driver.js`):**
+  - Menambahkan aturan `iptables -t nat -A POSTROUTING -o <lan> -j MASQUERADE` dan `iptables -t nat -A POSTROUTING -o <wifi> -j MASQUERADE` pada saat `arch3rBridge` diaktifkan.
+  - **Solusi Tembus Kamera CCTV Tanpa Default Gateway**: Kamera CCTV (Hikvision, Dahua, Tapo, V380, Yoosee, ONVIF) yang menggunakan IP statis atau tanpa default gateway yang mengarah ke STB kini menerima paket dengan source IP lokal STB sehingga kamera merespons secara instan.
+  - Menyelaraskan pembersihan aturan NAT saat arch3rBridge dinonaktifkan (`disableArch3rBridge`).
+
 ## [Ver 11.5.9] - 2026-09-28
 ### STB Direct Input Engine, Native Password Dialog Prompt, Live Character Counter & Duplicate DOM Cleaner
 - **Eliminasi Total Duplikasi Modal DOM (`public/index.html`):**

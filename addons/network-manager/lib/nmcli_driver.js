@@ -1014,11 +1014,14 @@ export class ArmbianNetworkManager {
             steps.push({ step: 'kernel_proxy_arp', cmd: sCmd, ...resSysctl });
         }
 
-        // 3. Bi-directional IPTables Forwarding between LAN and Wi-Fi
+        // 3. Bi-directional IPTables Forwarding & Full MASQUERADE NAT between LAN and Wi-Fi
+        // (Guarantees IP cameras without default gateway or with static IPs reply directly)
         const iptablesCmds = [
             `iptables -C FORWARD -i ${lanDevice} -o ${wifiDevice} -j ACCEPT 2>/dev/null || iptables -A FORWARD -i ${lanDevice} -o ${wifiDevice} -j ACCEPT`,
             `iptables -C FORWARD -i ${wifiDevice} -o ${lanDevice} -j ACCEPT 2>/dev/null || iptables -A FORWARD -i ${wifiDevice} -o ${lanDevice} -j ACCEPT`,
-            `iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT`
+            `iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT`,
+            `iptables -t nat -C POSTROUTING -o ${lanDevice} -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o ${lanDevice} -j MASQUERADE`,
+            `iptables -t nat -C POSTROUTING -o ${wifiDevice} -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -o ${wifiDevice} -j MASQUERADE`
         ];
 
         for (const iCmd of iptablesCmds) {
@@ -1053,10 +1056,12 @@ export class ArmbianNetworkManager {
 
         const steps = [];
 
-        // 1. Clear IPTables FORWARD rules
+        // 1. Clear IPTables FORWARD & NAT MASQUERADE rules
         if (lanDevice && wifiDevice) {
             await this.runCommand(`iptables -D FORWARD -i ${lanDevice} -o ${wifiDevice} -j ACCEPT 2>/dev/null`);
             await this.runCommand(`iptables -D FORWARD -i ${wifiDevice} -o ${lanDevice} -j ACCEPT 2>/dev/null`);
+            await this.runCommand(`iptables -t nat -D POSTROUTING -o ${lanDevice} -j MASQUERADE 2>/dev/null`);
+            await this.runCommand(`iptables -t nat -D POSTROUTING -o ${wifiDevice} -j MASQUERADE 2>/dev/null`);
         }
 
         // 2. Reset Proxy-ARP sysctl
