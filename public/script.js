@@ -561,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (st.preset === 'grid_4' || st.preset === 'live_grid') {
             targetGrid = 4;
             targetChannel = 'all';
-        } else if (st.preset === 'grid_6') {
+        } else if (st.preset === 'grid_6' || st.preset === 'pip_6' || st.preset === 'pip') {
             targetGrid = 6;
             targetChannel = 'all';
         } else if (st.preset === 'grid_9' || st.preset === 'live_grid_3x3') {
@@ -570,6 +570,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (st.preset === 'grid_16') {
             targetGrid = 16;
             targetChannel = 'all';
+        }
+
+        // Simpan urutan kamera kustom jika disediakan oleh server
+        if (Array.isArray(st.selected_cameras)) {
+            window.kioskSelectedCameras = st.selected_cameras;
         }
 
         // Eksekusi perubahan ke mesin grid tampilan utama NVR di TV
@@ -4409,7 +4414,31 @@ async function fetchCameras() {
         destroyHlsPlayers();
         
         let camsToShow = [];
-        if (activeChannel === 'all') {
+        // Periksa apakah terdapat urutan kamera kustom yang dipilih (Slot Ordering) untuk Kiosk
+        const customOrder = (window.kioskSelectedCameras && Array.isArray(window.kioskSelectedCameras) && window.kioskSelectedCameras.length > 0)
+            ? window.kioskSelectedCameras
+            : null;
+
+        if (customOrder && (window.isKioskDisplay || document.documentElement.classList.contains('kiosk-display-mode') || document.body.classList.contains('kiosk-display-mode') || activeChannel === 'all')) {
+            if (activeChannel !== 'all') {
+                const c = cameras.find(x => String(x.id) === String(activeChannel));
+                camsToShow = c ? [c] : [];
+            } else {
+                camsToShow = [];
+                for (let idx = 0; idx < count; idx++) {
+                    const cid = customOrder[idx];
+                    if (cid && cid !== 'empty' && cid !== 'none') {
+                        const found = cameras.find(x => String(x.id) === String(cid));
+                        camsToShow.push(found || null);
+                    } else if (cid === 'empty' || cid === 'none') {
+                        camsToShow.push(null);
+                    } else {
+                        // Jika slot belum dikonfigurasi, gunakan kamera default urutan normal
+                        camsToShow.push(cameras[idx] || null);
+                    }
+                }
+            }
+        } else if (activeChannel === 'all') {
             const startIdx = gridPageIndex * count;
             camsToShow = cameras.slice(startIdx, startIdx + count);
         } else {
@@ -10116,6 +10145,14 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
         const activeCamId = liveSt.target_cam_id || configObj.target_cam_id || 'all';
         const isTourActive = !!liveSt.tour;
 
+        window.currentKioskAvailableCams = availableCams;
+        window.currentKioskConfig = configObj;
+        window.currentKioskLiveState = liveSt;
+        window.currentKioskRemotePreset = activePreset;
+        window.currentKioskSelectedCameras = (Array.isArray(liveSt.selected_cameras) && liveSt.selected_cameras.length > 0)
+            ? liveSt.selected_cameras
+            : (Array.isArray(configObj.selected_cameras) ? configObj.selected_cameras : []);
+
         let camOptionsHtml = '<option value="">-- Pilih Kamera Fullscreen --</option>';
         let camRemoteBtnsHtml = '';
         availableCams.forEach((cam, idx) => {
@@ -10131,6 +10168,19 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
         if (availableCams.length === 0) {
             camRemoteBtnsHtml = '<span style="font-size:0.75rem; color:#94a3b8;">Belum ada kamera aktif terdaftar.</span>';
         }
+
+        const isSingleActive = (activePreset === 'grid_1' || activePreset === 'single' || activePreset === 'single_cam');
+        const presetLabels = {
+            grid_4: '2×2 (4 Cam)',
+            live_grid: '2×2 (4 Cam)',
+            grid_6: '1+5 (PIP 6 Cam)',
+            pip_6: '1+5 (PIP 6 Cam)',
+            pip: '1+5 (PIP 6 Cam)',
+            grid_9: '3×3 (9 Cam)',
+            live_grid_3x3: '3×3 (9 Cam)',
+            grid_16: '4×4 (16 Cam)'
+        };
+        const currentPresetLabel = presetLabels[activePreset] || '2×2 (4 Cam)';
 
         container.innerHTML = `
             <!-- NAVIGATION 2-TAB HEADER -->
@@ -10206,19 +10256,19 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                     <div style="margin-bottom:0.85rem;">
                         <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Pilih Tata Letak Matriks Layar TV (Standar NVR):</span>
                         <div id="kioskPresetButtonsContainer" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap:0.45rem;">
-                            <button type="button" data-kiosk-preset="grid_1" class="btn btn-sm ${activePreset === 'grid_1' || activePreset === 'single' || activePreset === 'single_cam' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_1', camId: availableCams[0]?.id || 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_1' || activePreset === 'single' || activePreset === 'single_cam' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
+                            <button type="button" data-kiosk-preset="grid_1" class="btn btn-sm ${activePreset === 'grid_1' || activePreset === 'single' || activePreset === 'single_cam' ? 'btn-primary' : 'btn-secondary'}" onclick="onKioskRemotePresetClicked('grid_1')" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_1' || activePreset === 'single' || activePreset === 'single_cam' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>⏹️</span> 1×1 (Single)
                             </button>
-                            <button type="button" data-kiosk-preset="grid_4" class="btn btn-sm ${activePreset === 'grid_4' || activePreset === 'live_grid' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_4', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_4' || activePreset === 'live_grid' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
+                            <button type="button" data-kiosk-preset="grid_4" class="btn btn-sm ${activePreset === 'grid_4' || activePreset === 'live_grid' ? 'btn-primary' : 'btn-secondary'}" onclick="onKioskRemotePresetClicked('grid_4')" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_4' || activePreset === 'live_grid' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>🔲</span> 2×2 (4 Cam)
                             </button>
-                            <button type="button" data-kiosk-preset="grid_6" class="btn btn-sm ${activePreset === 'grid_6' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_6', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_6' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
+                            <button type="button" data-kiosk-preset="grid_6" class="btn btn-sm ${activePreset === 'grid_6' || activePreset === 'pip_6' || activePreset === 'pip' ? 'btn-primary' : 'btn-secondary'}" onclick="onKioskRemotePresetClicked('grid_6')" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_6' || activePreset === 'pip_6' || activePreset === 'pip' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>▦</span> 1+5 (PIP 6 Cam)
                             </button>
-                            <button type="button" data-kiosk-preset="grid_9" class="btn btn-sm ${activePreset === 'grid_9' || activePreset === 'live_grid_3x3' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_9', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_9' || activePreset === 'live_grid_3x3' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
+                            <button type="button" data-kiosk-preset="grid_9" class="btn btn-sm ${activePreset === 'grid_9' || activePreset === 'live_grid_3x3' ? 'btn-primary' : 'btn-secondary'}" onclick="onKioskRemotePresetClicked('grid_9')" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_9' || activePreset === 'live_grid_3x3' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>▦</span> 3×3 (9 Cam)
                             </button>
-                            <button type="button" data-kiosk-preset="grid_16" class="btn btn-sm ${activePreset === 'grid_16' ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ preset: 'grid_16', camId: 'all' })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_16' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
+                            <button type="button" data-kiosk-preset="grid_16" class="btn btn-sm ${activePreset === 'grid_16' ? 'btn-primary' : 'btn-secondary'}" onclick="onKioskRemotePresetClicked('grid_16')" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${activePreset === 'grid_16' ? 'background:#2563eb; border-color:#60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.6);' : ''}">
                                 <span>▦</span> 4×4 (16 Cam)
                             </button>
                             <button type="button" id="btnKioskTour" class="btn btn-sm ${isTourActive ? 'btn-primary' : 'btn-secondary'}" onclick="sendKioskRemoteCmd({ action: 'tour_toggle', tourInterval: 10 })" style="padding:0.45rem; font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.25rem; ${isTourActive ? 'background:#f59e0b; border-color:#fbbf24; color:#000; font-weight:700;' : 'background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);'}">
@@ -10227,11 +10277,31 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                         </div>
                     </div>
 
-                    <!-- 2. Alihkan Langsung ke Kamera Tertentu -->
-                    <div style="margin-bottom:0.85rem;">
+                    <!-- 2A. Panel Single 1x1: Alihkan Langsung ke Kamera Tertentu -->
+                    <div id="kioskRemoteSinglePanel" style="display:${isSingleActive ? 'block' : 'none'}; margin-bottom:0.85rem;">
                         <span style="font-size:0.78rem; color:#94a3b8; display:block; margin-bottom:0.4rem; font-weight:600;">Fokus Kamera Tertentu (1×1 Penuh di TV):</span>
                         <div id="kioskCamListContainer" style="display:flex; flex-wrap:wrap; gap:0.4rem; max-height:115px; overflow-y:auto; padding:0.25rem 0;">
                             ${camRemoteBtnsHtml}
+                        </div>
+                    </div>
+
+                    <!-- 2B. Panel Multi-Cam: Pilih & Urutkan Slot Kamera TV -->
+                    <div id="kioskRemoteMultiPanel" style="display:${!isSingleActive ? 'block' : 'none'}; margin-bottom:0.85rem; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:0.75rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.35rem;">
+                            <span style="font-size:0.8rem; color:#94a3b8; font-weight:600;">
+                                📋 Urutan & Pilihan Kamera TV (<strong id="kioskRemotePresetLabel" style="color:#38bdf8;">${currentPresetLabel}</strong>):
+                            </span>
+                            <div style="display:flex; gap:0.35rem;">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="applyRemoteSlotOrdering()" style="font-size:0.74rem; padding:0.25rem 0.65rem; display:flex; align-items:center; gap:0.25rem; background:#2563eb; border-color:#38bdf8; font-weight:700;">
+                                    <span>▶️</span> Terapkan ke TV
+                                </button>
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="resetRemoteSlotOrdering()" style="font-size:0.74rem; padding:0.25rem 0.5rem;" title="Reset slot ke urutan kamera default">
+                                    <span>🔄</span> Reset
+                                </button>
+                            </div>
+                        </div>
+                        <div id="kioskRemoteSlotContainer">
+                            ${renderKioskSlotSelectorsHtml(activePreset, window.currentKioskSelectedCameras, true)}
                         </div>
                     </div>
 
@@ -10276,18 +10346,33 @@ function renderAddonConfigForm(addonId, addonName, configObj, statusData) {
                         <div>
                             <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Preset Tampilan Default Kiosk:</label>
                             <select name="preset" id="kioskPresetSelect" onchange="toggleKioskCamSelector(this.value)" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
-                                <option value="live_grid" ${preset === 'live_grid' ? 'selected' : ''}>Grid 4 Kamera (2x2 Quad Live View)</option>
-                                <option value="live_grid_3x3" ${preset === 'live_grid_3x3' ? 'selected' : ''}>Grid 9 Kamera (3x3 Live View)</option>
-                                <option value="single_cam" ${preset === 'single_cam' ? 'selected' : ''}>Kamera Tunggal Fullscreen</option>
+                                <option value="live_grid" ${preset === 'live_grid' || preset === 'grid_4' ? 'selected' : ''}>Grid 4 Kamera (2×2 Quad Live View)</option>
+                                <option value="pip_6" ${preset === 'pip_6' || preset === 'grid_6' || preset === 'pip' ? 'selected' : ''}>Grid 1+5 Kamera (PIP 6-Cam: 1 Utama + 5 Samping)</option>
+                                <option value="live_grid_3x3" ${preset === 'live_grid_3x3' || preset === 'grid_9' ? 'selected' : ''}>Grid 9 Kamera (3×3 Live View)</option>
+                                <option value="grid_16" ${preset === 'grid_16' ? 'selected' : ''}>Grid 16 Kamera (4×4 Live View)</option>
+                                <option value="single_cam" ${preset === 'single_cam' || preset === 'single' || preset === 'grid_1' ? 'selected' : ''}>Kamera Tunggal Fullscreen</option>
                                 <option value="full_dashboard" ${preset === 'full_dashboard' ? 'selected' : ''}>Tampilan Penuh Dashboard NVR</option>
                             </select>
                         </div>
 
-                        <div id="kioskSingleCamBox" style="display:${preset === 'single_cam' ? 'block' : 'none'};">
+                        <div id="kioskSingleCamBox" style="display:${preset === 'single_cam' || preset === 'single' || preset === 'grid_1' ? 'block' : 'none'};">
                             <label style="display:block; margin-bottom:0.4rem; font-weight:600; font-size:0.88rem; color:var(--text);">Pilih Kamera Utama:</label>
                             <select name="target_cam_id" style="width:100%; padding:0.65rem; background:rgba(0,0,0,0.25); border:1px solid var(--border); color:white; border-radius:4px;">
                                 ${camOptionsHtml}
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Pemetaan Slot Kamera Kustom di Pengaturan Kiosk -->
+                    <div id="kioskMultiSlotBox" style="display:${preset !== 'single_cam' && preset !== 'single' && preset !== 'grid_1' && preset !== 'full_dashboard' ? 'block' : 'none'}; margin-bottom:1.25rem; background:rgba(0,0,0,0.18); padding:0.9rem 1rem; border-radius:6px; border:1px solid var(--border);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                            <label style="font-weight:600; font-size:0.88rem; color:#38bdf8;">
+                                📑 Pemetaan & Urutan Kamera Layar TV (Slot Assignment):
+                            </label>
+                            <span style="font-size:0.75rem; color:#94a3b8;">Pilih kamera untuk tiap posisi kotak TV</span>
+                        </div>
+                        <div id="kioskSettingsSlotContainer">
+                            ${renderKioskSlotSelectorsHtml(preset, window.currentKioskSelectedCameras, false)}
                         </div>
                     </div>
 
@@ -10645,10 +10730,143 @@ function switchKioskAddonTab(tabName) {
 }
 window.switchKioskAddonTab = switchKioskAddonTab;
 
-function toggleKioskCamSelector(val) {
-    const box = document.getElementById('kioskSingleCamBox');
-    if (box) box.style.display = (val === 'single_cam') ? 'block' : 'none';
+function getKioskSlotCount(preset) {
+    if (preset === 'grid_1' || preset === 'single' || preset === 'single_cam') return 1;
+    if (preset === 'grid_6' || preset === 'pip_6' || preset === 'pip') return 6;
+    if (preset === 'grid_9' || preset === 'live_grid_3x3') return 9;
+    if (preset === 'grid_16') return 16;
+    return 4; // grid_4 or live_grid
 }
+window.getKioskSlotCount = getKioskSlotCount;
+
+function getKioskSlotTitle(preset, idx) {
+    if (preset === 'grid_6' || preset === 'pip_6' || preset === 'pip') {
+        if (idx === 0) return 'Slot 1 (Kamera Utama Besar PIP)';
+        if (idx === 1) return 'Slot 2 (Samping Atas)';
+        if (idx === 2) return 'Slot 3 (Samping Tengah)';
+        if (idx === 3) return 'Slot 4 (Bawah Kiri)';
+        if (idx === 4) return 'Slot 5 (Bawah Tengah)';
+        if (idx === 5) return 'Slot 6 (Bawah Kanan)';
+    }
+    if (preset === 'grid_4' || preset === 'live_grid') {
+        if (idx === 0) return 'Slot 1 (Kiri Atas)';
+        if (idx === 1) return 'Slot 2 (Kanan Atas)';
+        if (idx === 2) return 'Slot 3 (Kiri Bawah)';
+        if (idx === 3) return 'Slot 4 (Kanan Bawah)';
+    }
+    return `Slot ${idx + 1}`;
+}
+window.getKioskSlotTitle = getKioskSlotTitle;
+
+function renderKioskSlotSelectorsHtml(preset, currentSelectedSlots, isRemote = false) {
+    const slotCount = getKioskSlotCount(preset);
+    const cams = window.currentKioskAvailableCams || window.cameras || [];
+    const slots = Array.isArray(currentSelectedSlots) ? currentSelectedSlots : [];
+    
+    let html = `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.55rem; margin-top: 0.4rem;">`;
+    
+    for (let i = 0; i < slotCount; i++) {
+        const slotLabel = getKioskSlotTitle(preset, i);
+        const curVal = slots[i] !== undefined ? String(slots[i]) : '';
+        const defaultCam = cams[i];
+        const defaultText = defaultCam ? `(Bawaan: ${defaultCam.name || 'Kamera ' + (i + 1)})` : `(Slot Kosong)`;
+
+        html += `
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 5px; padding: 0.45rem 0.6rem;">
+                <label style="display:block; font-size:0.75rem; font-weight:600; color:#38bdf8; margin-bottom:0.25rem;">
+                    ${slotLabel}
+                </label>
+                <select ${isRemote ? `data-remote-slot="${i}" onchange="applyRemoteSlotOrdering()"` : `name="kiosk_slot_${i}" class="kiosk-slot-select" data-slot="${i}"`} style="width:100%; padding:0.4rem 0.5rem; font-size:0.78rem; background:#0f172a; border:1px solid #334155; color:#fff; border-radius:4px;">
+                    <option value="" ${curVal === '' ? 'selected' : ''}>⚡ ${defaultText}</option>
+                    ${cams.map((c, cIdx) => `
+                        <option value="${c.id}" ${curVal === String(c.id) ? 'selected' : ''}>📹 ${c.name || 'Kamera ' + (cIdx + 1)}</option>
+                    `).join('')}
+                    <option value="empty" ${curVal === 'empty' ? 'selected' : ''}>❌ (Kosongkan Slot Ini)</option>
+                </select>
+            </div>
+        `;
+    }
+    html += `</div>`;
+    return html;
+}
+window.renderKioskSlotSelectorsHtml = renderKioskSlotSelectorsHtml;
+
+function toggleKioskCamSelector(val) {
+    const boxSingle = document.getElementById('kioskSingleCamBox');
+    const boxMulti = document.getElementById('kioskMultiSlotBox');
+    const slotContainer = document.getElementById('kioskSettingsSlotContainer');
+
+    const isSingle = (val === 'single_cam' || val === 'single' || val === 'grid_1');
+    const isDashboard = (val === 'full_dashboard');
+
+    if (boxSingle) boxSingle.style.display = isSingle ? 'block' : 'none';
+    if (boxMulti) boxMulti.style.display = (!isSingle && !isDashboard) ? 'block' : 'none';
+
+    if (slotContainer && !isSingle && !isDashboard) {
+        slotContainer.innerHTML = renderKioskSlotSelectorsHtml(val, window.currentKioskSelectedCameras, false);
+    }
+}
+window.toggleKioskCamSelector = toggleKioskCamSelector;
+
+function onKioskRemotePresetClicked(preset) {
+    window.currentKioskRemotePreset = preset;
+    const isSingle = (preset === 'grid_1' || preset === 'single' || preset === 'single_cam');
+    const singlePanel = document.getElementById('kioskRemoteSinglePanel');
+    const multiPanel = document.getElementById('kioskRemoteMultiPanel');
+    if (singlePanel) singlePanel.style.display = isSingle ? 'block' : 'none';
+    if (multiPanel) multiPanel.style.display = isSingle ? 'none' : 'block';
+
+    const labelEl = document.getElementById('kioskRemotePresetLabel');
+    if (labelEl) {
+        const labels = {
+            grid_4: '2×2 (4 Cam)',
+            live_grid: '2×2 (4 Cam)',
+            grid_6: '1+5 (PIP 6 Cam)',
+            pip_6: '1+5 (PIP 6 Cam)',
+            pip: '1+5 (PIP 6 Cam)',
+            grid_9: '3×3 (9 Cam)',
+            live_grid_3x3: '3×3 (9 Cam)',
+            grid_16: '4×4 (16 Cam)'
+        };
+        labelEl.textContent = labels[preset] || preset;
+    }
+
+    const slotContainer = document.getElementById('kioskRemoteSlotContainer');
+    if (slotContainer && !isSingle) {
+        slotContainer.innerHTML = renderKioskSlotSelectorsHtml(preset, window.currentKioskSelectedCameras, true);
+    }
+
+    const availableCams = window.currentKioskAvailableCams || window.cameras || [];
+    const firstCamId = availableCams[0]?.id || 'all';
+
+    if (isSingle) {
+        sendKioskRemoteCmd({ preset: 'single', camId: firstCamId });
+    } else {
+        const slotSelects = document.querySelectorAll('#kioskRemoteSlotContainer select[data-remote-slot]');
+        const slots = [];
+        slotSelects.forEach(s => slots.push(s.value));
+        sendKioskRemoteCmd({ preset: preset, camId: 'all', selected_cameras: slots });
+    }
+}
+window.onKioskRemotePresetClicked = onKioskRemotePresetClicked;
+
+function applyRemoteSlotOrdering() {
+    const slotSelects = document.querySelectorAll('#kioskRemoteSlotContainer select[data-remote-slot]');
+    const slots = [];
+    slotSelects.forEach(s => slots.push(s.value));
+    window.currentKioskSelectedCameras = slots;
+    window.kioskSelectedCameras = slots;
+    const curPreset = window.currentKioskRemotePreset || 'grid_4';
+    sendKioskRemoteCmd({ preset: curPreset, selected_cameras: slots });
+}
+window.applyRemoteSlotOrdering = applyRemoteSlotOrdering;
+
+function resetRemoteSlotOrdering() {
+    const slotSelects = document.querySelectorAll('#kioskRemoteSlotContainer select[data-remote-slot]');
+    slotSelects.forEach(s => { s.value = ''; });
+    applyRemoteSlotOrdering();
+}
+window.resetRemoteSlotOrdering = resetRemoteSlotOrdering;
 
 async function sendKioskRemoteCmd(payload) {
     try {
@@ -11074,6 +11292,18 @@ async function saveAddonConfig() {
             newConfig[name] = input.value;
         }
     });
+
+    // Collect kiosk slot ordering if configuring hdmi-kiosk
+    if (currentConfigAddonId === 'hdmi-kiosk' || currentConfigAddonId === 'hdmi_kiosk') {
+        const slotSelects = form.querySelectorAll('select.kiosk-slot-select');
+        if (slotSelects && slotSelects.length > 0) {
+            const slots = [];
+            slotSelects.forEach(s => slots.push(s.value));
+            newConfig.selected_cameras = slots;
+            window.currentKioskSelectedCameras = slots;
+            window.kioskSelectedCameras = slots;
+        }
+    }
 
     try {
         const res = await authFetch('/api/addons/' + currentConfigAddonId + '/config', {

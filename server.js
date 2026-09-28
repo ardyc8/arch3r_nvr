@@ -6483,6 +6483,7 @@ try {
 let kioskLiveState = {
     preset: initialKioskCfg.preset || 'grid_4',
     target_cam_id: initialKioskCfg.target_cam_id || 'all',
+    selected_cameras: Array.isArray(initialKioskCfg.selected_cameras) ? initialKioskCfg.selected_cameras : [],
     refresh_seq: 0,
     reload_seq: 0,
     tour: false,
@@ -6531,7 +6532,7 @@ app.get('/api/addons/hdmi-kiosk/live-state', (req, res) => {
 });
 
 app.post('/api/addons/hdmi-kiosk/remote-cmd', verifyToken, requireAdmin, (req, res) => {
-    const { action, preset, camId, blackout, tour, tourInterval, fullscreen_action } = req.body;
+    const { action, preset, camId, blackout, tour, tourInterval, fullscreen_action, selected_cameras } = req.body;
     
     if (preset) {
         kioskLiveState.preset = preset;
@@ -6541,12 +6542,16 @@ app.post('/api/addons/hdmi-kiosk/remote-cmd', verifyToken, requireAdmin, (req, r
                 const curCfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
                 curCfg.preset = preset;
                 if (camId !== undefined) curCfg.target_cam_id = camId;
+                if (Array.isArray(selected_cameras)) curCfg.selected_cameras = selected_cameras;
                 fs.writeFileSync(cfgPath, JSON.stringify(curCfg, null, 2));
             }
         } catch (_) {}
     }
     if (camId !== undefined) {
         kioskLiveState.target_cam_id = camId;
+    }
+    if (Array.isArray(selected_cameras)) {
+        kioskLiveState.selected_cameras = selected_cameras;
     }
     if (action === 'refresh') {
         kioskLiveState.refresh_seq = (kioskLiveState.refresh_seq || 0) + 1;
@@ -7193,6 +7198,17 @@ app.post('/api/addons/:addonId/config', verifyToken, requireAdmin, (req, res) =>
         if (addonId === 'hdmi-kiosk' || addonId === 'hdmi_kiosk') {
             if (hdmiKioskAddon && typeof hdmiKioskAddon.saveConfig === 'function') {
                 hdmiKioskAddon.saveConfig(newConfig, () => {});
+            }
+            if (newConfig.preset) kioskLiveState.preset = newConfig.preset;
+            if (newConfig.target_cam_id !== undefined) kioskLiveState.target_cam_id = newConfig.target_cam_id;
+            if (Array.isArray(newConfig.selected_cameras)) kioskLiveState.selected_cameras = newConfig.selected_cameras;
+            kioskLiveState.updated_at = Date.now();
+            if (typeof broadcastKioskEvent === 'function') {
+                broadcastKioskEvent({
+                    type: 'config_update',
+                    config: newConfig,
+                    liveState: kioskLiveState
+                });
             }
         } else if (addonId === 'hdmi-native' || addonId === 'hdmi_native') {
             if (hdmiNativeAddon && typeof hdmiNativeAddon.saveConfig === 'function') {

@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.2.8 - SPS/PPS Dimension Probe Injection (dump_extra), Zero-Bitrate AVOption Clean & Audio Resample Async Sync.",
+  "description": "Arch3r NVR Ver. 11.2.9 - HDMI Kiosk 100vh Fullscreen Fix, Multi-Slot Ordering UI & Dual-Cam Audio/Video Stream Engine.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

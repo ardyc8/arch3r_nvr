@@ -342,6 +342,25 @@ fi
     }
 
     /**
+     * Save configuration to config.json
+     */
+    saveConfig(newConfig, callback) {
+        const configPath = path.join(__dirname, 'config.json');
+        try {
+            const current = this.loadConfig() || {};
+            this.config = { ...current, ...newConfig };
+            fs.writeFileSync(configPath, JSON.stringify(this.config, null, 2), 'utf8');
+            if (this.config.display_url) this.appUrl = this.config.display_url;
+            if (typeof callback === 'function') callback(null, this.config);
+            return true;
+        } catch (e) {
+            this.logger('WARN', 'Failed to write config.json: ' + e.message);
+            if (typeof callback === 'function') callback(e);
+            return false;
+        }
+    }
+
+    /**
      * Get real-time status representation
      */
     getStatus() {

@@ -1204,7 +1204,7 @@ body {
         padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
     }
 
-    .video-grid {
+    html:not(.kiosk-display-mode):not(.is-fullscreen) body:not(.kiosk-display-mode) .video-grid {
         align-content: start !important;
         align-items: start !important;
         height: auto !important;
@@ -1214,12 +1214,12 @@ body {
         gap: 3px !important;
     }
 
-    .video-grid.grid-1 {
+    html:not(.kiosk-display-mode):not(.is-fullscreen) body:not(.kiosk-display-mode) .video-grid.grid-1 {
         grid-template-columns: 1fr !important;
         grid-template-rows: auto !important;
     }
 
-    .video-grid.grid-1 .cam-cell {
+    html:not(.kiosk-display-mode):not(.is-fullscreen) body:not(.kiosk-display-mode) .video-grid.grid-1 .cam-cell {
         aspect-ratio: 16/9 !important;
         width: 100% !important;
         height: auto !important;
@@ -1227,37 +1227,37 @@ body {
         margin: 0 auto !important;
     }
 
-    .video-grid.grid-4 {
+    html:not(.kiosk-display-mode):not(.is-fullscreen) body:not(.kiosk-display-mode) .video-grid.grid-4 {
         grid-template-columns: repeat(2, 1fr) !important;
         grid-template-rows: repeat(2, auto) !important;
         gap: 3px !important;
     }
 
-    .video-grid.grid-4 .cam-cell {
+    html:not(.kiosk-display-mode):not(.is-fullscreen) body:not(.kiosk-display-mode) .video-grid.grid-4 .cam-cell {
         aspect-ratio: 16/9 !important;
         width: 100% !important;
         height: auto !important;
     }
 
-    .video-grid.grid-9 {
+    html:not(.kiosk-display-mode):not(.is-fullscreen) body:not(.kiosk-display-mode) .video-grid.grid-9 {
         grid-template-columns: repeat(3, 1fr) !important;
         grid-template-rows: repeat(3, auto) !important;
         gap: 2px !important;
     }
 
-    .video-grid.grid-9 .cam-cell {
+    html:not(.kiosk-display-mode):not(.is-fullscreen) body:not(.kiosk-display-mode) .video-grid.grid-9 .cam-cell {
         aspect-ratio: 16/9 !important;
         width: 100% !important;
         height: auto !important;
     }
 
-    .video-grid.grid-16 {
+    html:not(.kiosk-display-mode):not(.is-fullscreen) body:not(.kiosk-display-mode) .video-grid.grid-16 {
         grid-template-columns: repeat(4, 1fr) !important;
         grid-template-rows: repeat(4, auto) !important;
         gap: 2px !important;
     }
 
-    .video-grid.grid-16 .cam-cell {
+    html:not(.kiosk-display-mode):not(.is-fullscreen) body:not(.kiosk-display-mode) .video-grid.grid-16 .cam-cell {
         aspect-ratio: 16/9 !important;
         width: 100% !important;
         height: auto !important;
@@ -2607,6 +2607,7 @@ body.kiosk-display-mode .cam-cell {
 /* ============================================================== */
 /* KIOSK DISPLAY MODE: ZERO-GAP SEAMLESS TV MONITOR GRID (PROFESSIONAL NVR MATRIX) */
 /* ============================================================== */
+html.kiosk-display-mode,
 body.kiosk-display-mode {
     overflow: hidden !important;
     background: #000000 !important;
@@ -2614,10 +2615,19 @@ body.kiosk-display-mode {
     padding: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
     cursor: default !important; /* Pastikan pointer mouse fisik tetap terlihat saat dicolokkan ke STB */
 }
 
 /* Saat Kiosk dalam mode pure monitor (default), sembunyikan semua chrome navigasi */
+html.kiosk-display-mode:not(.kiosk-dashboard-active) .top-navbar,
+html.kiosk-display-mode:not(.kiosk-dashboard-active) #sidebar,
+html.kiosk-display-mode:not(.kiosk-dashboard-active) #sidebarOverlay,
+html.kiosk-display-mode:not(.kiosk-dashboard-active) .mobile-bottom-nav,
+html.kiosk-display-mode:not(.kiosk-dashboard-active) .mobile-topbar,
+html.kiosk-display-mode:not(.kiosk-dashboard-active) #btnToggleControlsContainer,
+html.kiosk-display-mode:not(.kiosk-dashboard-active) #topControlContainer,
 body.kiosk-display-mode:not(.kiosk-dashboard-active) .top-navbar,
 body.kiosk-display-mode:not(.kiosk-dashboard-active) #sidebar,
 body.kiosk-display-mode:not(.kiosk-dashboard-active) #sidebarOverlay,
@@ -2628,9 +2638,14 @@ body.kiosk-display-mode:not(.kiosk-dashboard-active) #topControlContainer {
     display: none !important;
 }
 
+html.kiosk-display-mode .app-layout,
+body.kiosk-display-mode .app-layout,
+html.kiosk-display-mode .main-content,
 body.kiosk-display-mode .main-content {
     margin-left: 0 !important;
     margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    margin-right: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
     max-width: 100vw !important;
@@ -2640,6 +2655,22 @@ body.kiosk-display-mode .main-content {
     background: #000000 !important;
 }
 
+html.kiosk-display-mode #view-monitor,
+body.kiosk-display-mode #view-monitor,
+html.kiosk-display-mode .view-pane.active,
+body.kiosk-display-mode .view-pane.active {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+html.kiosk-display-mode #monitorWrapper,
 body.kiosk-display-mode #monitorWrapper {
     width: 100vw !important;
     height: 100vh !important;
@@ -2655,6 +2686,7 @@ body.kiosk-display-mode #monitorWrapper {
     overflow: hidden !important;
 }
 
+html.kiosk-display-mode #videoGridContainer,
 body.kiosk-display-mode #videoGridContainer {
     width: 100vw !important;
     height: 100vh !important;
@@ -2665,9 +2697,13 @@ body.kiosk-display-mode #videoGridContainer {
     background: #000000 !important;
     overflow: hidden !important;
     flex: 1 1 100% !important;
+    display: flex !important;
 }
 
-body.kiosk-display-mode #videoGrid {
+html.kiosk-display-mode #videoGrid,
+body.kiosk-display-mode #videoGrid,
+#monitorWrapper.is-fullscreen #videoGrid,
+:fullscreen #videoGrid {
     width: 100vw !important;
     height: 100vh !important;
     max-width: 100vw !important;
@@ -2678,51 +2714,98 @@ body.kiosk-display-mode #videoGrid {
     background: #000000 !important;
     box-sizing: border-box !important;
     display: grid !important;
+    align-content: stretch !important;
+    align-items: stretch !important;
+    grid-auto-rows: 1fr !important;
 }
 
 /* --- MATRIKS PRESISI NVR PROFESIONAL (100vh LAYAR PENUH TANPA GAP BAWAH & HORIZONTAL) --- */
 /* 1. Matriks 1x1 (Single Camera Fullscreen TV) */
+html.kiosk-display-mode #videoGrid.grid-1,
 body.kiosk-display-mode #videoGrid.grid-1,
-body.kiosk-display-mode #videoGrid.kiosk-grid-1 {
+html.kiosk-display-mode #videoGrid.kiosk-grid-1,
+body.kiosk-display-mode #videoGrid.kiosk-grid-1,
+#monitorWrapper.is-fullscreen #videoGrid.grid-1,
+:fullscreen #videoGrid.grid-1 {
     grid-template-columns: 1fr !important;
     grid-template-rows: 1fr !important;
     gap: 0 !important;
+    height: 100vh !important;
 }
 
 /* 2. Matriks 2x2 (4 Kamera Murni) */
+html.kiosk-display-mode #videoGrid.grid-4,
 body.kiosk-display-mode #videoGrid.grid-4,
-body.kiosk-display-mode #videoGrid.kiosk-grid-4 {
-    grid-template-columns: repeat(2, 1fr) !important;
-    grid-template-rows: repeat(2, 1fr) !important;
+html.kiosk-display-mode #videoGrid.kiosk-grid-4,
+body.kiosk-display-mode #videoGrid.kiosk-grid-4,
+#monitorWrapper.is-fullscreen #videoGrid.grid-4,
+:fullscreen #videoGrid.grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+    height: 100vh !important;
 }
 
 /* 3. Matriks 1+5 CCTV PIP (6 Kamera: 1 Utama Besar 2x2 + 5 Kamera Kecil 1x1) */
+html.kiosk-display-mode #videoGrid.grid-6,
 body.kiosk-display-mode #videoGrid.grid-6,
-body.kiosk-display-mode #videoGrid.kiosk-grid-6 {
-    grid-template-columns: repeat(3, 1fr) !important;
-    grid-template-rows: repeat(3, 1fr) !important;
+html.kiosk-display-mode #videoGrid.kiosk-grid-6,
+body.kiosk-display-mode #videoGrid.kiosk-grid-6,
+#monitorWrapper.is-fullscreen #videoGrid.grid-6,
+:fullscreen #videoGrid.grid-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+    height: 100vh !important;
 }
+html.kiosk-display-mode #videoGrid.grid-6 .cam-cell:first-child,
 body.kiosk-display-mode #videoGrid.grid-6 .cam-cell:first-child,
-body.kiosk-display-mode #videoGrid.kiosk-grid-6 .cam-cell:first-child {
+html.kiosk-display-mode #videoGrid.kiosk-grid-6 .cam-cell:first-child,
+body.kiosk-display-mode #videoGrid.kiosk-grid-6 .cam-cell:first-child,
+#monitorWrapper.is-fullscreen #videoGrid.grid-6 .cam-cell:first-child,
+:fullscreen #videoGrid.grid-6 .cam-cell:first-child {
     grid-column: span 2 !important;
     grid-row: span 2 !important;
 }
 
 /* 4. Matriks 3x3 (9 Kamera Murni) */
+html.kiosk-display-mode #videoGrid.grid-9,
 body.kiosk-display-mode #videoGrid.grid-9,
-body.kiosk-display-mode #videoGrid.kiosk-grid-9 {
-    grid-template-columns: repeat(3, 1fr) !important;
-    grid-template-rows: repeat(3, 1fr) !important;
+html.kiosk-display-mode #videoGrid.kiosk-grid-9,
+body.kiosk-display-mode #videoGrid.kiosk-grid-9,
+#monitorWrapper.is-fullscreen #videoGrid.grid-9,
+:fullscreen #videoGrid.grid-9 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+    height: 100vh !important;
 }
 
 /* 5. Matriks 4x4 (16 Kamera Murni) */
+html.kiosk-display-mode #videoGrid.grid-16,
 body.kiosk-display-mode #videoGrid.grid-16,
-body.kiosk-display-mode #videoGrid.kiosk-grid-16 {
-    grid-template-columns: repeat(4, 1fr) !important;
-    grid-template-rows: repeat(4, 1fr) !important;
+html.kiosk-display-mode #videoGrid.kiosk-grid-16,
+body.kiosk-display-mode #videoGrid.kiosk-grid-16,
+#monitorWrapper.is-fullscreen #videoGrid.grid-16,
+:fullscreen #videoGrid.grid-16 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(4, minmax(0, 1fr)) !important;
+    height: 100vh !important;
 }
 
-body.kiosk-display-mode .cam-cell {
+html.kiosk-display-mode .cam-cell,
+body.kiosk-display-mode .cam-cell,
+html.kiosk-display-mode .video-grid .cam-cell,
+body.kiosk-display-mode .video-grid .cam-cell,
+html.kiosk-display-mode .video-grid.grid-1 .cam-cell,
+body.kiosk-display-mode .video-grid.grid-1 .cam-cell,
+html.kiosk-display-mode .video-grid.grid-4 .cam-cell,
+body.kiosk-display-mode .video-grid.grid-4 .cam-cell,
+html.kiosk-display-mode .video-grid.grid-6 .cam-cell,
+body.kiosk-display-mode .video-grid.grid-6 .cam-cell,
+html.kiosk-display-mode .video-grid.grid-9 .cam-cell,
+body.kiosk-display-mode .video-grid.grid-9 .cam-cell,
+html.kiosk-display-mode .video-grid.grid-16 .cam-cell,
+body.kiosk-display-mode .video-grid.grid-16 .cam-cell,
+#monitorWrapper.is-fullscreen .cam-cell,
+:fullscreen .cam-cell {
     border: 1px solid #111827 !important;
     border-radius: 0 !important;
     margin: 0 !important;
@@ -2738,18 +2821,31 @@ body.kiosk-display-mode .cam-cell {
     aspect-ratio: unset !important; /* Hapus batasan aspect-ratio statis agar ditarik penuh sesuai sel */
     display: flex !important;
     flex-direction: column !important;
+    flex: 1 1 100% !important;
 }
 
-body.kiosk-display-mode .cam-cell > div {
+html.kiosk-display-mode .cam-cell > div,
+body.kiosk-display-mode .cam-cell > div,
+#monitorWrapper.is-fullscreen .cam-cell > div,
+:fullscreen .cam-cell > div {
     width: 100% !important;
     height: 100% !important;
     max-height: 100% !important;
     position: relative !important;
     overflow: hidden !important;
     border: none !important;
+    flex: 1 1 100% !important;
+    display: flex !important;
 }
 
-body.kiosk-display-mode .cam-cell video {
+html.kiosk-display-mode .cam-cell video,
+body.kiosk-display-mode .cam-cell video,
+html.kiosk-display-mode .cam-player-video,
+body.kiosk-display-mode .cam-player-video,
+#monitorWrapper.is-fullscreen video,
+:fullscreen video,
+#monitorWrapper.is-fullscreen .cam-player-video,
+:fullscreen .cam-player-video {
     width: 100% !important;
     height: 100% !important;
     max-height: 100% !important;

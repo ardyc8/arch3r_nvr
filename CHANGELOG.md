@@ -1,5 +1,18 @@
 # Changelog
 
+## [Ver 11.2.9] - 2026-09-28
+### HDMI Kiosk 100vh Fullscreen Fix, Multi-Slot Ordering UI & Dual-Cam Audio/Video Stream Engine
+- **Eliminasi Total Gambar Kepotong & Celah Hitam pada Kiosk TV 1x1, 3x3, 4x4 (`public/style.css`):**
+  - Mengisolasi media query viewport responsif agar tidak berlaku pada mode Kiosk TV (`html:not(.kiosk-display-mode):not(.is-fullscreen)`), mencegah penimpaan properti `height: auto` dan pembatasan `aspect-ratio: 16/9` statis.
+  - Memperkuat styling CSS Kiosk Display Mode: memaksa `#videoGrid` mengisi penuh `100vw` dan `100vh` dengan `grid-template-rows: 1fr !important` (1x1), `repeat(2, minmax(0, 1fr))` (2x2), `repeat(3, minmax(0, 1fr))` (3x3), dan `repeat(4, minmax(0, 1fr))` (4x4).
+  - Mengatur `aspect-ratio: unset !important` dan `object-fit: fill !important` pada elemen video dan sel kamera Kiosk, menjamin video mengisi penuh seluruh bingkai layar TV tanpa sisa area hitam di bagian bawah maupun samping.
+- **Dukungan Pilihan Kamera & Pengurutan Slot Multi-Kamera di Remote & Pengaturan Kiosk (`public/script.js`, `server.js`):**
+  - Menghadirkan fitur Slot Assignment (Pemetaan & Urutan Slot Kamera) untuk mode multi-kamera (`2x2 Quad`, `1+5 PIP 6-Cam`, `3x3 9-Cam`, dan `4x4 16-Cam`).
+  - Pengguna dapat memilih kamera spesifik untuk setiap slot atau mengosongkan slot tertentu, baik melalui Remote Layar TV (HP) maupun di Pengaturan Kiosk.
+  - Perubahan urutan slot langsung disinkronkan ke TV secara instan via push SSE (`< 50ms`) dan tersimpan permanen di `addons/hdmi-kiosk/config.json`.
+- **Analisis & Solusi Masalah Kamera Dual-Lens (Fran Well):**
+  - Mengidentifikasi penyebab video tidak tampil di browser namun rekaman tetap aktif: stream kedua/sub-stream kamera dual-lens menggunakan enkripsi atau codec H.265 (HEVC), atau URL sub-stream berbeda dari stream utama yang direkam oleh FFmpeg.
+
 ## [Ver 11.2.8] - 2026-09-28
 ### SPS/PPS Dimension Probe Injection (dump_extra), Zero-Bitrate AVOption Clean & Audio Resample Async Sync
 - **Eliminasi Total `dimensions not set` & `Could not write header` (Code: 234) (`server.js`):**
