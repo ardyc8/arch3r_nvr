@@ -1,5 +1,40 @@
 # Changelog
 
+## [Ver 11.3.5] - 2026-09-28
+### Dynamic Wi-Fi (SSID) Connection Auto-Detection, Parameterless setupMetrics & addRoute(target, isWireless)
+- **Fungsi Pembantu Deteksi Koneksi Aktif (`detectActiveConnections`):**
+  - Menambahkan fungsi internal `detectActiveConnections()` pada `ArmbianNetworkManager` yang secara otomatis memindai output `nmcli connection show` untuk mendeteksi nama koneksi aktif TYPE="wifi" (Wireless) dan TYPE="ethernet" (LAN).
+- **Pembaruan `setupMetrics()` Tanpa Parameter Wajib:**
+  - Mengubah `setupMetrics(lanName, wifiName)` sehingga tidak lagi mewajibkan parameter nama koneksi. Jika nama tidak diberikan, fungsi secara otomatis menggunakan nama koneksi Wi-Fi dan LAN aktif yang terdeteksi secara otomatis (Metric LAN=50, Metric Wi-Fi=500).
+- **Refaktorisasi `addRoute(target, isWireless)` Berbasis Boolean Interface:**
+  - Mengubah `addRoute(target, isWireless)` agar menerima parameter boolean `isWireless`. Jika `isWireless === true`, rute secara otomatis dipasang ke koneksi Wi-Fi aktif. Jika `false`, dipasang ke koneksi LAN aktif, tanpa perlu melakukan hardcode nama SSID Wi-Fi yang sering berubah.
+- **Dukungan Deletion Rute Dinamis (`deleteRoute`):**
+  - Mengoptimalkan `deleteRoute(target, isWireless)` untuk secara otomatis mendeteksi koneksi Wi-Fi/LAN aktif saat menghapus rute statis.
+
+## [Ver 11.3.4] - 2026-09-28
+### Generalized Network Routing Driver (nmcli), Auto CIDR Detection & Custom Route Deletion
+- **Generalisasi Driver Rute NetworkManager (`addons/network-manager/lib/nmcli_driver.js`):**
+  - Merefaktorisasi `addCameraRoute` menjadi fungsi generik `addRoute(connectionName, target, type)` yang mendukung berbagai perangkat jaringan (Kamera, NAS, Server Lokal, Smart Home Hubs, maupun Blok Subnet).
+  - Menambahkan deteksi otomatis sufiks CIDR: jika pengguna hanya menginput IP tunggal tanpa mask (misal `192.168.1.50`), sistem akan otomatis menambahkan `/32` (`192.168.1.50/32`) sebelum mengeksekusi `nmcli`.
+  - Mendukung input rute blok subnet lengkap seperti `192.168.1.0/24` untuk mengarahkan seluruh lalu lintas interface.
+  - Menambahkan metode baru `deleteRoute(connectionName, target)` menggunakan perintah `nmcli connection modify "<connectionName>" -ipv4.routes "<target>"` untuk menghapus aturan rute statis dari kernel.
+  - Mempertahankan proteksi sanitasi parameter berbasis regex untuk mencegah kerentanan command injection.
+- **REST API Router Endpoint & UI (`addons/network-manager/index.js`, `server.js`, `public/script.js`):**
+  - Mengintegrasikan endpoint `DELETE /api/addons/network-manager/routes` dan mendukung parameter `target` / `cameraIp` secara fleksibel.
+  - Memastikan mounting middleware `app.use('/api/addons/network-manager', verifyToken, networkManagerRouter)` di `server.js`.
+  - Memperbarui antarmuka pengguna (UI Modal) untuk mendukung penambahan dan penghapusan rute kustom IP/Subnet secara real-time.
+
+## [Ver 11.3.3] - 2026-09-28
+### Armbian Dual-Interface Network Router Addon (nmcli), Route Metrics & Static Camera Binding
+- **Class/Driver Modular `ArmbianNetworkManager` (`addons/network-manager/lib/nmcli_driver.js`):**
+  - Mengisolasi antarmuka jaringan Linux Armbian STB (NetworkManager `nmcli`) dengan penanganan error tangguh dan eksekusi non-blocking.
+  - Implementasi fungsi utama `getConnections()`, `setupMetrics(lanName, wifiName)`, `addCameraRoute(interfaceType, cameraIp, connectionName)`, `removeCameraRoute()`, dan `applyChanges()`.
+- **Modul REST API Addon Router (`addons/network-manager/index.js`, `server.js`):**
+  - Menyediakan endpoint lengkap `/api/addons/network-manager/*` untuk manajemen interface, kueri rute kernel, serta mengintegrasikannya secara otomatis ke dalam daftar Addons NVR.
+- **Penyelesaian Isolasi Router ISP & Rute Statis Kamera (`public/index.html`, `public/script.js`):**
+  - Menambahkan **Modal Dual-Interface Network Router & Camera Binding (nmcli)** lengkap dengan tombol pemicu `🌐` di toolbar monitor live.
+  - Memungkinkan penyetelan metric prioritas internet (LAN Metric=50, Wi-Fi Metric=500) dan pengikatan IP kamera ke interface fisik terisolasi (`+ipv4.routes "IP_KAMERA/32"`) secara langsung dari UI NVR.
+
 ## [Ver 11.3.2] - 2026-09-28
 ### RTSP TCP Lossless Streaming Optimization, LAN/WAN Network Diagnostics Engine & Smart Sub-Stream Allocation
 - **Pencegahan Buffering RTSP & Pengunci Protokol TCP Lossless (`server.js`):**

@@ -14951,3 +14951,285 @@ function renderDiagnosticCardHTML(diag) {
         </div>
     `;
 }
+
+// --- ARCH3R NVR ARMBIAN NETWORK MANAGER ADDON (nmcli) ---
+let currentNetMgrConnections = null;
+let customNetMgrRoutes = JSON.parse(localStorage.getItem('arch3r_netmgr_camera_routes') || '[]');
+
+window.openNetMgrModal = function() {
+    const modal = document.getElementById('netMgrModalOverlay');
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
+    populateNetMgrCamSelect();
+    window.fetchNetMgrConnections();
+    renderNetMgrCameraRoutes();
+};
+
+window.closeNetMgrModal = function() {
+    const modal = document.getElementById('netMgrModalOverlay');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+};
+
+function populateNetMgrCamSelect() {
+    const sel = document.getElementById('netMgrCamSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Pilih Kamera Terdaftar --</option>';
+
+    const globalCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+    globalCams.forEach(c => {
+        let ip = c.ipAddress || '';
+        if (!ip && c.mainStreamUrl) {
+            const m = c.mainStreamUrl.match(/rtsp:\/\/(?:[^@]+@)?([^:\/\s]+)/i);
+            if (m) ip = m[1];
+        }
+        const opt = document.createElement('option');
+        opt.value = ip;
+        opt.dataset.camName = c.name;
+        opt.textContent = `${c.name} ${ip ? `(${ip})` : ''}`;
+        sel.appendChild(opt);
+    });
+}
+
+window.onNetMgrCamSelectChange = function(val) {
+    const ipInput = document.getElementById('netMgrCamIpInput');
+    if (ipInput && val) {
+        ipInput.value = val;
+    }
+};
+
+window.fetchNetMgrConnections = async function() {
+    const container = document.getElementById('netMgrInterfacesContainer');
+    if (container) {
+        container.innerHTML = '<div style="color:#38bdf8; font-size:0.8rem; padding:1rem; text-align:center;">⏳ Membaca koneksi NetworkManager (nmcli)...</div>';
+    }
+
+    try {
+        const res = await authFetch('/api/addons/network-manager/connections');
+        const data = await res.json();
+        currentNetMgrConnections = data;
+
+        if (!data.success && !data.available) {
+            if (container) {
+                container.innerHTML = `
+                    <div style="grid-column: 1 / -1; background:rgba(239,68,68,0.1); border:1px solid #dc2626; border-radius:6px; padding:0.85rem; color:#f87171; font-size:0.8rem;">
+                        ⚠️ <strong>NetworkManager CLI (nmcli) tidak terdeteksi:</strong> ${data.message || 'Sistem ini berjalan dalam kontainer / non-Linux OS.'}
+                    </div>
+                `;
+            }
+            return;
+        }
+
+        if (container && Array.isArray(data.connections)) {
+            if (data.connections.length === 0) {
+                container.innerHTML = '<div style="color:#64748b; font-size:0.8rem; padding:1rem; text-align:center;">Tidak ada koneksi nmcli aktif.</div>';
+                return;
+            }
+
+            container.innerHTML = data.connections.map(conn => {
+                const isLan = conn.type === 'ethernet';
+                const isWifi = conn.type === 'wifi';
+                const icon = isLan ? '🔌 Ethernet (LAN)' : (isWifi ? '📶 Wi-Fi' : '🌐 Interface');
+                const badgeBg = conn.active ? 'rgba(16,185,129,0.2)' : 'rgba(100,116,139,0.2)';
+                const badgeBorder = conn.active ? '#059669' : '#475569';
+                const badgeText = conn.active ? '#34d399' : '#94a3b8';
+
+                return `
+                    <div style="background:rgba(15,23,42,0.6); border:1px solid #1e293b; border-radius:6px; padding:0.75rem; display:flex; flex-direction:column; gap:0.35rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <strong style="color:#f8fafc; font-size:0.85rem;">${icon}</strong>
+                            <span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; background:${badgeBg}; border:1px solid ${badgeBorder}; color:${badgeText}; font-weight:600;">${conn.state.toUpperCase()}</span>
+                        </div>
+                        <div style="font-size:0.78rem; color:#cbd5e1; font-family:monospace;">Nama: <strong>${conn.name}</strong></div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">Device: <code>${conn.device || 'N/A'}</code> ${conn.ip ? `&bull; IP: <strong style="color:#38bdf8;">${conn.ip}</strong>` : ''}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (e) {
+        if (container) {
+            container.innerHTML = `<div style="color:#f87171; font-size:0.8rem; padding:1rem; text-align:center;">Gagal membaca koneksi nmcli: ${e.message}</div>`;
+        }
+    }
+};
+
+window.setupNetMgrMetrics = async function() {
+    if (!currentNetMgrConnections || !currentNetMgrConnections.success) {
+        await window.fetchNetMgrConnections();
+    }
+
+    const lan = currentNetMgrConnections?.lan;
+    const wifi = currentNetMgrConnections?.wifi;
+
+    const lanName = lan ? lan.name : (prompt('Masukkan Nama Koneksi LAN Ethernet (misal: "Wired connection 1"):') || '');
+    const wifiName = wifi ? wifi.name : (prompt('Masukkan Nama Koneksi Wi-Fi (misal: "STB-WiFi"):') || '');
+
+    if (!lanName && !wifiName) {
+        alert('Minimal satu nama koneksi (LAN atau Wi-Fi) diperlukan untuk menyetel metric.');
+        return;
+    }
+
+    try {
+        const res = await authFetch('/api/addons/network-manager/metrics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lanName, wifiName })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            showToast('⚡ Metric Jaringan Berhasil Diperbarui! (LAN=50, Wi-Fi=500)', 'success');
+            await window.fetchNetMgrConnections();
+        } else {
+            alert('Gagal menyetel metric: ' + (data.error || 'Error'));
+        }
+    } catch (e) {
+        alert('Error menyetel metric: ' + e.message);
+    }
+};
+
+window.addNetMgrRoute = async function() {
+    const ipInput = document.getElementById('netMgrCamIpInput');
+    const targetSel = document.getElementById('netMgrTargetInterfaceSelect');
+
+    const rawTarget = ipInput ? ipInput.value.trim() : '';
+    const interfaceType = targetSel ? targetSel.value : 'wifi';
+
+    if (!rawTarget) {
+        alert('Masukkan Target IP (misal 192.168.1.50) atau Blok Subnet CIDR (misal 192.168.1.0/24) terlebih dahulu.');
+        return;
+    }
+
+    if (!currentNetMgrConnections || !currentNetMgrConnections.success) {
+        await window.fetchNetMgrConnections();
+    }
+
+    const conn = interfaceType === 'wifi' ? currentNetMgrConnections?.wifi : currentNetMgrConnections?.lan;
+    let connectionName = conn ? conn.name : '';
+
+    if (!connectionName) {
+        connectionName = prompt(`Masukkan nama koneksi NetworkManager untuk ${interfaceType.toUpperCase()} (misal: "${interfaceType === 'wifi' ? 'STB-WiFi' : 'Wired connection 1'}"):`) || '';
+    }
+
+    if (!connectionName) {
+        alert('Nama koneksi NetworkManager tidak boleh kosong.');
+        return;
+    }
+
+    try {
+        const res = await authFetch('/api/addons/network-manager/routes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connectionName, target: rawTarget, type: interfaceType })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            const formattedTarget = data.target || rawTarget;
+            showToast(`✅ Static Route ${formattedTarget} terikat ke "${connectionName}" (${interfaceType.toUpperCase()})`, 'success');
+            
+            // Save to local cache list
+            const existingIdx = customNetMgrRoutes.findIndex(r => r.target === formattedTarget || r.cameraIp === rawTarget);
+            if (existingIdx !== -1) {
+                customNetMgrRoutes[existingIdx] = { target: formattedTarget, interfaceType, connectionName };
+            } else {
+                customNetMgrRoutes.push({ target: formattedTarget, interfaceType, connectionName });
+            }
+            localStorage.setItem('arch3r_netmgr_camera_routes', JSON.stringify(customNetMgrRoutes));
+
+            renderNetMgrCameraRoutes();
+            if (ipInput) ipInput.value = '';
+        } else {
+            alert('Gagal menambahkan rute: ' + (data.error || 'Error'));
+        }
+    } catch (e) {
+        alert('Error menambahkan rute: ' + e.message);
+    }
+};
+
+window.addNetMgrCameraRoute = window.addNetMgrRoute;
+
+window.deleteNetMgrRoute = async function(target, connectionName) {
+    if (!confirm(`Hapus static route "${target}" dari koneksi "${connectionName}"?`)) return;
+
+    try {
+        const res = await authFetch('/api/addons/network-manager/routes', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target, connectionName })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            showToast(`Rute "${target}" berhasil dihapus.`, 'info');
+            customNetMgrRoutes = customNetMgrRoutes.filter(r => !((r.target === target || r.cameraIp === target) && r.connectionName === connectionName));
+            localStorage.setItem('arch3r_netmgr_camera_routes', JSON.stringify(customNetMgrRoutes));
+            renderNetMgrCameraRoutes();
+        } else {
+            alert('Gagal menghapus rute: ' + (data.error || 'Error'));
+        }
+    } catch (e) {
+        alert('Error menghapus rute: ' + e.message);
+    }
+};
+
+window.removeNetMgrCameraRoute = window.deleteNetMgrRoute;
+
+function renderNetMgrCameraRoutes() {
+    const container = document.getElementById('netMgrCameraRoutesContainer');
+    if (!container) return;
+
+    if (!customNetMgrRoutes || customNetMgrRoutes.length === 0) {
+        container.innerHTML = '<div style="color:#64748b; font-size:0.8rem; text-align:center; padding:1rem;">Belum ada rute khusus perangkat/subnet yang ditambahkan. Gunakan form di atas untuk mengikat IP/Subnet.</div>';
+        return;
+    }
+
+    container.innerHTML = customNetMgrRoutes.map(r => {
+        const routeTarget = r.target || (r.cameraIp ? (r.cameraIp.includes('/') ? r.cameraIp : `${r.cameraIp}/32`) : '0.0.0.0/32');
+        return `
+            <div style="background:rgba(15,23,42,0.8); border:1px solid #1e293b; border-radius:6px; padding:0.6rem 0.85rem; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span style="font-size:0.85rem;">${r.interfaceType === 'wifi' ? '📶' : '🔌'}</span>
+                    <div>
+                        <strong style="color:#38bdf8; font-size:0.82rem; font-family:monospace;">${routeTarget}</strong>
+                        <span style="font-size:0.75rem; color:#94a3b8; margin-left:0.5rem;">Terikat ke: <strong>${r.connectionName}</strong> (${(r.interfaceType || 'GENERIC').toUpperCase()})</span>
+                    </div>
+                </div>
+                <button type="button" onclick="window.deleteNetMgrRoute('${routeTarget}', '${r.connectionName}')" class="btn-sm btn-secondary" style="color:#f87171; border-color:#dc2626; font-size:0.72rem; padding:2px 8px;">✕ Hapus</button>
+            </div>
+        `;
+    }).join('');
+}
+
+window.applyNetMgrChanges = async function() {
+    if (!currentNetMgrConnections || !currentNetMgrConnections.success) {
+        await window.fetchNetMgrConnections();
+    }
+
+    const lanName = currentNetMgrConnections?.lan?.name || '';
+    const wifiName = currentNetMgrConnections?.wifi?.name || '';
+
+    try {
+        showToast('⏳ Menerapkan perubahan & merestart koneksi nmcli...', 'info');
+        const res = await authFetch('/api/addons/network-manager/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lanName, wifiName })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            showToast('🚀 Perubahan Jaringan Berhasil Diterapkan & Dimuat ke Kernel Linux STB!', 'success');
+            await window.fetchNetMgrConnections();
+        } else {
+            alert('Gagal menerapkan perubahan jaringan: ' + (data.error || 'Error'));
+        }
+    } catch (e) {
+        alert('Error menerapkan perubahan jaringan: ' + e.message);
+    }
+};
+

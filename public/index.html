@@ -256,6 +256,9 @@
                                     </button>
                                 </div>
                                 <div class="nvr-grid-actions-right">
+                                    <button id="btnOpenNetMgrModal" class="nvr-tool-btn" onclick="window.openNetMgrModal()" title="Dual-Interface Network Router & Camera Binding (nmcli)">
+                                        <span class="nvr-icon">🌐</span>
+                                    </button>
                                     <button id="btnOpenDiagnosticsModal" class="nvr-tool-btn" onclick="window.openDiagnosticsModal()" title="Diagnosa Jaringan LAN/WAN & Stream Kamera">
                                         <span class="nvr-icon">🩺</span>
                                     </button>
@@ -587,6 +590,99 @@
                                 Klik "Jalankan Diagnosa Semua Kamera" di atas untuk memeriksa latensi PING, status port RTSP 554, dan alokasi Sub-Stream per kamera.
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: DUAL-INTERFACE NETWORK ROUTER ADDON (nmcli) -->
+            <div id="netMgrModalOverlay" class="ota-modal-overlay">
+                <div class="ota-modal-dialog" style="max-width:860px; max-height:92vh; display:flex; flex-direction:column;">
+                    <div class="ota-modal-header" style="background:#0f172a; border-bottom:1px solid #1e293b; padding:1rem 1.25rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:1.25rem;">🌐</span>
+                            <div>
+                                <h3 style="margin:0; font-size:1.05rem; color:#f8fafc; font-weight:600;">Dual-Interface Network Router & Camera Binding</h3>
+                                <p style="margin:0; font-size:0.75rem; color:#94a3b8;">Armbian NetworkManager CLI (nmcli) - Solusi isolasi interface router ISP</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="window.closeNetMgrModal()" class="btn-sm btn-secondary" style="padding:4px 10px; font-size:0.85rem; border-color:#334155;">✕ Tutup</button>
+                    </div>
+
+                    <div class="ota-modal-body" style="background:#0b1120; padding:1.25rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:1rem;">
+                        
+                        <!-- Top Info Banner -->
+                        <div style="background:rgba(30,41,59,0.5); border:1px solid #1e293b; border-radius:8px; padding:0.85rem 1rem; font-size:0.8rem; color:#cbd5e1; line-height:1.45;">
+                            💡 <strong>Solusi Isolasi Interface Router ISP:</strong> Memaksa rute kamera Wi-Fi via interface <code>wlan0</code> dan kamera LAN via <code>eth0</code> secara terisolasi (`/32`), serta mengunci prioritas gateway internet pada LAN (Metric 50) dengan fallback Wi-Fi (Metric 500).
+                        </div>
+
+                        <!-- Active Interfaces Card -->
+                        <div style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                                <strong style="color:#f8fafc; font-size:0.88rem;">1. Status Network Interface STB (`nmcli`)</strong>
+                                <button type="button" onclick="window.fetchNetMgrConnections()" class="btn-sm btn-secondary" style="font-size:0.75rem; padding:3px 8px;">🔄 Refresh Interface</button>
+                            </div>
+                            <div id="netMgrInterfacesContainer" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:0.75rem;">
+                                <div style="color:#64748b; font-size:0.8rem; padding:1rem; text-align:center;">Memuat data koneksi nmcli...</div>
+                            </div>
+                            <div style="margin-top:0.85rem; display:flex; gap:0.5rem; justify-content:flex-end;">
+                                <button type="button" onclick="window.setupNetMgrMetrics()" class="btn btn-primary" style="font-size:0.8rem; padding:0.45rem 0.9rem; font-weight:600;">
+                                    ⚡ Set Prioritas Metric (LAN 50 / Wi-Fi 500)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Static Route Binding Table for Generic IP Devices / Subnet Blocks -->
+                        <div style="background:#0f172a; border:1px solid #1e293b; border-radius:8px; padding:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                <div>
+                                    <strong style="color:#f8fafc; font-size:0.88rem;">2. Ikat Rute IP Perangkat / Blok Subnet (Generic Route Binding)</strong>
+                                    <p style="margin:2px 0 0 0; font-size:0.75rem; color:#94a3b8;">Mendukung Single Device IP (misal <code>192.168.1.50</code> /32) atau Blok Subnet (misal <code>192.168.1.0/24</code>) untuk CCTV, NAS, Server, & Smart Hubs</p>
+                                </div>
+                            </div>
+
+                            <!-- Add Route Form Row -->
+                            <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; background:rgba(15,23,42,0.6); padding:0.75rem; border-radius:6px; border:1px solid #1e293b; align-items:flex-end;">
+                                <div style="flex:2; min-width:180px;">
+                                    <label style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:3px;">Pilih Kamera NVR / Perangkat Presets</label>
+                                    <select id="netMgrCamSelect" onchange="window.onNetMgrCamSelectChange(this.value)" class="form-control" style="font-size:0.8rem; padding:0.4rem;">
+                                        <option value="">-- Pilih Kamera Terdaftar / Input Manual --</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1.8; min-width:160px;">
+                                    <label style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:3px;">Target IP atau Blok Subnet CIDR</label>
+                                    <input type="text" id="netMgrCamIpInput" placeholder="192.168.1.50 atau 192.168.1.0/24" class="form-control" style="font-size:0.8rem; padding:0.4rem;">
+                                </div>
+                                <div style="flex:1.4; min-width:130px;">
+                                    <label style="font-size:0.75rem; color:#94a3b8; display:block; margin-bottom:3px;">Interface Target</label>
+                                    <select id="netMgrTargetInterfaceSelect" class="form-control" style="font-size:0.8rem; padding:0.4rem;">
+                                        <option value="wifi">📶 Wi-Fi (wlan0)</option>
+                                        <option value="ethernet">🔌 LAN (eth0)</option>
+                                    </select>
+                                </div>
+                                <button type="button" onclick="window.addNetMgrRoute()" class="btn btn-primary" style="font-size:0.8rem; padding:0.45rem 0.85rem; font-weight:600;">
+                                    ➕ Tambah Rute
+                                </button>
+                            </div>
+
+                            <!-- Active Camera & Custom Device Routes List -->
+                            <div id="netMgrCameraRoutesContainer" style="display:flex; flex-direction:column; gap:0.5rem; max-height:220px; overflow-y:auto;">
+                                <div style="color:#64748b; font-size:0.8rem; text-align:center; padding:1rem;">
+                                    Belum ada rute khusus perangkat/subnet yang ditambahkan.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Apply & Restart Section -->
+                        <div style="background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.3); border-radius:8px; padding:0.85rem 1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                            <div>
+                                <strong style="color:#f8fafc; font-size:0.85rem;">3. Terapkan Perubahan Konfigurasi (`nmcli connection up`)</strong>
+                                <p style="margin:2px 0 0 0; font-size:0.75rem; color:#93c5fd;">Restart otomatis koneksi LAN & Wi-Fi untuk memuat rute baru ke kernel Linux STB.</p>
+                            </div>
+                            <button type="button" onclick="window.applyNetMgrChanges()" class="btn btn-primary" style="font-size:0.82rem; padding:0.55rem 1.1rem; font-weight:700; background:#2563eb; box-shadow:0 2px 10px rgba(37,99,235,0.4);">
+                                🚀 Terapkan & Restart Network
+                            </button>
+                        </div>
+
                     </div>
                 </div>
             </div>

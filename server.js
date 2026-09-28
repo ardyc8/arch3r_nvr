@@ -13,6 +13,7 @@ import bcrypt from 'bcryptjs';
 import cookieParser from 'cookie-parser';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { sendV380PtzCommand, probeV380Socket } from './lib/v380_driver.js';
+import networkManagerRouter from './addons/network-manager/index.js';
 
 dotenv.config();
 
@@ -359,6 +360,7 @@ const mediamtxConfigFile = process.env.MEDIAMTX_CONFIG_PATH || path.join(homeDir
 
 app.use(express.json());
 app.use(cookieParser());
+app.use('/api/addons/network-manager', verifyToken, networkManagerRouter);
 // Serve static assets from the public directory
 
 // ==========================================
@@ -7275,11 +7277,29 @@ app.get('/api/addons/ai_yolo/status', verifyToken, async (req, res) => {
     });
 });
 
+// Mount Armbian Network Manager Addon REST API
+app.use('/api/addons/network-manager', verifyToken, networkManagerRouter);
+
 // --- Universal Addons List & Management Endpoints (Ver 11.1.1) ---
 app.get('/api/addons', verifyToken, async (req, res) => {
     try {
         const db = getNvrDb();
         if (!db.addons) db.addons = [];
+
+        // Ensure network-manager addon is registered in default list
+        const hasNetMgr = db.addons.some(a => a.id === 'network_manager' || a.id === 'network-manager');
+        if (!hasNetMgr) {
+            db.addons.push({
+                id: 'network_manager',
+                name: 'Dual-Interface Network Router & Camera Binding (nmcli)',
+                description: 'Solusi isolasi router ISP pada Armbian Linux STB. Mengatur prioritas LAN/Wi-Fi metric (50/500) & static host route kamera.',
+                version: '1.0.0',
+                active: true,
+                author: 'Arch3r NVR Network Architect',
+                icon: '🌐'
+            });
+            saveNvrDb(db);
+        }
 
         // Check real-time hardware & background status for addons
         const addonsList = await Promise.all((db.addons || []).map(async (addon) => {
@@ -7305,6 +7325,10 @@ app.get('/api/addons', verifyToken, async (req, res) => {
             if (addon.id === 'hdmi-native' || addon.id === 'hdmi_native') {
                 const nStatus = hdmiNativeAddon && typeof hdmiNativeAddon.getStatus === 'function' ? hdmiNativeAddon.getStatus() : null;
                 copy.running = !!(nStatus && nStatus.isServiceActive);
+            }
+
+            if (addon.id === 'network_manager' || addon.id === 'network-manager') {
+                copy.running = true;
             }
 
             return copy;

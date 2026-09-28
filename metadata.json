@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.3.2 - RTSP TCP Stream Optimization, LAN/WAN Network Diagnostics Engine & Smart Sub-Stream Allocation.",
+  "description": "Arch3r NVR Ver. 11.3.5 - Dynamic SSID Connection Auto-Detection, Parameterless setupMetrics & addRoute(target, isWireless).",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
