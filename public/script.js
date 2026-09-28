@@ -946,6 +946,7 @@ async function handleLogout() {
     // =========================================================================
     function initMobileUserApp() {
         if (typeof updateAutoPlayUI === 'function') updateAutoPlayUI();
+        fetchSystemSettings();
         fetchCameras();
 
         // Mobile Grid Switcher
@@ -3718,11 +3719,13 @@ async function fetchCameras() {
         window.toggleCameraQuality(targetId);
     };
 
-    // --- AUTO-PLAY LIVE PREFERENCE & GLOBAL STREAM CONTROLLER (Ver. 11.3.0) ---
+    // --- AUTO-PLAY LIVE PREFERENCE & GLOBAL STREAM CONTROLLER (Ver. 11.3.1) ---
     window.cameraSlotRegistry = window.cameraSlotRegistry || {};
 
     function isAutoPlayLive() {
-        // Default adalah false (Standby / hemat CPU & Bandwidth STB)
+        if (window.nvrSystemSettings && typeof window.nvrSystemSettings.autoplayLive === 'boolean') {
+            return window.nvrSystemSettings.autoplayLive;
+        }
         return localStorage.getItem('nvr_autoplay_live') === 'true';
     }
     window.isAutoPlayLive = isAutoPlayLive;
@@ -3739,27 +3742,41 @@ async function fetchCameras() {
                 btn.style.background = 'rgba(16,185,129,0.15)';
                 btn.style.borderColor = '#059669';
                 btn.style.color = '#34d399';
-                btn.title = '⚡ Auto-play Live: AKTIF (Stream langsung diputar saat buka monitor. Klik untuk menonaktifkan / hemat CPU)';
+                btn.title = '⚡ Auto-play Live: AKTIF (Tersimpan di server. Aliran otomatis diputar saat buka monitor. Klik untuk menonaktifkan / hemat CPU)';
             } else {
                 btn.style.background = 'rgba(100,116,139,0.15)';
                 btn.style.borderColor = '#64748b';
                 btn.style.color = '#94a3b8';
-                btn.title = '⚡ Auto-play Live: NONAKTIF (Default - Hemat CPU/Bandwidth STB. Klik untuk mengaktifkan)';
+                btn.title = '⚡ Auto-play Live: NONAKTIF (Tersimpan di server. Default - Mode Siaga hemat CPU STB. Klik untuk mengaktifkan)';
             }
         }
     }
     window.updateAutoPlayUI = updateAutoPlayUI;
 
-    window.toggleAutoPlayPreference = function() {
+    window.toggleAutoPlayPreference = async function() {
         const current = isAutoPlayLive();
         const next = !current;
         localStorage.setItem('nvr_autoplay_live', next ? 'true' : 'false');
+        if (!window.nvrSystemSettings) window.nvrSystemSettings = {};
+        window.nvrSystemSettings.autoplayLive = next;
         updateAutoPlayUI();
+
+        // Simpan preferensi secara persisten ke server NVR agar sesi bertahan di browser & perangkat lain
+        try {
+            if (typeof authFetch === 'function') {
+                authFetch('/api/settings/autoplay', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ autoplayLive: next })
+                }).catch(() => {});
+            }
+        } catch (_) {}
+
         if (next) {
-            showToast('⚡ Auto-play Live DIAKTIFKAN: Kamera akan otomatis diputar saat membuka halaman monitor.', 'success');
+            showToast('⚡ Auto-play Live DIAKTIFKAN: Disimpan di server & kamera langsung diputar saat buka monitor.', 'success');
             window.playAllStreams();
         } else {
-            showToast('⚡ Auto-play Live DINONAKTIFKAN: Kamera akan siaga (stop) saat membuka halaman monitor.', 'info');
+            showToast('⚡ Auto-play Live DINONAKTIFKAN: Disimpan di server & kamera siaga (stop) saat buka monitor.', 'info');
             window.pauseAllStreams();
         }
     };
@@ -3768,6 +3785,7 @@ async function fetchCameras() {
         if (!videoId) return;
         const slot = window.cameraSlotRegistry ? window.cameraSlotRegistry[videoId] : null;
         if (slot && slot.enabled && typeof playUltraStream === 'function') {
+            slot.isPlaying = true;
             playUltraStream(slot.videoId, slot.hlsUrl, slot.streamPath);
             const btnD = document.getElementById(slot.btnTileId);
             const btnM = document.getElementById(slot.mBtnTileId);
@@ -3784,6 +3802,7 @@ async function fetchCameras() {
             for (const vidId in window.cameraSlotRegistry) {
                 const slot = window.cameraSlotRegistry[vidId];
                 if (slot && slot.enabled && typeof playUltraStream === 'function') {
+                    slot.isPlaying = true;
                     playUltraStream(slot.videoId, slot.hlsUrl, slot.streamPath);
                     const btnD = document.getElementById(slot.btnTileId);
                     const btnM = document.getElementById(slot.mBtnTileId);
@@ -3833,8 +3852,9 @@ async function fetchCameras() {
         if (window.cameraSlotRegistry) {
             for (const vidId in window.cameraSlotRegistry) {
                 const slot = window.cameraSlotRegistry[vidId];
+                if (slot) slot.isPlaying = false;
                 if (typeof setStreamState === 'function') {
-                    setStreamState(vidId, 'standby', 'Stream Dihentikan (Hemat CPU)', 'Klik petak atau ▶️ untuk menonton');
+                    setStreamState(vidId, 'standby', 'Stream Dihentikan (Hemat CPU)', 'Klik petak atau tombol ▶️ untuk memutar stream');
                 }
                 const btnD = document.getElementById(slot.btnTileId);
                 const btnM = document.getElementById(slot.mBtnTileId);
@@ -3873,6 +3893,7 @@ async function fetchCameras() {
         const isPlaying = Boolean(vidId && ((window.activeHlsPlayers && window.activeHlsPlayers[vidId]) || (window.activeWebRtcPlayers && window.activeWebRtcPlayers[vidId])));
 
         if (isPlaying) {
+            if (targetSlot) targetSlot.isPlaying = false;
             if (vidId) {
                 if (window.activeHlsPlayers && window.activeHlsPlayers[vidId]) {
                     try { window.activeHlsPlayers[vidId].destroy(); } catch (_) {}
@@ -3897,6 +3918,7 @@ async function fetchCameras() {
             if (btnD) btnD.textContent = '▶️';
             if (btnM) btnM.textContent = '▶️';
         } else {
+            if (targetSlot) targetSlot.isPlaying = true;
             if (targetSlot && typeof playUltraStream === 'function') {
                 playUltraStream(targetSlot.videoId, targetSlot.hlsUrl, targetSlot.streamPath);
             } else if (vidId) {
@@ -4256,6 +4278,9 @@ async function fetchCameras() {
                 const entry = streamHealthTracker[id];
                 if (!entry) continue;
 
+                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[id];
+                if (slot && slot.isPlaying === false) continue;
+
                 const video = document.getElementById(id);
                 if (!video || video.paused) continue;
 
@@ -4400,19 +4425,26 @@ async function fetchCameras() {
                 await pc.setLocalDescription(offer);
 
                 const mediamtxPort = (window.nvrSystemSettings && window.nvrSystemSettings.mediamtxPort) || 8889;
+                const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '');
                 const endpoints = [
-                    `/whep/${streamPath}/whep`,
-                    `http://${window.location.hostname}:${mediamtxPort}/${streamPath}/whep`
+                    `/whep/${streamPath}/whep`
                 ];
+                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                    endpoints.push(`http://${window.location.hostname}:${mediamtxPort}/${streamPath}/whep`);
+                }
 
                 let connected = false;
                 for (const url of endpoints) {
                     try {
                         const ctrl = new AbortController();
-                        const tmr = setTimeout(() => ctrl.abort(), 2000);
+                        const tmr = setTimeout(() => ctrl.abort(), 1200);
                         const res = await fetch(url, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/sdp' },
+                            headers: {
+                                'Content-Type': 'application/sdp',
+                                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+                            },
+                            credentials: 'include',
                             body: offer.sdp,
                             signal: ctrl.signal
                         });
@@ -4447,7 +4479,7 @@ async function fetchCameras() {
         }
 
         // Fallback otomatis ke HLS jika WebRTC belum siap atau tidak tersedia
-        setStreamState(id, 'connecting', 'Beralih ke HLS Stream...', 'Menyiapkan fragmen video...');
+        setStreamState(id, 'connecting', 'Menghubungkan HLS...', 'Mempersiapkan pemutar video...');
         return initHlsPlayer(video, hlsUrl, onReady, onError);
     }
     window.playUltraStream = playUltraStream;
@@ -4482,6 +4514,14 @@ async function fetchCameras() {
             activeHlsPlayers[id] = hls;
             hls.loadSource(hlsUrl);
             hls.attachMedia(video);
+
+            hls.on(Hls.Events.FRAG_LOADED, function() {
+                setStreamState(id, 'live');
+                if (streamHealthTracker[id]) {
+                    streamHealthTracker[id].lastTickTime = Date.now();
+                }
+            });
+
             hls.on(Hls.Events.MANIFEST_PARSED, function() {
                 video.play().then(() => {
                     setStreamState(id, 'live');
@@ -4496,18 +4536,29 @@ async function fetchCameras() {
             });
 
             let mediaErrorCount = 0;
+            let networkErrorCount = 0;
             hls.on(Hls.Events.ERROR, function(event, data) {
                 if (data.fatal) {
-                    setStreamState(id, 'stalled', '🔴 ALIRAN TERPUTUS', 'Mencoba menghubungkan kembali...');
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
+                            networkErrorCount++;
+                            const slot = window.cameraSlotRegistry ? window.cameraSlotRegistry[id] : null;
+                            const fallbackUrl = (slot && slot.camId) ? `/streams/${encodeURIComponent(slot.camId)}/main.m3u8` : null;
+                            if (networkErrorCount >= 2 && fallbackUrl && hlsUrl !== fallbackUrl) {
+                                hlsUrl = fallbackUrl;
+                                if (slot) slot.hlsUrl = fallbackUrl;
+                                hls.loadSource(fallbackUrl);
+                                hls.startLoad();
+                                break;
+                            }
+                            setStreamState(id, 'buffering', 'Menghubungkan Aliran HLS...', 'Mempersiapkan segmen video...');
                             if (typeof onError === 'function') onError(data);
                             setTimeout(() => {
                                 if (activeHlsPlayers[id]) {
                                     activeHlsPlayers[id].loadSource(hlsUrl);
                                     activeHlsPlayers[id].startLoad();
                                 }
-                            }, 2500);
+                            }, 2000);
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
                             mediaErrorCount++;
@@ -4653,12 +4704,12 @@ async function fetchCameras() {
                     
                     cell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
-                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; background:#000;"></video>
+                            <video id="${videoId}" class="cam-player-video" muted playsinline style="width:100%; height:100%; object-fit:contain; background:#000;"></video>
                             
                             <div id="overlay_${videoId}" class="state-overlay">
-                                <div class="state-spinner" id="spin_${videoId}"></div>
-                                <h4 id="title_${videoId}" style="color:#38bdf8;">Menghubungkan...</h4>
-                                <p id="desc_${videoId}">Memulai koneksi WebRTC / RTSP...</p>
+                                <div class="state-spinner" id="spin_${videoId}" style="display:none;"></div>
+                                <h4 id="title_${videoId}" style="color:#94a3b8;"><span style="display:inline-block; font-size:1.15rem; margin-right:4px;">▶️</span> Live Standby</h4>
+                                <p id="desc_${videoId}" style="color:#cbd5e1;">Klik petak atau tombol ▶️ untuk memutar</p>
                             </div>
 
                             <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:4px; align-items:center;">
@@ -4674,27 +4725,63 @@ async function fetchCameras() {
                     inits.push(() => {
                         const vidEl = document.getElementById(videoId);
                         if (vidEl) {
-                            vidEl.addEventListener('loadstart', () => window.setStreamState(videoId, 'connecting', 'Menghubungkan...'));
-                            vidEl.addEventListener('waiting', () => window.setStreamState(videoId, 'buffering', 'Buffering Aliran...'));
-                            vidEl.addEventListener('playing', () => window.setStreamState(videoId, 'live'));
+                            vidEl.addEventListener('loadstart', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'connecting', 'Menghubungkan...');
+                                }
+                            });
+                            vidEl.addEventListener('waiting', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'buffering', 'Buffering Aliran...');
+                                }
+                            });
+                            vidEl.addEventListener('playing', () => {
+                                window.setStreamState(videoId, 'live');
+                            });
+                            vidEl.addEventListener('canplay', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'live');
+                                }
+                            });
                             vidEl.addEventListener('timeupdate', () => {
                                 if (window.streamHealthTracker && window.streamHealthTracker[videoId]) {
                                     window.streamHealthTracker[videoId].lastTime = vidEl.currentTime;
                                     window.streamHealthTracker[videoId].lastTickTime = Date.now();
                                 }
+                                if (vidEl.currentTime > 0 && !vidEl.paused) {
+                                    const overlay = document.getElementById('overlay_' + videoId);
+                                    if (overlay && !overlay.classList.contains('hidden')) {
+                                        window.setStreamState(videoId, 'live');
+                                    }
+                                }
                             });
-                            vidEl.addEventListener('stalled', () => window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...'));
-                            vidEl.addEventListener('error', () => window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus'));
+                            vidEl.addEventListener('stalled', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...');
+                                }
+                            });
+                            vidEl.addEventListener('error', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus');
+                                }
+                            });
                         }
 
                         const isKiosk = Boolean(window.isKioskDisplay || document.body.classList.contains('kiosk-display-mode'));
                         const shouldPlay = isKiosk || (window.liveStreamsPlaying !== undefined ? window.liveStreamsPlaying : (typeof isAutoPlayLive === 'function' && isAutoPlayLive()));
 
                         if (shouldPlay && cam.enabled !== false) {
+                            if (window.cameraSlotRegistry[videoId]) window.cameraSlotRegistry[videoId].isPlaying = true;
                             playUltraStream(videoId, hlsUrl, streamPath);
                             const btnD = document.getElementById('btn_tile_pp_' + cam.id);
                             if (btnD) btnD.textContent = '⏸️';
                         } else {
+                            if (window.cameraSlotRegistry[videoId]) window.cameraSlotRegistry[videoId].isPlaying = false;
                             window.setStreamState(videoId, 'standby', 'Mode Siaga (Standby)', 'Klik petak atau tombol ▶️ untuk memutar stream');
                             const btnD = document.getElementById('btn_tile_pp_' + cam.id);
                             if (btnD) btnD.textContent = '▶️';
@@ -4762,12 +4849,12 @@ async function fetchCameras() {
                     
                     mCell.innerHTML = `
                         <div style="position:relative; width:100%; height:100%; background: #000; overflow: hidden; border:1px solid var(--border);">
-                            <video id="${videoId}" class="cam-player-video" autoplay muted playsinline style="width:100%; height:100%; object-fit:contain; background:#000;"></video>
+                            <video id="${videoId}" class="cam-player-video" muted playsinline style="width:100%; height:100%; object-fit:contain; background:#000;"></video>
                             
                             <div id="overlay_${videoId}" class="state-overlay">
-                                <div class="state-spinner" id="spin_${videoId}"></div>
-                                <h4 id="title_${videoId}" style="color:#38bdf8;">Menghubungkan...</h4>
-                                <p id="desc_${videoId}">Memulai koneksi WebRTC / RTSP...</p>
+                                <div class="state-spinner" id="spin_${videoId}" style="display:none;"></div>
+                                <h4 id="title_${videoId}" style="color:#94a3b8;"><span style="display:inline-block; font-size:1.15rem; margin-right:4px;">▶️</span> Live Standby</h4>
+                                <p id="desc_${videoId}" style="color:#cbd5e1;">Klik petak atau tombol ▶️ untuk memutar</p>
                             </div>
 
                             <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:4px; align-items:center;">
@@ -4783,27 +4870,63 @@ async function fetchCameras() {
                     inits.push(() => {
                         const vidEl = document.getElementById(videoId);
                         if (vidEl) {
-                            vidEl.addEventListener('loadstart', () => window.setStreamState(videoId, 'connecting', 'Menghubungkan...'));
-                            vidEl.addEventListener('waiting', () => window.setStreamState(videoId, 'buffering', 'Buffering Aliran...'));
-                            vidEl.addEventListener('playing', () => window.setStreamState(videoId, 'live'));
+                            vidEl.addEventListener('loadstart', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'connecting', 'Menghubungkan...');
+                                }
+                            });
+                            vidEl.addEventListener('waiting', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'buffering', 'Buffering Aliran...');
+                                }
+                            });
+                            vidEl.addEventListener('playing', () => {
+                                window.setStreamState(videoId, 'live');
+                            });
+                            vidEl.addEventListener('canplay', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'live');
+                                }
+                            });
                             vidEl.addEventListener('timeupdate', () => {
                                 if (window.streamHealthTracker && window.streamHealthTracker[videoId]) {
                                     window.streamHealthTracker[videoId].lastTime = vidEl.currentTime;
                                     window.streamHealthTracker[videoId].lastTickTime = Date.now();
                                 }
+                                if (vidEl.currentTime > 0 && !vidEl.paused) {
+                                    const overlay = document.getElementById('overlay_' + videoId);
+                                    if (overlay && !overlay.classList.contains('hidden')) {
+                                        window.setStreamState(videoId, 'live');
+                                    }
+                                }
                             });
-                            vidEl.addEventListener('stalled', () => window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...'));
-                            vidEl.addEventListener('error', () => window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus'));
+                            vidEl.addEventListener('stalled', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'buffering', 'Menunggu Aliran Data...');
+                                }
+                            });
+                            vidEl.addEventListener('error', () => {
+                                const slot = window.cameraSlotRegistry && window.cameraSlotRegistry[videoId];
+                                if (slot && slot.isPlaying) {
+                                    window.setStreamState(videoId, 'offline', 'Kamera Offline / Aliran Terputus');
+                                }
+                            });
                         }
 
                         const isKiosk = Boolean(window.isKioskDisplay || document.body.classList.contains('kiosk-display-mode'));
                         const shouldPlay = isKiosk || (window.liveStreamsPlaying !== undefined ? window.liveStreamsPlaying : (typeof isAutoPlayLive === 'function' && isAutoPlayLive()));
 
                         if (shouldPlay && cam.enabled !== false) {
+                            if (window.cameraSlotRegistry[videoId]) window.cameraSlotRegistry[videoId].isPlaying = true;
                             playUltraStream(videoId, hlsUrl, streamPath);
                             const btnM = document.getElementById('m_btn_tile_pp_' + cam.id);
                             if (btnM) btnM.textContent = '⏸️';
                         } else {
+                            if (window.cameraSlotRegistry[videoId]) window.cameraSlotRegistry[videoId].isPlaying = false;
                             window.setStreamState(videoId, 'standby', 'Mode Siaga (Standby)', 'Klik petak atau tombol ▶️ untuk memutar stream');
                             const btnM = document.getElementById('m_btn_tile_pp_' + cam.id);
                             if (btnM) btnM.textContent = '▶️';
@@ -5762,6 +5885,17 @@ async function fetchSystemSettings() {
                 if (data.globalStoragePath && data.globalStoragePath.startsWith('/')) {
                      sysCustomStoragePath.value = data.globalStoragePath;
                      if (sysStorageDevice) sysStorageDevice.value = 'custom';
+                }
+            }
+
+            if (data) {
+                window.nvrSystemSettings = data;
+                if (typeof data.autoplayLive === 'boolean') {
+                    window.nvrSystemSettings.autoplayLive = data.autoplayLive;
+                    localStorage.setItem('nvr_autoplay_live', data.autoplayLive ? 'true' : 'false');
+                    if (typeof updateAutoPlayUI === 'function') {
+                        updateAutoPlayUI();
+                    }
                 }
             }
         } catch(e) {

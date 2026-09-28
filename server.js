@@ -2050,7 +2050,8 @@ function getDefaultDb() {
             mediamtxPort: 8889, 
             mediamtxHost: '', 
             showTopMonitor: false, 
-            netInterface: 'auto' 
+            netInterface: 'auto',
+            autoplayLive: false
         },
 
         administrators: [],
@@ -6143,7 +6144,23 @@ app.get('/api/settings', verifyToken, (req, res) => {
     const dbData = getNvrDb();
     const curSettings = getSettings();
     curSettings.recording_path = dbData.recording_path || curSettings.globalStoragePath || '';
+    curSettings.autoplayLive = Boolean(curSettings.autoplayLive);
     res.json(curSettings);
+});
+
+// Endpoint sinkronisasi sesi Auto-play Live lintas browser & perangkat (Ver. 11.3.1)
+app.post('/api/settings/autoplay', verifyToken, (req, res) => {
+    try {
+        const { autoplayLive } = req.body;
+        const dbData = getNvrDb();
+        if (!dbData.super_settings) dbData.super_settings = {};
+        dbData.super_settings.autoplayLive = Boolean(autoplayLive);
+        saveNvrDb(dbData);
+        sysLog('INFO', `Pengaturan Sesi Auto-play Live diperbarui: ${dbData.super_settings.autoplayLive ? 'AKTIF (Otomatis Putar)' : 'NONAKTIF (Standby)'}`, 'SYSTEM');
+        res.json({ success: true, autoplayLive: dbData.super_settings.autoplayLive });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.get('/api/logs', verifyToken, (req, res) => {

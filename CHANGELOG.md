@@ -1,5 +1,19 @@
 # Changelog
 
+## [Ver 11.3.1] - 2026-09-28
+### Fix Persistent Stream Loading, Server-Synced Autoplay Settings & Mobile PTZ D-Pad Layout Alignment
+- **Perbaikan Masalah Video Memuat Aliran Terus-menerus (Infinite Buffering / Continuous Loading Fix) (`public/script.js`):**
+  - Menghapus atribut `autoplay` bawaan pada elemen HTML `<video>` yang memicu browser autoplay policy restriction dan loop status `waiting`/`stalled` tanpa henti.
+  - Menambahkan pengiriman header otentikasi `Authorization: Bearer <token>` pada permintaan WebRTC WHEP (`POST /whep`), mencegah penolakan HTTP 401 Unauthorized yang membuat stream terus mencoba terhubung kembali.
+  - Memperbarui pendeteksian frame video aktif (first frame received) untuk langsung menghapus overlay loading dan mengeset status stream menjadi `live` secara responsif.
+  - Menambahkan fallback otomatis ke HLS (`/stream/` atau `/streams/`) jika koneksi WebRTC WHEP gagal atau waktu penyiapan melebihi batas toleransi.
+- **Sinkronisasi Sesi Auto-Play Lintas Browser & Perangkat (Server-Synced Autoplay Settings) (`server.js`, `public/script.js`):**
+  - Menambahkan properti `autoplayLive` di konfigurasi database server NVR (`super_settings`) dan endpoint API baru `POST /api/settings/autoplay` (dengan otentikasi JWT).
+  - Mengubah logika `isAutoPlayLive()` agar mengutamakan konfigurasi dari server NVR (`window.nvrSystemSettings.autoplayLive`), sehingga preferensi Auto-play tersimpan secara konsisten lintas browser dan sesi tanpa kembali ke default `STOP/pause`.
+- **Restorasi Ergonometri D-Pad PTZ Control pada Layar Ponsel / Mobile UI (`public/style.css`):**
+  - Memperbaiki tata letak `.nvr-ptz-split-layout` pada media query layar HP (`max-width: 580px` dan `orientation: portrait`).
+  - Mengatur ulang urutan komponen agar D-Pad (`.nvr-ptz-right-column`) tampil di posisi atas/sejajar yang mudah dijangkau ibu jari, tidak lagi terdorong terlalu jauh ke bawah melewati panel kontrol lensa/lensa & audio.
+
 ## [Ver 11.3.0] - 2026-09-28
 ### Standby Default Live Monitor, Auto-Play Switcher & Compact Mobile Toolbar Icons
 - **Mode Siaga Default Saat Buka Monitor Live (Standby / Zero-Overhead Initial Load) (`public/script.js`, `public/style.css`):**

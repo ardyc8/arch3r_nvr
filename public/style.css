@@ -903,14 +903,89 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
     line-height: 1;
 }
 
-@media (max-width: 580px) and (orientation: portrait) {
+/* Responsive PTZ Control Card for Mobile / Narrow screens (Ver. 11.3.1) */
+@media (max-width: 768px) {
+    .nvr-ptz-card {
+        margin: 4px 6px 6px 6px !important;
+        padding: 6px 8px !important;
+    }
     .nvr-ptz-split-layout {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+    .nvr-ptz-left-column {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        gap: 4px !important;
+    }
+    .nvr-ptz-group-box {
+        padding: 4px 6px !important;
+        gap: 3px !important;
+    }
+    .nvr-ptz-group-title {
+        font-size: 9px !important;
+    }
+    .nvr-ptz-actions-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 3px !important;
+    }
+    .nvr-ptz-action-btn {
+        padding: 4px 4px !important;
+        font-size: 10px !important;
+        min-height: 24px !important;
+    }
+    .nvr-ptz-media-btn {
+        padding: 4px 4px !important;
+        font-size: 10px !important;
+        min-height: 24px !important;
+    }
+    .nvr-vol-container {
+        height: 24px !important;
+        padding: 0 4px !important;
+    }
+    .nvr-vol-slider {
+        width: 42px !important;
     }
     .nvr-ptz-right-column {
-        justify-content: center;
-        margin-top: 4px;
+        flex: 0 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-top: 0 !important;
+    }
+    .nvr-ptz-dial {
+        width: 112px !important;
+        height: 112px !important;
+    }
+    .nvr-ptz-arrow-btn {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 11px !important;
+    }
+    .nvr-ptz-up {
+        top: 3px !important;
+        left: 40px !important;
+    }
+    .nvr-ptz-down {
+        bottom: 3px !important;
+        left: 40px !important;
+    }
+    .nvr-ptz-left {
+        left: 3px !important;
+        top: 40px !important;
+    }
+    .nvr-ptz-right {
+        right: 3px !important;
+        top: 40px !important;
+    }
+    .nvr-ptz-center-circle {
+        top: 40px !important;
+        left: 40px !important;
+        width: 32px !important;
+        height: 32px !important;
     }
 }
 
