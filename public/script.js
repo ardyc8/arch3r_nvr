@@ -15182,15 +15182,12 @@ function ensureNetMgrModalDOM() {
                     </div>
 
                     <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
-                        Jembatani interface Ethernet LAN (eth0) dan Wi-Fi (wlan0) via <strong>Pure Transparent Proxy-ARP &amp; Kernel IP Forwarding</strong>. Menembus isolasi router ISP secara instan <strong>tanpa mengubah port fisik</strong> dan <strong>100% kebal reboot (tidak akan mengunci IP/SSH/Tailscale)</strong>.
+                        Jembatani interface Ethernet LAN (eth0) dan Wi-Fi (wlan0) via <strong>Pure Transparent Proxy-ARP &amp; Kernel IP Forwarding</strong>. Menembus isolasi router ISP secara instan <strong>tanpa mengubah port fisik</strong>, <strong>otomatis menyetel prioritas metric</strong>, dan <strong>100% kebal reboot</strong>.
                     </p>
 
-                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.85rem;">
-                        <button type="button" id="btnEnableBridgeUI" onclick="window.enableArch3rBridgeUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.83rem; padding:0.45rem 1rem; display:flex; align-items:center; gap:0.4rem;">
+                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.85rem; align-items:center;">
+                        <button type="button" id="btnToggleArch3rBridgeUI" onclick="window.toggleArch3rBridgeUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.83rem; padding:0.45rem 1.2rem; display:flex; align-items:center; gap:0.4rem;">
                             <span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP Relay)
-                        </button>
-                        <button type="button" id="btnDisableBridgeUI" onclick="window.disableArch3rBridgeUI()" class="btn btn-secondary" style="color:#f87171; border-color:#dc2626; background:rgba(239,68,68,0.08); font-weight:600; font-size:0.83rem; padding:0.45rem 1rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>🛑</span> Nonaktifkan arch3rBridge
                         </button>
                         <button type="button" onclick="window.checkArch3rBridgeStatusUI()" class="btn btn-secondary" style="font-size:0.83rem; padding:0.45rem 0.85rem; display:flex; align-items:center; gap:0.4rem;">
                             <span>🔄</span> Cek Status
@@ -15424,12 +15421,25 @@ window.connectWifiNetworkUI = async function() {
     }
 };
 
+let isArch3rBridgeActiveState = false;
+
+window.toggleArch3rBridgeUI = async function() {
+    if (isArch3rBridgeActiveState) {
+        await window.disableArch3rBridgeUI();
+    } else {
+        await window.enableArch3rBridgeUI();
+    }
+};
+
 window.checkArch3rBridgeStatusUI = async function() {
     const badge = document.getElementById('arch3rBridgeBadge');
     const logBox = document.getElementById('arch3rBridgeLogBox');
+    const toggleBtn = document.getElementById('btnToggleArch3rBridgeUI');
     try {
         const res = await authFetch('/api/addons/network-manager/bridge/status');
         const data = await res.json();
+        isArch3rBridgeActiveState = Boolean(data.active);
+
         if (data.active) {
             if (badge) {
                 badge.style.background = 'rgba(16,185,129,0.2)';
@@ -15437,13 +15447,23 @@ window.checkArch3rBridgeStatusUI = async function() {
                 badge.style.color = '#34d399';
                 badge.textContent = '🟢 PROXY-ARP AKTIF (Zero-Lockout)';
             }
-            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🟢 Status Relay: AKTIF (Transparent Proxy-ARP & IP Forwarding). Isolasi router ISP berhasil dilewati tanpa modifikasi port fisik.`;
+            if (toggleBtn) {
+                toggleBtn.style.background = '#dc2626';
+                toggleBtn.style.borderColor = '#b91c1c';
+                toggleBtn.innerHTML = '<span>🛑</span> Nonaktifkan arch3rBridge (Sedang Aktif)';
+            }
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🟢 Status Relay: AKTIF (Transparent Proxy-ARP & IP Forwarding). Isolasi router ISP berhasil dilewati & Metric diprioritaskan otomatis.`;
         } else {
             if (badge) {
                 badge.style.background = 'rgba(100,116,139,0.2)';
                 badge.style.borderColor = '#64748b';
                 badge.style.color = '#94a3b8';
                 badge.textContent = '⚪ INAKTIF';
+            }
+            if (toggleBtn) {
+                toggleBtn.style.background = '#10b981';
+                toggleBtn.style.borderColor = '#059669';
+                toggleBtn.innerHTML = '<span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP Relay)';
             }
             if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚪ Status Relay: INAKTIF (STB beroperasi dalam mode routing standar).`;
         }
@@ -15455,32 +15475,50 @@ window.checkArch3rBridgeStatusUI = async function() {
 window.enableArch3rBridgeUI = async function() {
     const badge = document.getElementById('arch3rBridgeBadge');
     const logBox = document.getElementById('arch3rBridgeLogBox');
+    const toggleBtn = document.getElementById('btnToggleArch3rBridgeUI');
     if (badge) {
         badge.style.background = 'rgba(245,158,11,0.2)';
         badge.style.borderColor = '#d97706';
         badge.style.color = '#fbbf24';
         badge.textContent = '⏳ MENGAKTIFKAN RELAY...';
     }
-    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Mengaktifkan Pure Transparent Proxy-ARP Relay... Memvalidasi interface LAN & Wi-Fi...`;
+    if (toggleBtn) {
+        toggleBtn.disabled = true;
+        toggleBtn.textContent = '⏳ Mengaktifkan...';
+    }
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Mengaktifkan Pure Transparent Proxy-ARP Relay... Menghubungkan LAN & Wi-Fi dan menyetel metric...`;
 
     try {
         const res = await authFetch('/api/addons/network-manager/bridge/enable', { method: 'POST' });
         const data = await res.json();
 
         if (res.ok && data.success) {
+            isArch3rBridgeActiveState = true;
             if (badge) {
                 badge.style.background = 'rgba(16,185,129,0.2)';
                 badge.style.borderColor = '#059669';
                 badge.style.color = '#34d399';
                 badge.textContent = '🟢 PROXY-ARP AKTIF (Zero-Lockout)';
             }
+            if (toggleBtn) {
+                toggleBtn.disabled = false;
+                toggleBtn.style.background = '#dc2626';
+                toggleBtn.style.borderColor = '#b91c1c';
+                toggleBtn.innerHTML = '<span>🛑</span> Nonaktifkan arch3rBridge (Sedang Aktif)';
+            }
             const stepLog = (data.steps || []).map(s => `• ${s.step}: ${s.success ? '✓' : '✕'} ${s.cmd || ''}`).join('<br>');
             if (logBox) {
                 logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}<br>${stepLog}`;
             }
-            showToast('⚡ arch3rBridge (Proxy-ARP Relay) Berhasil Diaktifkan! Bebas Kunci Reboot.', 'success');
+            showToast('⚡ arch3rBridge (Proxy-ARP Relay) Berhasil Diaktifkan! Rute Prioritas Diselaraskan.', 'success');
             await window.fetchNetMgrConnections();
         } else {
+            if (toggleBtn) {
+                toggleBtn.disabled = false;
+                toggleBtn.style.background = '#10b981';
+                toggleBtn.style.borderColor = '#059669';
+                toggleBtn.innerHTML = '<span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP Relay)';
+            }
             if (badge) {
                 badge.style.background = 'rgba(239,68,68,0.2)';
                 badge.style.borderColor = '#dc2626';
@@ -15492,6 +15530,7 @@ window.enableArch3rBridgeUI = async function() {
             alert(`Gagal mengaktifkan arch3rBridge: ${errMsg}`);
         }
     } catch (e) {
+        if (toggleBtn) toggleBtn.disabled = false;
         if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
         alert(`Error: ${e.message}`);
     }
@@ -15502,11 +15541,16 @@ window.disableArch3rBridgeUI = async function() {
 
     const badge = document.getElementById('arch3rBridgeBadge');
     const logBox = document.getElementById('arch3rBridgeLogBox');
+    const toggleBtn = document.getElementById('btnToggleArch3rBridgeUI');
     if (badge) {
         badge.style.background = 'rgba(245,158,11,0.2)';
         badge.style.borderColor = '#d97706';
         badge.style.color = '#fbbf24';
         badge.textContent = '⏳ MENONAKTIFKAN...';
+    }
+    if (toggleBtn) {
+        toggleBtn.disabled = true;
+        toggleBtn.textContent = '⏳ Menonaktifkan...';
     }
     if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Mengembalikan sistem ke mode routing standar...`;
 
@@ -15515,11 +15559,18 @@ window.disableArch3rBridgeUI = async function() {
         const data = await res.json();
 
         if (res.ok && data.success) {
+            isArch3rBridgeActiveState = false;
             if (badge) {
                 badge.style.background = 'rgba(100,116,139,0.2)';
                 badge.style.borderColor = '#64748b';
                 badge.style.color = '#94a3b8';
                 badge.textContent = '⚪ INAKTIF';
+            }
+            if (toggleBtn) {
+                toggleBtn.disabled = false;
+                toggleBtn.style.background = '#10b981';
+                toggleBtn.style.borderColor = '#059669';
+                toggleBtn.innerHTML = '<span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP Relay)';
             }
             if (logBox) {
                 logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🛑 ${data.message}`;
@@ -15527,11 +15578,13 @@ window.disableArch3rBridgeUI = async function() {
             showToast('🛑 arch3rBridge Dinonaktifkan.', 'info');
             await window.fetchNetMgrConnections();
         } else {
+            if (toggleBtn) toggleBtn.disabled = false;
             const errMsg = data.error || 'Gagal menonaktifkan bridge.';
             if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal: ${errMsg}`;
             alert(`Gagal menonaktifkan arch3rBridge: ${errMsg}`);
         }
     } catch (e) {
+        if (toggleBtn) toggleBtn.disabled = false;
         if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
         alert(`Error: ${e.message}`);
     }
@@ -15603,11 +15656,17 @@ window.fetchNetMgrConnections = async function() {
                 const stateLabel = isConnected ? 'ACTIVATED' : (conn.state || 'DISCONNECTED').toUpperCase();
                 const needsActivation = isLan && (!isConnected || !conn.ip);
 
+                const metricBadge = (conn.metric !== null && conn.metric !== undefined) ? (
+                    conn.metric <= 100 ? `<span style="font-size:0.68rem; padding:1px 6px; border-radius:4px; background:rgba(37,99,235,0.2); border:1px solid #2563eb; color:#60a5fa; font-weight:700;" title="Jalur Prioritas Utama Internet & NVR">⚡ Metric ${conn.metric} (Utama)</span>` :
+                    `<span style="font-size:0.68rem; padding:1px 6px; border-radius:4px; background:rgba(245,158,11,0.2); border:1px solid #d97706; color:#fbbf24; font-weight:700;" title="Jalur Cadangan/Kamera Wi-Fi">📶 Metric ${conn.metric} (Cadangan)</span>`
+                ) : '';
+
                 return `
                     <div style="background:rgba(15,23,42,0.6); border:1px solid ${needsActivation ? 'rgba(245,158,11,0.3)' : '#1e293b'}; border-radius:6px; padding:0.75rem; display:flex; flex-direction:column; gap:0.35rem; position:relative;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.3rem;">
                             <strong style="color:#f8fafc; font-size:0.85rem;">${icon}</strong>
-                            <div style="display:flex; align-items:center; gap:0.35rem;">
+                            <div style="display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                ${metricBadge}
                                 <span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; background:${badgeBg}; border:1px solid ${badgeBorder}; color:${badgeText}; font-weight:600;">${stateLabel}</span>
                                 ${needsActivation ? `
                                     <button type="button" onclick="window.restoreAndActivateLanUI('${conn.device || 'eth0'}')" title="Hubungkan dan aktifkan koneksi kabel fisik ini" style="background:rgba(16,185,129,0.2); border:1px solid #059669; color:#34d399; border-radius:4px; font-size:0.68rem; padding:1px 6px; cursor:pointer; font-weight:700;">⚡ Hubungkan</button>

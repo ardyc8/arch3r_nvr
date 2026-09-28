@@ -1,5 +1,17 @@
 # Changelog
 
+## [Ver 11.5.7] - 2026-09-28
+### 1-Click Master Bridge Toggle, Virtual P2P Cleaner & Live Route Metric Badges
+- **Pembersihan Perangkat Virtual P2P & Wi-Fi Sekunder (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Filter Virtual P2P (`p2p-dev-*` & `wifi-p2p`)**: Mengabaikan handle internal Wi-Fi Direct bawaan Linux `wpa_supplicant` agar tidak memenuhi daftar interface antarmuka.
+  - **Eliminasi `wlan1` Redundan**: Menyaring perangkat `wlan1` sekunder yang tidak aktif ketika `wlan0` utama sudah ada.
+  - **Ekstraksi Live Route Metric**: Membaca nilai metric rute aktif dari kernel Linux (`ip route show`) dan memetakan ke setiap kartu interface.
+- **Penyelarasan Rute Otomatis pada arch3rBridge (`enableArch3rBridge`):**
+  - Mengaktifkan arch3rBridge kini **otomatis menyetel prioritas metric (LAN 50, Wi-Fi 500)** di latar belakang sehingga pengguna tidak perlu bingung memilih urutan tombol mana yang harus ditekan terlebih dahulu.
+- **Antarmuka Interaktif Cerdas & Master Toggle Button (`public/script.js`):**
+  - **Tombol Master 1-Click Toggle (`#btnToggleArch3rBridgeUI`)**: Mengganti dua tombol terpisah dengan satu tombol dinamis cerdas (Hijau `⚡ Aktifkan arch3rBridge` saat inaktif, dan Merah `🛑 Nonaktifkan arch3rBridge` saat aktif).
+  - **Badge Status Metric Visual**: Setiap kartu interface kini menampilkan badge metric real-time: `⚡ Metric 50 (Utama)` untuk LAN dan `📶 Metric 500 (Cadangan)` untuk Wi-Fi.
+
 ## [Ver 11.5.6] - 2026-09-28
 ### Dynamic Profile Resolver & Device-to-Connection Auto-Mapper
 - **Resolusi Otomatis Nama Profil NetworkManager (`addons/network-manager/lib/nmcli_driver.js`):**

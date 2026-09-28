@@ -164,6 +164,10 @@ export class ArmbianNetworkManager {
         let lanConn = null;
         let wifiConn = null;
 
+        // Collect all system routes to read active metric
+        const sysRouteRes = await this.runCommand('ip route show');
+        const sysRouteLines = sysRouteRes.success && sysRouteRes.stdout ? sysRouteRes.stdout.split('\n') : [];
+
         for (const dLine of devLines) {
             const dParts = dLine.split(/(?<!\\):/);
             if (dParts.length >= 3) {
@@ -171,6 +175,16 @@ export class ArmbianNetworkManager {
                 const devType = dParts[1].trim().toLowerCase();
                 let devState = dParts[2].trim();
                 const devConnName = dParts[3] ? dParts[3].trim() : '--';
+
+                // Ignore Wi-Fi Direct (P2P) internal virtual devices
+                if (devName.startsWith('p2p-dev') || devType === 'wifi-p2p') {
+                    continue;
+                }
+
+                // Ignore inactive secondary wlan1 if wlan0 or another wifi device is present
+                if (devName === 'wlan1' && devState === 'disconnected' && devLines.some(l => l.startsWith('wlan0'))) {
+                    continue;
+                }
 
                 processedDevices.add(devName);
 
@@ -190,6 +204,18 @@ export class ArmbianNetworkManager {
                 const isConnected = devState === 'connected' || (matchedProfile && matchedProfile.state === 'activated');
                 const displayName = matchedProfile ? matchedProfile.name : (devConnName !== '--' && devConnName ? devConnName : devName);
 
+                // Find route metric for this device
+                let metric = null;
+                for (const rLine of sysRouteLines) {
+                    if (rLine.includes(`dev ${devName}`) && rLine.includes('metric')) {
+                        const mMatch = rLine.match(/metric\s+(\d+)/);
+                        if (mMatch) {
+                            metric = parseInt(mMatch[1], 10);
+                            break;
+                        }
+                    }
+                }
+
                 const connObj = {
                     name: displayName,
                     type: isEthernet ? 'ethernet' : (isWifi ? 'wifi' : (isLoopback ? 'loopback' : devType)),
@@ -197,6 +223,7 @@ export class ArmbianNetworkManager {
                     device: devName,
                     state: isConnected ? 'activated' : devState,
                     uuid: matchedProfile ? matchedProfile.uuid : '',
+                    metric,
                     active: isConnected,
                     unmanaged: devState.toLowerCase() === 'unmanaged'
                 };
@@ -999,13 +1026,18 @@ export class ArmbianNetworkManager {
             steps.push({ step: 'iptables_forward', cmd: iCmd, ...resIp });
         }
 
+        // 4. Automatically align Route Metric Priorities (LAN=50, Wi-Fi=500)
+        try {
+            await this.setupMetrics(detected.lanName || lanDevice, detected.wifiName || wifiDevice);
+        } catch (_) {}
+
         return {
             success: true,
             activeBridge: 'Proxy-ARP Relay',
             lanInterface: lanDevice,
             wifiInterface: wifiDevice,
             relayMode: 'Pure Transparent Proxy-ARP & Kernel IP Forwarding (Zero-Lockout)',
-            message: `arch3rBridge (Proxy-ARP Relay) aktif! Komunikasi kamera Wi-Fi (${wifiDevice}) dan LAN (${lanDevice}) terhubung langsung tanpa risiko penguncian port fisik saat reboot.`,
+            message: `arch3rBridge (Proxy-ARP Relay) aktif! Komunikasi kamera Wi-Fi (${wifiDevice}) dan LAN (${lanDevice}) terhubung langsung & Prioritas Metric (LAN=50, Wi-Fi=500) otomatis diselaraskan.`,
             steps
         };
     }
