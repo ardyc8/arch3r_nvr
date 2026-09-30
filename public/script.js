@@ -4504,7 +4504,7 @@ async function fetchCameras() {
         if (window.RTCPeerConnection && streamPath) {
             try {
                 const pc = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+                    iceServers: [],
                     bundlePolicy: 'max-bundle'
                 });
                 activeWebRtcPlayers[id] = pc;
@@ -4662,15 +4662,6 @@ async function fetchCameras() {
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             networkErrorCount++;
-                            const slot = window.cameraSlotRegistry ? window.cameraSlotRegistry[id] : null;
-                            const fallbackUrl = (slot && slot.camId) ? `/streams/${encodeURIComponent(slot.camId)}/main.m3u8` : null;
-                            if (networkErrorCount >= 2 && fallbackUrl && hlsUrl !== fallbackUrl) {
-                                hlsUrl = fallbackUrl;
-                                if (slot) slot.hlsUrl = fallbackUrl;
-                                hls.loadSource(fallbackUrl);
-                                hls.startLoad();
-                                break;
-                            }
                             setStreamState(id, 'buffering', 'Menghubungkan Aliran HLS...', 'Mempersiapkan segmen video...');
                             if (typeof onError === 'function') onError(data);
                             setTimeout(() => {
@@ -4678,7 +4669,7 @@ async function fetchCameras() {
                                     activeHlsPlayers[id].loadSource(hlsUrl);
                                     activeHlsPlayers[id].startLoad();
                                 }
-                            }, 2000);
+                            }, 1500);
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
                             mediaErrorCount++;

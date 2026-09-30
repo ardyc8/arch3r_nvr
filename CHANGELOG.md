@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 11.7.3] - 2026-09-30
+### Zero-STUN LAN WebRTC Acceleration, Elimination of Dead /streams/ Fallback & Instant Live View
+- **Eliminasi Pengalihan URL Mati `/streams/` pada HLS Network Error (`public/script.js`):**
+  - Menghapus logika lama yang keliru saat terjadi `Hls.ErrorTypes.NETWORK_ERROR`: Sebelumnya jika inisialisasi awal MediaMTX memakan waktu > 2 detik, skrip secara keliru membajak `hlsUrl` dan mengalihkannya ke folder statis usang `/streams/<camId>/main.m3u8` (yang tidak pernah dibuat oleh MediaMTX). Pengalihan ini menyebabkan pemutar video terjebak dalam *loop 404 Not Found* tanpa henti (*"Memuat aliran terus..."*).
+  - Skrip kini tetap mengunci URL resmi MediaMTX (`/stream/<streamPath>/index.m3u8`) dan memuat ulang segmen dengan *backoff* teratur hingga aliran video tersambung.
+- **Akselerasi WebRTC Lokal STB / LAN (Zero-STUN Latency) (`public/script.js`):**
+  - Mengubah konfigurasi `iceServers` WebRTC dari server WAN publik (`stun.l.google.com`) menjadi `iceServers: []` khusus lingkungan LAN / STB. Menghilangkan jeda *DNS timeout* selama 3–5 detik pada STB yang berada di jaringan lokal mandiri/offline.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.7.3 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.7.2] - 2026-09-30
 ### Ultra-Smooth Live Playback Restoration, Gentle Watchdog & Stable Buffer Tuning
 - **Restorasi Kehalusan & Stabilitas Pemutaran Live View (`public/script.js`):**
