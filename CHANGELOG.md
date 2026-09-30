@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.7.4] - 2026-09-30
+### One-Click Clipboard Log Exporter, Mobile Zoom-Out HUD & Compact Timestamp Formatting
+- **Tombol Salin Log ke Clipboard Instan (`public/index.html` & `public/script.js`):**
+  - Menambahkan tombol `📋 Salin Log` pada header konsol HUD modal stream log dengan dukungan API `navigator.clipboard` dan *fallback command* universal.
+  - Memberikan feedback visual seketika (`✅ Tersalin!` + toast hijau) sehingga pengguna di HP/PC dapat menyalin 10 baris riwayat transmisi kamera sekali klik untuk keperluan analisis teknis.
+- **Penyempurnaan Tampilan Responsif & Zoom-Out di Layar HP (`public/index.html` & `public/script.js`):**
+  - Mengatur ukuran font konsol menjadi `0.71rem` (`11.3px`), *line-height* rapat `1.42`, padding ringkas `0.6rem`, dan `word-break: break-word` agar baris log tersusun rapi tanpa melebar ke samping di layar *smartphone*.
+  - Menformat stempel waktu panjang (`2026-10-01T01:28:28.635+07:00`) menjadi format jam ringkas `[01:28:28]`.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.7.4 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.7.3] - 2026-09-30
 ### Zero-STUN LAN WebRTC Acceleration, Elimination of Dead /streams/ Fallback & Instant Live View
 - **Eliminasi Pengalihan URL Mati `/streams/` pada HLS Network Error (`public/script.js`):**

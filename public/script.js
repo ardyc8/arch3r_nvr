@@ -16155,13 +16155,72 @@ window.refreshStreamLogsModal = async function(isSilent = false) {
                     let color = '#38bdf8'; // INFO
                     if (l.level === 'WARN') color = '#fbbf24';
                     else if (l.level === 'ERROR') color = '#f87171';
-                    return `<div><span style="color:#64748b;">[${l.time || '-'}]</span> <strong style="color:${color};">[${l.level || 'INFO'}]</strong> ${escapeHtml(l.message || '')}</div>`;
+                    
+                    // Format waktu ringkas agar sangat rapi di layar HP / mobile
+                    let rawTime = String(l.time || '-');
+                    let shortTime = rawTime;
+                    if (rawTime.includes('T')) {
+                        const m = rawTime.match(/T(\d{2}:\d{2}:\d{2})/);
+                        if (m) shortTime = m[1];
+                    } else if (rawTime.includes(',')) {
+                        shortTime = rawTime.split(',')[1].trim();
+                    }
+
+                    return `<div style="margin-bottom:2px; display:flex; gap:5px; align-items:baseline;"><span style="color:#64748b; font-family:monospace; flex-shrink:0;">[${escapeHtml(shortTime)}]</span><span style="color:${color}; font-weight:700; flex-shrink:0;">[${escapeHtml(l.level || 'INFO')}]</span><span style="color:#e2e8f0; word-break:break-word;">${escapeHtml(l.message || '')}</span></div>`;
                 }).join('');
             }
             box.scrollTop = box.scrollHeight;
         }
     } catch (e) {
         if (box && !isSilent) box.innerHTML = `<span style="color:#ef4444;">Gagal menghubungi server NVR: ${e.message}</span>`;
+    }
+};
+
+window.copyStreamLogsToClipboard = function() {
+    const box = document.getElementById('streamLogsConsoleBox');
+    if (!box) return;
+    const text = box.innerText || box.textContent || '';
+    if (!text.trim() || text.includes('Memuat log real-time')) {
+        if (typeof showToast === 'function') showToast('Belum ada log yang dapat disalin.', 'warning');
+        return;
+    }
+    
+    const copySuccess = () => {
+        if (typeof showToast === 'function') showToast('📋 10 Baris log berhasil disalin ke clipboard!', 'success');
+        const btn = document.getElementById('btnCopyStreamLogs');
+        if (btn) {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '✅ Tersalin!';
+            btn.style.color = '#34d399';
+            btn.style.borderColor = '#10b981';
+            setTimeout(() => {
+                btn.innerHTML = orig;
+                btn.style.color = '#cbd5e1';
+                btn.style.borderColor = '#334155';
+            }, 2000);
+        }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(copySuccess).catch(() => {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+
+    function fallbackCopy(val) {
+        const ta = document.createElement('textarea');
+        ta.value = val;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+            document.execCommand('copy');
+            copySuccess();
+        } catch (_) {}
+        ta.remove();
     }
 };
 
