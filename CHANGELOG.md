@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 11.7.2] - 2026-09-30
+### Ultra-Smooth Live Playback Restoration, Gentle Watchdog & Stable Buffer Tuning
+- **Restorasi Kehalusan & Stabilitas Pemutaran Live View (`public/script.js`):**
+  - **Eliminasi Reboot-Loop Watchdog Prematur**: Mengeliminasi interupsi watchdog pada video yang sedang dalam proses inisialisasi awal (`readyState < 2`), memberi waktu cukup bagi kamera untuk mengirim I-Frame pembuka (Keyframe) tanpa di-reset paksa setiap 4 detik.
+  - **Peningkatan Toleransi WebRTC Handshake**: Memperpanjang batas waktu *SDP Handshake WHEP* dari 1200ms menjadi 3500ms agar STB MediaMTX dapat menyetujui koneksi WebRTC secara mulus tanpa langsung terputus ke fallback HLS.
+  - **Restorasi Buffer HLS Mantap & Stabil**: Mengembalikan kapasitas buffer HLS yang luas (`maxBufferLength: 8`, `maxMaxBufferLength: 16`, `maxBufferSize: 25MB`, timeout 10s) dan menghapus pembatasan `liveSyncDurationCount: 1` yang sebelumnya menyebabkan *starvation buffering* pada STB.
+  - **Pencegahan Penghapusan DOM Sembarangan**: Menghapus pembersihan paksa `srcObject` global pada `destroyHlsPlayers` agar petak video aktif lainnya tidak terputus saat perpindahan layout.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.7.2 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.7.1] - 2026-09-30
 ### Global HTML Sanitizer Normalizer, Bulletproof Console HUD & Stream Telemetry
 - **Deklarasi Universal Helper Sanitasi (`public/script.js` - `escapeHtml`):**

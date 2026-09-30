@@ -4306,18 +4306,11 @@ async function fetchCameras() {
             }
             delete activeWebRtcPlayers[id];
         }
-        // Bersihkan referensi video element agar hardware decoder GPU STB terbebas seketika
-        document.querySelectorAll('.cam-player-video').forEach(v => {
-            try {
-                v.srcObject = null;
-                v.removeAttribute('src');
-            } catch (_) {}
-        });
     }
     window.destroyHlsPlayers = destroyHlsPlayers;
     window.activeHlsPlayers = activeHlsPlayers;
 
-    // --- STREAM HEALTH WATCHDOG & STALLED/FREEZE RECOVERY ENGINE (Ver. 11.7.0) ---
+    // --- STREAM HEALTH WATCHDOG & STALLED/FREEZE RECOVERY ENGINE (Ver. 11.7.2) ---
     const streamHealthTracker = {};
     window.streamHealthTracker = streamHealthTracker;
     let streamWatchdogInterval = null;
@@ -4416,32 +4409,9 @@ async function fetchCameras() {
 
                 const elapsed = now - (entry.lastTickTime || now);
 
-                // Kasus 1: Video tertahan di status connecting/buffering awal tanpa frame (> 4.0 detik)
-                if (video.readyState < 2) {
-                    if (elapsed > 4000 && !entry.isReconnecting) {
-                        entry.isReconnecting = true;
-                        setStreamState(id, 'reconnecting', '🔄 MENYAMBUNG ULANG STREAM...', 'Menginisialisasi ulang handshake...');
-                        if (entry.hlsUrl && entry.streamPath) {
-                            playUltraStream(id, entry.hlsUrl, entry.streamPath);
-                        }
-                        entry.lastTickTime = Date.now();
-                        setTimeout(() => {
-                            if (streamHealthTracker[id]) streamHealthTracker[id].isReconnecting = false;
-                        }, 3500);
-                    }
-                    continue;
-                }
-
-                // Kasus 2: Video dalam status ready tetapi terhenti/paused (autoplay terhalang atau packet loss)
-                if (video.paused && slot && slot.isPlaying !== false) {
-                    video.play().catch(() => {});
-                }
-
-                // Kasus 3: Frame membeku (timeupdate tidak bergerak > 3.8 detik)
-                if (elapsed > 3800) {
-                    setStreamState(id, 'stalled', '🔴 ALIRAN TERPUTUS / BEKU', 'Gambar terhenti. Menyiapkan rekoneksi...');
-                    
-                    if (elapsed > 5000 && !entry.isReconnecting) {
+                // Jika video sedang aktif diputar (currentTime > 0) tetapi macet total > 9 detik
+                if (video.currentTime > 0 && !video.paused) {
+                    if (elapsed > 9000 && !entry.isReconnecting) {
                         entry.isReconnecting = true;
                         setStreamState(id, 'reconnecting', '🔄 MENYAMBUNG ULANG STREAM...', 'Menyegarkan koneksi stream kamera...');
                         if (entry.hlsUrl && entry.streamPath) {
@@ -4452,11 +4422,11 @@ async function fetchCameras() {
                             if (streamHealthTracker[id]) {
                                 streamHealthTracker[id].isReconnecting = false;
                             }
-                        }, 3500);
+                        }, 5000);
                     }
                 }
             }
-        }, 2000); // Cek setiap 2 detik untuk responsifitas instan
+        }, 4000); // Evaluasi aman setiap 4 detik tanpa mengganggu inisialisasi awal
     }
     startStreamHealthWatchdog();
 
@@ -4585,7 +4555,7 @@ async function fetchCameras() {
                 for (const url of endpoints) {
                     try {
                         const ctrl = new AbortController();
-                        const tmr = setTimeout(() => ctrl.abort(), 1200);
+                        const tmr = setTimeout(() => ctrl.abort(), 3500);
                         const res = await fetch(url, {
                             method: 'POST',
                             headers: {
@@ -4647,15 +4617,13 @@ async function fetchCameras() {
             const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '');
             const hls = new Hls({
                 lowLatencyMode: true,
-                liveSyncDurationCount: 1,
-                liveMaxLatencyDurationCount: 3,
-                maxBufferLength: 4,
-                maxMaxBufferLength: 6,
-                maxBufferSize: 8 * 1024 * 1024,
+                maxBufferLength: 8,
+                maxMaxBufferLength: 16,
+                maxBufferSize: 25 * 1024 * 1024,
                 backBufferLength: 0,
                 enableWorker: true,
-                manifestLoadingTimeOut: 4000,
-                fragLoadingTimeOut: 4000,
+                manifestLoadingTimeOut: 10000,
+                fragLoadingTimeOut: 10000,
                 xhrSetup: function (xhr, url) {
                     xhr.withCredentials = true;
                     if (token) {
