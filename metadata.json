@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.6.3 - MediaMTX Loopback Relay Recording, Zero-Jitter Timestamp Normalizer & Code 234 Auto-Healing.",
+  "description": "Arch3r NVR Ver. 11.6.4 - Extended 45s Keyframe Probe Ceiling, Fast FPS-Probe Bypass & Cyclic Auto-Healing.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

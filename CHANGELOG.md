@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.6.4] - 2026-09-30
+### Extended 45s Keyframe Probe Ceiling, Fast FPS-Probe Bypass & Cyclic Auto-Healing
+- **Perluasan Jendela Probe Keyframe hingga 45 Detik (`server.js` - `spawnRecordingFFmpeg`):**
+  - **Dukungan Kamera Smart Codec / Static Scene**: Kamera CCTV modern (Dahua Smart Codec, Hikvision H.264+/H.265+, Tapo, V380) pada ruangan yang tenang/tanpa gerakan (seperti ruang tamu `cam_rtamu`) memperpanjang interval I-frame (GOP) hingga 15–30 detik untuk menghemat bandwidth.
+  - Memperluas plafon waktu probe: Level 0 (25 detik / 25MB), Level 1 (35 detik / 35MB), Level 2 (45 detik / 45MB). Plafon waktu ini **TIDAK menambah jeda perekaman** karena FFmpeg langsung mulai merekam seketika saat I-frame pertama tiba.
+- **Bypass Kalkulasi FPS (`-fpsprobesize 0`):**
+  - Menyuntikkan `-fpsprobesize 0` pada semua level RTSP sehingga FFmpeg tidak membuang waktu menganalisa ratusan frame untuk menghitung framerate, melainkan langsung mengunci dimensi (`width` x `height`) seketika dari SPS/PPS pertama.
+- **Siklus Auto-Healing Dinamis (`server.js`):**
+  - Mekanisme fallback kini berputar secara siklikal (Level 0 -> Level 1 -> Level 2 -> Level 0) lengkap dengan label mode yang jelas pada log sistem STB (`MediaMTX Relay :8554`, `Direct RTSP Keyframe Probe 35s`, `Ultra-Safe Vanilla 45s`).
+
 ## [Ver 11.6.3] - 2026-09-30
 ### MediaMTX Loopback Relay Recording, Zero-Jitter Timestamp Normalizer & Code 234 Auto-Healing
 - **Arsitektur Perekaman Cerdas MediaMTX Loopback Relay (`server.js` - `spawnRecordingFFmpeg`):**
