@@ -1,5 +1,17 @@
 # Changelog
 
+## [Ver 11.6.7] - 2026-09-30
+### Dedicated Per-Camera 10-Line RAM Ring-Buffer HUD, Static DOM Modal & RTSP Reconnect Engine
+- **Sistem Log Buffer Per-Kamera Berbasis RAM Ring-Buffer FIFO (`server.js`):**
+  - Mengimplementasikan `cameraStreamLogs` strictly terisolasi per ID kamera dengan kapasitas tepat 10 baris riwayat aktivitas real-time FIFO (`while (list.length > 10) list.shift()`).
+  - Nol beban penulisan disk/SD-card (0% flash memory wear) untuk keandalan maksimal STB Linux Armbian.
+  - Endpoint baru `POST /api/cameras/:id/reconnect` untuk memicu inisialisasi ulang aliran RTSP dan proses perekaman kamera secara instan langsung dari tombol modal HUD.
+- **Konstruksi Modal Statis & Kebal Mode Fullscreen (`public/index.html` & `public/script.js`):**
+  - Menanamkan elemen modal `#streamLogsModalOverlay` secara permanen dan statis di dalam `public/index.html` (sejajar dengan modal resmi lainnya), mengeliminasi kegagalan rendering dinamis `document.createElement`.
+  - Menyematkan penanganan konteks Fullscreen: saat monitor live view berada pada status Fullscreen (`#monitorWrapper:fullscreen`), modal otomatis disematkan di dalam kontainer fullscreen sehingga selalu tampil di atas layer backdrop tanpa terhalang (*zero z-index blackout*).
+  - Menjamin modal tetap terbuka dengan notifikasi panduan pemilihan kamera meskipun belum ada petak kamera yang diklik.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.6.7 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.6.6] - 2026-09-30
 ### Dead-Code Pruning, JS Syntax Normalizer, Trash Management & Instant Stream Log HUD
 - **Pembersihan Kode Usang & Eliminasi Duplikasi Fungsi (`public/script.js`):**

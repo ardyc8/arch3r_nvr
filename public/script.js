@@ -16031,94 +16031,34 @@ let streamLogsPollingTimer = null;
 window.currentStreamLogCamId = null;
 
 window.ensureStreamLogsModalDOM = function() {
-    let modal = document.getElementById('streamLogsModalOverlay');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'streamLogsModalOverlay';
-        document.body.appendChild(modal);
-
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.width = '100vw';
-        modal.style.height = '100vh';
-        modal.style.background = 'rgba(0,0,0,0.82)';
-        modal.style.backdropFilter = 'blur(6px)';
-        modal.style.zIndex = '999999';
-        modal.style.alignItems = 'center';
-        modal.style.justifyContent = 'center';
-        modal.style.padding = '1rem';
-        modal.style.boxSizing = 'border-box';
-        modal.style.display = 'none';
-
-        modal.innerHTML = `
-        <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; width:100%; max-width:680px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.95); overflow:hidden;">
-            <!-- Modal Header -->
-            <div style="padding:0.85rem 1.15rem; background:rgba(15,23,42,0.98); border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center;">
-                <div style="display:flex; align-items:center; gap:0.6rem;">
-                    <span style="font-size:1.25rem;">📋</span>
-                    <div>
-                        <h4 style="margin:0; font-size:1rem; color:#f8fafc; font-weight:700;">
-                            Log Aliran Real-Time: <span id="streamLogCamName" style="color:#38bdf8;">Memuat...</span>
-                        </h4>
-                        <div id="streamLogCamSub" style="font-size:0.75rem; color:#94a3b8; font-family:monospace; margin-top:2px;">
-                            ID: - &bull; RTSP: -
-                        </div>
-                    </div>
-                </div>
-                <button type="button" onclick="window.closeStreamLogsModal()" style="background:transparent; border:none; color:#94a3b8; font-size:1.25rem; cursor:pointer; padding:2px 6px;" title="Tutup Modal">✖</button>
-            </div>
-
-            <!-- Modal Telemetry Bar -->
-            <div style="padding:0.6rem 1.15rem; background:#0b1120; border-bottom:1px solid #1e293b; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; font-size:0.75rem;">
-                <span id="badgeStreamState" style="padding:2px 7px; border-radius:4px; font-weight:700; background:#059669; color:#fff;">🟢 LIVE</span>
-                <span id="badgeStreamMode" style="padding:2px 7px; border-radius:4px; background:rgba(59,130,246,0.2); color:#93c5fd; border:1px solid rgba(59,130,246,0.35);">⚡ Mode: MediaMTX Relay</span>
-                <span id="badgeStreamCodec" style="padding:2px 7px; border-radius:4px; background:rgba(255,255,255,0.06); color:#cbd5e1; border:1px solid rgba(255,255,255,0.12);">Codec: Auto</span>
-                <span id="badgeStreamRec" style="padding:2px 7px; border-radius:4px; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.3);">🔴 REC Active</span>
-            </div>
-
-            <!-- Modal Console Body (10 Baris Log) -->
-            <div style="padding:0.85rem 1.15rem; overflow-y:auto; flex:1; background:#060911;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
-                    <span style="font-size:0.72rem; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">🖥️ 10 Baris Log Diagnostik Terbaru (Auto-Refresh 2s)</span>
-                    <span id="streamLogLiveIndicator" style="font-size:0.72rem; color:#10b981; display:flex; align-items:center; gap:4px;">
-                        <span style="display:inline-block; width:6px; height:6px; background:#10b981; border-radius:50%; animation:blinkRec 1s infinite;"></span> Siaga
-                    </span>
-                </div>
-                <div id="streamLogsConsoleBox" style="background:#020617; border:1px solid #1e293b; border-radius:6px; padding:0.75rem; min-height:220px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:0.78rem; line-height:1.5; color:#e2e8f0; white-space:pre-wrap; word-break:break-all;">
-Memuat log real-time aliran kamera...
-                </div>
-            </div>
-
-            <!-- Modal Footer -->
-            <div style="padding:0.75rem 1.15rem; background:#0f172a; border-top:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-                <button type="button" class="btn btn-secondary" onclick="window.reconnectCurrentStream()" style="font-size:0.8rem; padding:0.4rem 0.85rem; background:#1e293b; color:#38bdf8; border:1px solid #0284c7; border-radius:6px; cursor:pointer;">
-                    ⚡ Reconnect Aliran Kamera
-                </button>
-                <div style="display:flex; gap:0.5rem;">
-                    <button type="button" class="btn btn-secondary" onclick="window.refreshStreamLogsModal()" style="font-size:0.8rem; padding:0.4rem 0.85rem; background:#1e293b; color:#fff; border:1px solid #334155; border-radius:6px; cursor:pointer;">
-                        🔄 Segarkan
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="window.closeStreamLogsModal()" style="font-size:0.8rem; padding:0.4rem 1.1rem; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">
-                        Tutup
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    }
-    return modal;
+    return document.getElementById('streamLogsModalOverlay');
 };
 
 window.openCameraStreamLogsModal = function(camId) {
-    const targetId = camId || selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : cameras[0]?.id);
+    const modal = document.getElementById('streamLogsModalOverlay');
+    if (!modal) return;
+
+    const fsElem = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fsElem && fsElem.id === 'monitorWrapper' && modal.parentElement !== fsElem) {
+        fsElem.appendChild(modal);
+    } else if (!fsElem && modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+    }
+
+    modal.style.display = 'flex';
+
+    const globalCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+    const targetId = camId || selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : (globalCams && globalCams[0] ? globalCams[0].id : null));
+
     if (!targetId) {
-        if (typeof showToast === 'function') showToast('Pilih kamera di grid terlebih dahulu', 'warning');
+        const box = document.getElementById('streamLogsConsoleBox');
+        if (box) box.innerHTML = '<span style="color:#fbbf24;">[INFO] Belum ada kamera yang dipilih. Silakan klik salah satu petak kamera di monitor live view.</span>';
+        const nameEl = document.getElementById('streamLogCamName');
+        if (nameEl) nameEl.textContent = 'Pilih Kamera di Grid';
         return;
     }
-    const modal = window.ensureStreamLogsModalDOM();
-    modal.style.display = 'flex';
-    window.currentStreamLogCamId = targetId;
+
+    window.currentStreamLogCamId = String(targetId);
     window.refreshStreamLogsModal();
 
     if (streamLogsPollingTimer) clearInterval(streamLogsPollingTimer);
@@ -16207,15 +16147,24 @@ window.refreshStreamLogsModal = async function(isSilent = false) {
     }
 };
 
-window.reconnectCurrentStream = function() {
+window.reconnectCurrentStream = async function() {
     const targetId = window.currentStreamLogCamId;
     if (!targetId) return;
+    if (typeof showToast === 'function') showToast(`Menghubungkan ulang aliran RTSP kamera ${targetId}...`, 'info');
+    try {
+        const token = localStorage.getItem('nvr_token') || sessionStorage.getItem('nvr_token');
+        await fetch(`/api/cameras/${targetId}/reconnect`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+    } catch (e) {
+        console.warn('Reconnect error:', e);
+    }
     if (typeof window.toggleTilePlayPause === 'function') {
         window.toggleTilePlayPause(targetId);
         setTimeout(() => {
             window.toggleTilePlayPause(targetId);
             window.refreshStreamLogsModal();
-            if (typeof showToast === 'function') showToast(`Memulai ulang aliran kamera ${targetId}...`, 'info');
         }, 600);
     }
 };

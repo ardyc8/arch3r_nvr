@@ -2406,7 +2406,7 @@ let ffProcesses = {}; // { 'cam1': { main: ChildProcess, sub: ChildProcess } }
 let reconnectTimers = {};
 let cameraStatuses = {}; // camId -> { main: { status, error, lastUpdate }, sub: { status, error, lastUpdate } }
 
-// Ring-Buffer Live Stream Diagnostics per Camera (Maksimal 15 item terbaru di memori RAM, 0% disk write)
+// Ring-Buffer Live Stream Diagnostics per Camera (Maksimal 10 item terbaru di memori RAM FIFO, 0% disk write)
 const cameraStreamLogs = new Map();
 
 function addCameraStreamLog(camId, message, level = 'INFO') {
@@ -2424,7 +2424,7 @@ function addCameraStreamLog(camId, message, level = 'INFO') {
         level: String(level || 'INFO').toUpperCase(),
         message: String(message).trim()
     });
-    if (list.length > 15) {
+    while (list.length > 10) {
         list.shift();
     }
 }
@@ -5715,6 +5715,33 @@ app.get('/api/cameras/:id/stream-logs', verifyToken, (req, res) => {
         });
     } catch (e) {
         res.status(500).json({ success: false, error: 'Gagal mengambil log stream kamera: ' + e.message });
+    }
+});
+
+// Endpoint Reconnect Aliran RTSP Kamera
+app.post('/api/cameras/:id/reconnect', verifyToken, (req, res) => {
+    try {
+        const authorizedCams = getAuthorizedCamerasForReq(req);
+        const cam = authorizedCams.find(c => String(c.id) === String(req.params.id));
+        if (!cam) return res.status(404).json({ error: 'Kamera tidak ditemukan atau tidak memiliki izin' });
+
+        const cid = String(cam.id);
+        addCameraStreamLog(cid, 'Perintah Reconnect manual diterima: Menghubungkan ulang aliran RTSP...', 'INFO');
+        sysLog('INFO', `[${cid}] Perintah Reconnect manual via HUD Diagnostik diterima.`, 'CAMERA');
+
+        if (ffProcesses[cam.id]) {
+            stopCameraRecording(cam.id);
+            setTimeout(() => {
+                const refreshedCam = getCameras().find(c => String(c.id) === cid) || cam;
+                if (refreshedCam.recordEnabled !== false) {
+                    spawnRecordingFFmpeg(refreshedCam);
+                }
+            }, 600);
+        }
+
+        res.json({ success: true, message: `Aliran kamera ${cid} diinisialisasi ulang.` });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Gagal menghubungkan ulang aliran kamera: ' + e.message });
     }
 });
 
