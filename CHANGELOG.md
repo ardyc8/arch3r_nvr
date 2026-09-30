@@ -1,5 +1,14 @@
 # Changelog
 
+## [Ver 11.8.3] - 2026-09-30
+### Card Block Event Feeds with Dedicated Header Bars & Full Date-Time Precision for System Logs
+- **Stempel Waktu Lengkap Berpresisi Tinggi (`public/script.js`):**
+  - Mengintegrasikan tanggal lengkap dan jam `📅 DD/MM/YYYY HH:mm:ss` (misal: `📅 01/10/2026 03:43:04`) pada baris header setiap log untuk kepastian riwayat forensik 100% akurat.
+- **Pemisahan Kartu Log Ber-Header Kontras (`public/style.css`):**
+  - Mengubah setiap baris log di layar HP menjadi kotak kartu mandiri dengan kontainer ber-header gelap `#0f172a` yang memisahkan baris waktu dan badge dari isi pesan.
+  - Memastikan batas antar-event terlihat sangat tegas, elegan, dan anti-tertukar antar baris log.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.8.3 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.2] - 2026-09-30
 ### Responsive Mobile Log Stream Feed, Full-Width Message Rows & 2-Tier Compact Toolbar
 - **Transformasi Tampilan Log Mobile (Log Stream Event Feed) (`public/script.js` & `public/style.css`):**

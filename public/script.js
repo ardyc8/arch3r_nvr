@@ -6185,16 +6185,14 @@ async function fetchSystemSettings() {
             else if (cat === 'DATABASE') { catBg = 'rgba(2,132,199,0.15)'; catColor = '#38bdf8'; catIcon = '🗄️'; }
             else if (cat === 'ADDON') { catBg = 'rgba(236,72,153,0.15)'; catColor = '#f472b6'; catIcon = '🧩'; }
             
-            // Format waktu ringkas dan rapi [HH:mm:ss]
+            // Format waktu & tanggal lengkap yang rapi [DD/MM/YYYY HH:mm:ss]
             let timeStr = '-';
             try {
                 if (log.timestamp) {
                     const d = new Date(log.timestamp);
                     if (!isNaN(d.getTime())) {
                         const pad = n => String(n).padStart(2, '0');
-                        const isToday = d.toDateString() === new Date().toDateString();
-                        const timePart = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                        timeStr = isToday ? timePart : `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${timePart}`;
+                        timeStr = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
                     } else {
                         timeStr = String(log.timestamp);
                     }
@@ -6203,12 +6201,14 @@ async function fetchSystemSettings() {
                 timeStr = String(log.timestamp || '-');
             }
             
-            return `<tr class="log-stream-row" style="border-bottom:1px solid rgba(255,255,255,0.06);">
-                <td class="log-desktop-cell log-mobile-header-cell" style="padding:7px 10px; color:#94a3b8; white-space:nowrap; width:95px; font-size:0.78rem; font-family:monospace;">
+            return `<tr class="log-stream-row">
+                <td class="log-desktop-cell log-mobile-header-cell" style="padding:7px 10px; color:#94a3b8; white-space:nowrap; width:155px; font-size:0.76rem; font-family:monospace;">
                     <div class="log-telemetry-row-mobile-top">
-                        <span class="log-time">${timeStr}</span>
-                        <span class="log-mobile-badge" style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:1px 6px; border-radius:4px; font-weight:700; font-size:0.68rem; display:inline-flex; align-items:center; gap:3px;">${levelIcon} ${log.level}</span>
-                        <span class="log-mobile-badge" style="background:${catBg}; color:${catColor}; border:1px solid rgba(255,255,255,0.08); padding:1px 6px; border-radius:4px; font-size:0.68rem; display:inline-flex; align-items:center; gap:3px; font-weight:600;">${catIcon} ${cat}</span>
+                        <span class="log-time">📅 ${timeStr}</span>
+                        <div class="log-badges-wrapper" style="display:inline-flex; align-items:center; gap:4px;">
+                            <span class="log-mobile-badge" style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:1px 6px; border-radius:4px; font-weight:700; font-size:0.68rem; display:inline-flex; align-items:center; gap:3px;">${levelIcon} ${log.level}</span>
+                            <span class="log-mobile-badge" style="background:${catBg}; color:${catColor}; border:1px solid rgba(255,255,255,0.08); padding:1px 6px; border-radius:4px; font-size:0.68rem; display:inline-flex; align-items:center; gap:3px; font-weight:600;">${catIcon} ${cat}</span>
+                        </div>
                     </div>
                 </td>
                 <td class="log-desktop-only" style="padding:7px 10px; width:85px;"><span style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:2px 6px; border-radius:4px; font-weight:700; font-size:0.7rem; display:inline-flex; align-items:center; gap:3px;">${levelIcon} ${log.level}</span></td>
