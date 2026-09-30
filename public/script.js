@@ -12188,47 +12188,6 @@ function toggleYoloCameraStatus(camId) {
 }
 window.toggleYoloCameraStatus = toggleYoloCameraStatus;
 
-function openYoloCameraSettings(camId) {
-    if (!camId) return;
-    activeYoloSettingsCamId = String(camId);
-    localStorage.setItem('arch3r_yolo_active_cam_id', activeYoloSettingsCamId);
-
-    const yoloMainView = document.getElementById('yolo-main-list-view');
-    const yoloSettingsView = document.getElementById('yolo-settings-view');
-
-    if (yoloMainView) yoloMainView.style.display = 'none';
-    if (yoloSettingsView) yoloSettingsView.style.display = 'block';
-
-    // Update camera name header in workspace
-    const camNameHeader = document.getElementById('yolo-selected-cam-name');
-    let cName = `Kamera #${camId}`;
-    if (typeof cameras !== 'undefined' && Array.isArray(cameras)) {
-        const found = cameras.find(c => String(c.id) === String(camId));
-        if (found && found.name) cName = found.name;
-    }
-    if (camNameHeader) camNameHeader.textContent = cName;
-
-    // Load parameters & bind video stream
-    loadYoloCameraSettingsData(camId);
-    attachYoloVideoPreview('yolo-view-video-element');
-    startYoloLiveCanvasStreamLoop();
-    initYoloViewCanvasRoiEditing();
-
-    // Start Real-time continuous inference loop (Automatic every 800ms)
-    if (yoloTelemetryTimer) clearInterval(yoloTelemetryTimer);
-    fetchRealYoloDetections();
-    yoloTelemetryTimer = setInterval(() => {
-        const settingsView = document.getElementById('yolo-settings-view');
-        if (settingsView && settingsView.style.display !== 'none') {
-            fetchRealYoloDetections();
-        } else {
-            clearInterval(yoloTelemetryTimer);
-            yoloTelemetryTimer = null;
-        }
-    }, 800);
-}
-window.openYoloCameraSettings = openYoloCameraSettings;
-
 let activeYoloSettingsTab = 'view';
 let isYoloEditMode = false;
 let isYoloHeatmapActive = false;
@@ -16077,22 +16036,22 @@ window.ensureStreamLogsModalDOM = function() {
         modal = document.createElement('div');
         modal.id = 'streamLogsModalOverlay';
         document.body.appendChild(modal);
-    }
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100vw';
-    modal.style.height = '100vh';
-    modal.style.background = 'rgba(0,0,0,0.82)';
-    modal.style.backdropFilter = 'blur(6px)';
-    modal.style.zIndex = '999999';
-    modal.style.alignItems = 'center';
-    modal.style.justifyContent = 'center';
-    modal.style.padding = '1rem';
-    modal.style.boxSizing = 'border-box';
-    modal.style.display = 'none';
 
-    modal.innerHTML = `
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.background = 'rgba(0,0,0,0.82)';
+        modal.style.backdropFilter = 'blur(6px)';
+        modal.style.zIndex = '999999';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.padding = '1rem';
+        modal.style.boxSizing = 'border-box';
+        modal.style.display = 'none';
+
+        modal.innerHTML = `
         <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; width:100%; max-width:680px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.95); overflow:hidden;">
             <!-- Modal Header -->
             <div style="padding:0.85rem 1.15rem; background:rgba(15,23,42,0.98); border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center;">
@@ -16147,6 +16106,7 @@ Memuat log real-time aliran kamera...
             </div>
         </div>
     `;
+    }
     return modal;
 };
 
@@ -16259,4 +16219,25 @@ window.reconnectCurrentStream = function() {
         }, 600);
     }
 };
+
+// Listener otomatis untuk tombol Log Stream di panel Lensa & Fokus
+(function bindStreamLogsButton() {
+    function attach() {
+        const btn = document.getElementById('btnOpenStreamLogsPtz');
+        if (btn && !btn._boundStreamLogs) {
+            btn._boundStreamLogs = true;
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.openCameraStreamLogsModal();
+            });
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attach);
+    } else {
+        attach();
+    }
+    setTimeout(attach, 800);
+})();
 

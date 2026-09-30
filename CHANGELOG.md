@@ -1,5 +1,18 @@
 # Changelog
 
+## [Ver 11.6.6] - 2026-09-30
+### Dead-Code Pruning, JS Syntax Normalizer, Trash Management & Instant Stream Log HUD
+- **Pembersihan Kode Usang & Eliminasi Duplikasi Fungsi (`public/script.js`):**
+  - Menghapus blok deklarasi fungsi ganda `openYoloCameraSettings` versi lama di baris 12191 yang memicu `SyntaxError: Identifier 'openYoloCameraSettings' has already been declared`.
+  - Mengunci versi modern di baris 14854 yang mendukung pemilih kanal kamera studio YOLO, live simulator telemetry, dan rendering heatmap.
+  - Memastikan seluruh berkas JavaScript lolos verifikasi sintaks (`node -c public/script.js` -> 0 OK).
+- **Aktivasi Responsif Tombol Log Stream 10 Baris Kamera Terpilih (`public/script.js`):**
+  - Mengoptimasi fungsi pembentukan modal `ensureStreamLogsModalDOM` agar elemen dan styling di-cache dengan benar saat inisialisasi tanpa re-render berlebih.
+  - Memasang *auto-binding click event listener* langsung pada elemen `#btnOpenStreamLogsPtz` saat DOM siap, menjamin klik tombol langsung membuka HUD diagnostik real-time 10 baris khusus kamera yang sedang dipilih di grid.
+- **Manajemen Berkas Patch Sementara (`/Trash`):**
+  - Sesuai protokol pengembangan sistem Armbian STB, memindahkan berkas artefak patch sementara `playback_functions.js` dan `playback_engine.js` ke dalam direktori `/Trash` untuk menjaga root directory tetap bersih dan profesional.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.6.6 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.6.5] - 2026-09-30
 ### Dual-Panel Optics & 10-Line Stream Diagnostics, Micro Canvas Overlay Controls & Minimalist REC Badge
 - **Desain Ergonomis Panel Lensa & Fokus Terbagi 2 (`public/index.html` - `#ptzControlPanelCard`):**
