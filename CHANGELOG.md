@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.6.9] - 2026-09-30
+### Cross-Scope Camera Identifier Normalizer, Zero-ReferenceError HUD & Resilient RTSP Polling
+- **Eliminasi Celah `ReferenceError` pada Lingkup Skrip (`public/script.js`):**
+  - Mengatasi akar masalah modal yang tertahan di status default *"Memuat..."*: Variabel `selectedCamIdForPtz` dideklarasikan menggunakan `let` di dalam closure `DOMContentLoaded` (baris 3275), sehingga saat diakses oleh fungsi modal di lingkup luar (baris 16055), JavaScript engine melempar `ReferenceError: selectedCamIdForPtz is not defined` yang menghentikan eksekusi skrip tepat sebelum memuat log.
+  - Memasang fungsi helper global `window.getSelectedPtzCamId()` dan mengekspos `window.selectedCamIdForPtz` secara reaktif setiap kali petak kamera diklik di monitor live view.
+  - Menerapkan mekanisme resolusi ID bertingkat anti-gagal (`camId` -> `window.getSelectedPtzCamId()` -> `window.selectedCamIdForPtz` -> `document.querySelector('.cam-cell.selected')` -> `cameras[0].id`).
+- **Autentikasi Reconnect RTSP Terpadu (`public/script.js`):**
+  - Mengganti pembacaan token lama pada fungsi `window.reconnectCurrentStream()` dengan `authFetch` resmi sehingga tombol "⚡ Reconnect Aliran Kamera" langsung diproses backend tanpa kendala otorisasi.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.6.9 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.6.8] - 2026-09-30
 ### Universal authFetch Token Resolution, Live Log Synthesis & Instant Stream HUD
 - **Perbaikan Resolusi Token Autentikasi Modal Log (`public/script.js` - `refreshStreamLogsModal`):**

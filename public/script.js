@@ -3701,6 +3701,7 @@ async function fetchCameras() {
 
     window.selectCellForPtz = function(camId) {
         selectedCamIdForPtz = camId;
+        window.selectedCamIdForPtz = camId;
         document.querySelectorAll('.cam-cell').forEach(cell => cell.classList.remove('selected'));
         const activeCell = document.getElementById('cell_' + camId) || document.getElementById('m_cell_' + camId);
         if (activeCell) {
@@ -3711,6 +3712,9 @@ async function fetchCameras() {
         }
         updateBottomPlayerUI();
         updatePtzVisibility();
+    };
+    window.getSelectedPtzCamId = function() {
+        return selectedCamIdForPtz || window.selectedCamIdForPtz || (typeof cameras !== 'undefined' && cameras && cameras[0] ? cameras[0].id : null);
     };
 
     
@@ -16047,8 +16051,26 @@ window.openCameraStreamLogsModal = function(camId) {
 
     modal.style.display = 'flex';
 
-    const globalCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
-    const targetId = camId || selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : (globalCams && globalCams[0] ? globalCams[0].id : null));
+    // Cari targetId secara aman tanpa memicu ReferenceError pada closure scope
+    let targetId = camId;
+    if (!targetId && typeof window.getSelectedPtzCamId === 'function') {
+        try { targetId = window.getSelectedPtzCamId(); } catch (_) {}
+    }
+    if (!targetId && typeof window.selectedCamIdForPtz !== 'undefined' && window.selectedCamIdForPtz) {
+        targetId = window.selectedCamIdForPtz;
+    }
+    if (!targetId) {
+        const activeCell = document.querySelector('.cam-cell.selected');
+        if (activeCell && activeCell.id) {
+            targetId = activeCell.id.replace('cell_', '').replace('m_cell_', '');
+        }
+    }
+    if (!targetId) {
+        const globalCams = window.cameras || (typeof cameras !== 'undefined' ? cameras : []);
+        if (globalCams && globalCams.length > 0 && globalCams[0]) {
+            targetId = globalCams[0].id;
+        }
+    }
 
     if (!targetId) {
         const box = document.getElementById('streamLogsConsoleBox');
@@ -16149,11 +16171,11 @@ window.reconnectCurrentStream = async function() {
     if (!targetId) return;
     if (typeof showToast === 'function') showToast(`Menghubungkan ulang aliran RTSP kamera ${targetId}...`, 'info');
     try {
-        const token = localStorage.getItem('nvr_token') || sessionStorage.getItem('nvr_token');
-        await fetch(`/api/cameras/${targetId}/reconnect`, {
-            method: 'POST',
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
+        if (typeof authFetch === 'function') {
+            await authFetch(`/api/cameras/${encodeURIComponent(targetId)}/reconnect`, { method: 'POST' });
+        } else {
+            await fetch(`/api/cameras/${encodeURIComponent(targetId)}/reconnect`, { method: 'POST' });
+        }
     } catch (e) {
         console.warn('Reconnect error:', e);
     }
