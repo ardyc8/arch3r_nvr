@@ -1,5 +1,17 @@
 # Changelog
 
+## [Ver 11.8.1] - 2026-09-30
+### Enterprise Telemetry Log Engine, Short Monospace Timestamps & Unified Action Toolbar
+- **Optimalisasi Keterbacaan Pesan & Stempel Waktu Ringkas (`public/script.js` & `public/index.html`):**
+  - **Peningkatan Ukuran Font Pesan Log**: Mengatur ukuran teks pesan diagnostik menjadi `0.85rem` (`13.5px`) dengan *line-height* `1.5` dan kontras warna cerah `#f1f5f9` agar sangat jelas dan nyaman dibaca.
+  - **Stempel Waktu Ringkas**: Mengubah format stempel waktu panjang menjadi format jam ringkas `[HH:mm:ss]` (untuk hari ini) atau `[DD/MM HH:mm:ss]` dalam font *monospace* rapat berlebar `95px`.
+- **Bilah Toolbar Log Terpadu & Terintegrasi (`public/index.html`):**
+  - Mengintegrasikan kolom pencarian langsung *inline* sejajar dengan dropdown filter kategori (*System, Camera, Storage, Security, Database, Addon*), filter level (*INFO, WARN, ERROR*), dan seluruh tombol aksi (*Stop/Resume, Segarkan, Salin, Ekspor, Bersihkan*).
+  - Memastikan seluruh kontrol berada dalam satu baris yang padat, simetris, dan responsif.
+- **Fallback Salin Universal (`public/script.js`):**
+  - Menambahkan fallback clipboard `document.execCommand('copy')` pada tombol `📋 Salin` agar 100% andal di seluruh jenis browser seluler dan desktop.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.8.1 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.0] - 2026-09-30
 ### Restored Classic Login Zoom, Collapsible Log Filter Hub & Compact Telemetry Metric Strip
 - **Restorasi Zoom Proporsional Layar Login (`public/style.css`):**

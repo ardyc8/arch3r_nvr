@@ -6185,22 +6185,29 @@ async function fetchSystemSettings() {
             else if (cat === 'DATABASE') { catBg = 'rgba(2,132,199,0.15)'; catColor = '#38bdf8'; catIcon = '🗄️'; }
             else if (cat === 'ADDON') { catBg = 'rgba(236,72,153,0.15)'; catColor = '#f472b6'; catIcon = '🧩'; }
             
-            let timeStr = log.timestamp || '';
+            // Format waktu ringkas dan rapi [HH:mm:ss]
+            let timeStr = '-';
             try {
-                if (timeStr && !isNaN(new Date(timeStr).getTime())) {
-                    timeStr = new Date(timeStr).toLocaleString('id-ID', {
-                        year: 'numeric', month: '2-digit', day: '2-digit',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit',
-                        hour12: false
-                    });
+                if (log.timestamp) {
+                    const d = new Date(log.timestamp);
+                    if (!isNaN(d.getTime())) {
+                        const pad = n => String(n).padStart(2, '0');
+                        const isToday = d.toDateString() === new Date().toDateString();
+                        const timePart = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                        timeStr = isToday ? timePart : `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${timePart}`;
+                    } else {
+                        timeStr = String(log.timestamp);
+                    }
                 }
-            } catch (_) {}
+            } catch (_) {
+                timeStr = String(log.timestamp || '-');
+            }
             
             return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05); color:#f8fafc; transition:background 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background=''">
-                <td style="padding:9px 12px; color:#94a3b8; white-space:nowrap; width:155px; font-size:0.78rem;">${timeStr}</td>
-                <td style="padding:9px 12px; width:90px;"><span style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:2px 7px; border-radius:4px; font-weight:700; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;">${levelIcon} ${log.level}</span></td>
-                <td style="padding:9px 12px; width:115px;"><span style="background:${catBg}; color:${catColor}; border:1px solid rgba(255,255,255,0.08); padding:2px 7px; border-radius:4px; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px; font-weight:600;">${catIcon} ${cat}</span></td>
-                <td style="padding:9px 12px; line-height:1.45; word-break:break-word; color:#e2e8f0;">${escapeHtml(log.message || '')}</td>
+                <td style="padding:7px 10px; color:#94a3b8; white-space:nowrap; width:95px; font-size:0.78rem; font-family:monospace;">${timeStr}</td>
+                <td style="padding:7px 10px; width:85px;"><span style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:2px 6px; border-radius:4px; font-weight:700; font-size:0.7rem; display:inline-flex; align-items:center; gap:3px;">${levelIcon} ${log.level}</span></td>
+                <td style="padding:7px 10px; width:95px;"><span style="background:${catBg}; color:${catColor}; border:1px solid rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; font-size:0.7rem; display:inline-flex; align-items:center; gap:3px; font-weight:600;">${catIcon} ${cat}</span></td>
+                <td style="padding:7px 10px; font-size:0.85rem; line-height:1.5; color:#f1f5f9; word-break:break-word;">${escapeHtml(log.message || '')}</td>
             </tr>`;
         }).join('');
     }
@@ -6338,11 +6345,33 @@ async function fetchSystemSettings() {
             return `[${timeStr}] [${log.level}] [${log.category || 'SYSTEM'}] ${log.message}`;
         }).join('\n');
         
-        navigator.clipboard.writeText(text).then(() => {
-            showToast('📋 Log sistem berhasil disalin ke clipboard!', 'success');
-        }).catch(err => {
-            alert('Gagal menyalin log: ' + err);
-        });
+        const copyDone = () => {
+            showToast('📋 Seluruh log sistem berhasil disalin ke clipboard!', 'success');
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(copyDone).catch(() => {
+                fallbackCopy(text);
+            });
+        } else {
+            fallbackCopy(text);
+        }
+
+        function fallbackCopy(val) {
+            const ta = document.createElement('textarea');
+            ta.value = val;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                copyDone();
+            } catch (err) {
+                alert('Gagal menyalin log: ' + err);
+            }
+            ta.remove();
+        }
     };
     
     // Attach event listeners for filters

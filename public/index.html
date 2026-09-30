@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google" content="notranslate">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 11.8.0 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=11.8.0">
+    <title>Arch3r NVR Ver. 11.8.1 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=11.8.1">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -1308,10 +1308,10 @@
             <div id="view-logs" class="view-pane">
                 <div class="content-wrapper" style="padding:1rem 1.5rem 2rem 1.5rem; height:100%; display:flex; flex-direction:column; box-sizing:border-box;">
                     
-                    <!-- Header Section -->
+                    <!-- Header Section with Inline Stats -->
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <h2 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:0.4rem;">
+                        <div style="display:flex; align-items:center; gap:0.6rem;">
+                            <h2 style="margin:0; font-size:1.15rem; color:#f8fafc; font-weight:700; display:flex; align-items:center; gap:0.4rem;">
                                 <span>📜</span> System Logs & Telemetry
                             </h2>
                             <span id="logLiveBadge" class="badge" style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); font-size:0.68rem; padding:2px 7px; display:inline-flex; align-items:center; gap:4px;">
@@ -1319,34 +1319,53 @@
                                 <span id="logLiveStatusText">LIVE STREAM</span>
                             </span>
                         </div>
-                    </div>
-
-                    <!-- Mini Metric Strip (Compact) -->
-                    <div style="display:flex; gap:0.35rem; margin-bottom:0.5rem; flex-wrap:wrap; align-items:center;">
-                        <span style="background:#1e293b; color:#cbd5e1; border:1px solid #334155; border-radius:4px; padding:2px 7px; font-size:0.7rem; font-weight:600;">📋 Total: <strong id="logStatTotal" style="color:#f8fafc;">0</strong></span>
-                        <span style="background:rgba(16,185,129,0.12); color:#34d399; border:1px solid rgba(16,185,129,0.25); border-radius:4px; padding:2px 7px; font-size:0.7rem; font-weight:600;">🔵 Info: <strong id="logStatInfo">0</strong></span>
-                        <span style="background:rgba(245,158,11,0.12); color:#fbbf24; border:1px solid rgba(245,158,11,0.25); border-radius:4px; padding:2px 7px; font-size:0.7rem; font-weight:600;">⚠️ Warn: <strong id="logStatWarn">0</strong></span>
-                        <span style="background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.25); border-radius:4px; padding:2px 7px; font-size:0.7rem; font-weight:600;">🚨 Error: <strong id="logStatError">0</strong></span>
-                    </div>
-
-                    <!-- Action Control Bar (Compact & Sleek) -->
-                    <div style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:0.4rem 0.65rem; margin-bottom:0.4rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.4rem;">
-                        <button type="button" id="btnToggleLogFilters" class="btn btn-secondary" onclick="window.toggleLogFilterPanel()" style="font-size:0.74rem; padding:3px 8px; display:inline-flex; align-items:center; gap:4px; border-color:#334155; color:#38bdf8;" title="Tampilkan / Sembunyikan Panel Filter">
-                            <span id="logFilterArrowIcon">🔍 Filter & Cari ▾</span>
-                        </button>
-
+                        <!-- Mini Stats Strip -->
                         <div style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap;">
-                            <button id="btnToggleAutoLog" class="btn btn-secondary" style="display:flex; align-items:center; gap:4px; font-size:0.74rem; padding:3px 8px; border-color:rgba(59,130,246,0.3); color:#60a5fa;" onclick="window.toggleAutoLog()" title="Jeda / Lanjutkan Auto-Stream">
+                            <span style="background:#1e293b; color:#cbd5e1; border:1px solid #334155; border-radius:4px; padding:2px 7px; font-size:0.72rem; font-weight:600;">📋 Total: <strong id="logStatTotal" style="color:#f8fafc;">0</strong></span>
+                            <span style="background:rgba(16,185,129,0.12); color:#34d399; border:1px solid rgba(16,185,129,0.25); border-radius:4px; padding:2px 7px; font-size:0.72rem; font-weight:600;">🔵 Info: <strong id="logStatInfo">0</strong></span>
+                            <span style="background:rgba(245,158,11,0.12); color:#fbbf24; border:1px solid rgba(245,158,11,0.25); border-radius:4px; padding:2px 7px; font-size:0.72rem; font-weight:600;">⚠️ Warn: <strong id="logStatWarn">0</strong></span>
+                            <span style="background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.25); border-radius:4px; padding:2px 7px; font-size:0.72rem; font-weight:600;">🚨 Error: <strong id="logStatError">0</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Unified Enterprise Toolbar (Search + Filters + Action Tools in One Clean Bar) -->
+                    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.45rem 0.65rem; margin-bottom:0.45rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.45rem;">
+                        <!-- Left: Inline Search Box & Filters -->
+                        <div style="display:flex; gap:0.4rem; align-items:center; flex:1; min-width:240px; flex-wrap:wrap;">
+                            <div style="display:flex; align-items:center; background:#070d19; border:1px solid #334155; border-radius:6px; padding:0 8px; flex:1; min-width:150px; max-width:260px; height:30px;">
+                                <span style="color:#64748b; font-size:0.8rem; margin-right:5px; flex-shrink:0;">🔍</span>
+                                <input type="text" id="logSearchInput" placeholder="Cari pesan / ID log..." style="background:transparent; border:none; outline:none; color:#f8fafc; font-size:0.8rem; width:100%; height:100%;">
+                            </div>
+                            <select id="logCategoryFilter" style="padding:0 6px; font-size:0.76rem; background:#070d19; border:1px solid #334155; color:#f8fafc; border-radius:6px; min-width:120px; height:30px; cursor:pointer;">
+                                <option value="ALL">📁 Semua Kategori</option>
+                                <option value="SYSTEM">⚙️ System</option>
+                                <option value="CAMERA">📹 Camera</option>
+                                <option value="STORAGE">💾 Storage</option>
+                                <option value="SECURITY">🔐 Security</option>
+                                <option value="DATABASE">🗄️ Database</option>
+                                <option value="ADDON">🧩 Addon</option>
+                            </select>
+                            <select id="logLevelFilter" style="padding:0 6px; font-size:0.76rem; background:#070d19; border:1px solid #334155; color:#f8fafc; border-radius:6px; min-width:105px; height:30px; cursor:pointer;">
+                                <option value="ALL">⭐ Semua Level</option>
+                                <option value="INFO">🔵 INFO</option>
+                                <option value="WARN">🟡 WARN</option>
+                                <option value="ERROR">🔴 ERROR</option>
+                            </select>
+                        </div>
+
+                        <!-- Right: Action Tools -->
+                        <div style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap;">
+                            <button id="btnToggleAutoLog" class="btn btn-secondary" style="display:flex; align-items:center; gap:4px; font-size:0.74rem; padding:0 8px; height:30px; border-color:rgba(59,130,246,0.3); color:#60a5fa;" onclick="window.toggleAutoLog()" title="Jeda / Lanjutkan Auto-Stream">
                                 <span id="autoLogIcon">⏸️</span> <span id="autoLogText">Stop</span>
                             </button>
-                            <button id="btnRefreshLogs" class="btn btn-secondary" style="display:flex; align-items:center; gap:4px; font-size:0.74rem; padding:3px 8px;" onclick="window.fetchLogs()" title="Segarkan Log Sekarang">
+                            <button id="btnRefreshLogs" class="btn btn-secondary" style="display:flex; align-items:center; gap:4px; font-size:0.74rem; padding:0 8px; height:30px;" onclick="window.fetchLogs()" title="Segarkan Log Sekarang">
                                 <span>🔄</span> Segarkan
                             </button>
-                            <button class="btn btn-secondary" onclick="window.copyLogs()" style="display:flex; align-items:center; gap:4px; font-size:0.74rem; padding:3px 8px;" title="Salin seluruh isi log ke Clipboard">
+                            <button class="btn btn-secondary" onclick="window.copyLogs()" style="display:flex; align-items:center; gap:4px; font-size:0.74rem; padding:0 8px; height:30px;" title="Salin seluruh isi log ke Clipboard">
                                 <span>📋</span> Salin
                             </button>
                             <div style="position:relative; display:inline-block;">
-                                <button type="button" class="btn btn-secondary" onclick="window.toggleExportDropdown()" style="display:flex; align-items:center; gap:3px; font-size:0.74rem; padding:3px 8px;">
+                                <button type="button" class="btn btn-secondary" onclick="window.toggleExportDropdown()" style="display:flex; align-items:center; gap:3px; font-size:0.74rem; padding:0 8px; height:30px;">
                                     <span>📥</span> Ekspor ▾
                                 </button>
                                 <div id="logExportDropdown" style="display:none; position:absolute; right:0; top:110%; background:#1e293b; border:1px solid var(--border); border-radius:6px; box-shadow:0 8px 20px rgba(0,0,0,0.6); z-index:50; min-width:140px; overflow:hidden;">
@@ -1354,44 +1373,21 @@
                                     <a href="javascript:void(0)" onclick="window.exportLogsFile('csv')" style="display:block; padding:7px 10px; color:#f8fafc; font-size:0.75rem; text-decoration:none;">📊 File Excel (.csv)</a>
                                 </div>
                             </div>
-                            <button class="btn btn-secondary" onclick="window.confirmClearLogs()" style="display:flex; align-items:center; gap:3px; font-size:0.74rem; padding:3px 8px; color:#f87171; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.08);" title="Bersihkan riwayat log">
+                            <button class="btn btn-secondary" onclick="window.confirmClearLogs()" style="display:flex; align-items:center; gap:3px; font-size:0.74rem; padding:0 8px; height:30px; color:#f87171; border-color:rgba(239,68,68,0.3); background:rgba(239,68,68,0.08);" title="Bersihkan riwayat log">
                                 <span>🧹</span> Bersihkan
                             </button>
                         </div>
                     </div>
 
-                    <!-- Collapsible Filter Panel (Bisa Disembunyikan agar Tabel Luas) -->
-                    <div id="logFilterCollapsePanel" style="display:none; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:0.45rem 0.65rem; margin-bottom:0.4rem; gap:0.45rem; flex-wrap:wrap; align-items:center;">
-                        <div style="display:flex; align-items:center; background:#070d19; border:1px solid #334155; border-radius:5px; padding:0 8px; flex:1; min-width:180px; max-width:320px;">
-                            <span style="color:#64748b; font-size:0.8rem; margin-right:5px; flex-shrink:0;">🔍</span>
-                            <input type="text" id="logSearchInput" placeholder="Cari pesan atau ID log..." style="background:transparent; border:none; outline:none; color:#f8fafc; font-size:0.78rem; width:100%; padding:5px 0;">
-                        </div>
-                        <select id="logCategoryFilter" style="padding:4px 8px; font-size:0.78rem; background:#070d19; border:1px solid #334155; color:#fff; border-radius:5px; min-width:130px; height:28px;">
-                            <option value="ALL">📁 Semua Kategori</option>
-                            <option value="SYSTEM">⚙️ System</option>
-                            <option value="CAMERA">📹 Camera</option>
-                            <option value="STORAGE">💾 Storage</option>
-                            <option value="SECURITY">🔐 Security</option>
-                            <option value="DATABASE">🗄️ Database</option>
-                            <option value="ADDON">🧩 Addon</option>
-                        </select>
-                        <select id="logLevelFilter" style="padding:4px 8px; font-size:0.78rem; background:#070d19; border:1px solid #334155; color:#fff; border-radius:5px; min-width:110px; height:28px;">
-                            <option value="ALL">⭐ Semua Level</option>
-                            <option value="INFO">🔵 INFO</option>
-                            <option value="WARN">🟡 WARN</option>
-                            <option value="ERROR">🔴 ERROR</option>
-                        </select>
-                    </div>
-
-                    <!-- Scrollable Logs Table Container -->
-                    <div style="flex:1; background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow-y:auto; position:relative; min-height:280px; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
-                        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.78rem; font-family:monospace;">
+                    <!-- Scrollable Logs Table Container (Full Height & Spacious) -->
+                    <div style="flex:1; background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow-y:auto; position:relative; min-height:300px; box-shadow:0 4px 10px rgba(0,0,0,0.3);">
+                        <table class="log-telemetry-table" style="width:100%; border-collapse:collapse; text-align:left; font-family:monospace;">
                             <thead style="background:#0f172a; position:sticky; top:0; z-index:10; border-bottom:1px solid var(--border);">
                                 <tr>
-                                    <th style="padding:7px 10px; width:145px; color:#94a3b8; font-weight:600;">Waktu</th>
-                                    <th style="padding:7px 10px; width:80px; color:#94a3b8; font-weight:600;">Level</th>
-                                    <th style="padding:7px 10px; width:105px; color:#94a3b8; font-weight:600;">Kategori</th>
-                                    <th style="padding:7px 10px; color:#94a3b8; font-weight:600;">Pesan & Diagnostik Sistem</th>
+                                    <th style="padding:8px 10px; width:95px; color:#94a3b8; font-weight:600; font-size:0.76rem;">Waktu</th>
+                                    <th style="padding:8px 10px; width:85px; color:#94a3b8; font-weight:600; font-size:0.76rem;">Level</th>
+                                    <th style="padding:8px 10px; width:95px; color:#94a3b8; font-weight:600; font-size:0.76rem;">Kategori</th>
+                                    <th style="padding:8px 10px; color:#94a3b8; font-weight:600; font-size:0.76rem;">Pesan & Diagnostik Sistem</th>
                                 </tr>
                             </thead>
                             <tbody id="logsContainer">
@@ -2572,6 +2568,6 @@ Memuat log real-time aliran kamera...
         </div>
     </div>
 
-    <script src="script.js?v=11.8.0"></script>
+    <script src="script.js?v=11.8.1"></script>
 </body>
 </html>
