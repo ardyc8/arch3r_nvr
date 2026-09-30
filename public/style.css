@@ -3242,6 +3242,27 @@ body.kiosk-display-mode .cam-audio-toggle {
         height: 34px !important;
         font-size: 0.85rem !important;
     }
+
+    /* 9. Anti-Clipping Bottom Cushion & Mobile Navigation Safe Area */
+    body, .app-layout, .mobile-app-layout, .main-content {
+        height: 100vh !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+    }
+
+    .content-wrapper, .view-content, .mobile-content {
+        padding-bottom: calc(90px + env(safe-area-inset-bottom, 24px)) !important;
+    }
+
+    .mobile-bottom-nav {
+        height: calc(56px + env(safe-area-inset-bottom, 12px)) !important;
+        padding-bottom: env(safe-area-inset-bottom, 12px) !important;
+    }
+
+    .auth-overlay, #streamLogsModalOverlay, #cameraModal, .modal-overlay {
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 20px)) !important;
+        box-sizing: border-box !important;
+    }
 }
 
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.7.9] - 2026-09-30
+### Professional Login Branding & Mobile Bottom Navigation Bar Collision Prevention
+- **Pembersihan & Standarisasi Tombol Layar Login (`public/index.html`):**
+  - Mengubah label tombol masuk dari `Masuk (Login)` menjadi murni **`Login`** standar enterprise.
+  - Mempertahankan kartu login yang bersih, elegan, dan profesional tanpa embel-embel teks redundant.
+- **Pencegahan Tampilan Terpotong di Bagian Bawah Layar HP (`public/style.css`):**
+  - Mengimplementasikan `100dvh` (*Dynamic Viewport Height*) bersama bantalan *safe area* bawah (`padding-bottom: calc(90px + env(safe-area-inset-bottom, 24px))`).
+  - Menghilangkan benturan antara tombol aksi formulir (Simpan/Tutup/Batal) dengan tombol bilah navigasi fisik/gesture bawaan sistem operasi HP (Android 3-button nav / iOS bar).
+  - Memberikan ruang gerak yang aman sehingga pengguna tidak lagi salah menyentuh tombol navigasi perangkat saat mengoperasikan NVR.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.7.9 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.7.8] - 2026-09-30
 ### Universal Mobile Zoom-Out UI Suite & Compact Ergonomics across All Dashboard Menus
 - **Optimalisasi Tampilan Ringkas & Zoom-Out Universal Layar HP (`public/style.css`):**

@@ -1,6 +1,6 @@
 // version_sync.js - Arch3r NVR Centralized Dynamic Version Synchronizer
 (function () {
-    const CURRENT_STATIC_VERSION = '11.7.8';
+    const CURRENT_STATIC_VERSION = '11.7.9';
     window.APP_VERSION = CURRENT_STATIC_VERSION;
 
     function applyVersionToDOM(version) {
