@@ -3138,5 +3138,111 @@ body.kiosk-display-mode .cam-audio-toggle {
     background: rgba(11, 17, 32, 0.5);
 }
 
+/* =========================================================
+   ARCH3R NVR - COMPACT ZOOM-OUT & MOBILE OPTIMIZED UI SUITE (Ver. 11.7.8)
+   ========================================================= */
+@media (max-width: 768px) {
+    /* 1. Global View Pane & Content Container Zoom-Out */
+    .content-wrapper {
+        padding: 0.55rem 0.75rem !important;
+    }
+    
+    h2, .view-pane h2 {
+        font-size: 1.05rem !important;
+        margin-bottom: 0.65rem !important;
+    }
+    
+    h3, .view-pane h3 {
+        font-size: 0.92rem !important;
+    }
+
+    h4, .view-pane h4 {
+        font-size: 0.84rem !important;
+    }
+
+    /* 2. Compact Form Controls, Inputs & Dropdowns */
+    .form-group {
+        margin-bottom: 0.65rem !important;
+    }
+
+    .form-group label {
+        font-size: 0.74rem !important;
+        margin-bottom: 0.2rem !important;
+    }
+
+    .form-control, .form-group input, .form-group select {
+        padding: 0.4rem 0.6rem !important;
+        font-size: 0.8rem !important;
+        height: 33px !important;
+        border-radius: 5px !important;
+    }
+
+    .form-help {
+        font-size: 0.68rem !important;
+        margin-top: 1px !important;
+    }
+
+    /* 3. Compact Buttons & Badges */
+    .btn {
+        padding: 0.42rem 0.75rem !important;
+        font-size: 0.78rem !important;
+        border-radius: 5px !important;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    /* 4. Compact Modal Cards & Dialogs */
+    .modal-card, .modal-content, .auth-card {
+        padding: 0.85rem !important;
+        width: 95vw !important;
+        max-width: 95vw !important;
+        border-radius: 8px !important;
+    }
+
+    /* 5. Compact Tables (Kamera, User, Logs, Audit) */
+    .table, .logs-table, table {
+        font-size: 0.72rem !important;
+    }
+
+    .table th, .table td, table th, table td {
+        padding: 5px 6px !important;
+    }
+
+    /* 6. Compact Storage & Quota Cards */
+    .storage-info-box, .card, .camera-card, .yolo-studio-card {
+        padding: 0.65rem 0.8rem !important;
+        border-radius: 8px !important;
+        margin-bottom: 0.65rem !important;
+    }
+
+    .storage-info-box span {
+        font-size: 0.74rem !important;
+    }
+
+    /* 7. Compact Playback Timeline & Controls */
+    .playback-controls-bar {
+        padding: 0.45rem 0.65rem !important;
+        gap: 0.35rem !important;
+    }
+
+    .timeline-container {
+        height: 48px !important;
+    }
+
+    /* 8. Compact PTZ & Optical Card Controls */
+    .ptz-grid {
+        gap: 4px !important;
+    }
+
+    .ptz-btn {
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 0.85rem !important;
+    }
+}
+
 
 

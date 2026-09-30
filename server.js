@@ -3457,6 +3457,45 @@ function probeCodec(url) {
     });
 }
 
+// Proactive Background Codec Auto-Detection Engine (100% Zero-Manual Auto-Adaptive)
+async function autoDetectCameraCodecsAndSync(specificCamId = null) {
+    try {
+        const dbData = getNvrDb();
+        const cams = dbData.cameras || [];
+        let updated = false;
+
+        for (const cam of cams) {
+            if (!cam.enabled) continue;
+            if (specificCamId && cam.id !== specificCamId) continue;
+
+            const targetProbeUrl = cam.subStreamUrl || cam.mainStreamUrl;
+            if (!targetProbeUrl || targetProbeUrl === 'demo') continue;
+
+            // Jika belum ada catatan codec atau masih unknown
+            if (!cam.detectedCodec || cam.detectedCodec === 'unknown' || specificCamId) {
+                const foundCodec = await probeCodec(targetProbeUrl);
+                if (foundCodec) {
+                    cam.detectedCodec = foundCodec;
+                    cam.videoCodec = foundCodec;
+                    detectedCodecs[cam.id] = foundCodec;
+                    updated = true;
+                    sysLog('INFO', `[Auto-Adaptive Codec] Kamera ${cam.name} (${cam.id}) terdeteksi: ${foundCodec.toUpperCase()}`, 'CAM');
+                }
+            } else if (cam.detectedCodec) {
+                detectedCodecs[cam.id] = cam.detectedCodec;
+            }
+        }
+
+        if (updated) {
+            saveNvrDb(dbData);
+            cameras = dbData.cameras;
+            syncMediaMtxConfig();
+        }
+    } catch (e) {
+        console.warn('Auto-detect codec error:', e.message);
+    }
+}
+
 // --- MEDIAMTX CONFIGURATION ENGINE ---
 // Auto-Generate ~/mediamtx.yml dan restart MediaMTX via PM2
 function syncMediaMtxConfig() {
@@ -4260,6 +4299,7 @@ app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
     
     // Sinkronisasi MediaMTX otomatis
     syncMediaMtxConfig(); ensureRecordFolders();
+    setTimeout(() => autoDetectCameraCodecsAndSync(newCamId), 300);
 
     if (newCam.enabled && newCam.recordMode === 'continuous') {
         spawnRecordingFFmpeg(newCam);
@@ -4361,6 +4401,7 @@ app.put('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
 
     // Sinkronisasi MediaMTX otomatis
     syncMediaMtxConfig(); ensureRecordFolders();
+    setTimeout(() => autoDetectCameraCodecsAndSync(req.params.id), 300);
 
     if (dbData.cameras[index].enabled && dbData.cameras[index].recordMode === 'continuous') {
         spawnRecordingFFmpeg(dbData.cameras[index]);
@@ -8692,6 +8733,8 @@ app.post('/api/ai/test-telegram', verifyToken, async (req, res) => {
 
         app.listen(port, "0.0.0.0", () => {
             sysLog('INFO', `NVR Backend berjalan di port ${port}`);
+            // Proactive Background Codec Discovery (Zero-Manual Auto-Adaptive)
+            setTimeout(() => autoDetectCameraCodecsAndSync(), 4000);
         });
 }
 

@@ -1,5 +1,23 @@
 # Changelog
 
+## [Ver 11.7.8] - 2026-09-30
+### Universal Mobile Zoom-Out UI Suite & Compact Ergonomics across All Dashboard Menus
+- **Optimalisasi Tampilan Ringkas & Zoom-Out Universal Layar HP (`public/style.css`):**
+  - **Penataan Skala Konten Global**: Menyesuaikan padding konten (`content-wrapper`) menjadi `0.55rem 0.75rem` dan merampingkan ukuran heading `h2` (`1.05rem`) agar informasi tersaji padat dan elegan di *smartphone*.
+  - **Form Input & Kontrol Kompak**: Mengecilkan padding kolom form, input, dan dropdown menjadi tinggi `33px` dengan font `0.8rem` yang rapi.
+  - **Tabel & Kartu Terstruktur**: Merampingkan tabel kamera, pengguna, log sistem, dan kartu penyimpanan harddisk (`storage-info-box`) dengan padding efisien `5px 6px`.
+  - **Playback & Timeline Scrubber**: Mengoptimalkan ketinggian timeline menjadi `48px` dan merapatkan bilah kontrol pemutaran rekaman.
+  - **Modal Dialog Responsif**: Menyesuaikan modal tambah/edit kamera dan popup konfirmasi agar berukuran `95vw` tanpa meluap (*overflow*) dari layar HP.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.7.8 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
+## [Ver 11.7.7] - 2026-09-30
+### Autonomous Background Codec Probe & 100% Zero-Manual Auto-Adaptive HEVC Discovery
+- **Mesin Deteksi Codec Proaktif di Latar Belakang (`server.js` - `autoDetectCameraCodecsAndSync`):**
+  - Mengimplementasikan proses probe asinkron `ffprobe` otomatis setiap kali kamera baru disimpan, diedit, atau saat server STB pertama kali dinyalakan (*boot*).
+  - Jika terdeteksi bitstream `hevc` atau `h265` pada kamera (seperti Franwell 2-lensa), sistem secara otomatis menandai `detectedCodec = 'hevc'` dan mengaktifkan Micro-Transcoder On-Demand seketika tanpa memerlukan tindakan manual dari pengguna.
+  - **100% Zero-Manual Auto-Adaptive**: Pengguna cukup membiarkan opsi di posisi default *Auto-Adaptive*, dan sistem NVR akan menangani konversi secara cerdas dan mandiri.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.7.7 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.7.6] - 2026-09-30
 ### Full REST Persistence for Transcode Mode & Instant Sub-Stream Micro-Transcoder Trigger
 - **Penyimpanan Permanen `transcodeMode` di Endpoint REST API (`server.js`):**
