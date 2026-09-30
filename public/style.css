@@ -443,16 +443,63 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 }
 
 .badge-rec {
-    background: #ef4444;
+    background: rgba(220, 38, 38, 0.88);
     color: #ffffff;
-    font-size: 9px;
+    font-size: 6.5px;
     font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 3px;
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
-    letter-spacing: 0.5px;
+    padding: 0 3px;
+    height: 12px;
+    line-height: 10px;
+    border-radius: 2px;
+    box-shadow: 0 0 3px rgba(239, 68, 68, 0.6);
+    letter-spacing: 0.2px;
     display: inline-flex;
     align-items: center;
+    gap: 1.5px;
+    box-sizing: border-box;
+    animation: blinkRec 1.6s infinite;
+}
+.badge-rec::before {
+    content: "●";
+    color: #fecaca;
+    font-size: 4.5px;
+    line-height: 1;
+}
+
+/* Sleek Micro Tile Controls on Live Video Canvas */
+.badge-tile-ctrl {
+    font-size: 7px;
+    font-weight: 700;
+    min-width: 13px;
+    height: 12px;
+    line-height: 10px;
+    padding: 0 2px;
+    border-radius: 2px;
+    cursor: pointer;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(2px);
+    color: #f1f5f9;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+.badge-tile-ctrl:hover {
+    background: rgba(30, 41, 59, 0.95);
+    border-color: rgba(255, 255, 255, 0.45);
+    color: #ffffff;
+    transform: scale(1.05);
+}
+.badge-tile-quality-hd {
+    background: rgba(37, 99, 235, 0.72);
+    border-color: rgba(96, 165, 250, 0.35);
+}
+.badge-tile-quality-sd {
+    background: rgba(5, 150, 105, 0.72);
+    border-color: rgba(52, 211, 153, 0.35);
 }
 
 .cam-title-bar {
@@ -1660,21 +1707,26 @@ body {
     100% { opacity: 1; }
 }
 .badge-rec {
-    background: rgba(220, 38, 38, 0.85);
+    background: rgba(220, 38, 38, 0.88);
     color: #fff;
-    font-size: 10px;
-    padding: 2px 5px;
-    border-radius: 4px;
-    font-weight: 600;
+    font-size: 6.5px;
+    padding: 0 3px;
+    height: 12px;
+    line-height: 10px;
+    border-radius: 2px;
+    font-weight: 700;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    animation: blinkRec 1.5s infinite;
+    gap: 1.5px;
+    letter-spacing: 0.2px;
+    box-sizing: border-box;
+    animation: blinkRec 1.6s infinite;
 }
 .badge-rec::before {
     content: "●";
-    color: #fca5a5;
-    font-size: 8px;
+    color: #fecaca;
+    font-size: 4.5px;
+    line-height: 1;
 }
 
 .scale-mark {

@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.6.5] - 2026-09-30
+### Dual-Panel Optics & 10-Line Stream Diagnostics, Micro Canvas Overlay Controls & Minimalist REC Badge
+- **Desain Ergonomis Panel Lensa & Fokus Terbagi 2 (`public/index.html` - `#ptzControlPanelCard`):**
+  - Membagi panel Lensa & Fokus menjadi dua sub-kolom proporsional (50% / 50% split layout):
+    - **Sisi Kiri (Kontrol Optik)**: 4 tombol presisi 2x2 grid (`Z+`, `F+`, `Z-`, `F-`) untuk kendali Zoom dan Fokus kamera.
+    - **Sisi Kanan (Log Diagnostik Stream)**: Tombol interaktif `📋 STATUS 10 BARIS` (Log Stream) dengan visual card terdedikasi untuk membuka popup diagnostik real-time aliran kamera terpilih.
+- **Reduksi Ukuran Badge REC & Tombol Kontrol Petak Video Live (`public/style.css` & `public/script.js`):**
+  - **Badge REC Ultra-Kompak**: Menurunkan ukuran font badge dari 7.5px menjadi 6.5px, padding 0 3px, dan ketinggian dari 15px menjadi 12px sehingga tulisan REC tidak menutupi informasi penting OSD kamera.
+  - **Tombol Play/Pause & HD/SD Micro**: Mengecilkan tombol kontrol petak video live (`.badge-tile-ctrl`) menjadi font 7px, min-width 13px, height 12px, dengan kontainer semi-transparan `opacity: 0.75` (fokus penuh pada feed video, memperjelas saat kursor mendekat/hover).
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.6.5 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.6.4] - 2026-09-30
 ### Extended 45s Keyframe Probe Ceiling, Fast FPS-Probe Bypass & Cyclic Auto-Healing
 - **Perluasan Jendela Probe Keyframe hingga 45 Detik (`server.js` - `spawnRecordingFFmpeg`):**

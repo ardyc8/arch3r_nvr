@@ -4023,8 +4023,8 @@ async function fetchCameras() {
                     vid.load();
                 } catch (_) {}
             }
-            if (btnD) btnD.textContent = '▶️';
-            if (btnM) btnM.textContent = '▶️';
+            if (btnD) btnD.textContent = '▶';
+            if (btnM) btnM.textContent = '▶';
         } else {
             if (targetSlot) targetSlot.isPlaying = true;
             if (targetSlot && typeof playUltraStream === 'function') {
@@ -4032,8 +4032,8 @@ async function fetchCameras() {
             } else if (vidId) {
                 window.startSingleSlotStream(vidId);
             }
-            if (btnD) btnD.textContent = '⏸️';
-            if (btnM) btnM.textContent = '⏸️';
+            if (btnD) btnD.textContent = '⏸';
+            if (btnM) btnM.textContent = '⏸';
         }
     };
 
@@ -4820,10 +4820,10 @@ async function fetchCameras() {
                                 <p id="desc_${videoId}" style="color:#cbd5e1;">Klik petak atau tombol ▶️ untuk memutar</p>
                             </div>
 
-                            <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:4px; align-items:center;">
+                            <div style="position:absolute; top:3px; right:3px; z-index:15; display:flex; gap:2px; align-items:center; opacity:0.75; transition:opacity 0.2s;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.75'">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                <button type="button" id="btn_tile_pp_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Hentikan Stream Ini" style="font-size:0.65rem; padding:2px 6px; border-radius:4px; cursor:pointer; background:rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.25);">▶️</button>
-                                <button type="button" id="badge_quality_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleCameraQuality('${cam.id}')" title="Klik untuk beralih kualitas SD / HD" style="font-size:0.65rem; padding:2px 7px; border-radius:4px; cursor:pointer; font-weight:700; background:${curQuality === 'HD' ? '#2563eb' : '#059669'}; color:#fff; border:1px solid rgba(255,255,255,0.3);">${curQuality}</button>
+                                <button type="button" id="btn_tile_pp_${cam.id}" class="badge-tile-ctrl" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Hentikan Aliran Ini">▶</button>
+                                <button type="button" id="badge_quality_${cam.id}" class="badge-tile-ctrl badge-tile-quality-${curQuality === 'HD' ? 'hd' : 'sd'}" onclick="event.stopPropagation(); window.toggleCameraQuality('${cam.id}')" title="Klik untuk beralih kualitas SD / HD">${curQuality}</button>
                             </div>
                             <div class="cam-title-bar" style="z-index:14;">
                                 ${cam.name || ('Kamera ' + (i + 1))}
@@ -4965,10 +4965,10 @@ async function fetchCameras() {
                                 <p id="desc_${videoId}" style="color:#cbd5e1;">Klik petak atau tombol ▶️ untuk memutar</p>
                             </div>
 
-                            <div style="position:absolute; top:5px; right:5px; z-index:15; display:flex; gap:4px; align-items:center;">
+                            <div style="position:absolute; top:3px; right:3px; z-index:15; display:flex; gap:2px; align-items:center; opacity:0.75; transition:opacity 0.2s;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.75'">
                                 ${cam.isRecording ? '<span class="badge-rec">REC</span>' : ''}
-                                <button type="button" id="m_btn_tile_pp_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Hentikan Stream Ini" style="font-size:0.65rem; padding:2px 6px; border-radius:4px; cursor:pointer; background:rgba(0,0,0,0.65); color:#fff; border:1px solid rgba(255,255,255,0.25);">▶️</button>
-                                <button type="button" id="m_badge_quality_${cam.id}" class="badge" onclick="event.stopPropagation(); window.toggleCameraQuality('${cam.id}')" title="Klik untuk beralih kualitas SD / HD" style="font-size:0.65rem; padding:2px 7px; border-radius:4px; cursor:pointer; font-weight:700; background:${curQuality === 'HD' ? '#2563eb' : '#059669'}; color:#fff; border:1px solid rgba(255,255,255,0.3);">${curQuality}</button>
+                                <button type="button" id="m_btn_tile_pp_${cam.id}" class="badge-tile-ctrl" onclick="event.stopPropagation(); window.toggleTilePlayPause('${cam.id}')" title="Putar / Hentikan Aliran Ini">▶</button>
+                                <button type="button" id="m_badge_quality_${cam.id}" class="badge-tile-ctrl badge-tile-quality-${curQuality === 'HD' ? 'hd' : 'sd'}" onclick="event.stopPropagation(); window.toggleCameraQuality('${cam.id}')" title="Klik untuk beralih kualitas SD / HD">${curQuality}</button>
                             </div>
                             <div class="cam-title-bar" style="z-index:14;">
                                 ${cam.name || ('Kamera ' + (i + 1))}
@@ -16062,6 +16062,201 @@ window.applyNetMgrChanges = async function() {
         }
     } catch (e) {
         alert('Error menerapkan perubahan jaringan: ' + e.message);
+    }
+};
+
+// ============================================================================
+// --- CAMERA STREAM DIAGNOSTICS & 10-LINE HUD LOG MODAL (Ver. 11.6.5) ---
+// ============================================================================
+let streamLogsPollingTimer = null;
+window.currentStreamLogCamId = null;
+
+window.ensureStreamLogsModalDOM = function() {
+    let modal = document.getElementById('streamLogsModalOverlay');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'streamLogsModalOverlay';
+        document.body.appendChild(modal);
+    }
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100vw';
+    modal.style.height = '100vh';
+    modal.style.background = 'rgba(0,0,0,0.82)';
+    modal.style.backdropFilter = 'blur(6px)';
+    modal.style.zIndex = '999999';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.padding = '1rem';
+    modal.style.boxSizing = 'border-box';
+    modal.style.display = 'none';
+
+    modal.innerHTML = `
+        <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; width:100%; max-width:680px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.95); overflow:hidden;">
+            <!-- Modal Header -->
+            <div style="padding:0.85rem 1.15rem; background:rgba(15,23,42,0.98); border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span style="font-size:1.25rem;">📋</span>
+                    <div>
+                        <h4 style="margin:0; font-size:1rem; color:#f8fafc; font-weight:700;">
+                            Log Aliran Real-Time: <span id="streamLogCamName" style="color:#38bdf8;">Memuat...</span>
+                        </h4>
+                        <div id="streamLogCamSub" style="font-size:0.75rem; color:#94a3b8; font-family:monospace; margin-top:2px;">
+                            ID: - &bull; RTSP: -
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="window.closeStreamLogsModal()" style="background:transparent; border:none; color:#94a3b8; font-size:1.25rem; cursor:pointer; padding:2px 6px;" title="Tutup Modal">✖</button>
+            </div>
+
+            <!-- Modal Telemetry Bar -->
+            <div style="padding:0.6rem 1.15rem; background:#0b1120; border-bottom:1px solid #1e293b; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; font-size:0.75rem;">
+                <span id="badgeStreamState" style="padding:2px 7px; border-radius:4px; font-weight:700; background:#059669; color:#fff;">🟢 LIVE</span>
+                <span id="badgeStreamMode" style="padding:2px 7px; border-radius:4px; background:rgba(59,130,246,0.2); color:#93c5fd; border:1px solid rgba(59,130,246,0.35);">⚡ Mode: MediaMTX Relay</span>
+                <span id="badgeStreamCodec" style="padding:2px 7px; border-radius:4px; background:rgba(255,255,255,0.06); color:#cbd5e1; border:1px solid rgba(255,255,255,0.12);">Codec: Auto</span>
+                <span id="badgeStreamRec" style="padding:2px 7px; border-radius:4px; background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.3);">🔴 REC Active</span>
+            </div>
+
+            <!-- Modal Console Body (10 Baris Log) -->
+            <div style="padding:0.85rem 1.15rem; overflow-y:auto; flex:1; background:#060911;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                    <span style="font-size:0.72rem; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">🖥️ 10 Baris Log Diagnostik Terbaru (Auto-Refresh 2s)</span>
+                    <span id="streamLogLiveIndicator" style="font-size:0.72rem; color:#10b981; display:flex; align-items:center; gap:4px;">
+                        <span style="display:inline-block; width:6px; height:6px; background:#10b981; border-radius:50%; animation:blinkRec 1s infinite;"></span> Siaga
+                    </span>
+                </div>
+                <div id="streamLogsConsoleBox" style="background:#020617; border:1px solid #1e293b; border-radius:6px; padding:0.75rem; min-height:220px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:0.78rem; line-height:1.5; color:#e2e8f0; white-space:pre-wrap; word-break:break-all;">
+Memuat log real-time aliran kamera...
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="padding:0.75rem 1.15rem; background:#0f172a; border-top:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="window.reconnectCurrentStream()" style="font-size:0.8rem; padding:0.4rem 0.85rem; background:#1e293b; color:#38bdf8; border:1px solid #0284c7; border-radius:6px; cursor:pointer;">
+                    ⚡ Reconnect Aliran Kamera
+                </button>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="window.refreshStreamLogsModal()" style="font-size:0.8rem; padding:0.4rem 0.85rem; background:#1e293b; color:#fff; border:1px solid #334155; border-radius:6px; cursor:pointer;">
+                        🔄 Segarkan
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="window.closeStreamLogsModal()" style="font-size:0.8rem; padding:0.4rem 1.1rem; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    return modal;
+};
+
+window.openCameraStreamLogsModal = function(camId) {
+    const targetId = camId || selectedCamIdForPtz || (activeChannel !== 'all' ? activeChannel : cameras[0]?.id);
+    if (!targetId) {
+        if (typeof showToast === 'function') showToast('Pilih kamera di grid terlebih dahulu', 'warning');
+        return;
+    }
+    const modal = window.ensureStreamLogsModalDOM();
+    modal.style.display = 'flex';
+    window.currentStreamLogCamId = targetId;
+    window.refreshStreamLogsModal();
+
+    if (streamLogsPollingTimer) clearInterval(streamLogsPollingTimer);
+    streamLogsPollingTimer = setInterval(() => {
+        if (modal.style.display === 'flex' && window.currentStreamLogCamId) {
+            window.refreshStreamLogsModal(true);
+        } else {
+            clearInterval(streamLogsPollingTimer);
+        }
+    }, 2000);
+};
+
+window.closeStreamLogsModal = function() {
+    const modal = document.getElementById('streamLogsModalOverlay');
+    if (modal) modal.style.display = 'none';
+    if (streamLogsPollingTimer) {
+        clearInterval(streamLogsPollingTimer);
+        streamLogsPollingTimer = null;
+    }
+};
+
+window.refreshStreamLogsModal = async function(isSilent = false) {
+    const targetId = window.currentStreamLogCamId;
+    if (!targetId) return;
+
+    const nameEl = document.getElementById('streamLogCamName');
+    const subEl = document.getElementById('streamLogCamSub');
+    const box = document.getElementById('streamLogsConsoleBox');
+    const badgeState = document.getElementById('badgeStreamState');
+    const badgeMode = document.getElementById('badgeStreamMode');
+    const badgeCodec = document.getElementById('badgeStreamCodec');
+    const badgeRec = document.getElementById('badgeStreamRec');
+
+    try {
+        const token = localStorage.getItem('nvr_token') || sessionStorage.getItem('nvr_token');
+        const res = await fetch(`/api/cameras/${targetId}/stream-logs`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        const data = await res.json();
+        if (!data.success) {
+            if (box && !isSilent) box.innerHTML = `<span style="color:#ef4444;">Galat: ${data.error || 'Gagal membaca log kamera'}</span>`;
+            return;
+        }
+
+        if (nameEl) nameEl.textContent = data.camName || targetId;
+        if (subEl) subEl.textContent = `ID: ${data.camId} • RTSP: ${data.mainStreamUrl || '-'}`;
+        if (badgeMode) badgeMode.textContent = `⚡ Mode: ${data.mode || 'Direct RTSP'}`;
+        if (badgeCodec) badgeCodec.textContent = `Codec: ${data.codec || 'Auto'}`;
+        if (badgeRec) {
+            badgeRec.textContent = data.isRecording ? '🔴 REC Aktif' : '⚪ REC Standby';
+            badgeRec.style.background = data.isRecording ? 'rgba(239,68,68,0.2)' : 'rgba(148,163,184,0.15)';
+            badgeRec.style.color = data.isRecording ? '#fca5a5' : '#94a3b8';
+        }
+
+        // Cek live video element status di browser DOM
+        let isLivePlaying = false;
+        if (window.cameraSlotRegistry) {
+            for (const vidId in window.cameraSlotRegistry) {
+                if (String(window.cameraSlotRegistry[vidId].camId) === String(targetId)) {
+                    isLivePlaying = Boolean(window.cameraSlotRegistry[vidId].isPlaying);
+                    break;
+                }
+            }
+        }
+        if (badgeState) {
+            badgeState.textContent = isLivePlaying ? '🟢 LIVE AKTIF' : '🟡 STANDBY / BUFF';
+            badgeState.style.background = isLivePlaying ? '#059669' : '#d97706';
+        }
+
+        if (box) {
+            const logs = data.logs || [];
+            if (logs.length === 0) {
+                box.innerHTML = `<span style="color:#64748b;">[${new Date().toLocaleTimeString()}] Belum ada rekaman log khusus kamera ini. Kamera siap disiarkan.</span>`;
+            } else {
+                box.innerHTML = logs.map(l => {
+                    let color = '#38bdf8'; // INFO
+                    if (l.level === 'WARN') color = '#fbbf24';
+                    else if (l.level === 'ERROR') color = '#f87171';
+                    return `<div><span style="color:#64748b;">[${l.time || '-'}]</span> <strong style="color:${color};">[${l.level || 'INFO'}]</strong> ${escapeHtml(l.message || '')}</div>`;
+                }).join('');
+            }
+            box.scrollTop = box.scrollHeight;
+        }
+    } catch (e) {
+        if (box && !isSilent) box.innerHTML = `<span style="color:#ef4444;">Gagal menghubungi server NVR: ${e.message}</span>`;
+    }
+};
+
+window.reconnectCurrentStream = function() {
+    const targetId = window.currentStreamLogCamId;
+    if (!targetId) return;
+    if (typeof window.toggleTilePlayPause === 'function') {
+        window.toggleTilePlayPause(targetId);
+        setTimeout(() => {
+            window.toggleTilePlayPause(targetId);
+            window.refreshStreamLogsModal();
+            if (typeof showToast === 'function') showToast(`Memulai ulang aliran kamera ${targetId}...`, 'info');
+        }, 600);
     }
 };
 

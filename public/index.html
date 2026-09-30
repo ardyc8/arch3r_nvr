@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google" content="notranslate">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 11.6.4 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=11.6.4">
+    <title>Arch3r NVR Ver. 11.6.5 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=11.6.5">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -295,14 +295,35 @@
                                 <div class="nvr-ptz-body nvr-ptz-split-layout">
                                     <!-- Kolom Kiri: Lensa & Fokus (Atas) + Kontrol Player & Audio (Bawah) Berbaris Atas Bawah -->
                                     <div class="nvr-ptz-left-column">
-                                        <!-- 1. Top: Lensa & Fokus -->
+                                        <!-- 1. Top: Lensa & Fokus Dibagi 2 (Kiri: Lensa & Fokus, Kanan: Log Stream 10 Baris) -->
                                         <div class="nvr-ptz-group-box nvr-optics-box">
-                                            <div class="nvr-ptz-group-title">🔍 LENSA & FOKUS</div>
-                                            <div class="nvr-ptz-actions-grid">
-                                                <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('zoom_in')">Zoom +</button>
-                                                <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('focus_in')">Focus +</button>
-                                                <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('zoom_out')">Zoom -</button>
-                                                <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('focus_out')">Focus -</button>
+                                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; align-items:stretch;">
+                                                <!-- Sub-Panel Kiri: 4 Tombol Zoom & Fokus (2x2 Grid) -->
+                                                <div style="background:rgba(0,0,0,0.22); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:5px 6px; display:flex; flex-direction:column; gap:4px;">
+                                                    <div style="font-size:8.5px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.3px; display:flex; align-items:center; gap:3px;">
+                                                        <span>🔍</span> <span>LENSA &amp; FOKUS</span>
+                                                    </div>
+                                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px; flex:1;">
+                                                        <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('zoom_in')" title="Zoom In (Perbesar)" style="font-size:9.5px; padding:3px 2px; min-height:22px;">Z +</button>
+                                                        <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('focus_in')" title="Focus In (Maju)" style="font-size:9.5px; padding:3px 2px; min-height:22px;">F +</button>
+                                                        <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('zoom_out')" title="Zoom Out (Perkecil)" style="font-size:9.5px; padding:3px 2px; min-height:22px;">Z -</button>
+                                                        <button class="nvr-ptz-action-btn" onclick="window.ptzMoveSelected('focus_out')" title="Focus Out (Mundur)" style="font-size:9.5px; padding:3px 2px; min-height:22px;">F -</button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Sub-Panel Kanan: Tombol Log Diagnostik Aliran Kamera (10 Baris Terakhir) -->
+                                                <div style="background:rgba(0,0,0,0.22); border:1px solid rgba(59,130,246,0.25); border-radius:6px; padding:5px 6px; display:flex; flex-direction:column; gap:4px;">
+                                                    <div style="font-size:8.5px; font-weight:700; color:#60a5fa; text-transform:uppercase; letter-spacing:0.3px; display:flex; align-items:center; gap:3px;">
+                                                        <span>📋</span> <span>LOG STREAM</span>
+                                                    </div>
+                                                    <button type="button" id="btnOpenStreamLogsPtz" class="nvr-ptz-action-btn" onclick="window.openCameraStreamLogsModal()" title="Buka 10 Baris Log Diagnostik Aliran Kamera Terpilih" style="flex:1; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px; padding:3px 4px; background:linear-gradient(135deg, rgba(30,58,138,0.55), rgba(15,23,42,0.92)); border:1px solid rgba(59,130,246,0.45); border-radius:4px; cursor:pointer;">
+                                                        <div style="display:flex; align-items:center; gap:4px;">
+                                                            <span style="font-size:0.95rem; line-height:1;">📋</span>
+                                                            <span style="font-weight:700; font-size:9.5px; color:#93c5fd; letter-spacing:0.2px;">STATUS 10 BARIS</span>
+                                                        </div>
+                                                        <span style="font-size:8px; color:#cbd5e1; opacity:0.85;">Diagnostik Real-Time</span>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -2503,6 +2524,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=11.6.4"></script>
+    <script src="script.js?v=11.6.5"></script>
 </body>
 </html>

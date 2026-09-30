@@ -2375,6 +2375,15 @@ function flushLogsToDisk() {
 function sysLog(level, message, category = 'SYSTEM') {
     const timestamp = getLocalTimeString();
     console.log(`[${timestamp}] [${level}] [${category}] ${message}`);
+
+    // Auto-capture log spesifik kamera ke ring-buffer real-time per kamera
+    if (category === 'CAMERA' || (message && (message.includes('cam_') || message.includes('[cam')))) {
+        const match = String(message).match(/\[([a-zA-Z0-9_\-]+)\]/);
+        if (match && match[1] && !['CAMERA', 'INFO', 'WARN', 'ERROR', 'SYSTEM', 'STORAGE', 'SECURITY'].includes(match[1])) {
+            addCameraStreamLog(match[1], String(message).replace(/\[[a-zA-Z0-9_\-]+\]\s*/g, '').trim(), level);
+        }
+    }
+
     try {
         const dbData = getNvrDb();
         if (!dbData.system_logs) dbData.system_logs = [];
@@ -2396,6 +2405,29 @@ let cameras = [];
 let ffProcesses = {}; // { 'cam1': { main: ChildProcess, sub: ChildProcess } }
 let reconnectTimers = {};
 let cameraStatuses = {}; // camId -> { main: { status, error, lastUpdate }, sub: { status, error, lastUpdate } }
+
+// Ring-Buffer Live Stream Diagnostics per Camera (Maksimal 15 item terbaru di memori RAM, 0% disk write)
+const cameraStreamLogs = new Map();
+
+function addCameraStreamLog(camId, message, level = 'INFO') {
+    if (!camId || !message) return;
+    const cid = String(camId).trim();
+    if (!cameraStreamLogs.has(cid)) {
+        cameraStreamLogs.set(cid, []);
+    }
+    const list = cameraStreamLogs.get(cid);
+    const now = new Date();
+    const timeStr = now.toTimeString().split(' ')[0] || now.toLocaleTimeString();
+    list.push({
+        id: Date.now() + Math.random(),
+        time: timeStr,
+        level: String(level || 'INFO').toUpperCase(),
+        message: String(message).trim()
+    });
+    if (list.length > 15) {
+        list.shift();
+    }
+}
 
 function getSettings() {
     const dbData = getNvrDb();
@@ -3755,12 +3787,14 @@ function spawnRecordingFFmpeg(cam) {
     ];
 
     sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (${isDemo ? 'libx264' : 'copy'}${audioArgs[0] === '-an' ? ' -an' : ' +' + (cam.audioCodec || 'aac')}) [${useSub ? 'SD/Sub' : 'HD/Main'}] [Mode: ${modeLabel}] -> ${recBase}`, 'CAMERA');
+    addCameraStreamLog(cam.id, `Inisialisasi aliran & rekaman [Mode: ${modeLabel}]`, 'INFO');
 
     const child = spawn('ffmpeg', args);
     child.killedByUser = false;
     child.lastErr = '';
     child.on('error', err => {
         sysLog('ERROR', 'FFmpeg spawn error (' + cam.id + '): ' + err.message, 'CAMERA');
+        addCameraStreamLog(cam.id, `FFmpeg spawn error: ${err.message}`, 'ERROR');
     });
     child.stderr.on('data', d => {
         let str = d.toString();
@@ -3774,6 +3808,7 @@ function spawnRecordingFFmpeg(cam) {
                          str.includes('deprecated pixel format');
         if (!isBenign) {
             child.lastErr = str;
+            addCameraStreamLog(cam.id, str.trim().replace(/[\r\n]+/g, ' ').slice(0, 140), 'WARN');
         }
     });
 
@@ -3811,14 +3846,18 @@ function spawnRecordingFFmpeg(cam) {
                         ffmpegCapabilities.supportsPreferTcp = false;
                     }
                     sysLog('WARN', `[${cam.id}] Opsi FFmpeg tidak kompatibel di STB (${cleanErr.slice(0, 100)}). Auto-healing aktif: Beralih ke mode ${modeNames[nextLevel]}...`, 'CAMERA');
+                    addCameraStreamLog(cam.id, `Opsi FFmpeg tidak kompatibel. Auto-healing aktif: Beralih ke ${modeNames[nextLevel]}...`, 'WARN');
                 } else {
                     sysLog('WARN', `[${cam.id}] Kamera lambat mengirim parameter SPS/PPS (Code: ${code} - ${cleanErr.slice(0, 80) || 'dimensions not set'}). Auto-healing aktif: Beralih ke fallback mode ${modeNames[nextLevel]}...`, 'CAMERA');
+                    addCameraStreamLog(cam.id, `Kamera lambat kirim SPS/PPS (Code ${code}). Beralih ke ${modeNames[nextLevel]}...`, 'WARN');
                 }
             } else if (code === 0) {
                 // Exit code 0 adalah normal EOF / socket ditutup oleh pihak kamera atau router
                 sysLog('INFO', `[${cam.id}] Aliran RTSP kamera terputus normal dari sumber (EOF / RTSP Session Closed). Reconnect otomatis dalam 8 detik...`, 'CAMERA');
+                addCameraStreamLog(cam.id, `Sesi RTSP kamera ditutup normal dari sumber (EOF / Socket Closed)`, 'INFO');
             } else {
                 sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Err: ${cleanErr.slice(0, 140)} Reconnect otomatis...`, 'CAMERA');
+                addCameraStreamLog(cam.id, `Perekaman FFmpeg berhenti (Code ${code}): ${cleanErr.slice(0, 100)}`, 'WARN');
             }
 
             const timerKey = `rec_${cam.id}`;
@@ -5613,6 +5652,69 @@ app.get('/api/cameras/:id/diagnostics', verifyToken, async (req, res) => {
         res.json({ success: true, diagnostics: diag });
     } catch (e) {
         res.status(500).json({ success: false, error: 'Gagal menjalankan diagnosa kamera: ' + e.message });
+    }
+});
+
+// Endpoint Khusus 10 Baris Log Aliran Stream Real-Time Kamera
+app.get('/api/cameras/:id/stream-logs', verifyToken, (req, res) => {
+    try {
+        const authorizedCams = getAuthorizedCamerasForReq(req);
+        const cam = authorizedCams.find(c => String(c.id) === String(req.params.id));
+        if (!cam) return res.status(404).json({ error: 'Kamera tidak ditemukan atau tidak memiliki izin' });
+
+        const cid = String(cam.id);
+        const rawLogs = cameraStreamLogs.get(cid) || [];
+        
+        // Sanitasi password pada RTSP URL agar aman ditampilkan di UI
+        const sanitizeUrl = (url) => {
+            if (!url) return '-';
+            return String(url).replace(/(rtsp:\/\/[^:]+:)([^@]+)(@)/, '$1****$3');
+        };
+
+        const safeId = (cam.id || '').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const isRecActive = Boolean(ffProcesses[cam.id]);
+        const fallbackLevel = camRecordingFallbackLevel.get(cam.id) || 0;
+        const modeNames = ['Local MediaMTX Relay (:8554)', 'Direct RTSP Keyframe Probe (35s)', 'Ultra-Safe Vanilla (45s)'];
+
+        // Jika log di ring-buffer masih sedikit (< 10), padukan dengan log sistem terakhir yang terkait kamera ini
+        let finalLogs = [...rawLogs];
+        if (finalLogs.length < 10) {
+            const dbData = getNvrDb();
+            const sysLogs = (dbData.system_logs || [])
+                .filter(l => l.message && (l.message.includes(`[${cam.id}]`) || l.message.includes(cam.id) || (cam.name && l.message.includes(cam.name))))
+                .slice(-10);
+            
+            sysLogs.forEach(sl => {
+                const timeOnly = sl.timestamp ? (sl.timestamp.split(', ')[1] || sl.timestamp) : '';
+                if (!finalLogs.some(fl => fl.message === sl.message)) {
+                    finalLogs.unshift({
+                        id: sl.id || Date.now(),
+                        time: timeOnly,
+                        level: sl.level || 'INFO',
+                        message: sl.message.replace(new RegExp(`\\[${cam.id}\\]\\s*`, 'g'), '').trim()
+                    });
+                }
+            });
+        }
+
+        // Pastikan terurut kronologis dan ambil tepat 10 baris terakhir
+        const last10 = finalLogs.slice(-10);
+
+        res.json({
+            success: true,
+            camId: cam.id,
+            camName: cam.name || cam.id,
+            mainStreamUrl: sanitizeUrl(cam.mainStreamUrl),
+            subStreamUrl: sanitizeUrl(cam.subStreamUrl),
+            mediaMtxPath: `rtsp://127.0.0.1:8554/${safeId}`,
+            mode: modeNames[fallbackLevel] || 'Direct RTSP',
+            fallbackLevel,
+            isRecording: isRecActive,
+            codec: (typeof detectedCodecs !== 'undefined' && (detectedCodecs[cam.mainStreamUrl] || detectedCodecs[cam.id])) || 'Auto-Detect (H.264/H.265)',
+            logs: last10
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Gagal mengambil log stream kamera: ' + e.message });
     }
 });
 
