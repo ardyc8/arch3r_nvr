@@ -1,5 +1,24 @@
 # Changelog
 
+## [Ver 11.6.3] - 2026-09-30
+### MediaMTX Loopback Relay Recording, Zero-Jitter Timestamp Normalizer & Code 234 Auto-Healing
+- **Arsitektur Perekaman Cerdas MediaMTX Loopback Relay (`server.js` - `spawnRecordingFFmpeg`):**
+  - **Level 0 (MediaMTX Loopback Relay `:8554`)**: Menggunakan aliran lokal `rtsp://127.0.0.1:8554/<cam_id>`. MediaMTX meng-cache parameter SPS/PPS (dimensions) di memori RAM, menghilangkan delay deteksi dimensi, dan mencegah kamera IPC overload/disconnect akibat koneksi RTSP ganda (WebRTC live view & rekaman lokal).
+  - **Level 1 (Direct RTSP Dynamic Keyframe Probe)**: Menghilangkan pembatasan `-max_delay 500000` (500ms) yang sebelumnya memotong buffer sebelum kamera mengirimkan keyframe SPS/PPS (penyebab utama error `dimensions not set` / `Code 234`).
+  - **Level 2 (Ultra-Safe Vanilla RTSP)**: Mode kompatibilitas tinggi untuk kamera IP lama dengan TCP murni.
+- **Normalisasi Timestamp & Eliminasi Peringatan Non-Monotonic DTS (`server.js`):**
+  - Mengganti `-use_wallclock_as_timestamps 1` dengan opsi `-avoid_negative_ts make_zero` dan flag `-fflags +genpts+discardcorrupt+igndts`.
+  - Mencegah jitter milidetik jaringan/Wi-Fi yang menyebabkan peringatan berulang `Non-monotonic DTS in output stream 0:0` pada segmen MP4.
+- **Deteksi Auto-Healing Code 234 & Penanganan Exit Code 0 (`server.js`):**
+  - Menambahkan deteksi otomatis untuk pesan `dimensions not set`, `Could not write header`, `Invalid argument`, dan `Code 234`. Sistem secara cerdas menaikkan fallback level dan melakukan reconnect cepat dalam 2.5 detik.
+  - Membedakan penutupan soket normal dari kamera (`Code: 0` / EOF) dengan pencatatan log `INFO` yang bersih tanpa salah menyalahkan peringatan internal FFmpeg.
+
+## [Ver 11.6.2] - 2026-09-29
+### Interactive Network Manager Help Tooltips & General Purpose Hint Badges
+- **Penambahan Ikon '?' & Tooltip Penjelasan Interaktif (`public/script.js`):**
+  - **Fitur arch3rBridge**: Menambahkan ikon tanda tanya `?` di samping label `arch3rBridge — Transparent Proxy-ARP Relay` yang dapat di-hover atau diklik (`window.toggleNetMgrHelp`) untuk memunculkan kotak penjelasan tujuan penggunaan fitur bagi pengguna umum (menjembatani LAN & Wi-Fi menembus isolasi router ISP).
+  - **Fitur Pengikatan Static Route**: Menambahkan ikon tanda tanya `?` di samping label `Pengikatan Static Route Kamera / Subnet CIDR` yang menjelaskan tujuan fitur sebagai penunjuk arah bagi Linux agar tidak salah melempar paket ke interface yang keliru, lengkap dengan contoh format input subnet `/24` dan host `/32`.
+
 ## [Ver 11.6.1] - 2026-09-28
 ### 1-Click All-Cameras Static Route Binding & Camera Routing Synchronization
 - **Fitur 1-Click Ikat SEMUA Kamera (`public/script.js` - `window.bindAllCamerasToInterface`):**

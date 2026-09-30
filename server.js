@@ -3593,9 +3593,9 @@ function spawnRecordingFFmpeg(cam) {
     const hasDistinctSub = cam.subStreamUrl && cam.subStreamUrl.trim() && cam.subStreamUrl.trim() !== cam.mainStreamUrl.trim();
     const useSub = recQuality === 'sub' && hasDistinctSub;
     const rawUrl = useSub ? cam.subStreamUrl : cam.mainStreamUrl;
-    const sourceUrl = formatStreamUrl(rawUrl);
+    const directUrl = formatStreamUrl(rawUrl);
 
-    if (!sourceUrl) {
+    if (!directUrl) {
         sysLog('WARN', `[${cam.id}] URL RTSP tidak tersedia untuk perekaman.`, 'CAMERA');
         return;
     }
@@ -3610,8 +3610,30 @@ function spawnRecordingFFmpeg(cam) {
     try { if (!fs.existsSync(recBase)) fs.mkdirSync(recBase, { recursive: true }); } catch (err) { sysLog('ERROR', 'Gagal membuat folder base: ' + recBase, 'STORAGE'); }
 
     const segSec = cam.segmentDurationSec || 900;
-    const isDemo = sourceUrl === 'demo';
+    const isDemo = directUrl === 'demo';
     const fallbackLevel = camRecordingFallbackLevel.get(cam.id) || 0;
+    const safeId = (cam.id || '').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const mediamtxUrl = safeId ? `rtsp://127.0.0.1:8554/${useSub ? `${safeId}_sub` : safeId}` : '';
+
+    // Tentukan sumber aliran berdasarkan level fallback:
+    // Level 0: Local MediaMTX Loopback Relay (:8554).
+    //   Keuntungan: MediaMTX menyajikan SPS/PPS seketika dari cache memori (100% kebal "dimensions not set" / Code 234),
+    //   timestamp ter-sinkronisasi monotonik bebas jitter, dan mencegah kamera IPC hang/putus koneksi akibat batas koneksi concurrent RTSP.
+    // Level 1: Direct RTSP Kamera dengan Dynamic Probing (Buffer 4MB, tanpa max_delay 500ms agar SPS/PPS keyframe sempat diterima).
+    // Level 2: Direct RTSP Ultra-Safe Vanilla TCP (Analyzeduration 10MB, tanpa opsi prefer_tcp).
+    let sourceUrl = directUrl;
+    let modeLabel = 'Direct RTSP';
+
+    if (!isDemo && mediamtxUrl && fallbackLevel === 0) {
+        sourceUrl = mediamtxUrl;
+        modeLabel = 'Local MediaMTX Relay (:8554)';
+    } else if (fallbackLevel === 1) {
+        sourceUrl = directUrl;
+        modeLabel = 'Direct RTSP (Expanded Keyframe Probe)';
+    } else {
+        sourceUrl = directUrl;
+        modeLabel = 'Direct RTSP (Ultra-Safe Vanilla)';
+    }
 
     // Inisialisasi deteksi kapabilitas jika belum dipindai
     const caps = probeFfmpegCapabilities();
@@ -3625,46 +3647,46 @@ function spawnRecordingFFmpeg(cam) {
     } else {
         const isRtsp = typeof sourceUrl === 'string' && sourceUrl.startsWith('rtsp://');
         if (isRtsp) {
-            // Level 2 (Ultra Safe Vanilla Mode): Minimal RTSP TCP untuk kompatibilitas kamera lawas / ARM SoC
             if (fallbackLevel >= 2) {
+                // Level 2 (Ultra Safe Vanilla Mode): Minimal RTSP TCP untuk kompatibilitas kamera lawas / ARM SoC
                 inputArgs = [
                     '-rtsp_transport', 'tcp',
                     '-analyzeduration', '10000000',
                     '-probesize', '10000000',
-                    '-fflags', '+genpts+discardcorrupt',
-                    '-use_wallclock_as_timestamps', '1',
+                    '-fflags', '+genpts+discardcorrupt+igndts',
+                    '-i', sourceUrl
+                ];
+            } else if (fallbackLevel === 1) {
+                // Level 1: Direct RTSP Kamera dengan toleransi jeda keyframe penuh (tanpa max_delay pemotong buffer)
+                const dynamicArgs = [
+                    '-rtsp_transport', 'tcp',
+                    '-buffer_size', '4194304',
+                    '-analyzeduration', '6000000',
+                    '-probesize', '6000000',
+                    '-fflags', '+genpts+discardcorrupt+igndts'
+                ];
+                if (caps.supportsPreferTcp) {
+                    dynamicArgs.push('-rtsp_flags', 'prefer_tcp');
+                }
+                if (caps.rtspTimeoutFlag) {
+                    dynamicArgs.push(caps.rtspTimeoutFlag, '15000000'); // 15 detik socket timeout
+                }
+                inputArgs = [
+                    ...dynamicArgs,
                     '-i', sourceUrl
                 ];
             } else {
-                // Level 0 & 1: Dynamic Auto-Probed Universal IPC Arguments
-                // Tingkatkan analyzeduration & probesize ke 10 detik / 10MB untuk mengatasi "dimensions not set"
-                // pada kamera IP (seperti V380 / Fran Well) yang lambat mengirimkan SPS/PPS awal.
+                // Level 0: Local MediaMTX Relay Loopback (Koneksi lokal super cepat, zero packet-loss)
                 const dynamicArgs = [
                     '-rtsp_transport', 'tcp',
                     '-buffer_size', '2048000',
-                    '-max_delay', '500000'
+                    '-analyzeduration', '4000000',
+                    '-probesize', '4000000',
+                    '-fflags', '+genpts+discardcorrupt+igndts'
                 ];
-
-                if (caps.supportsPreferTcp && fallbackLevel === 0) {
-                    dynamicArgs.push('-rtsp_flags', 'prefer_tcp');
-                }
-
-                // Masukkan opsi timeout hanya jika benar-benar didukung oleh FFmpeg STB
                 if (caps.rtspTimeoutFlag) {
                     dynamicArgs.push(caps.rtspTimeoutFlag, '10000000'); // 10 detik
                 }
-
-                // Universal IPC Timestamping & SPS/PPS Detection:
-                // 1. analyzeduration 10M, probesize 10M: Memastikan resolusi (dimensions) terbaca sebelum header MP4 ditulis
-                // 2. +genpts +discardcorrupt: Buat PTS jika hilang dan buang paket rusak
-                // 3. -use_wallclock_as_timestamps 1: Menghasilkan timestamp monotonik berbasis jam sistem STB
-                dynamicArgs.push(
-                    '-analyzeduration', '10000000',
-                    '-probesize', '10000000',
-                    '-fflags', '+genpts+discardcorrupt',
-                    '-use_wallclock_as_timestamps', '1'
-                );
-
                 inputArgs = [
                     ...dynamicArgs,
                     '-i', sourceUrl
@@ -3672,10 +3694,9 @@ function spawnRecordingFFmpeg(cam) {
             }
         } else {
             inputArgs = [
-                '-analyzeduration', '10000000',
-                '-probesize', '10000000',
-                '-fflags', '+genpts+discardcorrupt',
-                '-use_wallclock_as_timestamps', '1',
+                '-analyzeduration', '8000000',
+                '-probesize', '8000000',
+                '-fflags', '+genpts+discardcorrupt+igndts',
                 '-i', sourceUrl
             ];
         }
@@ -3705,9 +3726,9 @@ function spawnRecordingFFmpeg(cam) {
 
     // Perintah copy video stream ringan dengan transcode audio standar MP4 + faststart moov atom khusus untuk perekaman lokal/USB
     // Catatan:
+    // - -avoid_negative_ts make_zero: Menghilangkan timestamp negatif & menormalisasi DTS agar selalu monotonik
     // - -bsf:v dump_extra: Menyuntikkan parameter SPS/PPS (dimensions) pada setiap keyframe secara dinamis
-    // - -max_muxing_queue_size 2048: Menghindari packet buffer overflow saat audio/video muxer menunggu keyframe
-    // - -avoid_negative_ts make_zero: Menghindari timestamp negatif pada audio/video
+    // - -max_muxing_queue_size 4096: Mencegah packet buffer overflow saat audio/video muxer menunggu keyframe
     const args = [
         '-y',
         '-loglevel', 'warning',
@@ -3718,7 +3739,8 @@ function spawnRecordingFFmpeg(cam) {
         ...(isDemo ? ['-preset', 'ultrafast'] : []),
         ...(!isDemo ? ['-bsf:v', 'dump_extra'] : []),
         ...audioArgs,
-        '-max_muxing_queue_size', '2048',
+        '-avoid_negative_ts', 'make_zero',
+        '-max_muxing_queue_size', '4096',
         '-f', 'segment',
         '-segment_time', segSec.toString(),
         '-segment_format', 'mp4',
@@ -3728,7 +3750,7 @@ function spawnRecordingFFmpeg(cam) {
         path.join(recBase, "%Y-%m-%d_%H-%M-%S.mp4")
     ];
 
-    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (${isDemo ? 'libx264' : 'copy'}${audioArgs[0] === '-an' ? ' -an' : ' +' + (cam.audioCodec || 'aac')}) [${useSub ? 'SD/Sub' : 'HD/Main'}] [Mode: ${fallbackLevel === 0 ? 'Optimal' : (fallbackLevel === 1 ? 'Adaptive' : 'Ultra-Safe')}] -> ${recBase}`, 'CAMERA');
+    sysLog('INFO', `[${cam.id}] Memulai perekaman kontinyu FFmpeg (${isDemo ? 'libx264' : 'copy'}${audioArgs[0] === '-an' ? ' -an' : ' +' + (cam.audioCodec || 'aac')}) [${useSub ? 'SD/Sub' : 'HD/Main'}] [Mode: ${modeLabel}] -> ${recBase}`, 'CAMERA');
 
     const child = spawn('ffmpeg', args);
     child.killedByUser = false;
@@ -3738,8 +3760,15 @@ function spawnRecordingFFmpeg(cam) {
     });
     child.stderr.on('data', d => {
         let str = d.toString();
-        // Simpan pesan error penting (abaikan info segmen normal)
-        if (!str.includes('Opening ') && !str.includes('for writing') && !str.includes('frame=')) {
+        // Simpan pesan error penting (abaikan info segmen normal dan peringatan non-kritis timestamp)
+        const isBenign = str.includes('Opening ') || 
+                         str.includes('for writing') || 
+                         str.includes('frame=') || 
+                         str.includes('Non-monotonic DTS') || 
+                         str.includes('past duration too large') ||
+                         str.includes('Application provided invalid, non monotonically increasing dts') ||
+                         str.includes('deprecated pixel format');
+        if (!isBenign) {
             child.lastErr = str;
         }
     });
@@ -3751,21 +3780,38 @@ function spawnRecordingFFmpeg(cam) {
 
         if (!child.killedByUser) {
             const cleanErr = (child.lastErr || '').trim().replace(/[\r\n]+/g, ' ');
-            const isOptionError = cleanErr && (cleanErr.includes('Unrecognized option') || cleanErr.includes('Option not found') || cleanErr.includes('Error splitting the argument list'));
+            const isDimensionError = cleanErr && (
+                cleanErr.includes('dimensions not set') || 
+                cleanErr.includes('Could not write header') || 
+                cleanErr.includes('Invalid argument') || 
+                code === 234
+            );
+            const isOptionError = cleanErr && (
+                cleanErr.includes('Unrecognized option') || 
+                cleanErr.includes('Option not found') || 
+                cleanErr.includes('Error splitting the argument list')
+            );
             
-            if (isOptionError) {
-                // Auto-healing: Jika terdeteksi opsi tidak dikenali, naikkan level fallback dan nonaktifkan opsi bermasalah secara permanen di runtime
+            if (isOptionError || isDimensionError) {
+                // Auto-healing: Jika terdeteksi opsi tidak dikenali atau dimensi belum siap, naikkan level fallback
                 const currentLevel = camRecordingFallbackLevel.get(cam.id) || 0;
-                camRecordingFallbackLevel.set(cam.id, Math.min(2, currentLevel + 1));
+                const nextLevel = Math.min(2, currentLevel + 1);
+                camRecordingFallbackLevel.set(cam.id, nextLevel);
                 
-                if (cleanErr.includes('stimeout') || cleanErr.includes('timeout')) {
-                    ffmpegCapabilities.rtspTimeoutFlag = null; // Matikan opsi timeout global untuk kamera berikutnya
+                if (isOptionError) {
+                    if (cleanErr.includes('stimeout') || cleanErr.includes('timeout')) {
+                        ffmpegCapabilities.rtspTimeoutFlag = null; // Matikan opsi timeout global untuk kamera berikutnya
+                    }
+                    if (cleanErr.includes('prefer_tcp')) {
+                        ffmpegCapabilities.supportsPreferTcp = false;
+                    }
+                    sysLog('WARN', `[${cam.id}] Opsi FFmpeg tidak kompatibel di STB (${cleanErr.slice(0, 100)}). Auto-healing aktif: Beralih ke mode ${nextLevel >= 2 ? 'Ultra-Safe Vanilla' : 'Adaptive'}...`, 'CAMERA');
+                } else {
+                    sysLog('WARN', `[${cam.id}] Kamera lambat mengirim parameter SPS/PPS (Code: ${code} - ${cleanErr.slice(0, 80) || 'dimensions not set'}). Auto-healing aktif: Beralih ke fallback mode ${nextLevel === 1 ? 'Direct RTSP Keyframe Probe' : 'Ultra-Safe Vanilla'}...`, 'CAMERA');
                 }
-                if (cleanErr.includes('prefer_tcp')) {
-                    ffmpegCapabilities.supportsPreferTcp = false;
-                }
-
-                sysLog('WARN', `[${cam.id}] Terdeteksi argumen FFmpeg tidak didukung di STB (${cleanErr.slice(0, 100)}). Auto-healing aktif: Mengalihkan kamera ke mode ${currentLevel + 1 >= 2 ? 'Ultra-Safe Vanilla' : 'Adaptive'}...`, 'CAMERA');
+            } else if (code === 0) {
+                // Exit code 0 adalah normal EOF / socket ditutup oleh pihak kamera atau router
+                sysLog('INFO', `[${cam.id}] Aliran RTSP kamera terputus normal dari sumber (EOF / RTSP Session Closed). Reconnect otomatis dalam 8 detik...`, 'CAMERA');
             } else {
                 sysLog('WARN', `[${cam.id}] Perekaman FFmpeg berhenti (Code: ${code}). Err: ${cleanErr.slice(0, 140)} Reconnect otomatis...`, 'CAMERA');
             }
@@ -3773,8 +3819,8 @@ function spawnRecordingFFmpeg(cam) {
             const timerKey = `rec_${cam.id}`;
             if (reconnectTimers[timerKey]) clearTimeout(reconnectTimers[timerKey]);
             
-            // Reconnect cepat 2.5 detik jika terjadi kegagalan argumen, atau 10 detik dengan jitter jika putus koneksi jaringan
-            const retryDelay = isOptionError ? 2500 : (10000 + Math.floor(Math.random() * 5000));
+            // Reconnect cepat 2.5 detik jika terjadi auto-healing (dimensions not set / option error), atau 8-12 detik untuk disconnect jaringan normal
+            const retryDelay = (isOptionError || isDimensionError) ? 2500 : (8000 + Math.floor(Math.random() * 4000));
             reconnectTimers[timerKey] = setTimeout(() => {
                 const currentCam = getCameras().find(c => c.id === cam.id);
                 if (currentCam && currentCam.enabled && currentCam.recordMode === 'continuous') {

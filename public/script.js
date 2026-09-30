@@ -15179,10 +15179,16 @@ function ensureNetMgrModalDOM() {
                         <div style="display:flex; align-items:center; gap:0.5rem;">
                             <span style="font-size:1.2rem;">⚡</span>
                             <strong style="color:#34d399; font-size:0.95rem;">arch3rBridge &mdash; Transparent Proxy-ARP Relay (Zero-Lockout)</strong>
+                            <span onclick="window.toggleNetMgrHelp('helpArch3rBridge')" title="Klik untuk penjelasan fungsi arch3rBridge bagi pengguna umum" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(52,211,153,0.15); border:1px solid #059669; color:#34d399; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:2px;">?</span>
                         </div>
                         <span id="arch3rBridgeBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:3px 10px; font-weight:700;">
                             ⚪ INAKTIF
                         </span>
+                    </div>
+
+                    <!-- Tooltip Box arch3rBridge -->
+                    <div id="helpArch3rBridge" style="display:none; background:rgba(6,78,59,0.35); border:1px solid #059669; border-radius:6px; padding:0.65rem 0.85rem; font-size:0.78rem; color:#d1fae5; line-height:1.45; margin-bottom:0.75rem;">
+                        💡 <strong>Tujuan arch3rBridge (Untuk Umum):</strong> Menjembatani port LAN kabel (eth0) dan Wi-Fi (wlan0) secara transparan di kernel STB via Proxy-ARP &amp; IP Forwarding. Mengizinkan perangkat di Wi-Fi (seperti HP/Laptop) dan perangkat di LAN (CCTV/Komputer) saling berkomunikasi bebas tanpa terhalang isolasi router ISP (AP Isolation).
                     </div>
 
                     <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
@@ -15233,9 +15239,17 @@ function ensureNetMgrModalDOM() {
 
                 <!-- FITUR 4: STATIC ROUTE CAMERA / SUBNET BINDING -->
                 <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
-                    <strong style="color:#f8fafc; font-size:0.9rem; display:block; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem;">
-                        🎯 Pengikatan Static Route Kamera / Subnet CIDR
-                    </strong>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem;">
+                        <strong style="color:#f8fafc; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
+                            <span>🎯</span> Pengikatan Static Route Kamera / Subnet CIDR
+                            <span onclick="window.toggleNetMgrHelp('helpStaticRoute')" title="Klik untuk penjelasan fungsi Pengikatan Static Route bagi pengguna umum" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(56,189,248,0.15); border:1px solid #0284c7; color:#38bdf8; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:2px;">?</span>
+                        </strong>
+                    </div>
+
+                    <!-- Tooltip Box Static Route -->
+                    <div id="helpStaticRoute" style="display:none; background:rgba(12,74,110,0.35); border:1px solid #0284c7; border-radius:6px; padding:0.65rem 0.85rem; font-size:0.78rem; color:#bae6fd; line-height:1.45; margin-bottom:0.75rem;">
+                        💡 <strong>Tujuan Pengikatan Static Route (Untuk Umum):</strong> Menjadi rambu penunjuk arah khusus bagi Linux STB agar tidak salah pintu (LAN vs Wi-Fi) saat mengirim data ke perangkat target. Ketik <code>192.168.1.0/24</code> untuk seluruh perangkat di subnet sekaligus, atau ketik IP tunggal (misal <code>192.168.1.5</code>).
+                    </div>
 
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem;">
                         <div>
@@ -15307,6 +15321,13 @@ window.closeNetMgrModal = function() {
         modal.classList.remove('active');
         modal.style.display = 'none';
     }
+};
+
+window.toggleNetMgrHelp = function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isHidden = el.style.display === 'none' || !el.style.display;
+    el.style.display = isHidden ? 'block' : 'none';
 };
 
 window.toggleWifiPasswordVisibility = function() {
