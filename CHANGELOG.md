@@ -1,5 +1,18 @@
 # Changelog
 
+## [Ver 11.7.0] - 2026-09-30
+### Intelligent Stream Watchdog Auto-Recovery, Low-Latency Drift Catchup & GPU Decoder Cleaner
+- **Watchdog Pemantau Aliran Cerdas & Auto-Recovery Anti-Macet (`public/script.js`):**
+  - Meningkatkan interval evaluasi watchdog menjadi 2 detik dengan deteksi proaktif pada 3 kondisi kritis:
+    1. **Stuck Handshake Awal**: Jika petak kamera tertahan pada status *connecting/buffering* tanpa frame (`readyState < 2`) selama > 4 detik, watchdog otomatis me-reset dan menyambung ulang stream tanpa perlu refresh halaman.
+    2. **Autoplay Blocked / Paused Unexpectedly**: Otomatis memanggil `video.play()` jika elemen video terhenti saat slot aktif.
+    3. **Frozen Frame (Gambar Beku)**: Jika `timeupdate` tidak bergerak selama > 3.8 detik, memicu auto-reconnect cerdas.
+- **Pembersihan Bersih Decoder Hardware GPU STB (`public/script.js` - `destroyHlsPlayers`):**
+  - Menambahkan pelepasan referensi elemen video (`srcObject = null`, penghapusan `src`) saat pergantian channel / layout grid agar hardware media decoder GPU STB Armbian tidak terkunci (*zero lingering decoder leak*).
+- **Tuning Latensi Rendah HLS (`public/script.js` - `initHlsPlayer`):**
+  - Mengonfigurasi `liveSyncDurationCount: 1`, `liveMaxLatencyDurationCount: 3`, `maxBufferLength: 4` untuk menjaga pemutaran selalu berada pada *live edge* dan mencegah penumpukan *buffer drift*.
+- **Sinkronisasi Versi Penuh**: Mengikuti aturan semantic versioning ketat (11.6.9 -> 11.7.0) pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.6.9] - 2026-09-30
 ### Cross-Scope Camera Identifier Normalizer, Zero-ReferenceError HUD & Resilient RTSP Polling
 - **Eliminasi Celah `ReferenceError` pada Lingkup Skrip (`public/script.js`):**

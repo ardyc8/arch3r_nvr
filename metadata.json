@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.6.9 - Cross-Scope Camera Identifier Normalizer, Zero-ReferenceError HUD & Resilient RTSP Polling.",
+  "description": "Arch3r NVR Ver. 11.7.0 - Intelligent Stream Watchdog Auto-Recovery, Low-Latency Drift Catchup & GPU Decoder Cleaner.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

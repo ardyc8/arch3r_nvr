@@ -4295,11 +4295,18 @@ async function fetchCameras() {
             }
             delete activeWebRtcPlayers[id];
         }
+        // Bersihkan referensi video element agar hardware decoder GPU STB terbebas seketika
+        document.querySelectorAll('.cam-player-video').forEach(v => {
+            try {
+                v.srcObject = null;
+                v.removeAttribute('src');
+            } catch (_) {}
+        });
     }
     window.destroyHlsPlayers = destroyHlsPlayers;
     window.activeHlsPlayers = activeHlsPlayers;
 
-    // --- STREAM HEALTH WATCHDOG & STALLED/FREEZE RECOVERY ENGINE (Ver. 10.9.2) ---
+    // --- STREAM HEALTH WATCHDOG & STALLED/FREEZE RECOVERY ENGINE (Ver. 11.7.0) ---
     const streamHealthTracker = {};
     window.streamHealthTracker = streamHealthTracker;
     let streamWatchdogInterval = null;
@@ -4394,33 +4401,51 @@ async function fetchCameras() {
                 if (slot && slot.isPlaying === false) continue;
 
                 const video = document.getElementById(id);
-                if (!video || video.paused) continue;
+                if (!video) continue;
 
-                // Cek apakah video sedang aktif diputar
-                if (video.readyState >= 2) {
-                    const elapsed = now - (entry.lastTickTime || now);
-                    // Jika frame video tidak bergerak sama sekali selama > 5.5 detik (beku/melekat)
-                    if (elapsed > 5500) {
-                        setStreamState(id, 'stalled', '🔴 ALIRAN TERPUTUS / BEKU', 'Gambar terhenti. Menyiapkan rekoneksi...');
-                        
-                        // Jika sudah macet > 7.5 detik dan belum dalam proses reconnecting
-                        if (elapsed > 7500 && !entry.isReconnecting) {
-                            entry.isReconnecting = true;
-                            setStreamState(id, 'reconnecting', '🔄 MENYAMBUNG ULANG STREAM...', 'Menyegarkan koneksi stream kamera...');
-                            if (entry.hlsUrl && entry.streamPath) {
-                                playUltraStream(id, entry.hlsUrl, entry.streamPath);
-                            }
-                            entry.lastTickTime = Date.now();
-                            setTimeout(() => {
-                                if (streamHealthTracker[id]) {
-                                    streamHealthTracker[id].isReconnecting = false;
-                                }
-                            }, 4000);
+                const elapsed = now - (entry.lastTickTime || now);
+
+                // Kasus 1: Video tertahan di status connecting/buffering awal tanpa frame (> 4.0 detik)
+                if (video.readyState < 2) {
+                    if (elapsed > 4000 && !entry.isReconnecting) {
+                        entry.isReconnecting = true;
+                        setStreamState(id, 'reconnecting', '🔄 MENYAMBUNG ULANG STREAM...', 'Menginisialisasi ulang handshake...');
+                        if (entry.hlsUrl && entry.streamPath) {
+                            playUltraStream(id, entry.hlsUrl, entry.streamPath);
                         }
+                        entry.lastTickTime = Date.now();
+                        setTimeout(() => {
+                            if (streamHealthTracker[id]) streamHealthTracker[id].isReconnecting = false;
+                        }, 3500);
+                    }
+                    continue;
+                }
+
+                // Kasus 2: Video dalam status ready tetapi terhenti/paused (autoplay terhalang atau packet loss)
+                if (video.paused && slot && slot.isPlaying !== false) {
+                    video.play().catch(() => {});
+                }
+
+                // Kasus 3: Frame membeku (timeupdate tidak bergerak > 3.8 detik)
+                if (elapsed > 3800) {
+                    setStreamState(id, 'stalled', '🔴 ALIRAN TERPUTUS / BEKU', 'Gambar terhenti. Menyiapkan rekoneksi...');
+                    
+                    if (elapsed > 5000 && !entry.isReconnecting) {
+                        entry.isReconnecting = true;
+                        setStreamState(id, 'reconnecting', '🔄 MENYAMBUNG ULANG STREAM...', 'Menyegarkan koneksi stream kamera...');
+                        if (entry.hlsUrl && entry.streamPath) {
+                            playUltraStream(id, entry.hlsUrl, entry.streamPath);
+                        }
+                        entry.lastTickTime = Date.now();
+                        setTimeout(() => {
+                            if (streamHealthTracker[id]) {
+                                streamHealthTracker[id].isReconnecting = false;
+                            }
+                        }, 3500);
                     }
                 }
             }
-        }, 3000); // Check every 3 seconds
+        }, 2000); // Cek setiap 2 detik untuk responsifitas instan
     }
     startStreamHealthWatchdog();
 
@@ -4611,11 +4636,15 @@ async function fetchCameras() {
             const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '');
             const hls = new Hls({
                 lowLatencyMode: true,
-                maxBufferLength: 6,
-                maxMaxBufferLength: 10,
-                maxBufferSize: 15 * 1024 * 1024,
+                liveSyncDurationCount: 1,
+                liveMaxLatencyDurationCount: 3,
+                maxBufferLength: 4,
+                maxMaxBufferLength: 6,
+                maxBufferSize: 8 * 1024 * 1024,
                 backBufferLength: 0,
                 enableWorker: true,
+                manifestLoadingTimeOut: 4000,
+                fragLoadingTimeOut: 4000,
                 xhrSetup: function (xhr, url) {
                     xhr.withCredentials = true;
                     if (token) {
