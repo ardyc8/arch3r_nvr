@@ -3194,12 +3194,19 @@ body.kiosk-display-mode .cam-audio-toggle {
         font-size: 0.7rem !important;
     }
 
-    /* 4. Compact Modal Cards & Dialogs */
-    .modal-card, .modal-content, .auth-card {
+    /* 4. Compact Modal Cards & Dialogs (Auth Card tetap nyaman & proporsional) */
+    .modal-card, .modal-content {
         padding: 0.85rem !important;
         width: 95vw !important;
         max-width: 95vw !important;
         border-radius: 8px !important;
+    }
+
+    .auth-card {
+        padding: 1.85rem 1.5rem !important;
+        width: 90% !important;
+        max-width: 420px !important;
+        border-radius: 12px !important;
     }
 
     /* 5. Compact Tables (Kamera, User, Logs, Audit) */

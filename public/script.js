@@ -6228,6 +6228,17 @@ async function fetchSystemSettings() {
         }, 4000); // 4-second gentle cadence protects STB
     };
 
+    window.toggleLogFilterPanel = function() {
+        const panel = document.getElementById('logFilterCollapsePanel');
+        const icon = document.getElementById('logFilterArrowIcon');
+        if (!panel) return;
+        const isOpen = panel.style.display === 'flex';
+        panel.style.display = isOpen ? 'none' : 'flex';
+        if (icon) {
+            icon.textContent = isOpen ? '🔍 Filter & Cari ▾' : '🔍 Tutup Filter ▴';
+        }
+    };
+
     window.stopLogsLivePolling = function() {
         if (autoLogInterval) {
             clearInterval(autoLogInterval);

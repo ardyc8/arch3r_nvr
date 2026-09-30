@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.8.0] - 2026-09-30
+### Restored Classic Login Zoom, Collapsible Log Filter Hub & Compact Telemetry Metric Strip
+- **Restorasi Zoom Proporsional Layar Login (`public/style.css`):**
+  - Mengembalikan skala tampilan kartu login `.auth-card` ke ukuran aslinya yang nyaman, luas, dan proporsional (`padding: 1.85rem 1.5rem; max-width: 420px`).
+- **Optimalisasi Panel System Logs & Telemetry (`public/index.html` & `public/script.js`):**
+  - **Collapsible Filter & Search Panel**: Menjadikan area pencarian dan filter kategori/level sebagai panel lipat (*dropdown accordion*) dengan tombol toggle `🔍 Filter & Cari ▾`.
+  - **Presisi Ikon Pencarian**: Merapikan letak ikon kaca pembesar `🔍` agar berada presisi secara inline di dalam kotak input pencarian tanpa melenceng.
+  - **Bilah Metrik Ringkas (Compact Strip)**: Mengganti 4 kartu metrik besar yang memakan layar menjadi bilah pill ringkas (*Total, Info, Warn, Error*), sehingga tabel catatan log naik ke atas dan langsung terbaca dengan leluasa.
+  - **Tombol Aksi Kompak**: Merampingkan tombol kontrol (Stop/Mulai, Segarkan, Salin, Ekspor, Bersihkan) dengan ukuran `0.74rem` yang rapi dan profesional.
+- **Sinkronisasi Versi Penuh**: Mengikuti aturan *Semantic Versioning Strict* (naik ke Ver. 11.8.0) pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.7.9] - 2026-09-30
 ### Professional Login Branding & Mobile Bottom Navigation Bar Collision Prevention
 - **Pembersihan & Standarisasi Tombol Layar Login (`public/index.html`):**

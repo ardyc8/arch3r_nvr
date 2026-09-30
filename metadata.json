@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.7.9 - Professional Login Branding & Mobile Bottom Navigation Bar Collision Prevention.",
+  "description": "Arch3r NVR Ver. 11.8.0 - Restored Classic Login Zoom, Collapsible Log Filter Hub & Compact Telemetry Metric Strip.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
