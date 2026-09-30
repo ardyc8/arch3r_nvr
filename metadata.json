@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.8.1 - Enterprise Telemetry Log Engine, Short Monospace Timestamps & Unified Action Toolbar.",
+  "description": "Arch3r NVR Ver. 11.8.2 - Responsive Mobile Log Stream Feed, Full-Width Message Rows & 2-Tier Compact Toolbar.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

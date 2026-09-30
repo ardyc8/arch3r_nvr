@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.8.2] - 2026-09-30
+### Responsive Mobile Log Stream Feed, Full-Width Message Rows & 2-Tier Compact Toolbar
+- **Transformasi Tampilan Log Mobile (Log Stream Event Feed) (`public/script.js` & `public/style.css`):**
+  - **Eliminasi Kolom Tergencet**: Mengubah tabel datar desktop di HP menjadi format *Card / Event Stream Feed*.
+  - **Baris Atas Kompak**: Stempel waktu `[03:43:04]` bersama badge level `[🟡 WARN]` dan kategori `[📹 CAMERA]` tersusun horizontal rapi di baris atas.
+  - **Baris Bawah Lebar Penuh (100% Width)**: Teks isi pesan dan diagnostik sistem ditampilkan selebar 100% layar tanpa terpotong atau tertekan ke samping.
+- **Penataan Toolbar 2-Tingkat di Layar HP (`public/style.css` & `public/index.html`):**
+  - Mengatur kolom pencarian 100% lebar penuh di atas, diikuti dropdown Kategori (50%) dan Level (50%) di bawahnya.
+  - Merapikan seluruh tombol aksi (*Stop, Segarkan, Salin, Ekspor, Bersihkan*) menjadi 1 baris grid horizontal berukuran `28px` yang kompak dan tidak memakan ruang vertikal.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.8.2 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.1] - 2026-09-30
 ### Enterprise Telemetry Log Engine, Short Monospace Timestamps & Unified Action Toolbar
 - **Optimalisasi Keterbacaan Pesan & Stempel Waktu Ringkas (`public/script.js` & `public/index.html`):**

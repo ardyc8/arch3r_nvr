@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google" content="notranslate">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 11.8.1 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=11.8.1">
+    <title>Arch3r NVR Ver. 11.8.2 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=11.8.2">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -1328,15 +1328,15 @@
                         </div>
                     </div>
 
-                    <!-- Unified Enterprise Toolbar (Search + Filters + Action Tools in One Clean Bar) -->
-                    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0.45rem 0.65rem; margin-bottom:0.45rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.45rem;">
+                    <!-- Unified Enterprise Toolbar (Search + Filters + Action Tools) -->
+                    <div class="log-toolbar-grid">
                         <!-- Left: Inline Search Box & Filters -->
-                        <div style="display:flex; gap:0.4rem; align-items:center; flex:1; min-width:240px; flex-wrap:wrap;">
-                            <div style="display:flex; align-items:center; background:#070d19; border:1px solid #334155; border-radius:6px; padding:0 8px; flex:1; min-width:150px; max-width:260px; height:30px;">
+                        <div class="log-filter-inputs">
+                            <div class="log-search-wrapper" style="display:flex; align-items:center; background:#070d19; border:1px solid #334155; border-radius:6px; padding:0 8px; flex:1; min-width:140px; height:30px;">
                                 <span style="color:#64748b; font-size:0.8rem; margin-right:5px; flex-shrink:0;">🔍</span>
                                 <input type="text" id="logSearchInput" placeholder="Cari pesan / ID log..." style="background:transparent; border:none; outline:none; color:#f8fafc; font-size:0.8rem; width:100%; height:100%;">
                             </div>
-                            <select id="logCategoryFilter" style="padding:0 6px; font-size:0.76rem; background:#070d19; border:1px solid #334155; color:#f8fafc; border-radius:6px; min-width:120px; height:30px; cursor:pointer;">
+                            <select id="logCategoryFilter" style="padding:0 6px; font-size:0.76rem; background:#070d19; border:1px solid #334155; color:#f8fafc; border-radius:6px; height:30px; cursor:pointer; width:100%;">
                                 <option value="ALL">📁 Semua Kategori</option>
                                 <option value="SYSTEM">⚙️ System</option>
                                 <option value="CAMERA">📹 Camera</option>
@@ -1345,7 +1345,7 @@
                                 <option value="DATABASE">🗄️ Database</option>
                                 <option value="ADDON">🧩 Addon</option>
                             </select>
-                            <select id="logLevelFilter" style="padding:0 6px; font-size:0.76rem; background:#070d19; border:1px solid #334155; color:#f8fafc; border-radius:6px; min-width:105px; height:30px; cursor:pointer;">
+                            <select id="logLevelFilter" style="padding:0 6px; font-size:0.76rem; background:#070d19; border:1px solid #334155; color:#f8fafc; border-radius:6px; height:30px; cursor:pointer; width:100%;">
                                 <option value="ALL">⭐ Semua Level</option>
                                 <option value="INFO">🔵 INFO</option>
                                 <option value="WARN">🟡 WARN</option>
@@ -1354,7 +1354,7 @@
                         </div>
 
                         <!-- Right: Action Tools -->
-                        <div style="display:flex; gap:0.35rem; align-items:center; flex-wrap:wrap;">
+                        <div class="log-action-btns">
                             <button id="btnToggleAutoLog" class="btn btn-secondary" style="display:flex; align-items:center; gap:4px; font-size:0.74rem; padding:0 8px; height:30px; border-color:rgba(59,130,246,0.3); color:#60a5fa;" onclick="window.toggleAutoLog()" title="Jeda / Lanjutkan Auto-Stream">
                                 <span id="autoLogIcon">⏸️</span> <span id="autoLogText">Stop</span>
                             </button>
@@ -1365,7 +1365,7 @@
                                 <span>📋</span> Salin
                             </button>
                             <div style="position:relative; display:inline-block;">
-                                <button type="button" class="btn btn-secondary" onclick="window.toggleExportDropdown()" style="display:flex; align-items:center; gap:3px; font-size:0.74rem; padding:0 8px; height:30px;">
+                                <button type="button" class="btn btn-secondary" onclick="window.toggleExportDropdown()" style="display:flex; align-items:center; gap:3px; font-size:0.74rem; padding:0 8px; height:30px; width:100%; justify-content:center;">
                                     <span>📥</span> Ekspor ▾
                                 </button>
                                 <div id="logExportDropdown" style="display:none; position:absolute; right:0; top:110%; background:#1e293b; border:1px solid var(--border); border-radius:6px; box-shadow:0 8px 20px rgba(0,0,0,0.6); z-index:50; min-width:140px; overflow:hidden;">
@@ -2568,6 +2568,6 @@ Memuat log real-time aliran kamera...
         </div>
     </div>
 
-    <script src="script.js?v=11.8.1"></script>
+    <script src="script.js?v=11.8.2"></script>
 </body>
 </html>

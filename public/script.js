@@ -6203,11 +6203,17 @@ async function fetchSystemSettings() {
                 timeStr = String(log.timestamp || '-');
             }
             
-            return `<tr style="border-bottom:1px solid rgba(255,255,255,0.05); color:#f8fafc; transition:background 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background=''">
-                <td style="padding:7px 10px; color:#94a3b8; white-space:nowrap; width:95px; font-size:0.78rem; font-family:monospace;">${timeStr}</td>
-                <td style="padding:7px 10px; width:85px;"><span style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:2px 6px; border-radius:4px; font-weight:700; font-size:0.7rem; display:inline-flex; align-items:center; gap:3px;">${levelIcon} ${log.level}</span></td>
-                <td style="padding:7px 10px; width:95px;"><span style="background:${catBg}; color:${catColor}; border:1px solid rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; font-size:0.7rem; display:inline-flex; align-items:center; gap:3px; font-weight:600;">${catIcon} ${cat}</span></td>
-                <td style="padding:7px 10px; font-size:0.85rem; line-height:1.5; color:#f1f5f9; word-break:break-word;">${escapeHtml(log.message || '')}</td>
+            return `<tr class="log-stream-row" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                <td class="log-desktop-cell log-mobile-header-cell" style="padding:7px 10px; color:#94a3b8; white-space:nowrap; width:95px; font-size:0.78rem; font-family:monospace;">
+                    <div class="log-telemetry-row-mobile-top">
+                        <span class="log-time">${timeStr}</span>
+                        <span class="log-mobile-badge" style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:1px 6px; border-radius:4px; font-weight:700; font-size:0.68rem; display:inline-flex; align-items:center; gap:3px;">${levelIcon} ${log.level}</span>
+                        <span class="log-mobile-badge" style="background:${catBg}; color:${catColor}; border:1px solid rgba(255,255,255,0.08); padding:1px 6px; border-radius:4px; font-size:0.68rem; display:inline-flex; align-items:center; gap:3px; font-weight:600;">${catIcon} ${cat}</span>
+                    </div>
+                </td>
+                <td class="log-desktop-only" style="padding:7px 10px; width:85px;"><span style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; padding:2px 6px; border-radius:4px; font-weight:700; font-size:0.7rem; display:inline-flex; align-items:center; gap:3px;">${levelIcon} ${log.level}</span></td>
+                <td class="log-desktop-only" style="padding:7px 10px; width:95px;"><span style="background:${catBg}; color:${catColor}; border:1px solid rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; font-size:0.7rem; display:inline-flex; align-items:center; gap:3px; font-weight:600;">${catIcon} ${cat}</span></td>
+                <td class="log-msg-cell" style="padding:7px 10px; font-size:0.85rem; line-height:1.5; color:#f1f5f9; word-break:break-word;">${escapeHtml(log.message || '')}</td>
             </tr>`;
         }).join('');
     }
