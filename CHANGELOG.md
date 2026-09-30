@@ -1,5 +1,13 @@
 # Changelog
 
+## [Ver 11.7.6] - 2026-09-30
+### Full REST Persistence for Transcode Mode & Instant Sub-Stream Micro-Transcoder Trigger
+- **Penyimpanan Permanen `transcodeMode` di Endpoint REST API (`server.js`):**
+  - Menambahkan pembacaan dan penyimpanan variabel `transcodeMode` pada endpoint `POST /api/cameras` dan `PUT /api/cameras/:id`.
+  - Memastikan opsi pilihan mode (*Auto-Adaptive*, *Direct Passthrough*, atau *Paksa Micro-Transcode*) tersimpan permanen di database `nvr_db.json` dan tidak kembali/reset ke *Auto* saat form kamera dibuka kembali.
+  - Memicu auto-reload `syncMediaMtxConfig()` seketika setelah data kamera disimpan untuk mengaktifkan jalur `runOnDemand` transcode pada MediaMTX.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.7.6 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.7.5] - 2026-09-30
 ### On-Demand Micro-Transcoder Engine for HEVC Dual-Lens Cameras & Zero-Idle CPU Consumption
 - **Mesin Micro-Transcoder On-Demand Cerdas (`server.js` - `syncMediaMtxConfig`):**

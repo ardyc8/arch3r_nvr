@@ -4177,7 +4177,8 @@ app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
         mainStreamUrl, subStreamUrl, mainStreamUri, subStreamUri, rtspUrl,
         storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec,
         transcode, ptzEnabled, hasPtz, ptzProtocol, ptzUrl, ptzUser, ptzPass,
-        onvifProfileToken, profileToken, audioEnabled, hasAudio, audioCodec
+        onvifProfileToken, profileToken, audioEnabled, hasAudio, audioCodec,
+        transcodeMode
     } = req.body;
     
     // Support aliases: mainStreamUri / subStreamUri / rtspUrl / mainStreamUrl
@@ -4232,6 +4233,7 @@ app.post('/api/cameras', verifyToken, requireAdministrator, (req, res) => {
         mainStreamUrl: finalMainUrl, 
         subStreamUrl: finalSubUrl, 
         transcode: transcode || 'auto',
+        transcodeMode: transcodeMode || 'auto',
         audioEnabled: finalAudioEnabled,
         audioCodec: audioCodec || 'aac',
         resolution: resolution || "1080p",
@@ -4290,7 +4292,8 @@ app.put('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
         mainStreamUrl, subStreamUrl, mainStreamUri, subStreamUri, rtspUrl,
         storagePath, resolution, fps, recordMode, maxStorageDays, maxFolderSizeGB, segmentDurationSec,
         transcode, ptzEnabled, hasPtz, ptzProtocol, ptzUrl, ptzUser, ptzPass,
-        onvifProfileToken, profileToken, audioEnabled, hasAudio, audioCodec
+        onvifProfileToken, profileToken, audioEnabled, hasAudio, audioCodec,
+        transcodeMode
     } = req.body;
     
     stopCameraRecording(req.params.id);
@@ -4331,6 +4334,7 @@ app.put('/api/cameras/:id', verifyToken, requireAdministrator, (req, res) => {
         mainStreamUrl: finalMainUrl,
         subStreamUrl: finalSubUrl,
         transcode: transcode !== undefined ? transcode : (targetCam.transcode || 'auto'),
+        transcodeMode: transcodeMode !== undefined ? transcodeMode : (targetCam.transcodeMode || 'auto'),
         audioEnabled: finalAudioEnabled,
         audioCodec: audioCodec !== undefined ? audioCodec : (targetCam.audioCodec || 'aac'),
         ptzEnabled: finalPtzEnabled,

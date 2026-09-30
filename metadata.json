@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.7.5 - On-Demand Micro-Transcoder Engine for HEVC Dual-Lens Cameras & Zero-Idle CPU Consumption.",
+  "description": "Arch3r NVR Ver. 11.7.6 - Full REST Persistence for Transcode Mode & Instant Sub-Stream Micro-Transcoder Trigger.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
