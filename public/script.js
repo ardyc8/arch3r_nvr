@@ -2488,6 +2488,9 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
         
         const tc = document.getElementById('camTranscode');
         if(tc) tc.value = cam.transcode || 'auto';
+
+        const transModeEl = document.getElementById('camTranscodeMode');
+        if(transModeEl) transModeEl.value = cam.transcodeMode || 'auto';
         
         const sPath = document.getElementById('camStoragePath');
         if(sPath) sPath.value = cam.storagePath || '';
@@ -2905,6 +2908,7 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
                 maxFolderSizeGB: document.getElementById('camMaxGB') ? parseFloat(document.getElementById('camMaxGB').value) : 10,
                 segmentDurationSec: document.getElementById('camSegmentSec') ? parseInt(document.getElementById('camSegmentSec').value) : 900,
                 transcode: document.getElementById('camTranscode') ? document.getElementById('camTranscode').value : 'auto',
+                transcodeMode: document.getElementById('camTranscodeMode') ? document.getElementById('camTranscodeMode').value : 'auto',
                 storagePath: (document.getElementById('camStoragePath')?.value || document.getElementById('camStorageSelect')?.value || '').trim()
             };
             

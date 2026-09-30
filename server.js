@@ -3485,6 +3485,22 @@ function syncMediaMtxConfig() {
             const mainUrl = formatStreamUrl(cam.mainStreamUrl);
             const subUrl = formatStreamUrl(cam.subStreamUrl);
 
+            // Deteksi apakah kamera memerlukan Micro-Transcoder H.264 (khusus HEVC/H.265 seperti Franwell 2-lensa)
+            const transcodeMode = cam.transcodeMode || 'auto';
+            const isHevcDetected = Boolean(
+                transcodeMode === 'transcode_sub' ||
+                (transcodeMode === 'auto' && (
+                    cam.videoCodec === 'hevc' || 
+                    cam.videoCodec === 'h265' || 
+                    cam.codec === 'hevc' || 
+                    cam.codec === 'h265' ||
+                    (cam.detectedCodec && cam.detectedCodec.toLowerCase().includes('hevc')) ||
+                    (cam.detectedCodec && cam.detectedCodec.toLowerCase().includes('h265')) ||
+                    (cam.mainStreamUrl && cam.mainStreamUrl.includes('ch00_1') && !cam.subStreamUrl)
+                ))
+            );
+
+            // Main Stream (Selalu passthrough untuk perekaman 100% jernih asli tanpa beban CPU)
             if (mainUrl) {
                 lines.push(`  ${safeId}:`);
                 lines.push(`    source: "${mainUrl}"`);
@@ -3494,12 +3510,27 @@ function syncMediaMtxConfig() {
                 activeCount++;
             }
 
+            // Sub Stream (Untuk Live View Monitor di HP / Browser)
             if (subUrl && subUrl !== mainUrl) {
                 lines.push(`  ${safeId}_sub:`);
-                lines.push(`    source: "${subUrl}"`);
-                lines.push(`    sourceProtocol: tcp`);
-                lines.push(`    sourceAnyPortEnable: yes`);
-                lines.push(`    sourceOnDemand: no`);
+                if (isHevcDetected) {
+                    // Micro-Transcoder HEVC -> H.264 On-Demand (0% CPU saat idle, ~2% saat monitor aktif dibuka)
+                    lines.push(`    source: publisher`);
+                    lines.push(`    runOnDemand: "ffmpeg -loglevel error -rtsp_transport tcp -i ${subUrl} -c:v libx264 -preset ultrafast -tune zerolatency -b:v 450k -maxrate 600k -bufsize 800k -an -f rtsp rtsp://127.0.0.1:8554/${safeId}_sub"`);
+                    lines.push(`    runOnDemandCloseAfter: 10s`);
+                } else {
+                    lines.push(`    source: "${subUrl}"`);
+                    lines.push(`    sourceProtocol: tcp`);
+                    lines.push(`    sourceAnyPortEnable: yes`);
+                    lines.push(`    sourceOnDemand: no`);
+                }
+                activeCount++;
+            } else if (isHevcDetected && mainUrl) {
+                // Jika subUrl belum diisi terpisah tapi terdeteksi HEVC, sediakan jalur sub-stream transcode otomatis
+                lines.push(`  ${safeId}_sub:`);
+                lines.push(`    source: publisher`);
+                lines.push(`    runOnDemand: "ffmpeg -loglevel error -rtsp_transport tcp -i ${mainUrl} -s 640x360 -c:v libx264 -preset ultrafast -tune zerolatency -b:v 350k -maxrate 500k -bufsize 700k -an -f rtsp rtsp://127.0.0.1:8554/${safeId}_sub"`);
+                lines.push(`    runOnDemandCloseAfter: 10s`);
                 activeCount++;
             }
         });

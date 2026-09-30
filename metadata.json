@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.7.4 - One-Click Clipboard Log Exporter, Mobile Zoom-Out HUD & Compact Timestamp Formatting.",
+  "description": "Arch3r NVR Ver. 11.7.5 - On-Demand Micro-Transcoder Engine for HEVC Dual-Lens Cameras & Zero-Idle CPU Consumption.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

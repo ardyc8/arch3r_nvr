@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google" content="notranslate">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 11.7.4 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=11.7.4">
+    <title>Arch3r NVR Ver. 11.7.5 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=11.7.5">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -733,6 +733,16 @@
                                         <small style="color:#64748b; font-size:0.72rem;">Opsional (Otomatis fallback ke Main jika kosong)</small>
                                     </div>
                                     <input type="text" id="camSubUrl" placeholder="rtsp://admin:pass@192.168.1.100:554/live/ch00_0" style="font-family:monospace; font-size:0.82rem;">
+                                </div>
+
+                                <div class="form-group" style="margin-top:0.5rem;">
+                                    <label style="margin:0; font-size:0.8rem; color:#94a3b8; margin-bottom:0.25rem; display:block;">Mode Aliran Monitor Live (Live Stream WebRTC / Transcoder)</label>
+                                    <select id="camTranscodeMode" class="form-control" style="font-size:0.82rem; background:#0b1120; border-color:#334155; color:#f8fafc;">
+                                        <option value="auto">⚡ Auto-Adaptive (Passthrough H.264 / Micro-Transcode jika HEVC)</option>
+                                        <option value="passthrough">⚡ Direct Passthrough Murni (0% CPU - Kamera Standar H.264)</option>
+                                        <option value="transcode_sub">🎬 Paksa Micro-Transcode Sub-Stream ke H.264 (Anti-Layar Hitam)</option>
+                                    </select>
+                                    <small style="color:#64748b; font-size:0.71rem; margin-top:2px; display:block;">Opsi default Auto-Adaptive akan otomatis menyalakan converter ringan jika mendeteksi kamera HEVC/H.265 (seperti Franwell 2-lensa).</small>
                                 </div>
 
                                 <!-- Action Buttons: Test Connection & Probe -->
@@ -2586,6 +2596,6 @@ Memuat log real-time aliran kamera...
         </div>
     </div>
 
-    <script src="script.js?v=11.7.4"></script>
+    <script src="script.js?v=11.7.5"></script>
 </body>
 </html>

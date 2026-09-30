@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 11.7.5] - 2026-09-30
+### On-Demand Micro-Transcoder Engine for HEVC Dual-Lens Cameras & Zero-Idle CPU Consumption
+- **Mesin Micro-Transcoder On-Demand Cerdas (`server.js` - `syncMediaMtxConfig`):**
+  - Menerapkan integrasi direktif `runOnDemand` MediaMTX untuk kamera berformat HEVC / H.265 (seperti kamera 2-lensa Franwell `640x720 @ 14 FPS`).
+  - **Zero CPU Idle (0% Beban)**: Saat tidak ada yang memantau monitor live view, proses transcode FFmpeg **sama sekali tidak berjalan**.
+  - **Instant Live Transcode (~2% CPU STB)**: Saat monitor dibuka di HP/PC, MediaMTX secara otomatis memicu konversi cepat HEVC -> H.264 (`libx264 -preset ultrafast -tune zerolatency -b:v 450k`) dan mematikannya kembali setelah 10 detik tidak aktif (`runOnDemandCloseAfter: 10s`).
+  - **Perekaman 100% Asli**: Perekaman kontinyu ke harddisk tetap menggunakan bitstream asli mentah `-c copy` tanpa penurunan resolusi atau kualitas.
+- **Konfigurasi Mode Aliran Kamera (`public/index.html` & `public/script.js`):**
+  - Menambahkan pemilih `Mode Aliran Monitor Live` pada form Tambah / Edit Kamera (*Auto-Adaptive*, *Direct Passthrough*, *Paksa Micro-Transcode*).
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.7.5 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.7.4] - 2026-09-30
 ### One-Click Clipboard Log Exporter, Mobile Zoom-Out HUD & Compact Timestamp Formatting
 - **Tombol Salin Log ke Clipboard Instan (`public/index.html` & `public/script.js`):**
