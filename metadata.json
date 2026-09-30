@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.6.7 - Dedicated Per-Camera 10-Line RAM Ring-Buffer HUD, Static DOM Modal & RTSP Reconnect Engine.",
+  "description": "Arch3r NVR Ver. 11.6.8 - Universal authFetch Token Resolution, Live Log Synthesis & Instant Stream HUD.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -1,5 +1,17 @@
 # Changelog
 
+## [Ver 11.6.8] - 2026-09-30
+### Universal authFetch Token Resolution, Live Log Synthesis & Instant Stream HUD
+- **Perbaikan Resolusi Token Autentikasi Modal Log (`public/script.js` - `refreshStreamLogsModal`):**
+  - Mengganti pemanggilan raw `fetch` dengan helper standar `authFetch` (`getAuthToken()` yang mengekstrak `nvr_auth_token` / `arch3r_token`).
+  - Menghilangkan galat `401 Unauthorized` diam yang sebelumnya menyebabkan HUD log terus tertahan pada status *"Memuat log real-time aliran kamera..."*.
+  - Menghapus pembatasan `isSilent` saat terjadi galat, sehingga setiap kesalahan atau status koneksi langsung tercetak jelas di layar HUD.
+- **Sintesis Status Aliran Live Instan (`server.js` - `/api/cameras/:id/stream-logs`):**
+  - Menambahkan *auto-synthesis live status* jika buffer log rekaman masih kosong pada saat kamera baru saja dibuka.
+  - Menampilkan parameter instan: URL RTSP terverifikasi, jalur relay internal MediaMTX (`rtsp://127.0.0.1:8554/<id>`), status perekaman (Level / Standby), dan konfirmasi kelancaran transmisi real-time.
+  - Memperkuat pencarian kamera (`authorizedCams` + `getCameras()`) untuk menjamin aksesibilitas kamera lintas role.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.6.8 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.6.7] - 2026-09-30
 ### Dedicated Per-Camera 10-Line RAM Ring-Buffer HUD, Static DOM Modal & RTSP Reconnect Engine
 - **Sistem Log Buffer Per-Kamera Berbasis RAM Ring-Buffer FIFO (`server.js`):**

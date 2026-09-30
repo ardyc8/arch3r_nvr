@@ -16093,13 +16093,10 @@ window.refreshStreamLogsModal = async function(isSilent = false) {
     const badgeRec = document.getElementById('badgeStreamRec');
 
     try {
-        const token = localStorage.getItem('nvr_token') || sessionStorage.getItem('nvr_token');
-        const res = await fetch(`/api/cameras/${targetId}/stream-logs`, {
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
+        const res = await (typeof authFetch === 'function' ? authFetch(`/api/cameras/${encodeURIComponent(targetId)}/stream-logs`) : fetch(`/api/cameras/${encodeURIComponent(targetId)}/stream-logs`));
         const data = await res.json();
         if (!data.success) {
-            if (box && !isSilent) box.innerHTML = `<span style="color:#ef4444;">Galat: ${data.error || 'Gagal membaca log kamera'}</span>`;
+            if (box) box.innerHTML = `<span style="color:#ef4444;">[GALAT] ${data.error || 'Gagal membaca log kamera'} (Pastikan Anda telah login)</span>`;
             return;
         }
 
