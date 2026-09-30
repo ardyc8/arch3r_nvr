@@ -1,5 +1,13 @@
 # Changelog
 
+## [Ver 11.7.1] - 2026-09-30
+### Global HTML Sanitizer Normalizer, Bulletproof Console HUD & Stream Telemetry
+- **Deklarasi Universal Helper Sanitasi (`public/script.js` - `escapeHtml`):**
+  - Mengekspos fungsi `escapeHtml` ke lingkup global (`window.escapeHtml = escapeHtml`) di bagian paling atas skrip.
+  - Menghilangkan `ReferenceError: escapeHtml is not defined` saat merender 10 baris log real-time di dalam pop-up modal konsol HUD.
+  - Memastikan seluruh baris log berwarna (INFO/WARN/ERROR) dirender dengan aman, cepat, dan presisi.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi nomor rilis Ver. 11.7.1 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.7.0] - 2026-09-30
 ### Intelligent Stream Watchdog Auto-Recovery, Low-Latency Drift Catchup & GPU Decoder Cleaner
 - **Watchdog Pemantau Aliran Cerdas & Auto-Recovery Anti-Macet (`public/script.js`):**

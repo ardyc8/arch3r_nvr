@@ -60,6 +60,17 @@ function showToast(message, type = 'info') {
 }
 window.showToast = showToast;
 
+// --- Universal HTML Escaping Utility (Global Scope) ---
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
 // --- Universal Token & Auth Fetch Helper (Global Scope) ---
 function getAuthToken() {
     return localStorage.getItem('nvr_auth_token') || localStorage.getItem('arch3r_token') || '';
