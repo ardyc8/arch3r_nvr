@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google" content="notranslate">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 11.8.3 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=11.8.3">
+    <title>Arch3r NVR Ver. 11.8.4 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=11.8.4">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -121,7 +121,7 @@
             <div class="sidebar-profile">
                 <div class="brand">
                     <span class="icon"><img src="Archer.ico?v=2" style="height:1.8rem; width:1.8rem; object-fit:contain; border-radius:6px;"></span>
-                    <h2>Arch3r NVR <span class="badge">Ver. 11.4.1</span></h2>
+                    <h2>Arch3r NVR <span class="badge">Ver. 11.8.4</span></h2>
                 </div>
                 <div class="user-info">
                     <div class="avatar">👨‍💼</div>
@@ -129,7 +129,13 @@
                         <strong id="lblAdminName">Administrator</strong>
                         <span id="lblAdminRole" style="color:#60a5fa;">Owner &bull; Full Access</span>
                     </div>
-                    <button id="btnLogoutAdmin" title="Keluar">🚪</button>
+                    <button id="btnLogoutAdmin" title="Keluar / Log Out" class="btn-logout-sleek">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </button>
                 </div>
                 <!-- Quota Widget for Tenant Admin -->
                 <div id="quotaBadgeContainer" style="display:none; padding: 0.5rem 0.75rem; margin: 0.5rem 0.75rem; background:rgba(30,41,59,0.7); border-radius:6px; font-size:0.75rem; border:1px solid var(--border);">
@@ -171,34 +177,76 @@
             </div>
 
             <nav class="sidebar-nav">
+                <!-- 1. HOME / GENERAL -->
+                <div class="sidebar-category-header">Home / General</div>
                 <a href="#monitor" class="nav-item active" data-target="view-monitor">
                     <span class="icon">🖥️</span> Monitor (Live)
                 </a>
                 <a href="#playback" class="nav-item" data-target="view-playback">
                     <span class="icon">📼</span> Playback
                 </a>
+
+                <!-- 2. CAMERA & STORAGE -->
+                <div class="sidebar-category-header">Camera & Storage</div>
                 <a href="#cameras" class="nav-item" data-target="view-setting-cameras">
                     <span class="icon">📹</span> Kamera (RTSP)
+                </a>
+                <a href="javascript:void(0)" class="nav-subitem nav-subitem-discovery" onclick="if(typeof window.navigateToView==='function') window.navigateToView('view-setting-cameras'); if(typeof window.openIpScannerModal==='function') window.openIpScannerModal();" title="Pindai & Temukan Kamera Otomatis di Jaringan">
+                    <span class="icon" style="font-size:0.8rem;">🔍</span> Discovery (Pindai IP)
                 </a>
                 <a href="#storage" class="nav-item" data-target="view-setting-record">
                     <span class="icon">💾</span> Storage (USB/HDD)
                 </a>
-                <a href="#users" class="nav-item" data-target="view-setting-users">
-                    <span class="icon">👥</span> Manajemen User
+
+                <!-- 3. NETWORKING -->
+                <div class="sidebar-category-header">Networking</div>
+                <a href="javascript:void(0)" class="nav-item" onclick="if(typeof window.openDiagnosticsModal==='function') window.openDiagnosticsModal();" title="Buka Diagnosa Jaringan LAN/WAN & Latency Stream">
+                    <span class="icon">🌐</span> Diagnosa Jaringan & Stream
                 </a>
-                <a href="#system" class="nav-item" data-target="view-setting-system">
-                    <span class="icon">⚙️</span> Sistem & Jaringan
-                </a>
-                <a href="#account" class="nav-item" data-target="view-setting-account">
-                    <span class="icon">🔒</span> Keamanan Akun
-                </a>
+
+                <!-- 4. PENGATURAN ACCORDION -->
+                <div class="nav-group">
+                    <div class="nav-header">
+                        <span class="icon">⚙️</span>
+                        <span style="font-weight:600;">Pengaturan</span>
+                        <span class="arrow">▾</span>
+                    </div>
+                    <div class="nav-submenu">
+                        <a href="#users" class="nav-subitem" data-target="view-setting-users">
+                            👥 Manajemen User
+                        </a>
+                        <a href="#system" class="nav-subitem" data-target="view-setting-system">
+                            ⚙️ Sistem & Jaringan
+                        </a>
+                        <a href="#account" class="nav-subitem" data-target="view-setting-account">
+                            🔒 Keamanan Akun
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 5. SYSTEM LOGS -->
                 <a href="#logs" class="nav-item" data-target="view-logs">
                     <span class="icon">📜</span> System Logs
                 </a>
-                <a href="#addons" class="nav-item" data-target="view-addons">
-                    <span class="icon">🧩</span>
-                    <span class="text">Addons</span>
-                </a>
+
+                <!-- 6. ADDONS ACCORDION -->
+                <div class="nav-group">
+                    <div class="nav-header">
+                        <span class="icon">🧩</span>
+                        <span style="font-weight:600;">Addons</span>
+                        <span class="arrow">▾</span>
+                    </div>
+                    <div class="nav-submenu">
+                        <a href="#addons" class="nav-subitem" data-target="view-addons">
+                            📦 Repositori Addons
+                        </a>
+                        <a href="javascript:void(0)" class="nav-subitem" onclick="if(typeof window.openNetMgrModal==='function') window.openNetMgrModal();" title="Buka Armbian Network Manager & arch3rBridge (nmcli)">
+                            🌐 Network Manager & Bridge
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 7. ABOUT NVR -->
                 <a href="#about" class="nav-item" data-target="view-about">
                     <span class="icon">ℹ️</span> About NVR
                 </a>
@@ -2568,6 +2616,6 @@ Memuat log real-time aliran kamera...
         </div>
     </div>
 
-    <script src="script.js?v=11.8.3"></script>
+    <script src="script.js?v=11.8.4"></script>
 </body>
 </html>

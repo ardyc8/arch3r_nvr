@@ -1,5 +1,22 @@
 # Changelog
 
+## [Ver 11.8.4] - 2026-09-30
+### Structured Categorized Navigation Sidebar with Dropdown Accordions & Direct Tool Routing
+- **Penataan Struktur Menu Sidebar Terkategori & Bersih (`public/index.html` & `public/style.css`):**
+  - Mengelompokkan menu navigasi utama ke dalam kategori ergonomis:
+    - **Home / General**: `🖥️ Monitor (Live)`, `📼 Playback`.
+    - **Camera & Storage**: `📹 Kamera (RTSP)` beserta submenu pintas `🔍 Discovery (Pindai IP)` dan `💾 Storage (USB/HDD)`.
+    - **Networking**: `🌐 Diagnosa Jaringan & Stream` (akses langsung ke diagnostik LAN/WAN & latensi stream).
+    - **Pengaturan (Dropdown Accordion ▾)**: Submenu `👥 Manajemen User`, `⚙️ Sistem & Jaringan`, dan `🔒 Keamanan Akun`.
+    - **System Logs**: `📜 System Logs`.
+    - **Addons (Dropdown Accordion ▾)**: Submenu `📦 Repositori Addons` dan pintasan `🌐 Network Manager & Bridge (nmcli)`.
+    - **About NVR**: `ℹ️ About NVR`.
+- **Mesin Interaksi Accordion & Navigasi Cerdas (`public/script.js`):**
+  - Menambahkan listener interaktif untuk toggle accordion dropdown (`.nav-group.open`).
+  - Menyelaraskan status aktif (`.active`) dan membuka otomatis grup accordion induk saat submenu dipilih.
+  - Mendukung inisialisasi hash URL halaman secara dinamis.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi rilis Ver. 11.8.4 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.3] - 2026-09-30
 ### Card Block Event Feeds with Dedicated Header Bars & Full Date-Time Precision for System Logs
 - **Stempel Waktu Lengkap Berpresisi Tinggi (`public/script.js`):**

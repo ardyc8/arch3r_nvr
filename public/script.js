@@ -1014,16 +1014,28 @@ async function handleLogout() {
     }
 
     function initNavigation() {
-        const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+        const navItems = document.querySelectorAll('.sidebar-nav .nav-item, .sidebar-nav .nav-subitem');
         const viewPanes = document.querySelectorAll('.view-pane');
         const btnMobileMenu = document.getElementById('btnMobileMenu');
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
 
+        // Accordion dropdown header click handlers
+        document.querySelectorAll('.sidebar-nav .nav-group .nav-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const group = header.closest('.nav-group');
+                if (group) group.classList.toggle('open');
+            });
+        });
+
         window.navigateToView = function(targetId, updateUrl = true) {
             navItems.forEach(n => {
                 if (n.getAttribute('data-target') === targetId) {
                     n.classList.add('active');
+                    const parentGroup = n.closest('.nav-group');
+                    if (parentGroup) parentGroup.classList.add('open');
                 } else {
                     n.classList.remove('active');
                 }
@@ -1081,24 +1093,43 @@ async function handleLogout() {
             } else if (e.state && e.state.view) {
                 window.navigateToView(e.state.view, false);
             } else {
-                window.navigateToView('view-live', false);
+                window.navigateToView('view-monitor', false);
             }
         });
 
-        // Initial route check on page load
+        // Initial route check on page load (hashes & paths)
         const initPath = window.location.pathname;
-        const initHash = window.location.hash;
+        const initHash = window.location.hash ? window.location.hash.toLowerCase() : '';
+        const hashMap = {
+            '#monitor': 'view-monitor',
+            '#playback': 'view-playback',
+            '#cameras': 'view-setting-cameras',
+            '#storage': 'view-setting-record',
+            '#users': 'view-setting-users',
+            '#system': 'view-setting-system',
+            '#account': 'view-setting-account',
+            '#logs': 'view-logs',
+            '#addons': 'view-addons',
+            '#about': 'view-about'
+        };
+
         if (initPath.includes('/addons/yolo-ai') || initPath.includes('/yolo-ai') || initHash === '#yolo-ai' || initHash === '#addons/yolo-ai') {
             setTimeout(() => {
                 window.navigateToView('view-yolo-ai', false);
             }, 100);
+        } else if (initHash && hashMap[initHash]) {
+            setTimeout(() => {
+                window.navigateToView(hashMap[initHash], false);
+            }, 50);
         }
 
         navItems.forEach(item => {
             item.addEventListener('click', (e) => {
-                e.preventDefault();
                 const targetId = item.getAttribute('data-target');
-                window.navigateToView(targetId);
+                if (targetId) {
+                    e.preventDefault();
+                    window.navigateToView(targetId);
+                }
             });
         });
 
