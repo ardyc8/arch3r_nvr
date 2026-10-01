@@ -1020,12 +1020,32 @@ async function handleLogout() {
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-        // Accordion dropdown header click handlers
-        document.querySelectorAll('.sidebar-nav .nav-group .nav-header').forEach(header => {
+        // Accordion dropdown header click handlers (standard headers)
+        document.querySelectorAll('.sidebar-nav .nav-group .nav-header:not(.nav-header-dual)').forEach(header => {
             header.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 const group = header.closest('.nav-group');
+                if (group) group.classList.toggle('open');
+            });
+        });
+
+        // Dual-Action Header Handlers for Addons:
+        // 1. Klik area teks/icon Addons -> Langsung navigasi ke Repositori Addons
+        document.querySelectorAll('.sidebar-nav .nav-header-dual .nav-header-left').forEach(leftBtn => {
+            leftBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const targetId = leftBtn.getAttribute('data-target') || 'view-addons';
+                window.navigateToView(targetId);
+            });
+        });
+        // 2. Klik tombol panah ▾ -> Buka/tutup dropdown daftar nama addons
+        document.querySelectorAll('.sidebar-nav .nav-header-dual .nav-header-toggle').forEach(toggleBtn => {
+            toggleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const group = toggleBtn.closest('.nav-group');
                 if (group) group.classList.toggle('open');
             });
         });

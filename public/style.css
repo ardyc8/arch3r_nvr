@@ -113,14 +113,53 @@ body { font-family: var(--font-ui); background-color: var(--bg-main); color: var
 .nav-item.active { background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); border-right: 3px solid var(--accent-blue); font-weight: 600; }
 .nav-item .icon, .nav-header .icon { margin-right: 0.65rem; width: 18px; text-align: center; }
 .nav-header .arrow { margin-left: auto; font-size: 0.68rem; transition: transform 0.2s ease; color: #64748b; }
-.nav-group.open .nav-header .arrow { transform: rotate(180deg); }
+.nav-group.open .nav-header .arrow { transform: rotate(180deg); color: var(--accent-blue); }
 .nav-submenu { display: none; background: rgba(11, 15, 25, 0.6); }
 .nav-group.open .nav-submenu { display: block; }
 .nav-subitem { display: flex; align-items: center; padding: 0.45rem 1.25rem 0.45rem 2.65rem; color: #94a3b8; text-decoration: none; font-size: 0.8rem; transition: all 0.2s; }
 .nav-subitem:hover { color: #f8fafc; background: rgba(255, 255, 255, 0.03); }
-.nav-subitem.active { color: var(--accent-blue); font-weight: 600; background: rgba(59, 130, 246, 0.08); }
+.nav-subitem.active { color: var(--accent-blue); font-weight: 600; background: rgba(59, 130, 246, 0.08); border-right: 2px solid var(--accent-blue); }
 .nav-subitem-discovery { padding: 0.38rem 1.25rem 0.38rem 2.65rem; font-size: 0.78rem; color: #94a3b8; }
 .nav-subitem-discovery:hover { color: #60a5fa; background: rgba(59, 130, 246, 0.06); }
+
+/* Dual Header for Addons: Left clicks to open repo, Right toggles dropdown */
+.nav-header-dual {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 !important;
+}
+.nav-header-dual .nav-header-left {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    padding: 0.52rem 0.5rem 0.52rem 1.15rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.nav-header-dual .nav-header-left:hover {
+    color: var(--text-main);
+    background: var(--surface-lighter);
+}
+.nav-header-dual .nav-header-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.52rem 1.15rem 0.52rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.nav-header-dual .nav-header-toggle:hover {
+    background: rgba(59, 130, 246, 0.15);
+}
+.nav-header-dual .nav-header-toggle:hover .arrow {
+    color: var(--accent-blue);
+}
+.nav-header-dual .nav-header-toggle .arrow {
+    margin-left: 0;
+}
 
 .btn-logout-sleek {
     background: transparent;

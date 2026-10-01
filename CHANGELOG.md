@@ -1,5 +1,24 @@
 # Changelog
 
+## [Ver 11.8.5] - 2026-10-01
+### Dropdown-First Sidebar Hierarchy with Dual-Action Addons Navigation & Sleek Viewport Scroll
+- **Hierarki Navigasi Sidebar Dropdown di Atas & Standalone di Bawah (`public/index.html`):**
+  - **Kelompok Dropdown Accordion (Atas)**:
+    - 🏠 **Home / General ▾**: `🖥️ Monitor (Live)` & `📼 Playback`.
+    - 📹 **Camera & Storage ▾**: `📹 Kamera (RTSP)`, `🔍 Discovery (Pindai IP)`, dan `💾 Storage (USB/HDD)`.
+    - 🌐 **Networking ▾**: `🩺 Diagnosa Jaringan LAN/WAN & Stream`.
+    - ⚙️ **Pengaturan ▾**: `👥 Manajemen User`, `⚙️ Sistem & Jaringan`, dan `🔒 Keamanan Akun`.
+    - 🧩 **Addons ▾**: Submenu modul `📦 Repositori Addons`, `🌐 Network Manager & Bridge (nmcli)`, dan `🧠 YOLO AI Tactical Studio`.
+  - **Kelompok Standalone Mandiri (Bawah)**:
+    - 📜 **System Logs** (Akses langsung 1 klik).
+    - ℹ️ **About NVR** (Akses langsung 1 klik).
+- **Header Aksi Ganda Addons (Dual-Action UX Header) (`public/style.css` & `public/script.js`):**
+  - Klik pada teks/ikon `🧩 Addons` (kiri) langsung membuka halaman **Repositori & Marketplace Addons**.
+  - Klik pada panah `▾` (kanan) membuka/menutup accordion daftar modul addon terinstal.
+- **Scroll Vertikal Mandiri Sidebar Tanpa Terpotong (`public/style.css`):**
+  - Mengoptimalkan `overflow-y: auto` dengan scrollbar ramping (*sleek scrollbar*) sehingga seluruh menu hingga `About NVR` dapat diakses dan di-scroll mulus pada resolusi layar HP, tablet, maupun monitor STB.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi menyeluruh Ver. 11.8.5 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.4] - 2026-09-30
 ### Structured Categorized Navigation Sidebar with Dropdown Accordions & Direct Tool Routing
 - **Penataan Struktur Menu Sidebar Terkategori & Bersih (`public/index.html` & `public/style.css`):**
