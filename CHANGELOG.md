@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.8.6] - 2026-10-03
+### Global Mobile CORS Gateway & Pre-resolved Stream Endpoints for External Android APK Integration
+- **Gateway CORS Global Lintas Platform (`server.js`):**
+  - Mengintegrasikan middleware CORS global untuk seluruh rute API, WebRTC WHEP (`/whep`), dan HLS (`/stream`) dengan dukungan header lengkap (`Authorization`, `Range`, `Content-Type`, `Origin`) dan resolusi preflight `OPTIONS` (status 204).
+  - Memastikan aplikasi Android pihak ketiga (Flutter, React Native, Java/Kotlin, WebView/Capacitor) dapat memanggil API dan stream video secara mulus tanpa terhalang kebijakan keamanan browser.
+- **Resolusi Endpoint Streaming Siap Pakai di API Kamera (`server.js` - `GET /api/cameras`):**
+  - Menyertakan properti link stream otomatis (`webrtcUrl`, `webrtcMainUrl`, `hlsUrl`, `hlsMainUrl`, `rtspPath`, `rtspMainPath`) pada setiap objek kamera yang dikembalikan ke klien mobile.
+  - Mempermudah integrasi player video pada aplikasi Android tanpa perlu menyusun string format URL secara manual.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi menyeluruh rilis Ver. 11.8.6 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.5] - 2026-10-01
 ### Dropdown-First Sidebar Hierarchy with Dual-Action Addons Navigation & Sleek Viewport Scroll
 - **Hierarki Navigasi Sidebar Dropdown di Atas & Standalone di Bawah (`public/index.html`):**

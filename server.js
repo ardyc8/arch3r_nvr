@@ -358,6 +358,18 @@ const mediamtxConfigFile = process.env.MEDIAMTX_CONFIG_PATH || path.join(homeDir
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
+// Global CORS Middleware for Mobile APKs (Flutter, React Native, Android Native) & Web Clients
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Range, Cache-Control');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+    next();
+});
+
 app.use(express.json());
 app.use(cookieParser());
 app.use('/api/addons/network-manager', verifyToken, networkManagerRouter);
@@ -4133,6 +4145,8 @@ app.get('/api/cameras', verifyToken, (req, res) => {
         const resolvedUser = (c.username !== undefined && c.username !== null && c.username !== '') ? c.username : (c.ptzUser || urlUser || 'admin');
         const resolvedPass = (c.password !== undefined && c.password !== null && c.password !== '') ? c.password : ((c.ptzPass !== undefined && c.ptzPass !== null) ? c.ptzPass : urlPass);
 
+        const streamPath = hasDistinctSub ? `${safeId}_sub` : safeId;
+
         return {
             ...c,
             username: resolvedUser,
@@ -4141,7 +4155,13 @@ app.get('/api/cameras', verifyToken, (req, res) => {
             ptzPass: (c.ptzPass !== undefined && c.ptzPass !== null) ? c.ptzPass : resolvedPass,
             isRecording,
             mediaMtxPath: safeId,
-            mediaMtxSubPath: hasDistinctSub ? `${safeId}_sub` : safeId,
+            mediaMtxSubPath: streamPath,
+            webrtcUrl: `/whep/${streamPath}/whep`,
+            webrtcMainUrl: `/whep/${safeId}/whep`,
+            hlsUrl: `/stream/${streamPath}/index.m3u8`,
+            hlsMainUrl: `/stream/${safeId}/index.m3u8`,
+            rtspPath: streamPath,
+            rtspMainPath: safeId,
             mainHls: `/streams/${c.id}/main.m3u8`,
             subHls: hasDistinctSub ? `/streams/${c.id}/sub.m3u8` : `/streams/${c.id}/main.m3u8`,
             status: c.enabled ? 'online' : 'offline',
