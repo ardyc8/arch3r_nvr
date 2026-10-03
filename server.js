@@ -2649,8 +2649,8 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', version: `Archer NVR Ver. ${APP_VERSION}` });
 });
 
-// Auth Endpoints
-app.get('/api/auth/status', (req, res) => {
+// Auth Endpoints (Supports both /api/auth/* and /api/* for universal mobile client compatibility)
+app.get(['/api/auth/status', '/api/auth/check', '/api/check-auth', '/api/auth/me'], (req, res) => {
     let authenticated = false;
     let username = '';
     let role = '';
@@ -2669,7 +2669,7 @@ app.get('/api/auth/status', (req, res) => {
     res.json({ authenticated, username, role, id });
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post(['/api/auth/login', '/api/login'], (req, res) => {
     const { username, password } = req.body;
     
     // DEV TOOL: FORCED CACHE RELOAD
@@ -2763,7 +2763,7 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'Username atau password salah' });
 });
 
-app.post('/api/auth/logout', (req, res) => {
+app.post(['/api/auth/logout', '/api/logout'], (req, res) => {
     const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
     const clearOpts = {
         httpOnly: true,

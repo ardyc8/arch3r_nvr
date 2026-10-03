@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 11.8.7] - 2026-10-03
+### Dual-Route REST Auth Compatibility (/api/login & /api/auth/login) for Zero-Friction Mobile APK Handshake
+- **Dukungan Rute Autentikasi Ganda (`server.js`):**
+  - Mengaktifkan alias rute universal untuk endpoint login `app.post(['/api/auth/login', '/api/login'])`, logout `app.post(['/api/auth/logout', '/api/logout'])`, dan pengecekan status login `app.get(['/api/auth/status', '/api/auth/check', '/api/check-auth', '/api/auth/me'])`.
+  - Mengeliminasi potensi error 404 (Not Found) saat klien mobile atau aplikasi Android APK melakukan otentikasi menggunakan endpoint `/api/login` maupun `/api/auth/login`.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi menyeluruh rilis Ver. 11.8.7 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.6] - 2026-10-03
 ### Global Mobile CORS Gateway & Pre-resolved Stream Endpoints for External Android APK Integration
 - **Gateway CORS Global Lintas Platform (`server.js`):**

@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.8.6 - Global Mobile CORS Gateway & Pre-resolved Stream Endpoints for External Android APK Integration.",
+  "description": "Arch3r NVR Ver. 11.8.7 - Dual-Route REST Auth Compatibility (/api/login & /api/auth/login) for Zero-Friction Mobile APK Handshake.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
