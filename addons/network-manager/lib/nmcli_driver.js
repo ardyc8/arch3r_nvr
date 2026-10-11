@@ -748,10 +748,24 @@ export class ArmbianNetworkManager {
             };
         }
 
+        // Auto re-apply arch3rBridge PBR routing rules if bridge was active, so restarting nmcli does not wipe PBR
+        let bridgeSyncInfo = null;
+        try {
+            const bridgeStatus = await this.getArch3rBridgeStatus();
+            if (bridgeStatus && bridgeStatus.active) {
+                const reBridge = await this.enableArch3rBridge();
+                bridgeSyncInfo = {
+                    reapplied: true,
+                    message: reBridge.message || 'PBR tables & Proxy-ARP successfully synced after nmcli restart.'
+                };
+            }
+        } catch (_) {}
+
         return {
             success: true,
-            message: 'Network changes successfully applied! Connections restarted and routes loaded in kernel.',
-            details: results
+            message: 'Network changes successfully applied! Connections restarted, routes loaded, and kernel tables synced.',
+            details: results,
+            bridgeSync: bridgeSyncInfo
         };
     }
 

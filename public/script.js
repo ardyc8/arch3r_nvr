@@ -15237,39 +15237,48 @@ function ensureNetMgrModalDOM() {
                 </div>
 
                 <!-- FITUR 2: ARCH3RBRIDGE (BYPASS ISOLASI ROUTER ISP - ZERO-LOCKOUT PROXY-ARP & PBR) -->
-                <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+                <div style="background:linear-gradient(145deg, rgba(16,185,129,0.08) 0%, rgba(6,78,59,0.15) 100%); border:1px solid rgba(16,185,129,0.35); border-radius:10px; padding:1.15rem; box-shadow:0 4px 14px rgba(0,0,0,0.25);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
                         <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <span style="font-size:1.2rem;">⚡</span>
-                            <strong style="color:#34d399; font-size:0.95rem;">arch3rBridge &mdash; Transparent Proxy-ARP &amp; Policy-Based Routing (PBR)</strong>
-                            <span onclick="window.toggleNetMgrHelp('helpArch3rBridge')" title="Klik untuk penjelasan fungsi arch3rBridge bagi pengguna umum" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(52,211,153,0.15); border:1px solid #059669; color:#34d399; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:2px;">?</span>
+                            <span style="font-size:1.25rem;">⚡</span>
+                            <div>
+                                <strong style="color:#34d399; font-size:0.95rem;">arch3rBridge &mdash; Solusi B (Universal Source-Based PBR &amp; Proxy-ARP)</strong>
+                                <span onclick="window.toggleNetMgrHelp('helpArch3rBridge')" title="Klik untuk panduan lengkap fungsi arch3rBridge" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(52,211,153,0.15); border:1px solid #059669; color:#34d399; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:6px;">?</span>
+                            </div>
                         </div>
-                        <span id="arch3rBridgeBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:3px 10px; font-weight:700;">
+                        <span id="arch3rBridgeBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:4px 11px; font-weight:700; border-radius:6px;">
                             ⚪ INAKTIF
                         </span>
                     </div>
 
                     <!-- Tooltip Box arch3rBridge -->
-                    <div id="helpArch3rBridge" style="display:none; background:rgba(6,78,59,0.35); border:1px solid #059669; border-radius:6px; padding:0.65rem 0.85rem; font-size:0.78rem; color:#d1fae5; line-height:1.45; margin-bottom:0.75rem;">
-                        💡 <strong>Tujuan arch3rBridge (Solusi B &mdash; Universal PBR):</strong> Menjembatani port LAN kabel (eth0) dan Wi-Fi (wlan0) secara transparan di kernel STB via Proxy-ARP, IP Forwarding, dan Policy-Based Routing (ip rule). Menyelesaikan masalah AP Isolation / Port Isolation pada router ISP secara instan: Setiap paket yang masuk ke Wi-Fi (192.168.1.252) selalu dibalas melalui wlan0, dan paket LAN (192.168.1.253) dibalas melalui eth0 untuk seluruh klien jaringan (192.168.1.0/24) tanpa perlu rute manual per IP!
+                    <div id="helpArch3rBridge" style="display:none; background:rgba(6,78,59,0.4); border:1px solid #059669; border-radius:6px; padding:0.75rem 0.95rem; font-size:0.78rem; color:#d1fae5; line-height:1.5; margin-bottom:0.85rem;">
+                        💡 <strong>Apa yang dilakukan oleh arch3rBridge?</strong><br>
+                        Saat laptop/HP tersambung ke Wi-Fi dan STB memiliki kabel LAN + Wi-Fi di subnet yang sama (misal 192.168.1.x), router ISP sering memblokir paket balasan dari LAN ke Wi-Fi (AP Isolation).<br>
+                        <strong>arch3rBridge mengatasinya secara otomatis:</strong>
+                        <ul style="margin:4px 0 4px 1.2rem; padding:0;">
+                            <li>Menghidupkan <strong>Policy-Based Routing (PBR / Solusi B)</strong>: Setiap paket masuk ke Wi-Fi (192.168.1.252) selalu dibalas melalui Wi-Fi, dan LAN (192.168.1.253) melalui LAN.</li>
+                            <li>Mengaktifkan <strong>Proxy-ARP Relay</strong> &amp; <code>rp_filter=0</code> untuk seluruh klien (192.168.1.0/24) tanpa perlu input IP satu per satu.</li>
+                            <li><strong>Zero Lock-out</strong>: Tidak merusak IP address, tidak menggantung interface fisik, dan 100% aman dieksekusi secara remote.</li>
+                        </ul>
                     </div>
 
                     <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
-                        Jembatani interface Ethernet LAN (eth0) dan Wi-Fi (wlan0) via <strong>Transparent Proxy-ARP &amp; Policy-Based Routing (PBR)</strong>. Menembus isolasi router ISP secara instan untuk seluruh perangkat (Laptop/HP/CCTV), <strong>otomatis menyetel balasan source-based</strong>, dan <strong>100% bebas lock-out</strong>.
+                        Solusi tuntas untuk kendala <strong>STB tidak bisa di-ping / SSH / Web UI dari laptop</strong> karena isolasi port router ISP. Menggunakan Policy-Based Routing (ip rule) otomatis untuk seluruh subnet 192.168.1.0/24.
                     </p>
 
                     <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.85rem; align-items:center;">
-                        <button type="button" id="btnToggleArch3rBridgeUI" onclick="window.toggleArch3rBridgeUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.83rem; padding:0.45rem 1.2rem; display:flex; align-items:center; gap:0.4rem;">
+                        <button type="button" id="btnToggleArch3rBridgeUI" onclick="window.toggleArch3rBridgeUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.83rem; padding:0.5rem 1.25rem; display:flex; align-items:center; gap:0.4rem; box-shadow:0 2px 8px rgba(16,185,129,0.3);">
                             <span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP &amp; PBR)
                         </button>
-                        <button type="button" onclick="window.checkArch3rBridgeStatusUI()" class="btn btn-secondary" style="font-size:0.83rem; padding:0.45rem 0.85rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>🔄</span> Cek Status
+                        <button type="button" onclick="window.checkArch3rBridgeStatusUI()" class="btn btn-secondary" style="font-size:0.83rem; padding:0.5rem 0.95rem; display:flex; align-items:center; gap:0.4rem;">
+                            <span>🔄</span> Cek Status Kernel
                         </button>
                     </div>
 
                     <!-- Log Output Feedback arch3rBridge -->
-                    <div id="arch3rBridgeLogBox" style="font-family:monospace; font-size:0.75rem; background:#090d16; border:1px solid #1e293b; border-radius:6px; padding:0.6rem 0.8rem; color:#34d399; max-height:120px; overflow-y:auto; line-height:1.4; word-break:break-word;">
-                        [SYSTEM] Siap mengeksekusi arch3rBridge (Proxy-ARP &amp; PBR). Klik "Aktifkan arch3rBridge" untuk menghubungkan LAN &amp; Wi-Fi.
+                    <div id="arch3rBridgeLogBox" style="font-family:monospace; font-size:0.75rem; background:#070b12; border:1px solid #1e293b; border-radius:6px; padding:0.65rem 0.85rem; color:#34d399; max-height:130px; overflow-y:auto; line-height:1.45; word-break:break-word;">
+                        [SYSTEM] Siap mengeksekusi arch3rBridge (Proxy-ARP &amp; PBR). Klik "Aktifkan arch3rBridge" untuk menghubungkan LAN &amp; Wi-Fi secara transparan.
                     </div>
                 </div>
 
@@ -15349,16 +15358,37 @@ function ensureNetMgrModalDOM() {
                     </div>
                 </div>
 
+                <!-- KOTAK LOG KONSOL DIAGNOSTIK KERNEL & NMCLI -->
+                <div id="netMgrDiagnosticsBox" style="background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:0.85rem; font-family:monospace; font-size:0.75rem; color:#94a3b8;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.35rem;">
+                        <span style="color:#cbd5e1; font-weight:700;">📋 Status &amp; Log Sinkronisasi Kernel STB:</span>
+                        <span id="netMgrSyncStatusBadge" style="color:#10b981; font-size:0.7rem;">● Ready</span>
+                    </div>
+                    <div id="netMgrDiagnosticsLog" style="max-height:85px; overflow-y:auto; line-height:1.45; word-break:break-word; color:#38bdf8;">
+                        [READY] Antarmuka jaringan siap dikonfigurasi. Klik "Terapkan Perubahan" untuk menyinkronkan profil nmcli &amp; tabel routing ke kernel.
+                    </div>
+                </div>
+
             </div>
 
             <!-- Modal Footer -->
-            <div style="padding:1rem 1.25rem; background:rgba(15,23,42,0.95); border-top:1px solid var(--border, #334155); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
-                <button type="button" class="btn btn-primary" onclick="window.applyNetMgrChanges()" style="background:#16a34a; border-color:#15803d; font-weight:700; font-size:0.85rem; padding:0.5rem 1.2rem; display:flex; align-items:center; gap:0.4rem;">
-                    <span>🚀</span> Terapkan Perubahan &amp; Restart nmcli
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="window.closeNetMgrModal()" style="font-size:0.85rem; padding:0.5rem 1.2rem;">
-                    Tutup
-                </button>
+            <div style="padding:1rem 1.25rem; background:rgba(15,23,42,0.98); border-top:1px solid var(--border, #334155); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <div style="font-size:0.75rem; color:#94a3b8;">
+                        💡 <strong>Catatan:</strong> Tombol ini merestart profil NetworkManager &amp; menyinkronkan rute ke kernel OS.
+                    </div>
+                    <div style="font-size:0.7rem; color:#64748b;">
+                        Jika Anda ingin menembus isolasi router ISP, gunakan <strong>arch3rBridge</strong> di atas.
+                    </div>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="button" id="btnApplyNetMgrChanges" class="btn btn-primary" onclick="window.applyNetMgrChanges()" style="background:#16a34a; border-color:#15803d; font-weight:700; font-size:0.85rem; padding:0.55rem 1.25rem; display:flex; align-items:center; gap:0.45rem; box-shadow:0 2px 8px rgba(22,163,74,0.3);">
+                        <span id="btnApplyNetMgrSpinner">🚀</span> <span id="btnApplyNetMgrLabel">Terapkan Perubahan &amp; Restart nmcli</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="window.closeNetMgrModal()" style="font-size:0.85rem; padding:0.55rem 1.1rem;">
+                        Tutup
+                    </button>
+                </div>
             </div>
         </div>
     `;
@@ -16101,6 +16131,23 @@ function renderNetMgrCameraRoutes() {
 }
 
 window.applyNetMgrChanges = async function() {
+    const btn = document.getElementById('btnApplyNetMgrChanges');
+    const spinner = document.getElementById('btnApplyNetMgrSpinner');
+    const label = document.getElementById('btnApplyNetMgrLabel');
+    const statusBadge = document.getElementById('netMgrSyncStatusBadge');
+    const diagLog = document.getElementById('netMgrDiagnosticsLog');
+
+    if (btn) btn.disabled = true;
+    if (spinner) spinner.textContent = '⏳';
+    if (label) label.textContent = 'Menerapkan & Merestart...';
+    if (statusBadge) {
+        statusBadge.textContent = '● Sinkronisasi Kernel...';
+        statusBadge.style.color = '#fbbf24';
+    }
+    if (diagLog) {
+        diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Memulai reload profil NetworkManager & sinkronisasi tabel rute kernel STB...`;
+    }
+
     if (!currentNetMgrConnections || !currentNetMgrConnections.success) {
         await window.fetchNetMgrConnections();
     }
@@ -16119,12 +16166,41 @@ window.applyNetMgrChanges = async function() {
 
         if (res.ok && data.success) {
             showToast('🚀 Perubahan Jaringan Berhasil Diterapkan & Dimuat ke Kernel Linux STB!', 'success');
+            if (statusBadge) {
+                statusBadge.textContent = '● Berhasil Disinkronkan';
+                statusBadge.style.color = '#10b981';
+            }
+            if (diagLog) {
+                const connDetails = (data.details || []).map(d => `• ${d.connection}: ${d.method || (d.success ? 'active' : 'failed')}`).join('<br>');
+                const bridgeInfo = data.bridgeSync?.reapplied ? `<br>⚡ arch3rBridge PBR: ${data.bridgeSync.message}` : '';
+                diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}<br>${connDetails}${bridgeInfo}`;
+            }
             await window.fetchNetMgrConnections();
+            window.checkArch3rBridgeStatusUI();
         } else {
-            alert('Gagal menerapkan perubahan jaringan: ' + (data.error || 'Error'));
+            const errMsg = data.error || 'Error tidak diketahui';
+            if (statusBadge) {
+                statusBadge.textContent = '● Gagal Sinkron';
+                statusBadge.style.color = '#ef4444';
+            }
+            if (diagLog) {
+                diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal menerapkan: ${errMsg}`;
+            }
+            alert('Gagal menerapkan perubahan jaringan: ' + errMsg);
         }
     } catch (e) {
+        if (statusBadge) {
+            statusBadge.textContent = '● Error';
+            statusBadge.style.color = '#ef4444';
+        }
+        if (diagLog) {
+            diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
+        }
         alert('Error menerapkan perubahan jaringan: ' + e.message);
+    } finally {
+        if (btn) btn.disabled = false;
+        if (spinner) spinner.textContent = '🚀';
+        if (label) label.textContent = 'Terapkan Perubahan & Restart nmcli';
     }
 };
 

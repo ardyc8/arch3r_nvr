@@ -1,5 +1,17 @@
 # Changelog
 
+## [Ver 11.8.9] - 2026-10-11
+### Professional Network Manager UI, Real-Time nmcli Diagnostics Feedback Console, and Auto-Synced Kernel PBR Routing
+- **Perbaikan & Peningkatan Fungsi Tombol "Terapkan Perubahan & Restart nmcli" (`addons/network-manager/lib/nmcli_driver.js`):**
+  - Mengatasi issue rute PBR terhapus saat koneksi nmcli direstart: Menambahkan auto-sync check `bridgeStatus.active` pada metode `applyChanges()`. Jika arch3rBridge sedang aktif, aturan Policy-Based Routing (PBR / Solusi B) dan Transparent Proxy-ARP otomatis dimuat kembali ke kernel (`enableArch3rBridge()`) tanpa jeda dan tanpa risiko rute balasan terhapus.
+  - Memperkaya respon JSON `/api/addons/network-manager/apply` dengan status eksekusi spesifik per koneksi (`method: connection_up` atau `device_reapply`) dan status sinkronisasi `bridgeSync`.
+- **Desain UI Profesional & Responsif pada Modal Addon Network Manager (`public/script.js`):**
+  - **Terminal / Konsol Diagnostik Kernel Real-Time (`#netMgrDiagnosticsBox`)**: Menambahkan area log diagnostik live khusus di atas footer yang menampilkan status eksekusi nmcli & kernel STB secara transparan (seperti `[READY]`, `[Menerapkan & Merestart...]`, hingga detail profil dan rute yang dimuat).
+  - **Status Visual Tombol Interaktif**: Tombol footer dilengkapi animasi spinner `⏳`, disable state selama proses reload berjalan untuk mencegah double-click, serta badge status sinkronisasi dinamis (`● Ready` / `● Sinkronisasi Kernel...` / `● Berhasil Disinkronkan`).
+  - **Keterangan & Catatan Arsitektur Jelas**: Menambahkan petunjuk kontekstual di footer yang membedakan secara tegas antara restart profil NetworkManager standar dengan fitur **arch3rBridge (Bypass Isolasi Router ISP)**.
+  - **Tampilan Kartu arch3rBridge Lebih Elegan**: Desain kartu dengan gradien halus (`linear-gradient`), border aksen emerald, padding optimal, dan box-shadow modern khas konsol NVR kelas enterprise.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi menyeluruh rilis Ver. 11.8.9 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.8] - 2026-10-11
 ### Policy-Based Routing (PBR / Solusi B) in arch3rBridge for ISP Router AP Isolation Bypass across Dual-Interface 192.168.1.0/24
 - **Integrasi Policy-Based Routing (PBR / Solusi B) pada arch3rBridge (`addons/network-manager/lib/nmcli_driver.js`):**

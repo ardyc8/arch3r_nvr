@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.8.8 - Policy-Based Routing (PBR / Solusi B) in arch3rBridge for ISP Router AP Isolation Bypass across Dual-Interface 192.168.1.0/24 Subnet.",
+  "description": "Arch3r NVR Ver. 11.8.9 - Professional Network Manager UI, Real-Time nmcli Diagnostics Feedback Console, and Auto-Synced Kernel PBR Routing.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
