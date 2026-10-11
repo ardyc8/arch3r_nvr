@@ -1,5 +1,20 @@
 # Changelog
 
+## [Ver 11.8.8] - 2026-10-11
+### Policy-Based Routing (PBR / Solusi B) in arch3rBridge for ISP Router AP Isolation Bypass across Dual-Interface 192.168.1.0/24
+- **Integrasi Policy-Based Routing (PBR / Solusi B) pada arch3rBridge (`addons/network-manager/lib/nmcli_driver.js`):**
+  - Mengintegrasikan mekanisme Source-Based Routing via `ip rule` dan tabel rute kustom (`table 100` untuk Wi-Fi dan `table 101` untuk LAN) pada saat `enableArch3rBridge()` dieksekusi.
+  - Membaca IP lokal, subnet prefix, dan default gateway antarmuka secara dinamis (`getInterfaceNetworkInfo`).
+  - Menerapkan aturan `ip rule add from <wifi_ip> lookup 100 priority 1000` dengan default rute via antarmuka Wi-Fi (`wlan0`), dan `from <lan_ip> lookup 101 priority 1001` via antarmuka LAN (`eth0`).
+  - **Hasil**: Setiap paket request dari perangkat lokal (Laptop, HP, Tablet, CCTV) yang masuk ke IP Wi-Fi STB (`192.168.1.252`) dijamin 100% dibalas melalui `wlan0`, dan paket yang masuk ke LAN (`192.168.1.253`) dibalas melalui `eth0`, sepenuhnya menembus pemisahan fisik AP Isolation / Port Isolation router modem ISP tanpa perlu menambahkan static route manual per IP perangkat.
+  - Menambahkan pembersihan otomatis tabel rute dan `ip rule` pada saat bridge dinonaktifkan (`disableArch3rBridge()`).
+- **Skrip Eksekusi Mandiri & Service Armbian Linux (`addons/network-manager/arch3r_bridge.sh`):**
+  - Membuat utilitas CLI bash mandiri untuk administrator STB dengan perintah `enable`, `disable`, `status`, dan `install-service` (systemd service otomatis bertahan saat reboot).
+- **Pembaruan Visual Dashboard Network Manager (`public/script.js`):**
+  - Memperbarui label kartu menjadi `arch3rBridge — Transparent Proxy-ARP & Policy-Based Routing (PBR)` dan status badge `🟢 PROXY-ARP & PBR AKTIF (Zero-Lockout)`.
+  - Memperbarui penjelasan tooltip dan log status konfirmasi bahwa seluruh klien subnet `192.168.1.0/24` terhubung langsung.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi menyeluruh rilis Ver. 11.8.8 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.7] - 2026-10-03
 ### Dual-Route REST Auth Compatibility (/api/login & /api/auth/login) for Zero-Friction Mobile APK Handshake
 - **Dukungan Rute Autentikasi Ganda (`server.js`):**

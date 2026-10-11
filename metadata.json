@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.8.7 - Dual-Route REST Auth Compatibility (/api/login & /api/auth/login) for Zero-Friction Mobile APK Handshake.",
+  "description": "Arch3r NVR Ver. 11.8.8 - Policy-Based Routing (PBR / Solusi B) in arch3rBridge for ISP Router AP Isolation Bypass across Dual-Interface 192.168.1.0/24 Subnet.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

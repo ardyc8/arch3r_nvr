@@ -959,10 +959,63 @@ export class ArmbianNetworkManager {
     }
 
     /**
+     * Helper to retrieve IPv4 address, CIDR prefix, Subnet block, and Gateway for a specific interface.
+     */
+    async getInterfaceNetworkInfo(device) {
+        if (!device) return null;
+        const cleanDev = this.sanitizeParam(device);
+        try {
+            // 1. Get IPv4 address and CIDR prefix
+            const addrRes = await this.runCommand(`ip -4 -o addr show dev "${cleanDev}"`);
+            let ip = null;
+            let cidr = null;
+            let subnet = null;
+            if (addrRes.success && addrRes.stdout) {
+                const match = addrRes.stdout.match(/inet\s+([0-9.]+)\/(\d+)/);
+                if (match) {
+                    ip = match[1];
+                    cidr = parseInt(match[2], 10);
+                }
+            }
+
+            // 2. Get route information (gateway and direct subnet)
+            const routeRes = await this.runCommand(`ip route show dev "${cleanDev}"`);
+            let gateway = null;
+            if (routeRes.success && routeRes.stdout) {
+                const lines = routeRes.stdout.split('\n');
+                for (const line of lines) {
+                    const gwMatch = line.match(/default via ([0-9.]+)/);
+                    if (gwMatch) gateway = gwMatch[1];
+                    const subMatch = line.match(/^([0-9.]+\/\d+)\s+/);
+                    if (subMatch && !subnet) subnet = subMatch[1];
+                }
+            }
+
+            // Fallback subnet calculation if not explicitly in routing table
+            if (!subnet && ip && cidr) {
+                const ipParts = ip.split('.').map(Number);
+                if (cidr === 24) {
+                    subnet = `${ipParts[0]}.${ipParts[1]}.${ipParts[2]}.0/24`;
+                } else if (cidr === 16) {
+                    subnet = `${ipParts[0]}.${ipParts[1]}.0.0/16`;
+                } else {
+                    subnet = `${ip}/32`;
+                }
+            }
+
+            return { device: cleanDev, ip, cidr, subnet, gateway };
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
      * 8. enableArch3rBridge()
-     * 100% Zero-Lockout Transparent Proxy-ARP & Kernel IP Forwarding Relay.
-     * Completely eliminates persistent L2 br0 slave profiles to guarantee STB physical IPs, SSH,
-     * Tailscale, and DHCP survive reboots without ever locking out the device.
+     * 100% Zero-Lockout Transparent Proxy-ARP, Kernel IP Forwarding Relay &
+     * Policy-Based Routing (PBR / Solusi B).
+     * Solves ISP router AP Isolation / Port Isolation by ensuring all packets received
+     * on Wi-Fi (e.g. 192.168.1.252) are strictly replied via wlan0, and LAN packets via eth0,
+     * seamlessly covering all clients on the 192.168.1.0/24 network without manual per-IP routes.
      */
     async enableArch3rBridge() {
         const isAvailable = await this.isNmcliAvailable();
@@ -1034,20 +1087,57 @@ export class ArmbianNetworkManager {
             await this.setupMetrics(detected.lanName || lanDevice, detected.wifiName || wifiDevice);
         } catch (_) {}
 
+        // 5. Policy-Based Routing (PBR / Solusi B) - Source-Based Routing Rules
+        // Guarantees all traffic replying to Wi-Fi clients exits strictly via wlan0, and LAN via eth0
+        const wifiInfo = await this.getInterfaceNetworkInfo(wifiDevice);
+        const lanInfo = await this.getInterfaceNetworkInfo(lanDevice);
+
+        if (wifiInfo && wifiInfo.ip) {
+            const pbrWifiCmds = [
+                'while ip rule del lookup 100 2>/dev/null; do :; done',
+                'ip route flush table 100 2>/dev/null || true',
+                `ip rule add from ${wifiInfo.ip} lookup 100 priority 1000`,
+                wifiInfo.subnet ? `ip route replace ${wifiInfo.subnet} dev ${wifiDevice} proto static scope link table 100` : '',
+                wifiInfo.gateway ? `ip route replace default via ${wifiInfo.gateway} dev ${wifiDevice} proto static table 100` : ''
+            ].filter(Boolean);
+
+            for (const pCmd of pbrWifiCmds) {
+                const resPbr = await this.runCommand(pCmd);
+                steps.push({ step: 'pbr_wifi_table100', cmd: pCmd, ...resPbr });
+            }
+        }
+
+        if (lanInfo && lanInfo.ip) {
+            const pbrLanCmds = [
+                'while ip rule del lookup 101 2>/dev/null; do :; done',
+                'ip route flush table 101 2>/dev/null || true',
+                `ip rule add from ${lanInfo.ip} lookup 101 priority 1001`,
+                lanInfo.subnet ? `ip route replace ${lanInfo.subnet} dev ${lanDevice} proto static scope link table 101` : '',
+                lanInfo.gateway ? `ip route replace default via ${lanInfo.gateway} dev ${lanDevice} proto static table 101` : ''
+            ].filter(Boolean);
+
+            for (const pCmd of pbrLanCmds) {
+                const resPbr = await this.runCommand(pCmd);
+                steps.push({ step: 'pbr_lan_table101', cmd: pCmd, ...resPbr });
+            }
+        }
+
         return {
             success: true,
-            activeBridge: 'Proxy-ARP Relay',
+            activeBridge: 'Proxy-ARP Relay & Policy-Based Routing (PBR)',
             lanInterface: lanDevice,
             wifiInterface: wifiDevice,
-            relayMode: 'Pure Transparent Proxy-ARP & Kernel IP Forwarding (Zero-Lockout)',
-            message: `arch3rBridge (Proxy-ARP Relay) aktif! Komunikasi kamera Wi-Fi (${wifiDevice}) dan LAN (${lanDevice}) terhubung langsung & Prioritas Metric (LAN=50, Wi-Fi=500) otomatis diselaraskan.`,
+            wifiIp: wifiInfo?.ip || null,
+            lanIp: lanInfo?.ip || null,
+            relayMode: 'Transparent Proxy-ARP + Source-Based PBR Routing (Solusi B Universal)',
+            message: `arch3rBridge (Proxy-ARP Relay & PBR Solusi B) aktif! Paket Wi-Fi (${wifiInfo?.ip || wifiDevice}) otomatis dibalas lewat Wi-Fi, dan LAN (${lanInfo?.ip || lanDevice}) lewat LAN untuk seluruh klien 192.168.1.0/24 menembus isolasi router ISP.`,
             steps
         };
     }
 
     /**
      * 9. disableArch3rBridge()
-     * Safely disables Transparent Proxy-ARP and removes iptables forward rules.
+     * Safely disables Transparent Proxy-ARP, removes iptables forward rules, and flushes PBR tables.
      */
     async disableArch3rBridge() {
         const detected = await this.detectActiveConnections();
@@ -1076,35 +1166,51 @@ export class ArmbianNetworkManager {
             steps.push({ step: 'reset_sysctl', cmd: sCmd, ...res });
         }
 
-        // 3. Purge any lingering bridge profiles
+        // 3. Flush Policy-Based Routing (PBR) tables 100 and 101
+        const pbrCleanup = [
+            'while ip rule del lookup 100 2>/dev/null; do :; done',
+            'ip route flush table 100 2>/dev/null || true',
+            'while ip rule del lookup 101 2>/dev/null; do :; done',
+            'ip route flush table 101 2>/dev/null || true'
+        ];
+        for (const pCmd of pbrCleanup) {
+            const resPbr = await this.runCommand(pCmd);
+            steps.push({ step: 'cleanup_pbr', cmd: pCmd, ...resPbr });
+        }
+
+        // 4. Purge any lingering bridge profiles
         await this.ensureSafeStateAndPurgeDanglingBridges();
 
         return {
             success: true,
-            message: 'arch3rBridge (Proxy-ARP Relay) berhasil dinonaktifkan. Jaringan STB kembali ke mode routing standar.',
+            message: 'arch3rBridge (Proxy-ARP Relay & PBR) berhasil dinonaktifkan. Jaringan STB kembali ke mode routing standar.',
             steps
         };
     }
 
     /**
      * 10. getArch3rBridgeStatus()
-     * Checks if Transparent Proxy-ARP & IP Forwarding is active in kernel sysctl
+     * Checks if Transparent Proxy-ARP & IP Forwarding and PBR is active in kernel
      */
     async getArch3rBridgeStatus() {
         const resProxy = await this.runCommand('cat /proc/sys/net/ipv4/conf/all/proxy_arp');
         const resForward = await this.runCommand('cat /proc/sys/net/ipv4/ip_forward');
+        const resRule = await this.runCommand('ip rule show | grep -E "lookup (100|101)"');
 
         const isProxyActive = resProxy.success && resProxy.stdout.trim() === '1';
         const isForwardActive = resForward.success && resForward.stdout.trim() === '1';
-        const isActive = isProxyActive && isForwardActive;
+        const isPbrActive = resRule.success && resRule.stdout.trim().length > 0;
+        const isActive = (isProxyActive && isForwardActive) || isPbrActive;
 
         return {
             success: true,
             active: isActive,
-            relayMode: 'Pure Transparent Proxy-ARP (Zero-Lockout)',
+            relayMode: 'Transparent Proxy-ARP & PBR (Zero-Lockout)',
             proxyArp: isProxyActive ? '1 (Active)' : '0 (Inactive)',
             ipForward: isForwardActive ? '1 (Active)' : '0 (Inactive)',
-            state: isActive ? 'active (proxy-arp relay)' : 'inactive'
+            pbr: isPbrActive ? '1 (Active: Solusi B Universal)' : '0 (Inactive)',
+            pbrRules: isPbrActive ? resRule.stdout.trim().split('\n') : [],
+            state: isActive ? 'active (proxy-arp relay & pbr)' : 'inactive'
         };
     }
 }

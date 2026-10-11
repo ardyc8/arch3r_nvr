@@ -15236,12 +15236,12 @@ function ensureNetMgrModalDOM() {
                     </div>
                 </div>
 
-                <!-- FITUR 2: ARCH3RBRIDGE (BYPASS ISOLASI ROUTER ISP - ZERO-LOCKOUT PROXY-ARP) -->
+                <!-- FITUR 2: ARCH3RBRIDGE (BYPASS ISOLASI ROUTER ISP - ZERO-LOCKOUT PROXY-ARP & PBR) -->
                 <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
                         <div style="display:flex; align-items:center; gap:0.5rem;">
                             <span style="font-size:1.2rem;">⚡</span>
-                            <strong style="color:#34d399; font-size:0.95rem;">arch3rBridge &mdash; Transparent Proxy-ARP Relay (Zero-Lockout)</strong>
+                            <strong style="color:#34d399; font-size:0.95rem;">arch3rBridge &mdash; Transparent Proxy-ARP &amp; Policy-Based Routing (PBR)</strong>
                             <span onclick="window.toggleNetMgrHelp('helpArch3rBridge')" title="Klik untuk penjelasan fungsi arch3rBridge bagi pengguna umum" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(52,211,153,0.15); border:1px solid #059669; color:#34d399; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:2px;">?</span>
                         </div>
                         <span id="arch3rBridgeBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:3px 10px; font-weight:700;">
@@ -15251,16 +15251,16 @@ function ensureNetMgrModalDOM() {
 
                     <!-- Tooltip Box arch3rBridge -->
                     <div id="helpArch3rBridge" style="display:none; background:rgba(6,78,59,0.35); border:1px solid #059669; border-radius:6px; padding:0.65rem 0.85rem; font-size:0.78rem; color:#d1fae5; line-height:1.45; margin-bottom:0.75rem;">
-                        💡 <strong>Tujuan arch3rBridge (Untuk Umum):</strong> Menjembatani port LAN kabel (eth0) dan Wi-Fi (wlan0) secara transparan di kernel STB via Proxy-ARP &amp; IP Forwarding. Mengizinkan perangkat di Wi-Fi (seperti HP/Laptop) dan perangkat di LAN (CCTV/Komputer) saling berkomunikasi bebas tanpa terhalang isolasi router ISP (AP Isolation).
+                        💡 <strong>Tujuan arch3rBridge (Solusi B &mdash; Universal PBR):</strong> Menjembatani port LAN kabel (eth0) dan Wi-Fi (wlan0) secara transparan di kernel STB via Proxy-ARP, IP Forwarding, dan Policy-Based Routing (ip rule). Menyelesaikan masalah AP Isolation / Port Isolation pada router ISP secara instan: Setiap paket yang masuk ke Wi-Fi (192.168.1.252) selalu dibalas melalui wlan0, dan paket LAN (192.168.1.253) dibalas melalui eth0 untuk seluruh klien jaringan (192.168.1.0/24) tanpa perlu rute manual per IP!
                     </div>
 
                     <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
-                        Jembatani interface Ethernet LAN (eth0) dan Wi-Fi (wlan0) via <strong>Pure Transparent Proxy-ARP &amp; Kernel IP Forwarding</strong>. Menembus isolasi router ISP secara instan <strong>tanpa mengubah port fisik</strong>, <strong>otomatis menyetel prioritas metric</strong>, dan <strong>100% kebal reboot</strong>.
+                        Jembatani interface Ethernet LAN (eth0) dan Wi-Fi (wlan0) via <strong>Transparent Proxy-ARP &amp; Policy-Based Routing (PBR)</strong>. Menembus isolasi router ISP secara instan untuk seluruh perangkat (Laptop/HP/CCTV), <strong>otomatis menyetel balasan source-based</strong>, dan <strong>100% bebas lock-out</strong>.
                     </p>
 
                     <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.85rem; align-items:center;">
                         <button type="button" id="btnToggleArch3rBridgeUI" onclick="window.toggleArch3rBridgeUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.83rem; padding:0.45rem 1.2rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP Relay)
+                            <span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP &amp; PBR)
                         </button>
                         <button type="button" onclick="window.checkArch3rBridgeStatusUI()" class="btn btn-secondary" style="font-size:0.83rem; padding:0.45rem 0.85rem; display:flex; align-items:center; gap:0.4rem;">
                             <span>🔄</span> Cek Status
@@ -15269,7 +15269,7 @@ function ensureNetMgrModalDOM() {
 
                     <!-- Log Output Feedback arch3rBridge -->
                     <div id="arch3rBridgeLogBox" style="font-family:monospace; font-size:0.75rem; background:#090d16; border:1px solid #1e293b; border-radius:6px; padding:0.6rem 0.8rem; color:#34d399; max-height:120px; overflow-y:auto; line-height:1.4; word-break:break-word;">
-                        [SYSTEM] Siap mengeksekusi arch3rBridge. Klik "Aktifkan arch3rBridge" untuk menghubungkan LAN &amp; Wi-Fi.
+                        [SYSTEM] Siap mengeksekusi arch3rBridge (Proxy-ARP &amp; PBR). Klik "Aktifkan arch3rBridge" untuk menghubungkan LAN &amp; Wi-Fi.
                     </div>
                 </div>
 
@@ -15591,14 +15591,14 @@ window.checkArch3rBridgeStatusUI = async function() {
                 badge.style.background = 'rgba(16,185,129,0.2)';
                 badge.style.borderColor = '#059669';
                 badge.style.color = '#34d399';
-                badge.textContent = '🟢 PROXY-ARP AKTIF (Zero-Lockout)';
+                badge.textContent = '🟢 PROXY-ARP & PBR AKTIF (Zero-Lockout)';
             }
             if (toggleBtn) {
                 toggleBtn.style.background = '#dc2626';
                 toggleBtn.style.borderColor = '#b91c1c';
                 toggleBtn.innerHTML = '<span>🛑</span> Nonaktifkan arch3rBridge (Sedang Aktif)';
             }
-            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🟢 Status Relay: AKTIF (Transparent Proxy-ARP & IP Forwarding). Isolasi router ISP berhasil dilewati & Metric diprioritaskan otomatis.`;
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🟢 Status Relay: AKTIF (Transparent Proxy-ARP &amp; Policy-Based Routing). Klien Wi-Fi &amp; LAN 192.168.1.0/24 terhubung langsung &amp; isolasi ISP router berhasil dilewati.`;
         } else {
             if (badge) {
                 badge.style.background = 'rgba(100,116,139,0.2)';
@@ -15609,7 +15609,7 @@ window.checkArch3rBridgeStatusUI = async function() {
             if (toggleBtn) {
                 toggleBtn.style.background = '#10b981';
                 toggleBtn.style.borderColor = '#059669';
-                toggleBtn.innerHTML = '<span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP Relay)';
+                toggleBtn.innerHTML = '<span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP &amp; PBR)';
             }
             if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚪ Status Relay: INAKTIF (STB beroperasi dalam mode routing standar).`;
         }
@@ -15626,13 +15626,13 @@ window.enableArch3rBridgeUI = async function() {
         badge.style.background = 'rgba(245,158,11,0.2)';
         badge.style.borderColor = '#d97706';
         badge.style.color = '#fbbf24';
-        badge.textContent = '⏳ MENGAKTIFKAN RELAY...';
+        badge.textContent = '⏳ MENGAKTIFKAN RELAY & PBR...';
     }
     if (toggleBtn) {
         toggleBtn.disabled = true;
         toggleBtn.textContent = '⏳ Mengaktifkan...';
     }
-    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Mengaktifkan Pure Transparent Proxy-ARP Relay... Menghubungkan LAN & Wi-Fi dan menyetel metric...`;
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Mengaktifkan Pure Transparent Proxy-ARP &amp; Policy-Based Routing (Solusi B)... Menghubungkan LAN &amp; Wi-Fi dan menyetel tabel rute source-based...`;
 
     try {
         const res = await authFetch('/api/addons/network-manager/bridge/enable', { method: 'POST' });
@@ -15644,7 +15644,7 @@ window.enableArch3rBridgeUI = async function() {
                 badge.style.background = 'rgba(16,185,129,0.2)';
                 badge.style.borderColor = '#059669';
                 badge.style.color = '#34d399';
-                badge.textContent = '🟢 PROXY-ARP AKTIF (Zero-Lockout)';
+                badge.textContent = '🟢 PROXY-ARP & PBR AKTIF (Zero-Lockout)';
             }
             if (toggleBtn) {
                 toggleBtn.disabled = false;
@@ -15656,14 +15656,14 @@ window.enableArch3rBridgeUI = async function() {
             if (logBox) {
                 logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}<br>${stepLog}`;
             }
-            showToast('⚡ arch3rBridge (Proxy-ARP Relay) Berhasil Diaktifkan! Rute Prioritas Diselaraskan.', 'success');
+            showToast('⚡ arch3rBridge (Proxy-ARP & PBR Solusi B) Berhasil Diaktifkan! Isolasi Router Dilewati.', 'success');
             await window.fetchNetMgrConnections();
         } else {
             if (toggleBtn) {
                 toggleBtn.disabled = false;
                 toggleBtn.style.background = '#10b981';
                 toggleBtn.style.borderColor = '#059669';
-                toggleBtn.innerHTML = '<span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP Relay)';
+                toggleBtn.innerHTML = '<span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP &amp; PBR)';
             }
             if (badge) {
                 badge.style.background = 'rgba(239,68,68,0.2)';
