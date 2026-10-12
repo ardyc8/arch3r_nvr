@@ -53,8 +53,11 @@ export class ArmbianNetworkManager {
 
     /**
      * Validates and normalizes target parameter.
-     * Accepts either a single IP (e.g., "192.168.1.50") or a CIDR subnet block (e.g., "192.168.1.0/24").
-     * Automatically appends "/32" if the CIDR suffix is missing.
+     * Accepts either a single IP (e.g., "192.168.1.45") or a CIDR subnet block (e.g., "192.168.1.0/24").
+     * Smart CIDR detection:
+     * - If CIDR mask is omitted:
+     *   * Addresses ending in '.0' (e.g. "192.168.1.0") automatically become /24 subnet blocks
+     *   * Individual host IPs (e.g. "192.168.1.45") automatically become /32 host routes
      */
     normalizeTarget(target) {
         if (!target || typeof target !== 'string') {
@@ -62,17 +65,21 @@ export class ArmbianNetworkManager {
         }
 
         let cleanTarget = target.trim();
-        // Automatically append /32 if CIDR mask suffix is missing
+        // Smart CIDR detection:
         if (!cleanTarget.includes('/')) {
-            cleanTarget += '/32';
+            if (cleanTarget.endsWith('.0')) {
+                cleanTarget += '/24';
+            } else {
+                cleanTarget += '/32';
+            }
         }
 
-        // Validate IPv4 address or IPv4 CIDR subnet format (e.g., 192.168.1.50/32 or 10.0.0.0/24)
+        // Validate IPv4 address or IPv4 CIDR subnet format (e.g., 192.168.1.45/32 or 192.168.1.0/24)
         const cidrRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\/(?:3[0-2]|[12]?[0-9])$/;
         if (!cidrRegex.test(cleanTarget)) {
             return {
                 valid: false,
-                error: `Invalid IP address or CIDR subnet block format: "${target}". Expected format: "192.168.1.50" or "192.168.1.0/24".`
+                error: `Invalid IP address or CIDR subnet block format: "${target}". Expected format: "192.168.1.45" or "192.168.1.0/24".`
             };
         }
 
@@ -622,7 +629,8 @@ export class ArmbianNetworkManager {
 
         // 3. VERIFY ACTIVE ROUTE FROM LINUX KERNEL (ip route get)
         const pureIp = safeTarget.split('/')[0];
-        const verifyRes = await this.runCommand(`ip route get ${pureIp}`);
+        const probeIp = pureIp.endsWith('.0') ? pureIp.replace(/\.0$/, '.1') : pureIp;
+        const verifyRes = await this.runCommand(`ip route get ${probeIp}`);
         const kernelActiveRoute = verifyRes.success ? verifyRes.stdout.trim() : '';
 
         // If neither kernel nor NM succeeded, return failure
@@ -730,10 +738,11 @@ export class ArmbianNetworkManager {
 
         const clean = this.sanitizeParam(target.trim());
         const pureIp = clean.split('/')[0];
+        const probeIp = pureIp.endsWith('.0') ? pureIp.replace(/\.0$/, '.1') : pureIp;
         const dev = this.sanitizeParam(preferredDevice);
 
         // 1. Kernel Route Lookup: ip route get <ip>
-        const routeRes = await this.runCommand(`ip route get ${pureIp}`);
+        const routeRes = await this.runCommand(`ip route get ${probeIp}`);
         const kernelRoute = routeRes.success ? routeRes.stdout.trim() : (routeRes.stderr || 'Tidak dapat membaca rute kernel');
 
         // Extract selected device and gateway from kernel lookup
@@ -746,8 +755,8 @@ export class ArmbianNetworkManager {
             if (viaMatch) viaGateway = viaMatch[1];
         }
 
-        // 2. Ping Test: ping -c 2 -W 2 [-I <dev>] <ip>
-        const pingCmd = dev ? `ping -c 2 -W 2 -I ${dev} ${pureIp}` : `ping -c 2 -W 2 ${pureIp}`;
+        // 2. Ping Test: ping -c 2 -W 2 [-I <dev>] <probeIp>
+        const pingCmd = dev ? `ping -c 2 -W 2 -I ${dev} ${probeIp}` : `ping -c 2 -W 2 ${probeIp}`;
         const pingRes = await this.runCommand(pingCmd);
 
         let reachable = false;

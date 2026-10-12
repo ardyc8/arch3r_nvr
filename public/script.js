@@ -16281,19 +16281,22 @@ function renderNetMgrCameraRoutes() {
     container.innerHTML = customNetMgrRoutes.map(r => {
         const routeTarget = r.target || (r.cameraIp ? (r.cameraIp.includes('/') ? r.cameraIp : `${r.cameraIp}/32`) : '0.0.0.0/32');
         const devBadge = r.device ? `<span style="font-size:0.7rem; color:#38bdf8; background:rgba(56,189,248,0.12); padding:1px 5px; border-radius:4px; margin-left:4px;">${r.device}</span>` : '';
+        const isSuspiciousZeroMask = routeTarget.endsWith('.0/32');
+        const warnBadge = isSuspiciousZeroMask ? `<span style="font-size:0.68rem; color:#fbbf24; background:rgba(245,158,11,0.15); border:1px solid #d97706; padding:1px 5px; border-radius:3px; margin-left:4px;" title="Rute .0/32 hanya mengikat alamat .0 saja, bukan seluruh subnet kamera. Sebaiknya hapus dan masukkan format .0/24 jika ingin merutekan seluruh subnet.">⚠️ .0/32 (Bukan Seluruh Subnet)</span>` : '';
         return `
-            <div style="background:rgba(15,23,42,0.8); border:1px solid #1e293b; border-radius:6px; padding:0.6rem 0.85rem; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:rgba(15,23,42,0.8); border:1px solid ${isSuspiciousZeroMask ? '#d97706' : '#1e293b'}; border-radius:6px; padding:0.6rem 0.85rem; display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; align-items:center; gap:0.6rem;">
                     <span style="font-size:0.85rem;">${r.interfaceType === 'wifi' ? '📶' : '🔌'}</span>
                     <div>
                         <strong style="color:#38bdf8; font-size:0.82rem; font-family:monospace;">${routeTarget}</strong>
                         ${devBadge}
+                        ${warnBadge}
                         <span style="font-size:0.75rem; color:#94a3b8; margin-left:0.5rem;">Terikat ke: <strong>${r.connectionName || 'kernel'}</strong> (${(r.interfaceType || 'GENERIC').toUpperCase()})</span>
                     </div>
                 </div>
                 <div style="display:flex; gap:0.35rem; align-items:center;">
                     <button type="button" onclick="document.getElementById('netMgrCamIpInput').value='${routeTarget.split('/')[0]}'; window.diagnoseNetMgrRoute();" class="btn-sm btn-secondary" style="color:#38bdf8; border-color:#0284c7; font-size:0.72rem; padding:2px 8px;" title="Cek Ping">🔍 Ping</button>
-                    <button type="button" onclick="window.deleteNetMgrRoute('${routeTarget}', '${r.connectionName}')" class="btn-sm btn-secondary" style="color:#f87171; border-color:#dc2626; font-size:0.72rem; padding:2px 8px;">✕ Hapus</button>
+                    <button type="button" onclick="window.deleteNetMgrRoute('${routeTarget}', '${r.connectionName}')" class="btn-sm btn-secondary" style="color:#f87171; border-color:#dc2626; font-size:0.72rem; padding:2px 8px;" title="Hapus rute ini">✕ Hapus</button>
                 </div>
             </div>
         `;

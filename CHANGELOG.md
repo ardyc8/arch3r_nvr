@@ -1,5 +1,15 @@
 # Changelog
 
+## [Ver 11.9.2] - 2026-10-12
+### Smart Subnet CIDR Normalization, Zero-Mask Route Detection, and Robust Kernel Diagnostics
+- **Normalisasi Cerdas Format CIDR & Subnet (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Deteksi Cerdas Format `.0` (Subnet Block vs Host IP)**: Mengatasi permasalahan input IP berakhiran `.0` (seperti `192.168.1.0`) yang sebelumnya otomatis dipasang suffix `/32` sehingga hanya merutekan satu alamat tunggal network. Logika normalisasi kini secara cerdas mengenali bahwa alamat tanpa CIDR yang berakhiran `.0` adalah blok subnet penuh (`/24`), sedangkan IP perangkat biasa (seperti `192.168.1.45`) tetap diperlakukan sebagai host route tunggal (`/32`).
+  - **Probe IP Adaptif untuk Subnet (`ip route get` & ICMP Ping)**: Ketika rute subnet (`/24`) atau alamat jaringan berakhiran `.0` diuji, mesin diagnostik secara otomatis menguji alamat host aktif pertama dalam subnet tersebut (`.1`) agar kernel Linux STB dapat memproses pencarian rute (`ip route get`) dan tes ping tanpa memicu *invalid argument* atau broadcast reject.
+- **Antarmuka Pengguna & Manajemen Rute Terdaftar (`public/script.js`):**
+  - **Badge Peringatan Rute Tidak Efektif (`⚠️ .0/32`)**: Setiap entri rute lama di daftar yang memiliki format `.0/32` kini diberi sorotan border oranye dan badge peringatan transparan yang menjelaskan bahwa rute tersebut hanya mengikat alamat `.0` dan menyarankan penghapusan untuk diganti dengan `.0/24`.
+  - **Tombol Hapus Cepat & Pengujian Langsung**: Memudahkan pengguna untuk segera menghapus rute salah satu-per-satu dengan tombol `✕ Hapus` atau menguji keterjangkauan dengan tombol `🔍 Ping`.
+- **Sinkronisasi Versi Penuh**: Pembaruan menyeluruh Ver. 11.9.2 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.9.1] - 2026-10-12
 ### Instant Kernel Static Routing, ISP Router AP Isolation Bypass Engine, and Live Route Diagnostics for Dual-Interface STB
 - **Bypass AP Isolation Router & Injeksi Rute Kernel Instan (`addons/network-manager/lib/nmcli_driver.js`):**
