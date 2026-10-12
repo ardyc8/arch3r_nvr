@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.8.9 - Professional Network Manager UI, Real-Time nmcli Diagnostics Feedback Console, and Auto-Synced Kernel PBR Routing.",
+  "description": "Arch3r NVR Ver. 11.9.0 - Self-Healing Network Engine, Netplan Ghost Cleaner, and Wi-Fi Anti-Drop Reboot Lock.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -48,6 +48,19 @@ router.post('/purge-inactive', async (req, res) => {
     }
 });
 
+// 1c-bis. One-Click Self-Healing Network Stack & Duplicate/Netplan Fix Engine
+router.post('/auto-heal', async (req, res) => {
+    try {
+        const result = await nmDriver.autoHealNetworkStack(req.body || {});
+        if (!result.success) {
+            return res.status(400).json(result);
+        }
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // 1d. Restore and activate physical Ethernet LAN interface (e.g. eth0)
 router.post('/lan/restore', async (req, res) => {
     try {

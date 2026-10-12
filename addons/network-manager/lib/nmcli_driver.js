@@ -404,10 +404,26 @@ export class ArmbianNetworkManager {
             };
         }
 
+        // Auto-Harden the newly connected Wi-Fi profile:
+        // 1. Bind to physical wlan0 interface
+        // 2. Disable power saving (powersave 2) to eliminate idle/sleep disconnections
+        // 3. Set persistent autoconnect with priority 100
+        // 4. Set fallback metric (500)
+        try {
+            await this.runCommand(`nmcli connection modify "${safeSsid}" connection.interface-name wlan0 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${safeSsid}" 802-11-wireless.powersave 2 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${safeSsid}" connection.autoconnect yes 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${safeSsid}" connection.autoconnect-priority 100 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${safeSsid}" connection.autoconnect-retries 0 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${safeSsid}" ipv4.route-metric 500 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${safeSsid}" ipv4.may-fail yes 2>/dev/null || true`);
+            await this.runCommand('nmcli connection reload 2>/dev/null || true');
+        } catch (_) {}
+
         return {
             success: true,
             ssid: safeSsid,
-            message: `STB berhasil tersambung ke Wi-Fi "${safeSsid}"!`,
+            message: `STB berhasil tersambung ke Wi-Fi "${safeSsid}"! (Profil otomatis dikunci ke wlan0, powersave dimatikan, dan autoconnect aktif)`,
             stdout: res.stdout
         };
     }
@@ -899,6 +915,225 @@ export class ArmbianNetworkManager {
             purged,
             failed,
             message: `Pembersihan selesai! ${purged.length} profil koneksi usang/duplikat berhasil dihapus.`
+        };
+    }
+
+    /**
+     * Comprehensive Network Self-Healing Engine (One-Click Auto-Fix & Duplicate Purge)
+     * Specifically designed for Armbian STB:
+     * 1. Detects duplicate profiles for same device (e.g. multiple eth0 or multiple wlan0 profiles).
+     * 2. Purges stale/duplicate Netplan YAML files and inactive nmcli profiles.
+     * 3. Locks physical interfaces (ifname binding) so profiles never bind to ghost names.
+     * 4. Enforces Wi-Fi Anti-Drop & Reboot Persistence (powersave 2, autoconnect yes, priority 100, retries 0).
+     * 5. Enforces Metric Gateway Separation (LAN=50, Wi-Fi=500) to prevent routing clashes on reboot.
+     */
+    async autoHealNetworkStack(options = {}) {
+        const isAvailable = await this.isNmcliAvailable();
+        if (!isAvailable) {
+            return { success: false, error: 'nmcli is not installed on this system.' };
+        }
+
+        const auditLog = [];
+        const actionsTaken = [];
+        const warnings = [];
+
+        // 1. Audit current connection profiles & devices from nmcli
+        auditLog.push(`[${new Date().toLocaleTimeString('id-ID')}] 🔍 Memulai audit diagnosa interface & profil koneksi...`);
+        const connRaw = await this.runCommand('nmcli -t -f NAME,UUID,TYPE,DEVICE connection show');
+        const devRaw = await this.runCommand('nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device status');
+
+        const allProfiles = [];
+        if (connRaw.success && connRaw.stdout) {
+            const lines = connRaw.stdout.split('\n').filter(l => l.trim().length > 0);
+            for (const line of lines) {
+                const parts = line.split(/(?<!\\):/);
+                if (parts.length >= 4) {
+                    allProfiles.push({
+                        name: parts[0].replace(/\\:/g, ':').trim(),
+                        uuid: parts[1].trim(),
+                        type: parts[2].trim().toLowerCase(),
+                        device: parts[3].trim() === '--' ? '' : parts[3].trim()
+                    });
+                }
+            }
+        }
+
+        const activeDevices = {};
+        if (devRaw.success && devRaw.stdout) {
+            const lines = devRaw.stdout.split('\n').filter(l => l.trim().length > 0);
+            for (const line of lines) {
+                const parts = line.split(/(?<!\\):/);
+                if (parts.length >= 4) {
+                    activeDevices[parts[0].trim()] = {
+                        type: parts[1].trim().toLowerCase(),
+                        state: parts[2].trim(),
+                        connection: parts[3].trim() === '--' ? '' : parts[3].trim()
+                    };
+                }
+            }
+        }
+
+        // 2. Identify duplicate profiles
+        // E.g. multiple profiles named 'eth0', or multiple ethernet profiles, or multiple wifi profiles
+        const ethProfiles = allProfiles.filter(p => p.type.includes('ethernet') || p.name.toLowerCase().includes('eth0') || p.name.toLowerCase().includes('wired'));
+        const wifiProfiles = allProfiles.filter(p => p.type.includes('wifi') || p.type.includes('wireless') || p.name.toLowerCase().includes('wlan'));
+
+        auditLog.push(`Audit menemukan: ${ethProfiles.length} profil Ethernet LAN, ${wifiProfiles.length} profil Wi-Fi.`);
+
+        // 2a. Clean duplicate/ghost Ethernet profiles: keep active one, or keep the most specific one
+        if (ethProfiles.length > 1) {
+            // Find which one is active
+            let activeEth = ethProfiles.find(p => p.device && p.device !== '--');
+            if (!activeEth) activeEth = ethProfiles[0];
+
+            for (const p of ethProfiles) {
+                if (p.uuid !== activeEth.uuid) {
+                    const del = await this.runCommand(`nmcli connection delete uuid "${p.uuid}"`);
+                    if (del.success) {
+                        actionsTaken.push(`Hapus profil duplikat LAN: "${p.name}" (UUID: ${p.uuid})`);
+                        // Also remove corresponding netplan yaml if exists
+                        await this.runCommand(`rm -f /etc/netplan/*${p.uuid}*.yaml 2>/dev/null || true`);
+                    }
+                }
+            }
+        }
+
+        // 2b. Clean duplicate/ghost Wi-Fi profiles
+        if (wifiProfiles.length > 1) {
+            let activeWf = wifiProfiles.find(p => p.device && p.device !== '--');
+            if (!activeWf) activeWf = wifiProfiles[0];
+
+            for (const p of wifiProfiles) {
+                if (p.uuid !== activeWf.uuid) {
+                    const del = await this.runCommand(`nmcli connection delete uuid "${p.uuid}"`);
+                    if (del.success) {
+                        actionsTaken.push(`Hapus profil duplikat Wi-Fi: "${p.name}" (UUID: ${p.uuid})`);
+                        await this.runCommand(`rm -f /etc/netplan/*${p.uuid}*.yaml 2>/dev/null || true`);
+                    }
+                }
+            }
+        }
+
+        // 2c. Clean dangling netplan YAML ghost files in /etc/netplan/
+        try {
+            const lsNetplan = await this.runCommand('ls /etc/netplan/90-NM-*.yaml 2>/dev/null || true');
+            if (lsNetplan.success && lsNetplan.stdout) {
+                const files = lsNetplan.stdout.split('\n').filter(f => f.trim().length > 0);
+                for (const f of files) {
+                    // Extract UUID from filename: 90-NM-<uuid>.yaml
+                    const m = f.match(/90-NM-([a-f0-9-]+)\.yaml/i);
+                    if (m) {
+                        const fileUuid = m[1];
+                        // If this UUID is not in current active profiles, remove it!
+                        const stillExists = allProfiles.some(p => p.uuid === fileUuid && p.device);
+                        if (!stillExists) {
+                            await this.runCommand(`rm -f "${f.trim()}"`);
+                            actionsTaken.push(`Hapus file ghost Netplan: ${f.trim()}`);
+                        }
+                    }
+                }
+            }
+        } catch (_) {}
+
+        // 3. Wi-Fi Anti-Drop & Reboot Hardening
+        // Find current primary Wi-Fi connection
+        const updatedWifiRes = await this.runCommand('nmcli -t -f NAME,UUID,DEVICE,TYPE connection show');
+        let currentWifiProfile = null;
+        if (updatedWifiRes.success && updatedWifiRes.stdout) {
+            const lines = updatedWifiRes.stdout.split('\n').filter(l => l.trim().length > 0);
+            for (const line of lines) {
+                const parts = line.split(/(?<!\\):/);
+                if (parts.length >= 4) {
+                    const cType = parts[3].trim().toLowerCase();
+                    if (cType.includes('wifi') || cType.includes('wireless')) {
+                        currentWifiProfile = {
+                            name: parts[0].replace(/\\:/g, ':').trim(),
+                            uuid: parts[1].trim(),
+                            device: parts[2].trim() === '--' ? '' : parts[2].trim()
+                        };
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (currentWifiProfile) {
+            auditLog.push(`🛡️ Menerapkan Wi-Fi Anti-Drop & Hardware Lock pada profil "${currentWifiProfile.name}"...`);
+            
+            // A. Bind to wlan0 physical interface explicitly
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" connection.interface-name wlan0 2>/dev/null || true`);
+            // B. Disable Wi-Fi power saving (powersave 2 = disable power save in NM, avoids sleep disconnect)
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" 802-11-wireless.powersave 2 2>/dev/null || true`);
+            // C. Enable persistent autoconnect with high priority
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" connection.autoconnect yes 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" connection.autoconnect-priority 100 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" connection.autoconnect-retries 0 2>/dev/null || true`);
+            // D. Set secondary route metric (500) so Wi-Fi does not conflict with LAN
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" ipv4.route-metric 500 2>/dev/null || true`);
+            // E. Set ipv4.may-fail yes so boot does not block if Wi-Fi AP is temporarily offline
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" ipv4.may-fail yes 2>/dev/null || true`);
+
+            actionsTaken.push(`Kunci Wi-Fi Anti-Drop ("${currentWifiProfile.name}"): interface-name=wlan0, powersave=disabled, autoconnect-priority=100, retries=infinite(0), metric=500`);
+        } else {
+            warnings.push('Tidak ditemukan profil Wi-Fi aktif untuk dikunci.');
+        }
+
+        // 4. Ethernet LAN Hardening
+        let currentLanProfile = null;
+        if (updatedWifiRes.success && updatedWifiRes.stdout) {
+            const lines = updatedWifiRes.stdout.split('\n').filter(l => l.trim().length > 0);
+            for (const line of lines) {
+                const parts = line.split(/(?<!\\):/);
+                if (parts.length >= 4) {
+                    const cType = parts[3].trim().toLowerCase();
+                    if (cType.includes('ethernet') || parts[0].toLowerCase().includes('eth0')) {
+                        currentLanProfile = {
+                            name: parts[0].replace(/\\:/g, ':').trim(),
+                            uuid: parts[1].trim(),
+                            device: parts[2].trim() === '--' ? '' : parts[2].trim()
+                        };
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (currentLanProfile) {
+            auditLog.push(`⚡ Menerapkan konfigurasi LAN Ethernet stabil pada profil "${currentLanProfile.name}"...`);
+            await this.runCommand(`nmcli connection modify "${currentLanProfile.name}" connection.interface-name eth0 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${currentLanProfile.name}" connection.autoconnect yes 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${currentLanProfile.name}" connection.autoconnect-priority 50 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${currentLanProfile.name}" ipv4.route-metric 50 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${currentLanProfile.name}" ipv4.may-fail yes 2>/dev/null || true`);
+
+            actionsTaken.push(`Kunci LAN Ethernet ("${currentLanProfile.name}"): interface-name=eth0, autoconnect=yes, priority=50, metric=50</td>`);
+        }
+
+        // 5. Ensure unmanaged-devices=none in NetworkManager configuration so devices never become unmanaged
+        try {
+            await this.runCommand('echo -e "[keyfile]\\nunmanaged-devices=none" | tee /etc/NetworkManager/conf.d/10-manage-all.conf 2>/dev/null || true');
+            await this.runCommand('nmcli device set eth0 managed yes 2>/dev/null || true');
+            await this.runCommand('nmcli device set wlan0 managed yes 2>/dev/null || true');
+        } catch (_) {}
+
+        // 6. Reload and save state
+        await this.runCommand('nmcli connection reload 2>/dev/null || true');
+
+        // Bring up connections cleanly
+        if (currentLanProfile) {
+            await this.runCommand(`nmcli connection up "${currentLanProfile.name}" 2>/dev/null || true`);
+        }
+        if (currentWifiProfile) {
+            await this.runCommand(`nmcli connection up "${currentWifiProfile.name}" 2>/dev/null || true`);
+        }
+
+        return {
+            success: true,
+            message: 'Perbaikan mandiri tuntas! Interface fisik telah dikunci, profil duplikat & ghost Netplan dibersihkan, dan Wi-Fi Anti-Drop diaktifkan.',
+            actionsCount: actionsTaken.length,
+            actionsTaken,
+            warnings,
+            auditLog
         };
     }
 

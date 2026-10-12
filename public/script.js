@@ -15292,14 +15292,17 @@ function ensureNetMgrModalDOM() {
                             <button type="button" onclick="window.fetchNetMgrConnections()" class="btn btn-sm btn-secondary" style="font-size:0.78rem; padding:0.35rem 0.65rem;" title="Segarkan Interface">
                                 🔄
                             </button>
+                            <button type="button" onclick="window.autoHealNetworkStackUI()" class="btn btn-sm btn-primary" style="background:#7c3aed; border-color:#6d28d9; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:700; display:flex; align-items:center; gap:0.3rem;" title="Perbaiki interface duplikat, bersihkan ghost Netplan, dan kunci Wi-Fi Anti-Drop">
+                                🛡️ Perbaiki &amp; Bersihkan Interface
+                            </button>
                             <button type="button" onclick="window.restoreAndActivateLanUI('eth0')" class="btn btn-sm btn-primary" style="background:#059669; border-color:#047857; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:700;" title="Pulihkan interface fisik eth0 jika terlepas/unmanaged/dikuasai bridge lama">
-                                🔌 Pulihkan LAN (eth0)
+                                🔌 Pulihkan LAN
                             </button>
                             <button type="button" onclick="window.purgeInactiveNetMgrProfiles()" class="btn btn-sm btn-secondary" style="background:rgba(239,68,68,0.12); color:#f87171; border-color:#dc2626; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:600;" title="Hapus profil duplikat / ghost lama seperti Wired connection tak terpakai atau netplan-br0">
                                 🧹 Bersihkan Ghost
                             </button>
                             <button type="button" onclick="window.setupNetMgrMetrics()" class="btn btn-sm btn-primary" style="background:#2563eb; font-size:0.78rem; padding:0.35rem 0.75rem;">
-                                ⚡ Set Priorities (LAN=50, Wi-Fi=500)
+                                ⚡ Metrics (50/500)
                             </button>
                         </div>
                     </div>
@@ -15837,6 +15840,8 @@ window.fetchNetMgrConnections = async function() {
                     `<span style="font-size:0.68rem; padding:1px 6px; border-radius:4px; background:rgba(245,158,11,0.2); border:1px solid #d97706; color:#fbbf24; font-weight:700;" title="Jalur Cadangan/Kamera Wi-Fi">📶 Metric ${conn.metric} (Cadangan)</span>`
                 ) : '';
 
+                const canDelete = conn.uuid || (!isConnected && conn.name !== 'lo');
+
                 return `
                     <div style="background:rgba(15,23,42,0.6); border:1px solid ${needsActivation ? 'rgba(245,158,11,0.3)' : '#1e293b'}; border-radius:6px; padding:0.75rem; display:flex; flex-direction:column; gap:0.35rem; position:relative;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.3rem;">
@@ -15847,9 +15852,15 @@ window.fetchNetMgrConnections = async function() {
                                 ${needsActivation ? `
                                     <button type="button" onclick="window.restoreAndActivateLanUI('${conn.device || 'eth0'}')" title="Hubungkan dan aktifkan koneksi kabel fisik ini" style="background:rgba(16,185,129,0.2); border:1px solid #059669; color:#34d399; border-radius:4px; font-size:0.68rem; padding:1px 6px; cursor:pointer; font-weight:700;">⚡ Hubungkan</button>
                                 ` : ''}
+                                ${canDelete ? `
+                                    <button type="button" onclick="window.deleteNetMgrConnection('${conn.uuid || conn.name}', '${conn.name}')" title="Hapus profil koneksi ini dari sistem" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.5); color:#f87171; border-radius:4px; font-size:0.65rem; padding:1px 5px; cursor:pointer;" onmouseover="this.style.background='rgba(239,68,68,0.3)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">🗑️</button>
+                                ` : ''}
                             </div>
                         </div>
-                        <div style="font-size:0.78rem; color:#cbd5e1; font-family:monospace;">Nama: <strong>${conn.name}</strong></div>
+                        <div style="font-size:0.78rem; color:#cbd5e1; font-family:monospace; display:flex; justify-content:space-between; align-items:center;">
+                            <span>Nama: <strong>${conn.name}</strong></span>
+                            ${conn.uuid ? `<span style="font-size:0.65rem; color:#64748b;" title="UUID: ${conn.uuid}">${conn.uuid.substring(0, 8)}...</span>` : ''}
+                        </div>
                         <div style="font-size:0.75rem; color:#94a3b8;">Device: <code>${conn.device || 'N/A'}</code> ${conn.ip ? `&bull; IP: <strong style="color:#38bdf8;">${conn.ip}</strong>` : (isLan ? '<span style="color:#fbbf24;">(Kabel Belum Mendapat IP)</span>' : '')}</div>
                     </div>
                 `;
@@ -15923,6 +15934,63 @@ window.purgeInactiveNetMgrProfiles = async function() {
         }
     } catch (e) {
         alert(`Error membersihkan profil: ${e.message}`);
+    }
+};
+
+window.autoHealNetworkStackUI = async function() {
+    const confirmMsg = '🔧 PERBAIKAN TOTAL JARINGAN STB:\n\n' +
+        '1. Hapus profil duplikat eth0 / wlan0 & file ghost Netplan (/etc/netplan/90-NM-*.yaml)\n' +
+        '2. Kunci antarmuka fisik (wlan0 & eth0) agar tidak tertukar/terlepas\n' +
+        '3. Aktifkan Wi-Fi Anti-Drop: Matikan Power Saving (powersave 2), Autoconnect Priority 100, Retries Infinite\n' +
+        '4. Set Metric Gateway stabil (LAN=50, Wi-Fi=500)\n\n' +
+        'Apakah Anda ingin menjalankan perbaikan otomatis sekarang?';
+    if (!confirm(confirmMsg)) return;
+
+    const diagLog = document.getElementById('netMgrDiagnosticsLog');
+    const statusBadge = document.getElementById('netMgrSyncStatusBadge');
+    if (diagLog) {
+        diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🛡️ Memulai perbaikan total antarmuka & Wi-Fi Anti-Drop...`;
+    }
+    if (statusBadge) {
+        statusBadge.textContent = '● Memperbaiki...';
+        statusBadge.style.color = '#fbbf24';
+    }
+
+    try {
+        showToast('🛡️ Menjalankan audit & perbaikan antarmuka STB...', 'info');
+        const res = await authFetch('/api/addons/network-manager/auto-heal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            showToast('✅ ' + data.message, 'success');
+            if (statusBadge) {
+                statusBadge.textContent = '● Sistem Sehat';
+                statusBadge.style.color = '#10b981';
+            }
+            if (diagLog) {
+                const acts = (data.actionsTaken || []).map(a => `✓ ${a}`).join('<br>');
+                const warns = (data.warnings || []).map(w => `⚠️ ${w}`).join('<br>');
+                diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}<br>${acts}${warns ? `<br>${warns}` : ''}`;
+            }
+            await window.fetchNetMgrConnections();
+        } else {
+            const err = data.error || 'Gagal mengeksekusi perbaikan';
+            if (statusBadge) {
+                statusBadge.textContent = '● Gagal';
+                statusBadge.style.color = '#ef4444';
+            }
+            if (diagLog) {
+                diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal: ${err}`;
+            }
+            alert('Gagal memperbaiki antarmuka: ' + err);
+        }
+    } catch (e) {
+        if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
+        alert('Error: ' + e.message);
     }
 };
 

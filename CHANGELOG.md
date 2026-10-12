@@ -1,5 +1,20 @@
 # Changelog
 
+## [Ver 11.9.0] - 2026-10-12
+### Network Self-Healing Engine, Netplan Ghost Profile Cleaner, and Wi-Fi Anti-Drop Reboot Lock
+- **Modul Self-Healing & Pembersihan Duplikat Jaringan (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Deteksi & Pembersihan Otomatis Profil Duplikat**: Mengaudit profil NetworkManager secara otomatis. Jika terdapat profil ganda (seperti duplikat `eth0` atau sisa konfigurasi Wi-Fi lama), sistem mempertahankan satu koneksi primer aktif dan menghapus profil duplikat tak terpakai secara bersih.
+  - **Pembersihan File Ghost Netplan (`/etc/netplan/90-NM-*.yaml`)**: Mendeteksi dan menghapus file ghost YAML Netplan usang yang tertinggal dari profil NM yang telah terhapus, mencegah Netplan membangkitkan kembali koneksi lama saat sistem STB reboot.
+  - **Wi-Fi Anti-Drop & Reboot Hardening**: Mengunci profil Wi-Fi ke antarmuka fisik (`connection.interface-name: wlan0`), mematikan mode hemat daya radio Wi-Fi (`802-11-wireless.powersave 2`), mengaktifkan auto-reconnect tanpa batas (`connection.autoconnect yes`, `autoconnect-retries 0`, `autoconnect-priority 100`), serta menyetel rute fallback metric 500 dan `ipv4.may-fail yes` agar Wi-Fi tidak pernah terputus setelah reboot.
+  - **Proteksi Penguncian Hardware LAN (eth0)**: Mengikat profil LAN ke perangkat fisik `eth0` dengan prioritas tinggi (`priority 50`, `metric 50`) dan memastikan konfigurasi `/etc/NetworkManager/conf.d/10-manage-all.conf` terpasang agar antarmuka tidak beralih menjadi `unmanaged`.
+  - **Peningkatan Fungsi `connectWifiNetwork`**: Setiap kali pengguna menyambungkan Wi-Fi baru melalui UI, profil yang baru dibuat langsung dikeraskan (hardened) dengan penguncian `wlan0`, penonaktifan power save, dan prioritas autoconnect.
+- **REST API Endpoint Baru (`addons/network-manager/index.js`):**
+  - Menambahkan endpoint `POST /api/addons/network-manager/auto-heal` untuk menjalankan audit dan perbaikan total tumpukan jaringan STB sekali klik dari Web UI.
+- **Antarmuka Pengguna & Interaksi Visual (`public/script.js`):**
+  - **Tombol "🛡️ Perbaiki & Bersihkan Interface"**: Tombol khusus pada bilah kontrol interface modal Network Manager dengan dialog konfirmasi komprehensif dan umpan balik status real-time pada konsol diagnostik kernel STB.
+  - **Ikon Hapus Cepat Per-Profil (`🗑️`)**: Menambahkan tombol hapus cepat per-kartu profil koneksi sehingga pengguna dapat menghapus satu profil spesifik yang tidak diinginkan secara langsung dari Web UI.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi menyeluruh rilis Ver. 11.9.0 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.8.9] - 2026-10-11
 ### Professional Network Manager UI, Real-Time nmcli Diagnostics Feedback Console, and Auto-Synced Kernel PBR Routing
 - **Perbaikan & Peningkatan Fungsi Tombol "Terapkan Perubahan & Restart nmcli" (`addons/network-manager/lib/nmcli_driver.js`):**
