@@ -116,10 +116,10 @@ router.post('/metrics', async (req, res) => {
     }
 });
 
-// 5. Add static route for generic IP device or CIDR subnet block
+// 5. Add static route for generic IP device or CIDR subnet block (Instant Kernel Injection & NM Persistence)
 router.post('/routes', async (req, res) => {
     try {
-        const { connectionName, target, cameraIp, isWireless, type, interfaceType } = req.body;
+        const { connectionName, target, cameraIp, isWireless, type, interfaceType, device } = req.body;
         const routeTarget = target || cameraIp;
         const routeType = type || interfaceType || 'generic';
         const wirelessFlag = (typeof isWireless === 'boolean') ? isWireless : (interfaceType === 'wifi' || type === 'wifi');
@@ -128,7 +128,7 @@ router.post('/routes', async (req, res) => {
             return res.status(400).json({ success: false, error: 'target (IP/Subnet) wajib diisi' });
         }
 
-        const result = await nmDriver.addRoute(routeTarget, wirelessFlag, connectionName, routeType);
+        const result = await nmDriver.addRoute(routeTarget, wirelessFlag, connectionName, routeType, device);
         if (!result.success) {
             return res.status(400).json(result);
         }
@@ -138,10 +138,28 @@ router.post('/routes', async (req, res) => {
     }
 });
 
+// 5b. Diagnose route lookup and test ping reachability for IP target
+router.post('/routes/diagnose', async (req, res) => {
+    try {
+        const { target, cameraIp, device, interfaceType } = req.body;
+        const routeTarget = target || cameraIp;
+        const dev = device || (interfaceType === 'wifi' ? 'wlan0' : (interfaceType === 'lan' ? 'eth0' : null));
+
+        if (!routeTarget) {
+            return res.status(400).json({ success: false, error: 'Target IP wajib diisi' });
+        }
+
+        const result = await nmDriver.diagnoseRoute(routeTarget, dev);
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // 6. Delete static route for generic IP device or CIDR subnet block
 router.delete('/routes', async (req, res) => {
     try {
-        const { connectionName, target, cameraIp, isWireless, interfaceType, type } = req.body;
+        const { connectionName, target, cameraIp, isWireless, interfaceType, type, device } = req.body;
         const routeTarget = target || cameraIp;
         const wirelessFlag = (typeof isWireless === 'boolean') ? isWireless : (interfaceType === 'wifi' || type === 'wifi');
 
@@ -149,7 +167,7 @@ router.delete('/routes', async (req, res) => {
             return res.status(400).json({ success: false, error: 'target (IP/Subnet) wajib diisi' });
         }
 
-        const result = await nmDriver.deleteRoute(routeTarget, wirelessFlag, connectionName);
+        const result = await nmDriver.deleteRoute(routeTarget, wirelessFlag, connectionName, device);
         if (!result.success) {
             return res.status(400).json(result);
         }

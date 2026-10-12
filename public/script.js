@@ -15312,18 +15312,19 @@ function ensureNetMgrModalDOM() {
                     </div>
                 </div>
 
-                <!-- FITUR 4: STATIC ROUTE CAMERA / SUBNET BINDING -->
+                <!-- FITUR 4: STATIC ROUTE CAMERA / SUBNET BINDING & BYPASS AP ISOLATION ROUTER -->
                 <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem;">
                         <strong style="color:#f8fafc; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>🎯</span> Pengikatan Static Route Kamera / Subnet CIDR
-                            <span onclick="window.toggleNetMgrHelp('helpStaticRoute')" title="Klik untuk penjelasan fungsi Pengikatan Static Route bagi pengguna umum" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(56,189,248,0.15); border:1px solid #0284c7; color:#38bdf8; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:2px;">?</span>
+                            <span>🎯</span> Pengikatan Static Route &amp; Bypass AP Isolation Router ISP
+                            <span onclick="window.toggleNetMgrHelp('helpStaticRoute')" title="Klik untuk penjelasan fungsi Bypass AP Isolation & Pengikatan Static Route" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(56,189,248,0.15); border:1px solid #0284c7; color:#38bdf8; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:2px;">?</span>
                         </strong>
+                        <span style="font-size:0.7rem; color:#34d399; background:rgba(16,185,129,0.12); padding:2px 8px; border-radius:4px; border:1px solid rgba(16,185,129,0.3);">⚡ Instant Kernel (/32)</span>
                     </div>
 
-                    <!-- Tooltip Box Static Route -->
+                    <!-- Tooltip Box Static Route & AP Isolation -->
                     <div id="helpStaticRoute" style="display:none; background:rgba(12,74,110,0.35); border:1px solid #0284c7; border-radius:6px; padding:0.65rem 0.85rem; font-size:0.78rem; color:#bae6fd; line-height:1.45; margin-bottom:0.75rem;">
-                        💡 <strong>Tujuan Pengikatan Static Route (Untuk Umum):</strong> Menjadi rambu penunjuk arah khusus bagi Linux STB agar tidak salah pintu (LAN vs Wi-Fi) saat mengirim data ke perangkat target. Ketik <code>192.168.1.0/24</code> untuk seluruh perangkat di subnet sekaligus, atau ketik IP tunggal (misal <code>192.168.1.5</code>).
+                        💡 <strong>Solusi AP Isolation Router ISP:</strong> Jika kamera Wi-Fi tidak bisa diping atau RTSP timeout karena router ISP mengisolasi port kabel LAN dan Wi-Fi, arahkan target IP (misal <code>192.168.1.59</code> atau <code>192.168.1.0/24</code>) ke <strong>Wi-Fi (wlan0)</strong>. Sistem akan langsung menyuntikkan rute host (<code>/32</code>) ke kernel Linux STB secara instan tanpa restart koneksi (zero-downtime) dan menguncinya di NetworkManager agar tidak hilang saat STB di-reboot.
                     </div>
 
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem;">
@@ -15335,20 +15336,23 @@ function ensureNetMgrModalDOM() {
                         </div>
                         <div>
                             <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">IP / CIDR Subnet Target:</label>
-                            <input type="text" id="netMgrCamIpInput" placeholder="192.168.1.50 atau 10.0.0.0/24" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem; font-family:monospace; box-sizing:border-box;">
+                            <input type="text" id="netMgrCamIpInput" placeholder="192.168.1.59 atau 192.168.1.0/24" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem; font-family:monospace; box-sizing:border-box;">
                         </div>
                         <div>
                             <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Target Interface:</label>
                             <select id="netMgrTargetInterfaceSelect" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem;">
-                                <option value="wifi" selected>📶 Wi-Fi (Nirkabel)</option>
-                                <option value="lan">🔌 Ethernet (LAN Kabel)</option>
+                                <option value="wifi" selected>📶 Wi-Fi (wlan0) - Bypass AP Isolation</option>
+                                <option value="lan">🔌 Ethernet (eth0) - Jalur Kabel LAN</option>
                             </select>
                         </div>
                     </div>
 
                     <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.85rem;">
                         <button type="button" onclick="window.addNetMgrRoute()" class="btn btn-primary" style="flex:1; background:#0284c7; border-color:#0369a1; font-weight:600; font-size:0.82rem; padding:0.45rem 1rem;">
-                            ➕ Ikat Kamera / Subnet Ini
+                            ➕ Ikat Rute (Kernel &amp; NM)
+                        </button>
+                        <button type="button" onclick="window.diagnoseNetMgrRoute()" class="btn btn-secondary" style="background:#0f766e; border-color:#0d9488; color:#fff; font-weight:600; font-size:0.82rem; padding:0.45rem 0.9rem;" title="Tes rute kernel aktif dan cek ping respon target">
+                            🔍 Cek Jalur &amp; Ping
                         </button>
                         <button type="button" onclick="window.bindAllCamerasToInterface()" class="btn btn-primary" style="flex:1; background:#7c3aed; border-color:#6d28d9; font-weight:700; font-size:0.82rem; padding:0.45rem 1rem;" title="Ikat seluruh kamera yang terdaftar di NVR ke interface terpilih secara otomatis">
                             ⚡ Ikat SEMUA Kamera Sekaligus
@@ -16032,12 +16036,15 @@ window.setupNetMgrMetrics = async function() {
 window.addNetMgrRoute = async function() {
     const ipInput = document.getElementById('netMgrCamIpInput');
     const targetSel = document.getElementById('netMgrTargetInterfaceSelect');
+    const diagLog = document.getElementById('netMgrDiagnosticsLog');
+    const statusBadge = document.getElementById('netMgrSyncStatusBadge');
 
     const rawTarget = ipInput ? ipInput.value.trim() : '';
     const interfaceType = targetSel ? targetSel.value : 'wifi';
+    const targetDevice = interfaceType === 'wifi' ? 'wlan0' : 'eth0';
 
     if (!rawTarget) {
-        alert('Masukkan Target IP (misal 192.168.1.50) atau Blok Subnet CIDR (misal 192.168.1.0/24) terlebih dahulu.');
+        showToast('⚠️ Masukkan Target IP kamera (misal 192.168.1.59) atau subnet CIDR terlebih dahulu.', 'warning');
         return;
     }
 
@@ -16046,76 +16053,158 @@ window.addNetMgrRoute = async function() {
     }
 
     const conn = interfaceType === 'wifi' ? currentNetMgrConnections?.wifi : currentNetMgrConnections?.lan;
-    let connectionName = conn ? conn.name : '';
+    const connectionName = conn ? conn.name : (interfaceType === 'wifi' ? 'wlan0' : 'eth0');
 
-    if (!connectionName) {
-        connectionName = prompt(`Masukkan nama koneksi NetworkManager untuk ${interfaceType.toUpperCase()} (misal: "${interfaceType === 'wifi' ? 'STB-WiFi' : 'Wired connection 1'}"):`) || '';
+    if (statusBadge) {
+        statusBadge.textContent = '● Menyuntikkan Rute...';
+        statusBadge.style.color = '#fbbf24';
     }
-
-    if (!connectionName) {
-        alert('Nama koneksi NetworkManager tidak boleh kosong.');
-        return;
+    if (diagLog) {
+        diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Menyuntikkan rute host ${rawTarget} ke antarmuka ${targetDevice} (${interfaceType.toUpperCase()})...`;
     }
 
     try {
         const res = await authFetch('/api/addons/network-manager/routes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ connectionName, target: rawTarget, type: interfaceType })
+            body: JSON.stringify({
+                connectionName,
+                target: rawTarget,
+                type: interfaceType,
+                device: targetDevice
+            })
         });
         const data = await res.json();
 
         if (res.ok && data.success) {
             const formattedTarget = data.target || rawTarget;
-            showToast(`✅ Static Route ${formattedTarget} terikat ke "${connectionName}" (${interfaceType.toUpperCase()})`, 'success');
-            
+            const devLabel = data.device || targetDevice;
+            showToast(`✅ Rute ${formattedTarget} aktif instan di kernel STB via ${devLabel}! (Bypass AP Isolation Aktif)`, 'success');
+
+            if (statusBadge) {
+                statusBadge.textContent = '● Rute Aktif';
+                statusBadge.style.color = '#10b981';
+            }
+            if (diagLog) {
+                const kRoute = data.kernelActiveRoute ? `<br>• Kernel Path: <code>${data.kernelActiveRoute}</code>` : '';
+                diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}${kRoute}`;
+            }
+
             // Save to local cache list
             const existingIdx = customNetMgrRoutes.findIndex(r => r.target === formattedTarget || r.cameraIp === rawTarget);
             if (existingIdx !== -1) {
-                customNetMgrRoutes[existingIdx] = { target: formattedTarget, interfaceType, connectionName };
+                customNetMgrRoutes[existingIdx] = { target: formattedTarget, interfaceType, connectionName, device: devLabel };
             } else {
-                customNetMgrRoutes.push({ target: formattedTarget, interfaceType, connectionName });
+                customNetMgrRoutes.push({ target: formattedTarget, interfaceType, connectionName, device: devLabel });
             }
             localStorage.setItem('arch3r_netmgr_camera_routes', JSON.stringify(customNetMgrRoutes));
 
             renderNetMgrCameraRoutes();
             if (ipInput) ipInput.value = '';
         } else {
-            alert('Gagal menambahkan rute: ' + (data.error || 'Error'));
+            const errMsg = data.error || 'Gagal menambahkan rute';
+            if (statusBadge) {
+                statusBadge.textContent = '● Gagal';
+                statusBadge.style.color = '#ef4444';
+            }
+            if (diagLog) {
+                diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal: ${errMsg}`;
+            }
+            showToast('❌ ' + errMsg, 'error');
         }
     } catch (e) {
-        alert('Error menambahkan rute: ' + e.message);
+        if (statusBadge) {
+            statusBadge.textContent = '● Error';
+            statusBadge.style.color = '#ef4444';
+        }
+        showToast('❌ Error menambahkan rute: ' + e.message, 'error');
+    }
+};
+
+window.diagnoseNetMgrRoute = async function() {
+    const ipInput = document.getElementById('netMgrCamIpInput');
+    const targetSel = document.getElementById('netMgrTargetInterfaceSelect');
+    const diagLog = document.getElementById('netMgrDiagnosticsLog');
+    const statusBadge = document.getElementById('netMgrSyncStatusBadge');
+
+    const rawTarget = ipInput ? ipInput.value.trim() : '';
+    const interfaceType = targetSel ? targetSel.value : 'wifi';
+
+    if (!rawTarget) {
+        showToast('⚠️ Masukkan Target IP (misal 192.168.1.59) untuk menguji rute & ping.', 'warning');
+        return;
+    }
+
+    if (statusBadge) {
+        statusBadge.textContent = '● Menguji Ping & Rute...';
+        statusBadge.style.color = '#38bdf8';
+    }
+    if (diagLog) {
+        diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🔍 Menguji penjaluran Linux kernel & ICMP Ping ke ${rawTarget}...`;
+    }
+    showToast(`🔍 Menguji jalur rute Linux & Ping ke ${rawTarget}...`, 'info');
+
+    try {
+        const res = await authFetch('/api/addons/network-manager/routes/diagnose', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                target: rawTarget,
+                interfaceType,
+                device: interfaceType === 'wifi' ? 'wlan0' : 'eth0'
+            })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            const reachable = data.reachable;
+            const rttStr = data.avgRtt ? ` (${data.avgRtt} ms)` : '';
+            const statusColor = reachable ? '#10b981' : '#f87171';
+
+            if (statusBadge) {
+                statusBadge.textContent = reachable ? '● Ping Sukses (0% Loss)' : '● Target Timeout (100% Loss)';
+                statusBadge.style.color = statusColor;
+            }
+
+            if (diagLog) {
+                diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ${reachable ? '✅' : '⚠️'} ${data.message}<br>• Kernel Lookup: <code>${data.kernelRoute || 'N/A'}</code><br>• Hasil Ping: Loss ${data.packetLoss}%${rttStr}`;
+            }
+
+            if (reachable) {
+                showToast(`🎉 Target ${data.target} TERJANGKAU via ${data.selectedDev || 'interface'}${rttStr}!`, 'success');
+            } else {
+                showToast(`⚠️ Target ${data.target} RTO via ${data.selectedDev || 'interface'}. ${data.apIsolationWarning ? 'Kamera terblokir AP Isolation LAN router ISP! Gunakan Wi-Fi (wlan0).' : ''}`, 'warning');
+            }
+        } else {
+            showToast('❌ Gagal menguji target: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('❌ Error diagnosa: ' + e.message, 'error');
     }
 };
 
 window.bindAllCamerasToInterface = async function() {
     const targetSel = document.getElementById('netMgrTargetInterfaceSelect');
     const interfaceType = targetSel ? targetSel.value : 'wifi';
+    const targetDevice = interfaceType === 'wifi' ? 'wlan0' : 'eth0';
 
     const camList = window.cameras || cameras || [];
     if (!Array.isArray(camList) || camList.length === 0) {
-        alert('Tidak ada kamera terdaftar di database NVR untuk diikat.');
+        showToast('⚠️ Tidak ada kamera terdaftar di database NVR untuk diikat.', 'warning');
         return;
     }
 
-    if (!confirm(`Ikat seluruh (${camList.length}) kamera terdaftar ke interface ${interfaceType.toUpperCase()}?`)) return;
+    if (!confirm(`Ikat seluruh (${camList.length}) kamera terdaftar ke interface ${interfaceType.toUpperCase()} (${targetDevice}) secara instan?`)) return;
 
     if (!currentNetMgrConnections || !currentNetMgrConnections.success) {
         await window.fetchNetMgrConnections();
     }
 
     const conn = interfaceType === 'wifi' ? currentNetMgrConnections?.wifi : currentNetMgrConnections?.lan;
-    let connectionName = conn ? conn.name : '';
-    if (!connectionName) {
-        connectionName = prompt(`Masukkan nama koneksi NetworkManager untuk ${interfaceType.toUpperCase()} (misal: "${interfaceType === 'wifi' ? 'STB-WiFi' : 'Wired connection 1'}"):`) || '';
-    }
-    if (!connectionName) {
-        alert('Nama koneksi NetworkManager tidak boleh kosong.');
-        return;
-    }
+    const connectionName = conn ? conn.name : targetDevice;
 
     let successCount = 0;
-    showToast(`⏳ Mengikat ${camList.length} kamera ke ${connectionName}...`, 'info');
+    showToast(`⏳ Mengikat ${camList.length} kamera ke ${connectionName} (${targetDevice})...`, 'info');
 
     for (const cam of camList) {
         const rawIp = cam.ipAddress || (typeof extractRtspCredentials === 'function' ? extractRtspCredentials(cam.mainStreamUrl || '').host : '');
@@ -16125,7 +16214,12 @@ window.bindAllCamerasToInterface = async function() {
             const res = await authFetch('/api/addons/network-manager/routes', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ connectionName, target: rawIp, type: interfaceType })
+                body: JSON.stringify({
+                    connectionName,
+                    target: rawIp,
+                    type: interfaceType,
+                    device: targetDevice
+                })
             });
             const data = await res.json();
             if (res.ok && data.success) {
@@ -16133,9 +16227,9 @@ window.bindAllCamerasToInterface = async function() {
                 const formattedTarget = data.target || (rawIp.includes('/') ? rawIp : `${rawIp}/32`);
                 const existingIdx = customNetMgrRoutes.findIndex(r => r.target === formattedTarget || r.cameraIp === rawIp);
                 if (existingIdx !== -1) {
-                    customNetMgrRoutes[existingIdx] = { target: formattedTarget, interfaceType, connectionName };
+                    customNetMgrRoutes[existingIdx] = { target: formattedTarget, interfaceType, connectionName, device: targetDevice };
                 } else {
-                    customNetMgrRoutes.push({ target: formattedTarget, interfaceType, connectionName });
+                    customNetMgrRoutes.push({ target: formattedTarget, interfaceType, connectionName, device: targetDevice });
                 }
             }
         } catch (_) {}
@@ -16143,30 +16237,33 @@ window.bindAllCamerasToInterface = async function() {
 
     localStorage.setItem('arch3r_netmgr_camera_routes', JSON.stringify(customNetMgrRoutes));
     renderNetMgrCameraRoutes();
-    showToast(`🎉 Berhasil mengikat ${successCount} kamera ke ${connectionName} (${interfaceType.toUpperCase()})! Klik "Terapkan Perubahan" untuk memuat ke kernel.`, 'success');
+    showToast(`🎉 Berhasil mengikat ${successCount} kamera ke ${targetDevice} (${interfaceType.toUpperCase()})! Rute aktif instan di kernel Linux.`, 'success');
 };
 
 window.deleteNetMgrRoute = async function(target, connectionName) {
     if (!confirm(`Hapus static route "${target}" dari koneksi "${connectionName}"?`)) return;
 
     try {
+        const targetRoute = customNetMgrRoutes.find(r => r.target === target || r.cameraIp === target);
+        const device = targetRoute ? targetRoute.device : null;
+
         const res = await authFetch('/api/addons/network-manager/routes', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ target, connectionName })
+            body: JSON.stringify({ target, connectionName, device })
         });
         const data = await res.json();
 
         if (res.ok && data.success) {
-            showToast(`Rute "${target}" berhasil dihapus.`, 'info');
+            showToast(`Rute "${target}" berhasil dihapus dari kernel & profil.`, 'info');
             customNetMgrRoutes = customNetMgrRoutes.filter(r => !((r.target === target || r.cameraIp === target) && r.connectionName === connectionName));
             localStorage.setItem('arch3r_netmgr_camera_routes', JSON.stringify(customNetMgrRoutes));
             renderNetMgrCameraRoutes();
         } else {
-            alert('Gagal menghapus rute: ' + (data.error || 'Error'));
+            showToast('❌ Gagal menghapus rute: ' + (data.error || 'Error'), 'error');
         }
     } catch (e) {
-        alert('Error menghapus rute: ' + e.message);
+        showToast('❌ Error menghapus rute: ' + e.message, 'error');
     }
 };
 
@@ -16177,22 +16274,27 @@ function renderNetMgrCameraRoutes() {
     if (!container) return;
 
     if (!customNetMgrRoutes || customNetMgrRoutes.length === 0) {
-        container.innerHTML = '<div style="color:#64748b; font-size:0.8rem; text-align:center; padding:1rem;">Belum ada rute khusus perangkat/subnet yang ditambahkan. Gunakan form di atas untuk mengikat IP/Subnet.</div>';
+        container.innerHTML = '<div style="color:#64748b; font-size:0.8rem; text-align:center; padding:1rem;">Belum ada rute khusus perangkat/subnet yang ditambahkan. Gunakan form di atas untuk mengikat IP/Subnet kamera.</div>';
         return;
     }
 
     container.innerHTML = customNetMgrRoutes.map(r => {
         const routeTarget = r.target || (r.cameraIp ? (r.cameraIp.includes('/') ? r.cameraIp : `${r.cameraIp}/32`) : '0.0.0.0/32');
+        const devBadge = r.device ? `<span style="font-size:0.7rem; color:#38bdf8; background:rgba(56,189,248,0.12); padding:1px 5px; border-radius:4px; margin-left:4px;">${r.device}</span>` : '';
         return `
             <div style="background:rgba(15,23,42,0.8); border:1px solid #1e293b; border-radius:6px; padding:0.6rem 0.85rem; display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; align-items:center; gap:0.6rem;">
                     <span style="font-size:0.85rem;">${r.interfaceType === 'wifi' ? '📶' : '🔌'}</span>
                     <div>
                         <strong style="color:#38bdf8; font-size:0.82rem; font-family:monospace;">${routeTarget}</strong>
-                        <span style="font-size:0.75rem; color:#94a3b8; margin-left:0.5rem;">Terikat ke: <strong>${r.connectionName}</strong> (${(r.interfaceType || 'GENERIC').toUpperCase()})</span>
+                        ${devBadge}
+                        <span style="font-size:0.75rem; color:#94a3b8; margin-left:0.5rem;">Terikat ke: <strong>${r.connectionName || 'kernel'}</strong> (${(r.interfaceType || 'GENERIC').toUpperCase()})</span>
                     </div>
                 </div>
-                <button type="button" onclick="window.deleteNetMgrRoute('${routeTarget}', '${r.connectionName}')" class="btn-sm btn-secondary" style="color:#f87171; border-color:#dc2626; font-size:0.72rem; padding:2px 8px;">✕ Hapus</button>
+                <div style="display:flex; gap:0.35rem; align-items:center;">
+                    <button type="button" onclick="document.getElementById('netMgrCamIpInput').value='${routeTarget.split('/')[0]}'; window.diagnoseNetMgrRoute();" class="btn-sm btn-secondary" style="color:#38bdf8; border-color:#0284c7; font-size:0.72rem; padding:2px 8px;" title="Cek Ping">🔍 Ping</button>
+                    <button type="button" onclick="window.deleteNetMgrRoute('${routeTarget}', '${r.connectionName}')" class="btn-sm btn-secondary" style="color:#f87171; border-color:#dc2626; font-size:0.72rem; padding:2px 8px;">✕ Hapus</button>
+                </div>
             </div>
         `;
     }).join('');

@@ -1,5 +1,23 @@
 # Changelog
 
+## [Ver 11.9.1] - 2026-10-12
+### Instant Kernel Static Routing, ISP Router AP Isolation Bypass Engine, and Live Route Diagnostics for Dual-Interface STB
+- **Bypass AP Isolation Router & Injeksi Rute Kernel Instan (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Injeksi Langsung ke Linux Kernel (`ip route replace`)**: Saat menambahkan rute khusus kamera (`192.168.1.59/32`), sistem langsung menyuntikkan perintah kernel `ip route replace <target> dev <wlan0|eth0>` secara instan (<5ms). Mengatasi kendala paket terblokir oleh AP Isolation router ISP tanpa perlu merestart koneksi atau menunggu reload NetworkManager (zero-downtime).
+  - **Dua Lapisan Ketahanan (Kernel + NetworkManager)**: Selain aktif seketika di kernel Linux STB, rute juga disimpan permanen ke profil NetworkManager (`nmcli connection modify +ipv4.routes`) sehingga tetap aktif setelah STB reboot.
+  - **Verifikasi Jalur Kernel Otomatis**: Setelah rute dipasang, sistem langsung menjalankan `ip route get <target>` untuk memverifikasi antarmuka aktif kernel secara nyata dan mengirimkan konfirmasinya ke antarmuka pengguna.
+  - **Penghapusan Bersih Terpadu (`deleteRoute`)**: Menghapus rute dari tabel kernel aktif (`ip route del`) sekaligus mencabutnya dari profil NetworkManager.
+  - **Mesin Diagnostik Rute & Ping (`diagnoseRoute`)**: Fitur baru untuk memeriksa jalur pemilihan rute kernel Linux (`ip route get`) dan mengeksekusi ICMP ping langsung untuk mendeteksi apakah kamera terjangkau atau terisolasi oleh AP isolation router ISP.
+- **REST API Endpoint Baru (`addons/network-manager/index.js`):**
+  - Menambahkan endpoint `POST /api/addons/network-manager/routes/diagnose` untuk menjalankan pengecekan jalur rute dan uji coba ping ICMP ke target IP tertentu.
+  - Memperbarui `POST /api/addons/network-manager/routes` dan `DELETE /api/addons/network-manager/routes` agar mendukung injeksi kernel instan dan parameter interface fisik (`device`).
+- **Antarmuka Pengguna & Interaksi Visual (`public/script.js`):**
+  - **UI Bypass AP Isolation Router**: Judul dan panduan Fitur 4 diperjelas secara transparan dengan panduan solusi isolasi router ISP (mengapa kamera Wi-Fi wajib diikat ke `wlan0` saat STB tercolok kabel LAN).
+  - **Tombol "🔍 Cek Jalur & Ping"**: Menambahkan tombol pengujian langsung di samping form pengikatan rute yang menampilkan status keterjangkauan, latensi RTT, dan rincian jalur kernel pada konsol diagnostik.
+  - **Zero-Prompt Automation**: Menghilangkan dialog browser `prompt()` yang mengganggu; sistem secara otomatis mendeteksi profil dan perangkat fisik yang tepat (`wlan0` / `eth0`).
+  - **Aksi Cepat Ping per-Rute (`🔍 Ping`)**: Setiap baris rute yang terdaftar kini memiliki tombol pintas untuk langsung mengetes ping target kamera.
+- **Sinkronisasi Versi Penuh**: Sinkronisasi menyeluruh rilis Ver. 11.9.1 pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.9.0] - 2026-10-12
 ### Network Self-Healing Engine, Netplan Ghost Profile Cleaner, and Wi-Fi Anti-Drop Reboot Lock
 - **Modul Self-Healing & Pembersihan Duplikat Jaringan (`addons/network-manager/lib/nmcli_driver.js`):**

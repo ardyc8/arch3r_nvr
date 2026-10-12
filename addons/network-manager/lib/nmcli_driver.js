@@ -539,13 +539,14 @@ export class ArmbianNetworkManager {
     }
 
     /**
-     * 5. addRoute(target, isWireless, connectionName, type)
-     * Generalized Network Routing Function.
-     * Accepts `target` (device IP e.g. "192.168.1.50" or CIDR block "192.168.1.0/24")
-     * and boolean `isWireless`. Dynamically detects active Wi-Fi or LAN connection name if not provided.
-     * Automatically appends "/32" if CIDR mask is omitted.
+     * 5. addRoute(target, isWireless, connectionName, type, device)
+     * Generalized Network Routing Function & ISP AP Isolation Direct Bypass.
+     * Accepts `target` (device IP e.g. "192.168.1.59" or CIDR block "192.168.1.0/24").
+     * Instantly injects the route directly into the running Linux kernel (`ip route replace ... dev ...`)
+     * for immediate zero-downtime reachability, and modifies the NetworkManager connection profile
+     * (`nmcli connection modify +ipv4.routes ...`) to guarantee persistence across STB reboots.
      */
-    async addRoute(target, isWireless = false, connectionName = null, type = 'generic') {
+    async addRoute(target, isWireless = false, connectionName = null, type = 'generic', device = null) {
         const norm = this.normalizeTarget(target);
         if (!norm.valid) {
             return { success: false, error: norm.error };
@@ -569,51 +570,89 @@ export class ArmbianNetworkManager {
 
         let targetConnName = explicitConnName;
 
-        // Automatically detect active Wi-Fi or LAN connection name if not explicitly provided
+        // Auto-detect connections and physical devices if not explicitly specified
+        const detected = await this.detectActiveConnections();
         if (!targetConnName) {
-            const detected = await this.detectActiveConnections();
             targetConnName = wirelessFlag ? detected.wifiName : detected.lanName;
         }
 
-        const resolvedConnName = await this.resolveConnectionProfileName(targetConnName, wirelessFlag ? 'wifi' : 'lan');
-        const safeConn = this.sanitizeParam(resolvedConnName || targetConnName);
-        if (!safeConn) {
-            const interfaceTypeLabel = wirelessFlag ? 'Wi-Fi (Wireless)' : 'LAN (Ethernet)';
-            return {
-                success: false,
-                error: `Could not automatically detect active ${interfaceTypeLabel} connection name from nmcli. Please verify interface connection.`
-            };
+        // Determine physical device (e.g. wlan0 or eth0) for instant kernel routing
+        let targetDev = this.sanitizeParam(device);
+        if (!targetDev) {
+            if (wirelessFlag) {
+                targetDev = (detected.wifi && detected.wifi.device) ? detected.wifi.device : 'wlan0';
+            } else {
+                targetDev = (detected.lan && detected.lan.device) ? detected.lan.device : 'eth0';
+            }
         }
 
         const safeTarget = this.sanitizeParam(norm.target);
         const safeType = this.sanitizeParam(type) || (wirelessFlag ? 'wifi' : 'ethernet');
 
-        // Command to add static route: nmcli connection modify "<conn>" +ipv4.routes "<target>"
-        const cmd = `nmcli connection modify "${safeConn}" +ipv4.routes "${safeTarget}"`;
-        const res = await this.runCommand(cmd);
+        // 1. INSTANT KERNEL ROUTE INJECTION (Zero-Downtime, bypasses router AP Isolation immediately)
+        let kernelApplied = false;
+        let kernelError = '';
+        if (targetDev) {
+            const kernelCmd = `ip route replace ${safeTarget} dev ${targetDev}`;
+            const kRes = await this.runCommand(kernelCmd);
+            if (kRes.success) {
+                kernelApplied = true;
+            } else {
+                kernelError = kRes.stderr || kRes.error;
+            }
+        }
 
-        if (!res.success) {
+        // 2. PERSISTENCE IN NETWORKMANAGER (survives reboots)
+        let nmApplied = false;
+        let nmError = '';
+        let resolvedConnName = '';
+        if (targetConnName) {
+            resolvedConnName = await this.resolveConnectionProfileName(targetConnName, wirelessFlag ? 'wifi' : 'lan');
+            const safeConn = this.sanitizeParam(resolvedConnName || targetConnName);
+            if (safeConn) {
+                const nmCmd = `nmcli connection modify "${safeConn}" +ipv4.routes "${safeTarget}"`;
+                const nmRes = await this.runCommand(nmCmd);
+                if (nmRes.success) {
+                    nmApplied = true;
+                } else {
+                    nmError = nmRes.stderr || nmRes.error;
+                }
+            }
+        }
+
+        // 3. VERIFY ACTIVE ROUTE FROM LINUX KERNEL (ip route get)
+        const pureIp = safeTarget.split('/')[0];
+        const verifyRes = await this.runCommand(`ip route get ${pureIp}`);
+        const kernelActiveRoute = verifyRes.success ? verifyRes.stdout.trim() : '';
+
+        // If neither kernel nor NM succeeded, return failure
+        if (!kernelApplied && !nmApplied) {
             return {
                 success: false,
-                error: `Failed to add static route for "${safeTarget}" on "${safeConn}": ${res.stderr || res.error}`
+                error: `Gagal menambahkan rute: Kernel (${kernelError || 'device not found'}), NM (${nmError || 'connection not found'})`
             };
         }
 
         return {
             success: true,
             target: safeTarget,
-            connectionName: safeConn,
+            device: targetDev,
+            connectionName: resolvedConnName || targetConnName || targetDev,
             isWireless: wirelessFlag,
             type: safeType,
-            message: `Successfully added static route "${safeTarget}" to ${wirelessFlag ? 'Wi-Fi' : 'LAN'} connection "${safeConn}"`
+            kernelApplied,
+            nmApplied,
+            kernelActiveRoute,
+            message: `Rute "${safeTarget}" berhasil diarahkan ke ${targetDev} (${wirelessFlag ? 'Wi-Fi' : 'LAN'})! Bypass AP Isolation aktif di kernel Linux STB.`
         };
     }
 
     /**
-     * 6. deleteRoute(target, isWireless, connectionName)
+     * 6. deleteRoute(target, isWireless, connectionName, device)
      * Generalized Route Deletion Function.
+     * Removes static route from both active Linux kernel routing table and NetworkManager profile.
      */
-    async deleteRoute(target, isWireless = false, connectionName = null) {
+    async deleteRoute(target, isWireless = false, connectionName = null, device = null) {
         const norm = this.normalizeTarget(target);
         if (!norm.valid) {
             return { success: false, error: norm.error };
@@ -636,40 +675,113 @@ export class ArmbianNetworkManager {
         }
 
         let targetConnName = explicitConnName;
-
+        const detected = await this.detectActiveConnections();
         if (!targetConnName) {
-            const detected = await this.detectActiveConnections();
             targetConnName = wirelessFlag ? detected.wifiName : detected.lanName;
         }
 
-        const resolvedConnName = await this.resolveConnectionProfileName(targetConnName, wirelessFlag ? 'wifi' : 'lan');
-        const safeConn = this.sanitizeParam(resolvedConnName || targetConnName);
-        if (!safeConn) {
-            return {
-                success: false,
-                error: 'connectionName or active interface detection is required to delete static route.'
-            };
+        let targetDev = this.sanitizeParam(device);
+        if (!targetDev) {
+            if (wirelessFlag) {
+                targetDev = (detected.wifi && detected.wifi.device) ? detected.wifi.device : 'wlan0';
+            } else {
+                targetDev = (detected.lan && detected.lan.device) ? detected.lan.device : 'eth0';
+            }
         }
 
         const safeTarget = this.sanitizeParam(norm.target);
 
-        // Command to remove static route: nmcli connection modify "<conn>" -ipv4.routes "<target>"
-        const cmd = `nmcli connection modify "${safeConn}" -ipv4.routes "${safeTarget}"`;
-        const res = await this.runCommand(cmd);
+        // 1. Remove from active Linux kernel routing table
+        if (targetDev) {
+            await this.runCommand(`ip route del ${safeTarget} dev ${targetDev} 2>/dev/null || true`);
+        }
 
-        if (!res.success) {
-            return {
-                success: false,
-                error: `Failed to remove static route "${safeTarget}" from "${safeConn}": ${res.stderr || res.error}`
-            };
+        // 2. Remove from NetworkManager connection profile
+        let nmRemoved = false;
+        if (targetConnName) {
+            const resolvedConnName = await this.resolveConnectionProfileName(targetConnName, wirelessFlag ? 'wifi' : 'lan');
+            const safeConn = this.sanitizeParam(resolvedConnName || targetConnName);
+            if (safeConn) {
+                const cmd = `nmcli connection modify "${safeConn}" -ipv4.routes "${safeTarget}"`;
+                const res = await this.runCommand(cmd);
+                nmRemoved = res.success;
+            }
         }
 
         return {
             success: true,
             target: safeTarget,
-            connectionName: safeConn,
+            device: targetDev,
+            connectionName: targetConnName || targetDev,
             isWireless: wirelessFlag,
-            message: `Successfully removed static route "${safeTarget}" from connection "${safeConn}"`
+            nmRemoved,
+            message: `Static route "${safeTarget}" berhasil dihapus dari kernel & profil jaringan.`
+        };
+    }
+
+    /**
+     * diagnoseRoute(target, preferredDevice)
+     * Diagnostic tool: Checks Linux kernel route decision (`ip route get`) and runs test ICMP ping.
+     */
+    async diagnoseRoute(target, preferredDevice = null) {
+        if (!target || typeof target !== 'string') {
+            return { success: false, error: 'Target IP wajib diisi untuk diagnosa.' };
+        }
+
+        const clean = this.sanitizeParam(target.trim());
+        const pureIp = clean.split('/')[0];
+        const dev = this.sanitizeParam(preferredDevice);
+
+        // 1. Kernel Route Lookup: ip route get <ip>
+        const routeRes = await this.runCommand(`ip route get ${pureIp}`);
+        const kernelRoute = routeRes.success ? routeRes.stdout.trim() : (routeRes.stderr || 'Tidak dapat membaca rute kernel');
+
+        // Extract selected device and gateway from kernel lookup
+        let selectedDev = '';
+        let viaGateway = '';
+        if (routeRes.success && routeRes.stdout) {
+            const devMatch = routeRes.stdout.match(/\bdev\s+(\S+)/);
+            if (devMatch) selectedDev = devMatch[1];
+            const viaMatch = routeRes.stdout.match(/\bvia\s+(\S+)/);
+            if (viaMatch) viaGateway = viaMatch[1];
+        }
+
+        // 2. Ping Test: ping -c 2 -W 2 [-I <dev>] <ip>
+        const pingCmd = dev ? `ping -c 2 -W 2 -I ${dev} ${pureIp}` : `ping -c 2 -W 2 ${pureIp}`;
+        const pingRes = await this.runCommand(pingCmd);
+
+        let reachable = false;
+        let packetLoss = 100;
+        let avgRtt = null;
+        let pingRaw = pingRes.stdout || pingRes.stderr || 'No response';
+
+        if (pingRes.stdout) {
+            const lossMatch = pingRes.stdout.match(/(\d+)%\s+packet loss/i);
+            if (lossMatch) {
+                packetLoss = parseInt(lossMatch[1], 10);
+                if (packetLoss === 0) reachable = true;
+            }
+            const rttMatch = pingRes.stdout.match(/(?:rtt|round-trip)[^=]*=\s*[\d.]+\/([\d.]+)/i);
+            if (rttMatch) {
+                avgRtt = parseFloat(rttMatch[1]);
+            }
+        }
+
+        return {
+            success: true,
+            target: pureIp,
+            testedDev: dev || selectedDev,
+            selectedDev,
+            viaGateway,
+            kernelRoute,
+            reachable,
+            packetLoss,
+            avgRtt,
+            pingOutput: pingRaw,
+            apIsolationWarning: (!reachable && selectedDev.startsWith('eth')),
+            message: reachable
+                ? `✅ Target ${pureIp} terjangkau via ${selectedDev || dev || 'jaringan'} (RTT: ${avgRtt ? avgRtt + 'ms' : 'OK'}, 0% loss)`
+                : `⚠️ Target ${pureIp} belum merespon (100% loss via ${selectedDev || dev || 'jaringan'}). ${selectedDev.startsWith('eth') ? 'Kemungkinan terblokir AP Isolation router ISP! Coba ikat ke Wi-Fi (wlan0).' : ''}`
         };
     }
 

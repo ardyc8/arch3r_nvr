@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.9.0 - Self-Healing Network Engine, Netplan Ghost Cleaner, and Wi-Fi Anti-Drop Reboot Lock.",
+  "description": "Arch3r NVR Ver. 11.9.1 - Instant Kernel Static Routing, ISP Router AP Isolation Bypass Engine, and Live Route Diagnostics for Dual-Interface STB.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
