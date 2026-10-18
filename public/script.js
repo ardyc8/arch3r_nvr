@@ -1090,6 +1090,9 @@ async function handleLogout() {
                 if (typeof fetchInstalledAddons === 'function') fetchInstalledAddons();
             } else if (targetId === 'view-about') {
                 if (typeof fetchAboutInfo === 'function') fetchAboutInfo();
+            } else if (targetId === 'view-setting-system') {
+                if (typeof fetchSystemSettings === 'function') fetchSystemSettings();
+                if (typeof updateHardwareStats === 'function') updateHardwareStats();
             } else if (targetId === 'view-logs') {
                 if (typeof window.startLogsLivePolling === 'function') window.startLogsLivePolling();
             } else if (targetId === 'view-setting-users') {
@@ -1395,29 +1398,17 @@ async function updateHardwareStats() {
                     if (ifaces.length > 0) {
                         let breakdownHtml = '';
                         ifaces.forEach(iface => {
-                            const isWifi = iface.type === 'wifi';
-                            const icon = isWifi ? '📶' : '🔌';
-                            const typeLabel = isWifi ? 'Wi-Fi' : 'LAN';
-                            const gwTag = iface.isDefaultGateway ? ' <span style="color:#34d399; font-size:0.62rem; font-weight:700;">[Gateway]</span>' : '';
-                            const port = iface.port || 3000;
-                            const accessUrl = iface.accessUrl || `http://${iface.ip || '127.0.0.1'}:${port}`;
-
+                            const icon = iface.type === 'wifi' ? '📶' : '🔌';
                             breakdownHtml += `
-                                <div style="padding:5px 7px; margin-bottom:5px; background:rgba(15,23,42,0.65); border-radius:5px; border:1px solid rgba(255,255,255,0.07); line-height:1.35;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
-                                        <span style="color:#f8fafc; font-weight:700; font-size:0.7rem;">${icon} ${iface.name} (${typeLabel})${gwTag}</span>
-                                        <span style="font-size:0.65rem; font-family:monospace;"><span style="color:#38bdf8;">↓${iface.rxSpeedFormatted || '0 KB/s'}</span> <span style="color:#60a5fa;">↑${iface.txSpeedFormatted || '0 KB/s'}</span></span>
-                                    </div>
-                                    <div style="font-size:0.67rem; color:#94a3b8; font-family:monospace; display:flex; flex-direction:column; gap:1px;">
-                                        <div><span style="color:#64748b;">URL:</span> <strong style="color:#38bdf8;">${accessUrl}</strong></div>
-                                        <div><span style="color:#64748b;">IP / Mask:</span> <span style="color:#cbd5e1;">${iface.ip || '-'}${iface.netmask ? ' / ' + iface.netmask : ''}</span></div>
-                                        <div><span style="color:#64748b;">MAC:</span> <span style="color:#94a3b8;">${iface.mac || 'N/A'}</span></div>
-                                    </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; padding:3px 6px; margin-bottom:3px; background:rgba(15,23,42,0.5); border-radius:4px; border:1px solid rgba(255,255,255,0.05);">
+                                    <span style="color:#e2e8f0; font-weight:600; font-size:0.68rem;">${icon} ${iface.name}</span>
+                                    <span style="font-size:0.68rem;"><span style="color:#38bdf8;">↓${iface.rxSpeedFormatted || '0 KB/s'}</span> <span style="color:#60a5fa;">↑${iface.txSpeedFormatted || '0 KB/s'}</span></span>
                                 </div>
                             `;
                         });
                         wNetBreakdown.innerHTML = breakdownHtml;
 
+                        // Sinkronkan rincian lengkap IP, Subnet Mask, MAC & Port 3000 ke Tab Sistem & Jaringan
                         if (typeof window.renderAboutNetworkInterfaces === 'function') {
                             window.renderAboutNetworkInterfaces(ifaces, data.hostname);
                         }
@@ -3071,6 +3062,8 @@ Log Diagnostic: ${data.detail || 'Tidak ada respon dari port RTSP. Pastikan kame
             if (sysTgBot) payload.telegramBotToken = sysTgBot.value;
             const sysTgChat = document.getElementById('sysTgChat');
             if (sysTgChat) payload.telegramChatId = sysTgChat.value;
+            const sysDomain = document.getElementById('sysPublicDomain');
+            if (sysDomain) payload.publicDomain = sysDomain.value.trim();
             try {
                 const res = await authFetch('/api/settings', {
                     method: 'POST',
@@ -10522,6 +10515,11 @@ async function fetchInstalledAddons() {
                                         <span>🌐</span> Network Router
                                     </button>
                                 ` : ''}
+                                ${(addon.id === 'pihole-manager' || addon.id === 'pihole') ? `
+                                    <button class="btn-sm btn-primary" onclick="window.openPiholeModal()" title="Buka Pi-hole DNS Sinkhole & Ad-Blocker Manager" style="display:inline-flex; align-items:center; gap:0.35rem; background:#dc2626; border-color:#b91c1c; font-weight:600; padding:0.3rem 0.8rem; border-radius:6px; box-shadow:0 2px 6px rgba(220,38,38,0.35);">
+                                        <span>🛡️</span> Pi-hole DNS
+                                    </button>
+                                ` : ''}
                                 <button class="btn-sm btn-secondary" onclick="openAddonConfig('${addon.id}', '${addon.name}')" title="Pengaturan Global">⚙️</button>
                                 <button class="btn-sm btn-secondary" onclick="toggleAddonState('${addon.id}', ${!addon.active})" title="${addon.active ? 'Matikan' : 'Nyalakan'}">
                                     ${addon.active ? '⏹️' : '▶️'}
@@ -15451,6 +15449,57 @@ function ensureNetMgrModalDOM() {
                     </div>
                 </div>
 
+                <!-- FITUR 5: 3 FITUR CERDAS & CLOUDFLARE DOCKER DOCTOR (ARMBIAN STB) -->
+                <div style="background:rgba(30,58,138,0.12); border:1px solid rgba(59,130,246,0.35); border-radius:10px; padding:1.1rem; box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:1.25rem;">🛡️</span>
+                            <div>
+                                <strong style="color:#60a5fa; font-size:0.95rem;">3 Fitur Cerdas: Gateway Anti-Bentrok, Docker DNS &amp; Cloudflare HTTP/2 Doctor</strong>
+                                <span onclick="window.toggleNetMgrHelp('helpSmartFeatures')" title="Klik untuk panduan lengkap 3 fitur cerdas" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(59,130,246,0.15); border:1px solid #3b82f6; color:#60a5fa; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:6px;">?</span>
+                            </div>
+                        </div>
+                        <span id="smartFeaturesStatusBadge" class="badge" style="background:rgba(16,185,129,0.15); border:1px solid #059669; color:#34d399; font-size:0.75rem; padding:4px 11px; font-weight:700; border-radius:6px;">
+                            ● Siap Digunakan
+                        </span>
+                    </div>
+
+                    <!-- Tooltip Box 3 Smart Features -->
+                    <div id="helpSmartFeatures" style="display:none; background:rgba(15,23,42,0.85); border:1px solid #3b82f6; border-radius:6px; padding:0.75rem 0.95rem; font-size:0.78rem; color:#bae6fd; line-height:1.5; margin-bottom:0.85rem;">
+                        💡 <strong>Mengapa 3 Fitur Ini Dibutuhkan pada Armbian STB?</strong>
+                        <ul style="margin:4px 0 4px 1.2rem; padding:0;">
+                            <li><strong>1. Kunci Gateway LAN:</strong> Memprioritaskan eth0 (metric 50) untuk koneksi internet keluar dan mengunci wlan0 (metric 600, never-default: yes) khusus stream kamera CCTV, mencegah paket bentrok jika kedua interface berada di IP subnet yang sama (192.168.1.x).</li>
+                            <li><strong>2. Perbaiki DNS Docker:</strong> Mengunci daemon Docker ke 1.1.1.1 &amp; 8.8.8.8 serta mempatch container cloudflared agar terbebas dari error <code>server misbehaving</code> akibat Tailscale MagicDNS atau DNS filter ISP.</li>
+                            <li><strong>3. Cloudflare HTTP/2 Doctor:</strong> Memverifikasi resolusi domain tunnel dan memastikan container berjalan dengan protokol HTTP/2 (menghindari pemblokiran UDP 7844 QUIC oleh ISP).</li>
+                        </ul>
+                    </div>
+
+                    <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
+                        Eksekusi perbaikan jaringan satu per satu atau jalankan solusi terpadu sekali klik untuk mengoptimalkan koneksi remote Cloudflare Tunnel &amp; CasaOS STB.
+                    </p>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.65rem; margin-bottom:0.85rem;">
+                        <button type="button" onclick="window.healDualInterfaceGatewayUI()" class="btn btn-secondary" style="background:rgba(59,130,246,0.1); border-color:#2563eb; color:#93c5fd; font-size:0.8rem; padding:0.55rem 0.85rem; font-weight:600; text-align:left; display:flex; flex-direction:column; gap:2px;">
+                            <span style="font-weight:700; color:#60a5fa;">🌐 1. Kunci Gateway LAN</span>
+                            <span style="font-size:0.7rem; color:#94a3b8;">eth0=50 / wlan0=600 never-default</span>
+                        </button>
+                        <button type="button" onclick="window.fixDockerDnsUI()" class="btn btn-secondary" style="background:rgba(168,85,247,0.1); border-color:#9333ea; color:#d8b4fe; font-size:0.8rem; padding:0.55rem 0.85rem; font-weight:600; text-align:left; display:flex; flex-direction:column; gap:2px;">
+                            <span style="font-weight:700; color:#c084fc;">🐳 2. Perbaiki DNS Docker</span>
+                            <span style="font-size:0.7rem; color:#94a3b8;">Kunci 1.1.1.1 &amp; patch resolv.conf</span>
+                        </button>
+                        <button type="button" onclick="window.checkCloudflareTunnelDoctorUI()" class="btn btn-secondary" style="background:rgba(245,158,11,0.1); border-color:#d97706; color:#fde68a; font-size:0.8rem; padding:0.55rem 0.85rem; font-weight:600; text-align:left; display:flex; flex-direction:column; gap:2px;">
+                            <span style="font-weight:700; color:#fbbf24;">☁️ 3. Cloudflare Doctor</span>
+                            <span style="font-size:0.7rem; color:#94a3b8;">Cek status SRV &amp; protokol HTTP/2</span>
+                        </button>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button type="button" onclick="window.repairCloudflareTunnelHttp2UI()" class="btn btn-primary" style="background:#2563eb; border-color:#1d4ed8; font-weight:700; font-size:0.82rem; padding:0.45rem 1.1rem; display:flex; align-items:center; gap:0.4rem; box-shadow:0 2px 8px rgba(37,99,235,0.3);">
+                            <span>🚀</span> Jalankan 3 Solusi Sekaligus (1-Klik)
+                        </button>
+                    </div>
+                </div>
+
                 <!-- KOTAK LOG KONSOL DIAGNOSTIK KERNEL & NMCLI -->
                 <div id="netMgrDiagnosticsBox" style="background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:0.85rem; font-family:monospace; font-size:0.75rem; color:#94a3b8;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.35rem;">
@@ -16084,6 +16133,168 @@ window.autoHealNetworkStackUI = async function() {
     }
 };
 
+window.healDualInterfaceGatewayUI = async function() {
+    const diagLog = document.getElementById('netMgrDiagnosticsLog');
+    const statusBadge = document.getElementById('smartFeaturesStatusBadge');
+    const tabFeedback = document.getElementById('smartNetFeaturesFeedback');
+
+    if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🌐 Mengunci eth0 (metric 50) & wlan0 (metric 600 never-default)...`;
+    if (statusBadge) { statusBadge.textContent = '● Memproses...'; statusBadge.style.color = '#fbbf24'; }
+    if (tabFeedback) { tabFeedback.style.display = 'block'; tabFeedback.innerHTML = '⏳ Menjalankan konfigurasi gateway dual-interface...'; }
+
+    try {
+        if (typeof showToast === 'function') showToast('🌐 Mengunci prioritas default gateway LAN...', 'info');
+        const res = await authFetch('/api/addons/network-manager/gateway/heal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof showToast === 'function') showToast('✅ ' + data.message, 'success');
+            if (statusBadge) { statusBadge.textContent = '● Gateway Terkunci'; statusBadge.style.color = '#10b981'; }
+            if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}`;
+            if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#34d399;">✅ ${data.message}</span>`;
+            if (typeof window.fetchNetMgrConnections === 'function') await window.fetchNetMgrConnections();
+        } else {
+            const err = data.error || 'Gagal mengatur gateway';
+            if (statusBadge) { statusBadge.textContent = '● Gagal'; statusBadge.style.color = '#ef4444'; }
+            if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ ${err}`;
+            if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#ef4444;">❌ Gagal: ${err}</span>`;
+            alert('Gagal mengatur gateway: ' + err);
+        }
+    } catch (e) {
+        if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
+        if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#ef4444;">❌ Error: ${e.message}</span>`;
+        alert('Error: ' + e.message);
+    }
+};
+
+window.fixDockerDnsUI = async function() {
+    const diagLog = document.getElementById('netMgrDiagnosticsLog');
+    const statusBadge = document.getElementById('smartFeaturesStatusBadge');
+    const tabFeedback = document.getElementById('smartNetFeaturesFeedback');
+
+    if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🐳 Mengunci DNS Docker ke 1.1.1.1 & 8.8.8.8...`;
+    if (statusBadge) { statusBadge.textContent = '● Memproses DNS...'; statusBadge.style.color = '#fbbf24'; }
+    if (tabFeedback) { tabFeedback.style.display = 'block'; tabFeedback.innerHTML = '⏳ Memperbarui konfigurasi DNS Docker...'; }
+
+    try {
+        if (typeof showToast === 'function') showToast('🐳 Memperbarui DNS Docker & patching container...', 'info');
+        const res = await authFetch('/api/addons/network-manager/docker-dns/fix', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof showToast === 'function') showToast('✅ ' + data.message, 'success');
+            if (statusBadge) { statusBadge.textContent = '● DNS Normal'; statusBadge.style.color = '#10b981'; }
+            if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}`;
+            if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#34d399;">✅ ${data.message}</span>`;
+        } else {
+            const err = data.error || 'Gagal memperbarui DNS Docker';
+            if (statusBadge) { statusBadge.textContent = '● Gagal'; statusBadge.style.color = '#ef4444'; }
+            if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ ${err}`;
+            if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#ef4444;">❌ Gagal: ${err}</span>`;
+            alert('Gagal memperbarui DNS: ' + err);
+        }
+    } catch (e) {
+        if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
+        if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#ef4444;">❌ Error: ${e.message}</span>`;
+        alert('Error: ' + e.message);
+    }
+};
+
+window.checkCloudflareTunnelDoctorUI = async function() {
+    const diagLog = document.getElementById('netMgrDiagnosticsLog');
+    const statusBadge = document.getElementById('smartFeaturesStatusBadge');
+    const tabFeedback = document.getElementById('smartNetFeaturesFeedback');
+
+    if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ☁️ Memeriksa status Cloudflare Tunnel & kepatuhan HTTP/2...`;
+    if (statusBadge) { statusBadge.textContent = '● Mendiagnosa...'; statusBadge.style.color = '#fbbf24'; }
+    if (tabFeedback) { tabFeedback.style.display = 'block'; tabFeedback.innerHTML = '⏳ Menjalankan diagnostik Cloudflare Tunnel...'; }
+
+    try {
+        const res = await authFetch('/api/addons/network-manager/cloudflare/status');
+        const data = await res.json();
+        if (data.success) {
+            const c = data.container;
+            let statusText = '';
+            if (!c) {
+                statusText = 'Container Cloudflare tidak ditemukan di Docker (mungkin diinstal via systemd service).';
+            } else {
+                statusText = `Container: ${c.name} (${c.status}) | Image: ${c.image}`;
+            }
+
+            const dnsTxt = data.dnsResolvable ? '✓ DNS Argotunnel: OK' : '⚠️ DNS Lookup Gagal (Perlu Fix DNS)';
+            const http2Txt = data.isHttp2 ? '✓ Protokol: HTTP/2 (Anti-Blokir ISP)' : '⚠️ Protokol: Default/QUIC (Disarankan --protocol http2)';
+            const connTxt = data.isConnected ? '✓ Terhubung ke Edge Cloudflare' : '⚠️ Belum terdeteksi koneksi aktif';
+
+            const summaryHtml = `[DIAGNOSTIK CLOUDFLARE]<br>${statusText}<br>${dnsTxt} | ${http2Txt}<br>${connTxt}`;
+
+            if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ☁️ ${summaryHtml}`;
+            if (tabFeedback) tabFeedback.innerHTML = `<div style="font-size:0.75rem; color:#f8fafc; line-height:1.45;">${summaryHtml}</div>`;
+            if (statusBadge) {
+                statusBadge.textContent = data.isConnected ? '● Tunnel Terhubung' : '● Diagnosa Selesai';
+                statusBadge.style.color = data.isConnected ? '#10b981' : '#f59e0b';
+            }
+            if (typeof showToast === 'function') showToast('☁️ Diagnostik Cloudflare selesai dievaluasi.', 'info');
+        } else {
+            const err = data.error || 'Gagal diagnosa';
+            if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ ${err}`;
+            if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#ef4444;">❌ ${err}</span>`;
+        }
+    } catch (e) {
+        if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
+        if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#ef4444;">❌ Error: ${e.message}</span>`;
+    }
+};
+
+window.repairCloudflareTunnelHttp2UI = async function() {
+    const confirmMsg = '🚀 TERAPKAN 3 SOLUSI CERDAS SEKALIGUS:\n\n' +
+        '1. Kunci DNS Docker ke 1.1.1.1 & 8.8.8.8 (Anti-MagicDNS Tailscale)\n' +
+        '2. Patch container cloudflared (/etc/resolv.conf)\n' +
+        '3. Kunci Default Gateway LAN (eth0=50 / wlan0=600 never-default) & kernel ARP anti-bentrok\n\n' +
+        'Lanjutkan eksekusi sekarang?';
+    if (!confirm(confirmMsg)) return;
+
+    const diagLog = document.getElementById('netMgrDiagnosticsLog');
+    const statusBadge = document.getElementById('smartFeaturesStatusBadge');
+    const tabFeedback = document.getElementById('smartNetFeaturesFeedback');
+
+    if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] 🚀 Menjalankan 3 Solusi Cerdas...`;
+    if (statusBadge) { statusBadge.textContent = '● Memperbaiki...'; statusBadge.style.color = '#fbbf24'; }
+    if (tabFeedback) { tabFeedback.style.display = 'block'; tabFeedback.innerHTML = '⏳ Mengeksekusi perbaikan total 3 solusi cerdas...'; }
+
+    try {
+        if (typeof showToast === 'function') showToast('🚀 Mengeksekusi 3 Solusi Cerdas...', 'info');
+        const res = await authFetch('/api/addons/network-manager/cloudflare/fix-http2', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof showToast === 'function') showToast('✅ 3 Solusi Cerdas Berhasil Diterapkan!', 'success');
+            if (statusBadge) { statusBadge.textContent = '● Teroptimasi'; statusBadge.style.color = '#10b981'; }
+            if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}`;
+            if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#34d399; font-weight:700;">✅ ${data.message}</span>`;
+            if (typeof window.fetchNetMgrConnections === 'function') await window.fetchNetMgrConnections();
+        } else {
+            const err = data.error || 'Gagal menerapkan solusi';
+            if (statusBadge) { statusBadge.textContent = '● Gagal'; statusBadge.style.color = '#ef4444'; }
+            if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ ${err}`;
+            if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#ef4444;">❌ Gagal: ${err}</span>`;
+            alert('Gagal: ' + err);
+        }
+    } catch (e) {
+        if (diagLog) diagLog.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Error: ${e.message}`;
+        if (tabFeedback) tabFeedback.innerHTML = `<span style="color:#ef4444;">❌ Error: ${e.message}</span>`;
+        alert('Error: ' + e.message);
+    }
+};
+
 window.setupNetMgrMetrics = async function() {
     if (!currentNetMgrConnections || !currentNetMgrConnections.success) {
         await window.fetchNetMgrConnections();
@@ -16702,4 +16913,483 @@ window.reconnectCurrentStream = async function() {
     }
     setTimeout(attach, 800);
 })();
+
+// ==========================================
+// PI-HOLE DNS SINKHOLE & AD-BLOCKER ADDON CONTROLLER
+// ==========================================
+let currentPiholeStatus = null;
+
+function ensurePiholeModalDOM() {
+    let modal = document.getElementById('piholeModalOverlay');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'piholeModalOverlay';
+        document.body.appendChild(modal);
+    }
+
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100vw';
+    modal.style.height = '100vh';
+    modal.style.background = 'rgba(0,0,0,0.85)';
+    modal.style.backdropFilter = 'blur(6px)';
+    modal.style.zIndex = '999999';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.padding = '1rem';
+    modal.style.boxSizing = 'border-box';
+
+    modal.innerHTML = `
+        <div style="background:var(--surface, #1e293b); border:1px solid var(--border, #334155); border-radius:12px; width:100%; max-width:820px; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.9); overflow:hidden;">
+            <!-- Modal Header -->
+            <div style="padding:1rem 1.25rem; background:rgba(15,23,42,0.95); border-bottom:1px solid var(--border, #334155); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span style="font-size:1.4rem;">🛡️</span>
+                    <div>
+                        <h3 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                            Pi-hole DNS Sinkhole &amp; Ad-Blocker Manager
+                        </h3>
+                        <div style="font-size:0.75rem; color:var(--text-muted, #94a3b8); margin-top:2px;">
+                            Integrasi Port 8585, Telemetri Real-Time, Solusi AP Isolation Dual-Interface &amp; Docker Auto-Install
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="window.fetchPiholeStatusUI()" title="Segarkan Data">🔄 Segarkan</button>
+                    <button type="button" class="btn-icon" onclick="window.closePiholeModal()" style="font-size:1.2rem; cursor:pointer; background:transparent; border:none; color:var(--text-muted, #94a3b8);" title="Tutup">✖</button>
+                </div>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div style="padding:1.25rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:1.2rem;">
+                
+                <!-- 1. LIVE TELEMETRY & AD-BLOCKING METRICS -->
+                <div style="background:linear-gradient(145deg, rgba(220,38,38,0.08) 0%, rgba(15,23,42,0.6) 100%); border:1px solid rgba(220,38,38,0.3); border-radius:10px; padding:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+                        <strong style="color:#f87171; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
+                            <span>📊</span> Status &amp; Telemetri Pi-hole Real-Time
+                        </strong>
+                        <span id="piholeStatusBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:4px 11px; font-weight:700; border-radius:6px;">
+                            Memuat Status...
+                        </span>
+                    </div>
+
+                    <!-- 4 Grid Metrics -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:0.75rem; margin-bottom:0.85rem;">
+                        <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:0.75rem; text-align:center;">
+                            <span style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:4px;">Total Query DNS Hari Ini</span>
+                            <strong id="piholeMetricQueries" style="font-size:1.35rem; color:#38bdf8; font-family:monospace;">--</strong>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:0.75rem; text-align:center;">
+                            <span style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:4px;">Iklan/Tracker Diblokir</span>
+                            <strong id="piholeMetricBlocked" style="font-size:1.35rem; color:#f87171; font-family:monospace;">--</strong>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:0.75rem; text-align:center;">
+                            <span style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:4px;">Persentase Iklan Ditolak</span>
+                            <strong id="piholeMetricPercent" style="font-size:1.35rem; color:#34d399; font-family:monospace;">--%</strong>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:0.75rem; text-align:center;">
+                            <span style="font-size:0.72rem; color:var(--text-muted); display:block; margin-bottom:4px;">Domain di Gravity List</span>
+                            <strong id="piholeMetricGravity" style="font-size:1.35rem; color:#c084fc; font-family:monospace;">--</strong>
+                        </div>
+                    </div>
+
+                    <!-- Quick Ad-Blocking Control Buttons -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; padding-top:0.4rem; border-top:1px dashed rgba(255,255,255,0.08);">
+                        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+                            <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Kontrol Ad-Block:</span>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 300)" style="font-size:0.75rem; padding:0.35rem 0.65rem;" title="Jeda pemblokiran selama 5 menit">⏸️ Jeda 5 Menit</button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 900)" style="font-size:0.75rem; padding:0.35rem 0.65rem;" title="Jeda pemblokiran selama 15 menit">⏸️ Jeda 15 Menit</button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 3600)" style="font-size:0.75rem; padding:0.35rem 0.65rem;" title="Jeda pemblokiran selama 1 Jam">⏸️ Jeda 1 Jam</button>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="window.controlPiholeBlockingUI('enable')" style="background:#16a34a; border-color:#15803d; font-size:0.75rem; padding:0.35rem 0.75rem; font-weight:700;">▶️ Aktifkan</button>
+                        </div>
+                        <a id="piholeAdminWebLink" href="http://localhost:8585/admin" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary" style="background:#2563eb; border-color:#1d4ed8; font-size:0.78rem; padding:0.35rem 0.85rem; display:inline-flex; align-items:center; gap:0.35rem; font-weight:600;">
+                            <span>🌐</span> Buka Web Admin (Port 8585) ↗
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 2. REKOMENDASI UTAMA: SKEMA HYBRID FAIL-SAFE (INTERNET ANTI-MATI) -->
+                <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+                        <strong style="color:#34d399; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
+                            <span>🛡️</span> Skema Hybrid Fail-Safe: Internet Anti-Mati (Rekomendasi Utama)
+                        </strong>
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                            <button type="button" onclick="window.copyPiholeHybridConfigUI()" class="btn btn-sm btn-secondary" style="font-size:0.76rem; padding:0.35rem 0.75rem; font-weight:600; display:flex; align-items:center; gap:0.3rem;" title="Salin IP Primary & Secondary DNS ke Clipboard">
+                                <span>📋</span> Salin Nilai DNS
+                            </button>
+                            <button type="button" onclick="window.fixPiholeIsolationUI()" class="btn btn-sm btn-primary" style="background:#10b981; border-color:#059669; font-size:0.76rem; padding:0.35rem 0.85rem; font-weight:700; display:flex; align-items:center; gap:0.3rem;">
+                                <span>🛠️</span> Terapkan "Listen All Interfaces"
+                            </button>
+                        </div>
+                    </div>
+
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin:0 0 0.85rem 0; line-height:1.45;">
+                        Dengan skema Hybrid, <strong>DHCP Server tetap aktif di Router ISP</strong>, namun disetel dengan dua DNS: DNS 1 ke STB Pi-hole dan DNS 2 ke Cloudflare. Jika STB mati/restart, seluruh perangkat otomatis fallback ke DNS 2 sehingga internet keluarga tetap online 100%!
+                    </p>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0.75rem; margin-bottom:0.85rem;">
+                        <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(16,185,129,0.35); border-radius:8px; padding:0.85rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <div style="color:#34d399; font-weight:700; font-size:0.82rem; display:flex; align-items:center; gap:0.35rem;">
+                                    <span>🟢</span> Primary DNS (DNS 1 - STB)
+                                </div>
+                                <span style="font-size:0.68rem; background:rgba(16,185,129,0.2); color:#34d399; padding:1px 6px; border-radius:4px; font-weight:700;">Ad-Blocker</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px;">IP Antarmuka STB (Pi-hole FTL):</div>
+                            <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+                                <code id="piholeEth0DnsIp" style="background:#0f172a; border:1px solid #334155; color:#38bdf8; font-weight:700; padding:4px 8px; border-radius:4px; display:inline-block; font-size:0.85rem;">192.168.1.253</code>
+                                <span style="font-size:0.72rem; color:var(--text-muted);">(Ethernet LAN)</span>
+                                <code id="piholeWlan0DnsIp" style="background:#0f172a; border:1px solid #334155; color:#34d399; font-weight:700; padding:4px 8px; border-radius:4px; display:inline-block; font-size:0.85rem;">192.168.1.252</code>
+                                <span style="font-size:0.72rem; color:var(--text-muted);">(Wi-Fi)</span>
+                            </div>
+                        </div>
+
+                        <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(56,189,248,0.35); border-radius:8px; padding:0.85rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <div style="color:#38bdf8; font-weight:700; font-size:0.82rem; display:flex; align-items:center; gap:0.35rem;">
+                                    <span>🛡️</span> Secondary DNS (DNS 2 - Cadangan)
+                                </div>
+                                <span style="font-size:0.68rem; background:rgba(56,189,248,0.2); color:#38bdf8; padding:1px 6px; border-radius:4px; font-weight:700;">Ban Serep</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px;">DNS Publik Cepat &amp; Aman (Cloudflare):</div>
+                            <div style="display:flex; gap:0.4rem; align-items:center;">
+                                <code id="piholeSecondaryDnsIp" style="background:#0f172a; border:1px solid #334155; color:#38bdf8; font-weight:700; padding:4px 8px; border-radius:4px; display:inline-block; font-size:0.85rem;">1.1.1.1</code>
+                                <span style="font-size:0.72rem; color:var(--text-muted);">(Atau 8.8.8.8 Google)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(15,23,42,0.6); border:1px dashed rgba(16,185,129,0.4); border-radius:6px; padding:0.65rem 0.85rem; margin-bottom:0.65rem; font-size:0.75rem; color:#cbd5e1; line-height:1.45;">
+                        🌐 <strong>Cara Setting di Router ISP (ZTE/Huawei/dll):</strong> Buka <em>192.168.1.1</em> &rarr; menu <em>Network &rarr; LAN &rarr; DHCP Server</em>. Biarkan DHCP Server <strong>AKTIF</strong>, lalu isi <strong>Primary DNS:</strong> <code style="color:#38bdf8;">192.168.1.253</code> dan <strong>Secondary DNS:</strong> <code style="color:#38bdf8;">1.1.1.1</code>. Klik Simpan. Selesai!
+                    </div>
+
+                    <div style="font-size:0.73rem; color:#94a3b8; line-height:1.4;">
+                        💡 <strong>Catatan:</strong> Klik tombol <em>"Terapkan Listen All Interfaces"</em> di atas sekali saja untuk mengizinkan port 53 Pi-hole melayani traffic dari seluruh interface fisik (Ethernet &amp; Wi-Fi) tanpa isolasi router.
+                    </div>
+                </div>
+
+                <!-- 3. PENGATURAN KUSTOMISASI PORT (DEFAULT 8585) & API TOKEN -->
+                <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
+                    <strong style="color:#f8fafc; font-size:0.9rem; display:block; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.5rem;">
+                        ⚙️ Pengaturan Kustomisasi Port &amp; Integrasi Addon
+                    </strong>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; margin-bottom:0.85rem;">
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Port Web Admin Pi-hole:</label>
+                            <input type="number" id="piholeConfigPort" value="8585" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.5rem; border-radius:6px; font-size:0.85rem; font-family:monospace; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Host IP Service:</label>
+                            <input type="text" id="piholeConfigHost" value="127.0.0.1" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.5rem; border-radius:6px; font-size:0.85rem; font-family:monospace; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">API Token / Password Hash (Opsional):</label>
+                            <input type="password" id="piholeConfigToken" placeholder="Kosongkan jika default" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.5rem; border-radius:6px; font-size:0.85rem; font-family:monospace; box-sizing:border-box;">
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button type="button" onclick="window.savePiholeConfigUI()" class="btn btn-primary" style="background:#2563eb; font-size:0.82rem; padding:0.45rem 1.1rem; font-weight:600;">
+                            💾 Simpan Perubahan Port
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 4. INSTALLER MANDIRI NATIVE ARMBIAN (UNTUK STB BARU) -->
+                <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.3); border-radius:10px; padding:1.1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+                        <strong style="color:#fbbf24; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
+                            <span>📦</span> Installer 1-Klik: Pasang Pi-hole Native di STB Baru (Non-Docker)
+                        </strong>
+                        <span style="font-size:0.72rem; color:#f59e0b; background:rgba(245,158,11,0.15); padding:2px 8px; border-radius:4px; border:1px solid rgba(245,158,11,0.3);">
+                            Murni Native (~25MB RAM)
+                        </span>
+                    </div>
+                    <p style="font-size:0.78rem; color:var(--text-muted); margin:0 0 0.75rem 0; line-height:1.45;">
+                        Jika Anda berpindah STB Armbian atau memasang unit baru yang belum memiliki Pi-hole, gunakan wizard ini. Sistem otomatis mengatasi bentrok <code>systemd-resolved</code> pada port 53, menginstal skrip resmi Pi-hole secara unattended langsung di Linux Host, dan mengonfigurasi Lighttpd di port 8585 tanpa perantara Docker.
+                    </p>
+                    <div style="display:flex; gap:0.65rem; align-items:center; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:180px;">
+                            <input type="text" id="piholeInstallPassword" value="arch3r123" placeholder="Password Web Admin" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem 0.65rem; border-radius:6px; font-size:0.82rem; font-family:monospace; box-sizing:border-box;">
+                        </div>
+                        <button type="button" onclick="window.installPiholeNativeUI()" class="btn btn-primary" style="background:#d97706; border-color:#b45309; font-weight:700; font-size:0.82rem; padding:0.45rem 1.1rem; display:flex; align-items:center; gap:0.35rem;">
+                            <span>🚀</span> Pasang Pi-hole Native (Port 8585)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 5. KONSOL LOG STATUS -->
+                <div style="background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:0.75rem; font-family:monospace; font-size:0.75rem; color:#94a3b8;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+                        <span style="color:#cbd5e1; font-weight:700;">📋 Log Status Pi-hole:</span>
+                        <span id="piholeDnsListenerBadge" style="color:#10b981; font-size:0.7rem;">Port 53: Cek...</span>
+                    </div>
+                    <div id="piholeLogBox" style="max-height:80px; overflow-y:auto; line-height:1.4; color:#38bdf8; word-break:break-word;">
+                        [READY] Memuat modul Pi-hole DNS Sinkhole &amp; Ad-Blocker...
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="padding:0.85rem 1.25rem; background:rgba(15,23,42,0.98); border-top:1px solid var(--border, #334155); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <div style="font-size:0.72rem; color:var(--text-muted);">
+                    Arch3r NVR Native Pi-hole Integration &mdash; Powered by pihole-FTL &amp; Lighttpd (Ultra-Ringan ~25MB RAM)
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="window.closePiholeModal()" style="font-size:0.82rem; padding:0.45rem 1rem;">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+window.openPiholeModal = function() {
+    ensurePiholeModalDOM();
+    const modal = document.getElementById('piholeModalOverlay');
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
+    window.fetchPiholeStatusUI();
+};
+
+window.closePiholeModal = function() {
+    const modal = document.getElementById('piholeModalOverlay');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+};
+
+window.fetchPiholeStatusUI = async function() {
+    ensurePiholeModalDOM();
+    const statusBadge = document.getElementById('piholeStatusBadge');
+    const queriesEl = document.getElementById('piholeMetricQueries');
+    const blockedEl = document.getElementById('piholeMetricBlocked');
+    const percentEl = document.getElementById('piholeMetricPercent');
+    const gravityEl = document.getElementById('piholeMetricGravity');
+    const logBox = document.getElementById('piholeLogBox');
+    const dnsBadge = document.getElementById('piholeDnsListenerBadge');
+    const adminLink = document.getElementById('piholeAdminWebLink');
+    const portInput = document.getElementById('piholeConfigPort');
+    const hostInput = document.getElementById('piholeConfigHost');
+
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] Mengambil telemetri Pi-hole...`;
+
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+        const res = await fetchFn('/api/addons/pihole-manager/status');
+        const data = await res.json();
+        currentPiholeStatus = data;
+
+        if (data.config) {
+            if (portInput) portInput.value = data.config.port || 8585;
+            if (hostInput) hostInput.value = data.config.host || '127.0.0.1';
+            if (adminLink) {
+                adminLink.href = data.webUrl || `http://localhost:${data.config.port || 8585}/admin`;
+                adminLink.textContent = `🌐 Buka Web Admin (Port ${data.config.port || 8585}) ↗`;
+            }
+        }
+
+        // Tampilkan IP Dinamis Antarmuka STB untuk Solusi AP Isolation
+        if (data.dualDnsGuide) {
+            const eth0El = document.getElementById('piholeEth0DnsIp');
+            const wlan0El = document.getElementById('piholeWlan0DnsIp');
+            if (eth0El && data.dualDnsGuide.eth0Ip) eth0El.textContent = data.dualDnsGuide.eth0Ip;
+            if (wlan0El && data.dualDnsGuide.wlan0Ip) wlan0El.textContent = data.dualDnsGuide.wlan0Ip;
+        }
+
+        if (dnsBadge) {
+            if (data.dnsListening) {
+                dnsBadge.textContent = data.dnsAllInterfaces ? 'Port 53: Listening All Interfaces (0.0.0.0:53)' : 'Port 53: Listening';
+                dnsBadge.style.color = '#34d399';
+            } else {
+                dnsBadge.textContent = 'Port 53: Tidak Aktif / Belum Dimulai';
+                dnsBadge.style.color = '#ef4444';
+            }
+        }
+
+        if (data.metrics) {
+            const isEnabled = data.metrics.status === 'enabled';
+            if (statusBadge) {
+                statusBadge.textContent = isEnabled ? '● Blocking Aktif' : '● Blocking Dijeda';
+                statusBadge.style.background = isEnabled ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
+                statusBadge.style.color = isEnabled ? '#22c55e' : '#f87171';
+                statusBadge.style.borderColor = isEnabled ? '#15803d' : '#b91c1c';
+            }
+            if (queriesEl) queriesEl.textContent = Number(data.metrics.dns_queries_today || 0).toLocaleString();
+            if (blockedEl) blockedEl.textContent = Number(data.metrics.ads_blocked_today || 0).toLocaleString();
+            if (percentEl) percentEl.textContent = `${data.metrics.ads_percentage_today || 0}%`;
+            if (gravityEl) gravityEl.textContent = Number(data.metrics.domains_being_blocked || 0).toLocaleString();
+
+            const cInfo = (data.type === 'native' || !data.container) ? 'Layanan Native Linux: pihole-FTL' : 'Status: Aktif';
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ Telemetri Pi-hole terhubung (${cInfo}) pada Port ${data.config?.port || 8585}.`;
+        } else if (data.running) {
+            if (statusBadge) {
+                statusBadge.textContent = '● Berjalan (Menghubungkan API)';
+                statusBadge.style.color = '#38bdf8';
+            }
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ℹ️ Layanan Pi-hole aktif namun API web belum siap. Buka Web Admin untuk login.`;
+        } else {
+            if (statusBadge) {
+                statusBadge.textContent = '● Belum Terpasang / Offline';
+                statusBadge.style.color = '#94a3b8';
+            }
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚠️ Pi-hole belum terdeteksi aktif pada port ${data.config?.port || 8585}. Gunakan "Installer 1-Klik" di bawah jika ini STB baru.`;
+        }
+    } catch (e) {
+        if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal mengambil status Pi-hole: ${e.message}`;
+    }
+};
+
+window.savePiholeConfigUI = async function() {
+    const portInput = document.getElementById('piholeConfigPort');
+    const hostInput = document.getElementById('piholeConfigHost');
+    const tokenInput = document.getElementById('piholeConfigToken');
+    const logBox = document.getElementById('piholeLogBox');
+
+    const port = portInput ? parseInt(portInput.value, 10) : 8585;
+    const host = hostInput ? hostInput.value.trim() : '127.0.0.1';
+    const apiToken = tokenInput ? tokenInput.value.trim() : '';
+
+    if (!port || port <= 0) {
+        alert('Port harus berupa angka valid (misal: 8585).');
+        return;
+    }
+
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+        const res = await fetchFn('/api/addons/pihole-manager/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ port, host, apiToken })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof showToast === 'function') showToast('✅ Konfigurasi Port Pi-hole berhasil disimpan!', 'success');
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ Port Pi-hole berhasil diperbarui ke: ${port}`;
+            await window.fetchPiholeStatusUI();
+        } else {
+            alert('Gagal menyimpan konfigurasi: ' + (data.error || 'Error'));
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+};
+
+window.controlPiholeBlockingUI = async function(action, duration = 0) {
+    const logBox = document.getElementById('piholeLogBox');
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] Mengirim perintah ${action.toUpperCase()} (${duration ? duration + ' detik' : 'permanen'})...`;
+
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+        const res = await fetchFn('/api/addons/pihole-manager/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, duration })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof showToast === 'function') showToast(`✓ ${data.message}`, 'success');
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}`;
+            setTimeout(() => window.fetchPiholeStatusUI(), 1000);
+        } else {
+            alert('Gagal mengatur ad-blocking: ' + (data.error || 'Error'));
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+};
+
+window.fixPiholeIsolationUI = async function() {
+    const logBox = document.getElementById('piholeLogBox');
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] Mengonfigurasi "Listen All Interfaces" (DNSMASQ_LISTENING=all) & iptables...`;
+
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+        const res = await fetchFn('/api/addons/pihole-manager/bypass-isolation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof showToast === 'function') showToast('✅ ' + data.message, 'success');
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}`;
+            await window.fetchPiholeStatusUI();
+        } else {
+            alert('Gagal menerapkan konfigurasi isolasi: ' + (data.error || 'Error'));
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+};
+
+window.copyPiholeHybridConfigUI = function() {
+    const eth0El = document.getElementById('piholeEth0DnsIp');
+    const primaryIp = (eth0El && eth0El.textContent && eth0El.textContent.trim()) ? eth0El.textContent.trim() : '192.168.1.253';
+    const textToCopy = `Primary DNS (DNS 1): ${primaryIp}\nSecondary DNS (DNS 2): 1.1.1.1`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            if (typeof showToast === 'function') {
+                showToast(`📋 Format DNS Hybrid disalin! DNS 1: ${primaryIp} | DNS 2: 1.1.1.1`, 'success');
+            } else {
+                alert(`Konfigurasi DNS Disalin!\n\n${textToCopy}\n\nTempelkan pada menu DHCP Server router ISP Anda.`);
+            }
+        }).catch(() => {
+            prompt('Salin nilai DNS Hybrid untuk router Anda:', textToCopy);
+        });
+    } else {
+        prompt('Salin nilai DNS Hybrid untuk router Anda:', textToCopy);
+    }
+};
+
+window.installPiholeNativeUI = async function() {
+    const pwdInput = document.getElementById('piholeInstallPassword');
+    const portInput = document.getElementById('piholeConfigPort');
+    const password = pwdInput ? pwdInput.value.trim() : 'arch3r123';
+    const port = portInput ? parseInt(portInput.value, 10) : 8585;
+
+    const confirmMsg = `🚀 PASANG PI-HOLE NATIVE ARMBIAN (NON-DOCKER):\n\n` +
+        `• Lingkungan: Murni Native Linux Host (Ultra-Ringan ~25MB RAM, Tanpa Docker)\n` +
+        `• Port Web Admin Lighttpd: ${port}\n` +
+        `• Port DNS Sinkhole: 53 (TCP & UDP)\n` +
+        `• Password Web Admin: ${password}\n` +
+        `• Penanganan systemd-resolved: Otomatis matikan DNSStubListener pada port 53\n` +
+        `• Konfigurasi Jaringan: Otomatis aktifkan DNSMASQ_LISTENING=all (Bypass AP Isolation)\n\n` +
+        `Lanjutkan proses instalasi native di STB Armbian ini?`;
+    if (!confirm(confirmMsg)) return;
+
+    const logBox = document.getElementById('piholeLogBox');
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⏳ Menjalankan installer resmi Pi-hole Native di Linux Host (Port ${port})... (Membutuhkan waktu 2-3 menit)`;
+    if (typeof showToast === 'function') showToast(`🚀 Memulai instalasi Pi-hole Native (Port ${port})...`, 'info');
+
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+        const res = await fetchFn('/api/addons/pihole-manager/install', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ port, password })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof showToast === 'function') showToast('✅ ' + data.message, 'success');
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}`;
+            alert(`Instalasi Native Berhasil!\n\n${data.message}\nBuka dashboard di: ${data.webUrl}`);
+            await window.fetchPiholeStatusUI();
+        } else {
+            alert('Gagal memasang Pi-hole Native: ' + (data.error || 'Error'));
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal: ${data.error}`;
+        }
+    } catch (e) {
+        alert('Error instalasi: ' + e.message);
+    }
+};
+// Alias untuk backward compatibility
+window.installPiholeDockerUI = window.installPiholeNativeUI;
+
 

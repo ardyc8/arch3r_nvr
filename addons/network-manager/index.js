@@ -237,5 +237,46 @@ router.get('/bridge/status', async (req, res) => {
     }
 });
 
+// 12. Fix Docker DNS & Cloudflare Tunnel Doctor (Anti-MagicDNS Tailscale)
+router.post('/docker-dns/fix', async (req, res) => {
+    try {
+        const result = await nmDriver.fixDockerDnsAndTailscaleConflict();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 13. Enforce Dual-Interface Gateway Self-Healing
+router.post('/gateway/heal', async (req, res) => {
+    try {
+        const result = await nmDriver.enforceDualInterfaceGateway();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 14. Check Cloudflare Tunnel Doctor & Protocol HTTP/2 Status
+router.get('/cloudflare/status', async (req, res) => {
+    try {
+        const result = await nmDriver.checkCloudflareTunnelDoctor();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// 15. Apply 3-Step Smart Network Fix (Docker DNS + Dual Gateway + Cloudflare Patch)
+router.post('/cloudflare/fix-http2', async (req, res) => {
+    try {
+        const result = await nmDriver.repairCloudflareTunnelHttp2();
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 export default router;
 export { nmDriver };
+

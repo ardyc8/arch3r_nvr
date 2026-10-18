@@ -14,6 +14,7 @@ import cookieParser from 'cookie-parser';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { sendV380PtzCommand, probeV380Socket } from './lib/v380_driver.js';
 import networkManagerRouter from './addons/network-manager/index.js';
+import piholeRouter from './addons/pihole-manager/index.js';
 
 dotenv.config();
 
@@ -373,6 +374,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(cookieParser());
 app.use('/api/addons/network-manager', verifyToken, networkManagerRouter);
+app.use('/api/addons/pihole-manager', verifyToken, piholeRouter);
 // Serve static assets from the public directory
 
 // ==========================================
@@ -822,6 +824,20 @@ function scanAvailablePhysicalAddons() {
             version: '1.0.0',
             icon: '🌐',
             description: 'Manajemen rute antarmuka ganda (LAN & Wi-Fi) untuk STB Armbian Linux. Solusi isolasi router ISP & pengikatan rute IP/Subnet kamera, NAS, dan server lokal.',
+            main: 'index.js',
+            system_protected: false
+        });
+    }
+
+    // Pastikan Pi-hole Manager terdeteksi dari /addons/pihole-manager jika belum terdaftar
+    const hasPihole = list.some(a => a.id === 'pihole-manager' || a.id === 'pihole');
+    if (!hasPihole && fs.existsSync(path.join(addonsDir, 'pihole-manager'))) {
+        list.push({
+            id: 'pihole-manager',
+            name: 'Pi-hole DNS Sinkhole & Ad-Blocker',
+            version: '1.0.0',
+            icon: '🛡️',
+            description: 'Manajemen DNS Sinkhole Pi-hole, pemantauan status ad-block real-time, integrasi port 8585, solusi bypass AP isolation dual-interface (LAN & Wi-Fi), dan installer mandiri Docker untuk STB Armbian.',
             main: 'index.js',
             system_protected: false
         });
@@ -6890,6 +6906,7 @@ app.use('/streams', (req, res, next) => {
 
 // Dedicated Addons Routing Fallback (SPA routing)
 app.use('/api/addons/network-manager', verifyToken, networkManagerRouter);
+app.use('/api/addons/pihole-manager', verifyToken, piholeRouter);
 
 app.get(['/addons/yolo-ai', '/addons/yolo-ai/*', '/yolo-ai'], (req, res) => {
     res.sendFile(path.join(publicDir, 'index.html'));
@@ -7726,6 +7743,7 @@ app.get('/api/addons/ai_yolo/status', verifyToken, async (req, res) => {
 
 // Mount Armbian Network Manager Addon REST API
 app.use('/api/addons/network-manager', verifyToken, networkManagerRouter);
+app.use('/api/addons/pihole-manager', verifyToken, piholeRouter);
 
 // --- Universal Addons List & Management Endpoints (Ver 11.1.1) ---
 app.get('/api/addons', verifyToken, async (req, res) => {
@@ -7744,6 +7762,21 @@ app.get('/api/addons', verifyToken, async (req, res) => {
                 active: true,
                 author: 'Arch3r NVR Network Architect',
                 icon: '🌐'
+            });
+            saveNvrDb(db);
+        }
+
+        // Ensure pihole-manager addon is registered in default list
+        const hasPihole = db.addons.some(a => a.id === 'pihole-manager' || a.id === 'pihole');
+        if (!hasPihole) {
+            db.addons.push({
+                id: 'pihole-manager',
+                name: 'Pi-hole DNS Sinkhole & Ad-Blocker',
+                description: 'Manajemen DNS Sinkhole Pi-hole, pemantauan status ad-block real-time, integrasi port 8585, solusi bypass AP isolation dual-interface (LAN & Wi-Fi), dan installer mandiri Docker untuk STB Armbian.',
+                version: '1.0.0',
+                active: true,
+                author: 'Arch3r NVR Network Architect',
+                icon: '🛡️'
             });
             saveNvrDb(db);
         }
@@ -7776,6 +7809,11 @@ app.get('/api/addons', verifyToken, async (req, res) => {
 
             if (addon.id === 'network_manager' || addon.id === 'network-manager') {
                 copy.running = true;
+            }
+
+            if (addon.id === 'pihole-manager' || addon.id === 'pihole') {
+                copy.running = true;
+                copy.port = 8585;
             }
 
             return copy;
@@ -8843,11 +8881,53 @@ app.post('/api/ai/test-telegram', verifyToken, async (req, res) => {
             console.error('[AI Vision] Gagal menginisialisasi background worker:', e);
         }
 
+        // Autonomous Self-Healing Gateway & Anti-ARP Flux Protection for Armbian STB
+        try {
+            runAutonomousNetworkSelfHealing();
+        } catch (_) {}
+
         app.listen(port, "0.0.0.0", () => {
             sysLog('INFO', `NVR Backend berjalan di port ${port}`);
             // Proactive Background Codec Discovery (Zero-Manual Auto-Adaptive)
             setTimeout(() => autoDetectCameraCodecsAndSync(), 4000);
         });
+}
+
+function runAutonomousNetworkSelfHealing() {
+    if (os.platform() !== 'linux') return;
+    try {
+        const { exec } = require('child_process');
+        // 1. Enforce kernel Anti-Asymmetric Routing & ARP Flux Prevention
+        exec('sysctl -w net.ipv4.conf.all.arp_ignore=1 net.ipv4.conf.all.arp_announce=2 net.ipv4.conf.all.rp_filter=2 2>/dev/null || true', () => {});
+
+        // 2. Protect Default Gateway on Dual-Interface STB (eth0 metric 50, wlan0 never-default yes)
+        exec('nmcli -t -f NAME,TYPE con show --active 2>/dev/null', (err, stdout) => {
+            if (err || !stdout) return;
+            const lines = stdout.trim().split('\n');
+            let ethList = [];
+            let wifiList = [];
+
+            lines.forEach(l => {
+                const parts = l.split(':');
+                if (parts.length >= 2) {
+                    const cName = parts[0];
+                    const cType = parts[1];
+                    if (cType.includes('ethernet')) ethList.push(cName);
+                    else if (cType.includes('wireless') || cType.includes('wifi')) wifiList.push(cName);
+                }
+            });
+
+            if (ethList.length > 0 && wifiList.length > 0) {
+                ethList.forEach(c => {
+                    exec(`nmcli con modify "${c}" ipv4.route-metric 50 2>/dev/null || true`, () => {});
+                });
+                wifiList.forEach(c => {
+                    exec(`nmcli con modify "${c}" ipv4.never-default yes ipv4.route-metric 600 2>/dev/null || true`, () => {});
+                });
+                sysLog('INFO', `[Self-Healing] Dual-interface terdeteksi: eth0 dikunci sebagai default gateway (metric 50) dan wlan0 dikunci khusus kamera (never-default: yes).`, 'NETWORK');
+            }
+        });
+    } catch (_) {}
 }
 
 boot();

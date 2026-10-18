@@ -1,0 +1,9 @@
+{
+  "id": "pihole-manager",
+  "name": "Pi-hole DNS Sinkhole & Ad-Blocker",
+  "version": "1.0.0",
+  "icon": "🛡️",
+  "description": "Manajemen Native Pi-hole (pihole-FTL & lighttpd Port 8585), pemantauan status ad-block real-time, solusi bypass AP isolation dual-interface (LAN & Wi-Fi), dan installer mandiri Native Armbian Linux (Non-Docker).",
+  "main": "index.js",
+  "system_protected": false
+}

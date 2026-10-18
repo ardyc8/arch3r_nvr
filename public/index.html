@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google" content="notranslate">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 11.9.3 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=11.9.3">
+    <title>Arch3r NVR Ver. 11.9.7 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=11.9.7">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -265,6 +265,9 @@
                         </a>
                         <a href="javascript:void(0)" class="nav-subitem" onclick="if(typeof window.openNetMgrModal==='function') window.openNetMgrModal();" title="Buka Armbian Network Manager & arch3rBridge (nmcli)">
                             🌐 Network Manager & Bridge
+                        </a>
+                        <a href="javascript:void(0)" class="nav-subitem" onclick="if(typeof window.openPiholeModal==='function') window.openPiholeModal();" title="Buka Pi-hole DNS Sinkhole & Ad-Blocker Manager">
+                            🛡️ Pi-hole DNS Manager
                         </a>
                         <a href="#yolo-ai" class="nav-subitem" data-target="view-yolo-ai" title="Buka YOLO AI Studio (Computer Vision)">
                             🧠 YOLO AI Tactical Studio
@@ -1303,6 +1306,59 @@
             <div id="view-setting-system" class="view-pane">
                 <div class="content-wrapper" style="padding:1rem 1.5rem; max-width:850px; margin:0 auto;">
                     <h2>Sistem, Jaringan, & Notifikasi</h2>
+
+                    <!-- Card Informasi Alamat IP & Antarmuka Server NVR (Tab Sistem & Jaringan) -->
+                    <div style="background:var(--surface); padding:1.25rem; border-radius:8px; border:1px solid var(--border); margin-top:1.25rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                            <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
+                                <span>🌐</span> Alamat IP & Antarmuka Server NVR (Port 3000)
+                            </h3>
+                            <span style="font-size:0.75rem; color:#94a3b8; font-family:monospace;">Host: <strong id="aboutServerHostname" style="color:#f8fafc;">localhost</strong></span>
+                        </div>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                            Daftar interface jaringan aktif yang menjalankan server Arch3r NVR. Gunakan URL di bawah ini untuk mengakses dashboard secara lokal atau sebagai target Public Hostname pada Cloudflare Tunnel / CasaOS.
+                        </p>
+                        <div id="aboutNetworkInterfacesList" style="display:flex; flex-direction:column; gap:0.5rem;">
+                            <div style="color:var(--text-muted); font-size:0.82rem; padding:0.5rem; text-align:center;">Memuat data antarmuka jaringan server...</div>
+                        </div>
+                    </div>
+
+                    <!-- Card 3 Fitur Cerdas Diagnostik & Solusi Jaringan STB -->
+                    <div style="background:var(--surface); padding:1.25rem; border-radius:8px; border:1px solid rgba(59,130,246,0.3); margin-top:1.25rem; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                            <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem; color:#60a5fa;">
+                                <span>🛡️</span> 3 Fitur Cerdas Diagnostik &amp; Solusi Jaringan STB
+                            </h3>
+                            <span class="badge" style="background:rgba(16,185,129,0.12); color:#34d399; border:1px solid rgba(16,185,129,0.3); font-size:0.75rem; padding:3px 8px; border-radius:4px; font-weight:600;">
+                                Auto-Repair Ready
+                            </span>
+                        </div>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.85rem; line-height:1.45;">
+                            Solusi satu-klik terpadu untuk mencegah bentrok rute dual-interface (LAN &amp; Wi-Fi), memperbaiki DNS Docker / Cloudflare Tunnel yang terkena filter ISP / Tailscale MagicDNS, serta memeriksa kepatuhan protokol HTTP/2.
+                        </p>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.65rem; margin-bottom:0.75rem;">
+                            <button type="button" class="btn btn-secondary" onclick="window.healDualInterfaceGatewayUI()" style="display:flex; flex-direction:column; align-items:flex-start; gap:3px; padding:0.65rem 0.85rem; border-color:rgba(59,130,246,0.4); text-align:left;" title="Kunci eth0=metric 50 dan wlan0=metric 600 never-default">
+                                <span style="font-weight:700; color:#93c5fd; font-size:0.82rem; display:flex; align-items:center; gap:0.35rem;">
+                                    <span>🌐</span> 1. Kunci Gateway LAN
+                                </span>
+                                <span style="font-size:0.7rem; color:var(--text-muted);">Prioritaskan eth0=50 &amp; wlan0=600 anti-bentrok</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="window.fixDockerDnsUI()" style="display:flex; flex-direction:column; align-items:flex-start; gap:3px; padding:0.65rem 0.85rem; border-color:rgba(168,85,247,0.4); text-align:left;" title="Kunci DNS Docker ke 1.1.1.1 & 8.8.8.8 anti-MagicDNS Tailscale">
+                                <span style="font-weight:700; color:#c084fc; font-size:0.82rem; display:flex; align-items:center; gap:0.35rem;">
+                                    <span>🐳</span> 2. Perbaiki DNS Docker
+                                </span>
+                                <span style="font-size:0.7rem; color:var(--text-muted);">Set daemon.json &amp; patch resolv.conf cloudflared</span>
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="window.checkCloudflareTunnelDoctorUI()" style="display:flex; flex-direction:column; align-items:flex-start; gap:3px; padding:0.65rem 0.85rem; border-color:rgba(245,158,11,0.4); text-align:left;" title="Diagnostik koneksi Cloudflare Tunnel & kepatuhan HTTP/2">
+                                <span style="font-weight:700; color:#fbbf24; font-size:0.82rem; display:flex; align-items:center; gap:0.35rem;">
+                                    <span>☁️</span> 3. Cloudflare Doctor
+                                </span>
+                                <span style="font-size:0.7rem; color:var(--text-muted);">Cek SRV argotunnel &amp; protokol HTTP/2</span>
+                            </button>
+                        </div>
+                        <div id="smartNetFeaturesFeedback" style="display:none; font-family:monospace; font-size:0.75rem; background:#070b12; border:1px solid #1e293b; border-radius:6px; padding:0.65rem 0.85rem; color:#38bdf8; max-height:110px; overflow-y:auto; line-height:1.4; word-break:break-word;"></div>
+                    </div>
+
                     <form id="systemForm" class="camera-form-section" style="margin-top:1.5rem;">
                         <div class="form-group">
                             <label>Interface Jaringan Armbian</label>
@@ -1333,6 +1389,13 @@
                             <label>Telegram Chat ID</label>
                             <input type="text" id="sysTgChat" placeholder="-100123456789">
                         </div>
+                        <div class="form-group">
+                            <label>Domain Publik / Cloudflare Tunnel URL (Opsional)</label>
+                            <input type="text" id="sysPublicDomain" placeholder="https://nvr.arch3r.my.id">
+                            <small style="color:var(--text-muted); font-size:0.75rem; margin-top:3px; display:block;">
+                                Masukkan domain Cloudflare Tunnel (misal: <code>https://nvr.arch3r.my.id</code>) untuk link sharing live stream dan notifikasi alert.
+                            </small>
+                        </div>
                         <button type="submit" class="btn btn-primary w-full mt-3">Simpan Konfigurasi Sistem</button>
                     </form>
 
@@ -1348,6 +1411,21 @@
                         </div>
                         <button type="button" class="btn btn-primary btn-sm" onclick="window.openNetMgrModal()" style="background:#10b981; border-color:#059669; font-weight:600; font-size:0.8rem; padding:0.4rem 0.9rem;">
                             Buka Network Manager ➔
+                        </button>
+                    </div>
+
+                    <!-- Shortcut Banner: Pi-hole DNS Sinkhole & Ad-Blocker -->
+                    <div style="margin-top:1.5rem; background:rgba(220,38,38,0.08); border:1px solid rgba(220,38,38,0.3); border-radius:8px; padding:1rem 1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                        <div>
+                            <strong style="color:#f87171; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
+                                <span>🛡️</span> Pi-hole DNS Sinkhole &amp; Ad-Blocker (Port 8585)
+                            </strong>
+                            <span style="font-size:0.78rem; color:var(--text-muted); margin-top:2px; display:block;">
+                                Pantau statistik query DNS, jeda pemblokiran iklan, konfigurasi port custom, dan bypass AP isolation dual-interface (LAN &amp; Wi-Fi).
+                            </span>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="window.openPiholeModal()" style="background:#dc2626; border-color:#b91c1c; font-weight:600; font-size:0.8rem; padding:0.4rem 0.9rem;">
+                            Buka Pi-hole Manager ➔
                         </button>
                     </div>
 
@@ -2218,22 +2296,6 @@
                                 
                                 <div style="color:var(--text-muted);">Email Terdaftar:</div>
                                 <div id="aboutLicenseEmail">Memuat...</div>
-                            </div>
-                        </div>
-
-                        <!-- Card Informasi Alamat IP & Antarmuka Server NVR -->
-                        <div style="background:var(--surface); padding:1.25rem; border-radius:8px; border:1px solid var(--border);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
-                                <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
-                                    <span>🌐</span> Alamat IP & Antarmuka Server NVR (Port 3000)
-                                </h3>
-                                <span style="font-size:0.75rem; color:#94a3b8; font-family:monospace;">Host: <strong id="aboutServerHostname" style="color:#f8fafc;">localhost</strong></span>
-                            </div>
-                            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
-                                Daftar interface jaringan aktif yang menjalankan server Arch3r NVR. Gunakan URL di bawah ini untuk mengakses dashboard secara lokal atau sebagai target Public Hostname pada Cloudflare Tunnel / CasaOS.
-                            </p>
-                            <div id="aboutNetworkInterfacesList" style="display:flex; flex-direction:column; gap:0.5rem;">
-                                <div style="color:var(--text-muted); font-size:0.82rem; padding:0.5rem; text-align:center;">Memuat data antarmuka jaringan server...</div>
                             </div>
                         </div>
                         

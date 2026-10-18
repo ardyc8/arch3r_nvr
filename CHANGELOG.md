@@ -1,5 +1,78 @@
 # Changelog
 
+## [Ver 11.9.7] - 2026-10-18
+### Native Pi-hole Hybrid Fail-Safe DNS Architecture (Primary STB + Secondary Cloudflare 1.1.1.1 Anti-Mati Internet) & One-Click Router Config Copy
+- **Arsitektur Hybrid Fail-Safe Anti-Mati Internet (`addons/pihole-manager/` & `public/`):**
+  - **Skema Hybrid Fail-Safe (Rekomendasi Utama)**: Mengintegrasikan skema *dual-resolver* dengan DHCP Server tetap aktif di Router ISP. Menetapkan Primary DNS ke IP STB Pi-hole (`192.168.1.253` / `192.168.1.252`) dan Secondary DNS ke Cloudflare (`1.1.1.1`) / Google (`8.8.8.8`).
+  - **Jaminan High-Availability Tanpa Komplain Keluarga**: Jika STB Armbian mati lampu, dimatikan sementara, atau dalam proses pemeliharaan (restart), seluruh perangkat di rumah (HP, PC, Smart TV) otomatis beralih ke DNS 2 tanpa jeda sehingga internet keluarga tetap 100% online.
+  - **Tombol Pintasan 1-Klik Salin Format DNS Router (`window.copyPiholeHybridConfigUI`)**: Menyediakan tombol instan di modal Pi-hole yang langsung menyalin format DNS Primary dan Secondary ke clipboard pengguna untuk kemudahan tempel di router ONT ZTE, Huawei, MikroTik, atau Fiberhome.
+  - **Visualisasi Dinamis IP Antarmuka Dual-IP**: Menampilkan kartu split view yang rapi memisahkan status Ad-Blocker (Primary) dan Ban Serep (Secondary) dengan deteksi dinamis IP antarmuka STB.
+- **Sinkronisasi Versi 11.9.7 Penuh**: Sinkronisasi konsisten pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
+## [Ver 11.9.6] - 2026-10-18
+### Modular Native Pi-hole DNS Sinkhole & Ad-Blocker Addon (Port 8585, AP Isolation Dual-IP DNS Binding, Dynamic IP Telemetry, & Fresh STB Native Installer Non-Docker)
+- **Modul Addon Baru `addons/pihole-manager/` (`lib/pihole_driver.js` & `index.js`):**
+  - **100% Native Armbian Linux (Non-Docker, Hemat RAM ~20-25MB)**:
+    - Tidak memerlukan Docker engine / CasaOS sama sekali sehingga hemat beban CPU/RAM pada STB Armbian.
+    - Mengelola langsung daemon native `pihole-FTL` dan web server native `lighttpd` pada port kustom **8585** (`15-pihole-admin-port.conf`).
+  - **Integrasi Fleksibel Port 8585 (Customizable)**:
+    - Terintegrasi otomatis ke instalasi Pi-hole yang sudah berjalan di port 8585 (`http://127.0.0.1:8585/admin`).
+    - Opsi konfigurasi port, host, dan token API dinamis yang dapat disesuaikan langsung dari UI tanpa restart server NVR Arch3r.
+  - **Solusi Tembus AP Isolation Router ISO / ISP (Dual-IP DNS Binding Dinamis)**:
+    - Deteksi otomatis IP antarmuka aktual STB (`eth0` dan `wlan0`) via `os.networkInterfaces()`.
+    - Tombol otomatisasi *"Terapkan Listen All Interfaces"* (`DNSMASQ_LISTENING=all` pada `pihole-FTL.conf`) dan pembukaan port 53 UDP/TCP di firewall iptables.
+    - Panduan integrasi DHCP Router ISO / MikroTik: masukkan IP STB ke *DHCP Server -> Primary DNS* agar seluruh perangkat kabel LAN (PC, TV) dan Wi-Fi (HP, Tablet, Kamera) otomatis terlindungi pemblokir iklan tanpa terputus isolasi router.
+  - **Telemetri Real-time & Kontrol Ad-Block Cepat**:
+    - Membaca telemetri langsung dari Pi-hole REST API / CLI: status FTL (`enabled`/`disabled`), Total Query DNS Hari Ini, Iklan/Tracker Diblokir, Persentase Iklan Ditolak (`%`), dan Total Domain di Gravity Blocklist.
+    - Tombol kontrol cepat jeda pemblokiran: Jeda 5 Menit, Jeda 15 Menit, Jeda 1 Jam, dan Aktifkan Kembali Pemblokiran.
+    - Tautan langsung buka Web Admin Pi-hole Port 8585.
+  - **Installer Mandiri 1-Klik Native Armbian (STB Baru Tanpa Docker)**:
+    - Skrip instalasi otomatis resmi Pi-hole secara unattended langsung di Linux Host (`curl -sSL https://install.pi-hole.net | sudo bash --unattended`).
+    - Otomatis menonaktifkan `DNSStubListener` pada `systemd-resolved` bawaan Armbian agar port 53 bebas, mengonfigurasi Lighttpd ke port 8585, dan mengatur password admin.
+- **Integrasi Antarmuka Web Dashboard (`public/index.html` & `public/script.js`):**
+  - **Modal Interaktif Pi-hole Manager (`ensurePiholeModalDOM`)**: Panel enterprise lengkap dengan 4 kartu metrik live, kontrol tombol jeda iklan, visual panduan Dual-IP DNS dinamis, form custom port, installer Native, dan konsol log.
+  - **Pintasan Akses Cepat**:
+    - Tombol `🛡️ Pi-hole DNS` di tabel Addons Marketplace (`#view-addons`).
+    - Submenu `🛡️ Pi-hole DNS Manager` di sidebar navigasi.
+    - Banner pintasan `🛡️ Pi-hole DNS Sinkhole & Ad-Blocker (Port 8585)` pada menu Pengaturan Sistem & Jaringan (`view-setting-system`).
+- **REST API Endpoints Baru**:
+  - `GET /api/addons/pihole-manager/status`
+  - `POST /api/addons/pihole-manager/config`
+  - `POST /api/addons/pihole-manager/action`
+  - `POST /api/addons/pihole-manager/bypass-isolation`
+  - `POST /api/addons/pihole-manager/install`
+  - `POST /api/addons/pihole-manager/restart`
+- **Sinkronisasi Versi 11.9.6 Penuh**: Sinkronisasi konsisten pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
+## [Ver 11.9.5] - 2026-10-18
+### 3 Smart Network Diagnostics Engines (Dual-Interface Gateway Auto-Healer, Docker DNS Anti-MagicDNS Fixer, and Cloudflare Tunnel HTTP/2 Doctor)
+- **Tiga Fitur Cerdas Diagnostik & Solusi Jaringan STB (`addons/network-manager/` & `public/`):**
+  - **1. Kunci Gateway LAN & Anti-Asymmetric Routing (`enforceDualInterfaceGateway`)**:
+    - Mengunci kabel LAN `eth0` dengan prioritas route metric 50 (gateway internet default) dan Wi-Fi `wlan0` dengan metric 600 (`ipv4.never-default yes`, khusus streaming kamera CCTV).
+    - Mencegah bentrok routing saat STB terhubung ke kabel LAN dan Wi-Fi pada subnet router ISP yang sama (`192.168.1.x`).
+    - Menyuntikkan aturan kernel sysctl: `arp_ignore=1`, `arp_announce=2`, dan `rp_filter=2` untuk mematikan ARP flux and asymmetric routing loops.
+  - **2. Docker DNS & Anti-MagicDNS Tailscale Fixer (`fixDockerDnsAndTailscaleConflict`)**:
+    - Mengunci DNS Docker daemon ke DNS publik terpercaya (`1.1.1.1` & `8.8.8.8`) via `/etc/docker/daemon.json`.
+    - Menyuntikkan nameserver langsung ke `/etc/resolv.conf` container `cloudflared` untuk mengatasi error fatal `lookup ... server misbehaving` yang dipicu oleh Tailscale MagicDNS (`[fd7a:115c:a1e0::53]:53`) atau filter DNS router ISP.
+  - **3. Cloudflare Tunnel HTTP/2 Doctor & Inspector (`checkCloudflareTunnelDoctor` & `repairCloudflareTunnelHttp2`)**:
+    - Mesin pemeriksa kesehatan koneksi tunnel: memverifikasi apakah container Docker `cloudflared` aktif, memeriksa resolusi SRV record edge Cloudflare (`region1.v2.argotunnel.com`), dan mendeteksi apakah tunnel berjalan dengan protokol HTTP/2.
+    - Menghindari pemblokiran sepihak port UDP 7844 (QUIC) oleh firewall router ONT ISP Indonesia dengan panduan dan perbaikan otomatis berbasis HTTP/2 (port TCP 443).
+- **Integrasi Antarmuka Pengguna Web Dashboard (`public/index.html` & `public/script.js`):**
+  - **Kartu "3 Fitur Cerdas Diagnostik & Solusi Jaringan STB" di Tab Sistem & Jaringan (`view-setting-system`)**: Menyediakan tombol aksi langsung dengan visual feedback instan untuk mengunci gateway, memperbaiki DNS Docker, dan memeriksa status Cloudflare Doctor.
+  - **Section "FITUR 5" pada Modal Armbian Network Manager (`ensureNetMgrModalDOM`)**: Menambahkan panel kontrol komprehensif lengkap dengan tooltip panduan teknis, status badge, tombol aksi per-solusi, serta tombol "Jalankan 3 Solusi Sekaligus (1-Klik)".
+  - **API Endpoints Baru**: `GET /api/addons/network-manager/cloudflare/status` dan `POST /api/addons/network-manager/cloudflare/fix-http2`.
+- **Sinkronisasi Versi 11.9.5 Penuh**: Sinkronisasi konsisten pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
+## [Ver 11.9.4] - 2026-10-18
+### Dedicated Network Settings Tab IP Telemetry Inspector and Compact Sidebar Network Widget Restoration
+- **Penyederhanaan Widget Sidebar (`wNetBreakdown`):**
+  - Mengembalikan tampilan dropdown `🌐 Jaringan Total` pada bilah sisi (sidebar) ke format aslinya yang ringkas, bersih, dan minimalis (hanya menampilkan ikon interface, nama kartu jaringan, dan kecepatan transfer real-time Rx/Tx).
+  - Menghilangkan blok teks panjang IP/MAC dari sidebar agar tata letak sidebar tetap proporsional dan tidak memanjang.
+- **Relokasi Kartu Telemetri IP ke Tab Khusus "Sistem & Jaringan" (`public/index.html` & `public/script.js`):**
+  - Memindahkan kartu enterprise **"Alamat IP & Antarmuka Server NVR (Port 3000)"** dari menu About NVR ke menu **"⚙️ Sistem & Jaringan" (`view-setting-system`)**.
+  - Mengintegrasikan pembaruan instan saat tab Sistem & Jaringan dibuka via `navigateToView('view-setting-system')` sehingga data IP, Subnet Mask, MAC Address, dan Gateway selalu tersegarkan secara otomatis.
+- **Sinkronisasi Versi 11.9.4 Penuh**: Sinkronisasi konsisten pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.9.3] - 2026-10-18
 ### Comprehensive Server IP & Port 3000 Interface Telemetry, Subnet & MAC Inspector, and Cloudflare Tunnel / Reverse Proxy Diagnostics
 - **Penyempurnaan Backend & Telemetri Antarmuka Jaringan (`server.js`):**

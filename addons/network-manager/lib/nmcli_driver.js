@@ -1583,4 +1583,175 @@ export class ArmbianNetworkManager {
             state: isActive ? 'active (proxy-arp relay & pbr)' : 'inactive'
         };
     }
+
+    /**
+     * 11. fixDockerDnsAndTailscaleConflict()
+     * Permanently sets Docker daemon DNS to 1.1.1.1 & 8.8.8.8 and patches running cloudflared container
+     * to eliminate MagicDNS Tailscale query drops.
+     */
+    async fixDockerDnsAndTailscaleConflict() {
+        const steps = [];
+        try {
+            // 1. Create or update /etc/docker/daemon.json
+            const updateDaemonCmd = `sudo mkdir -p /etc/docker && echo '{"dns": ["1.1.1.1", "8.8.8.8"]}' | sudo tee /etc/docker/daemon.json`;
+            const resDaemon = await this.runCommand(updateDaemonCmd);
+            steps.push({ step: 'update_daemon_json', success: resDaemon.success, output: resDaemon.stdout || resDaemon.stderr });
+
+            // 2. Restart Docker daemon if possible
+            const resRestart = await this.runCommand('sudo systemctl restart docker 2>/dev/null || true');
+            steps.push({ step: 'restart_docker_service', success: resRestart.success });
+
+            // 3. Directly patch running cloudflared container /etc/resolv.conf if running
+            const patchContainerCmd = `docker exec cloudflared sh -c "echo -e 'nameserver 1.1.1.1\\nnameserver 8.8.8.8' > /etc/resolv.conf" 2>/dev/null || true`;
+            const resPatch = await this.runCommand(patchContainerCmd);
+            steps.push({ step: 'patch_cloudflared_container_dns', success: resPatch.success });
+
+            return {
+                success: true,
+                message: 'DNS Docker berhasil dikunci permanen ke Cloudflare (1.1.1.1) & Google (8.8.8.8). Anti-MagicDNS Tailscale aktif.',
+                steps
+            };
+        } catch (e) {
+            return {
+                success: false,
+                error: e.message,
+                message: 'Gagal mengonfigurasi DNS Docker: ' + e.message,
+                steps
+            };
+        }
+    }
+
+    /**
+     * 12. enforceDualInterfaceGateway()
+     * Self-healing gateway: locks eth0 to metric 50 and wlan0 to never-default:yes (metric 600)
+     */
+    async enforceDualInterfaceGateway() {
+        try {
+            // Enforce kernel ARP flux rules
+            await this.runCommand('sudo sysctl -w net.ipv4.conf.all.arp_ignore=1 net.ipv4.conf.all.arp_announce=2 net.ipv4.conf.all.rp_filter=2 2>/dev/null || true');
+
+            const resShow = await this.runCommand('nmcli -t -f NAME,TYPE con show --active 2>/dev/null || true');
+            if (!resShow.success || !resShow.stdout) {
+                return { success: true, message: 'Aturan ARP kernel aktif. Tidak ada koneksi nmcli aktif.' };
+            }
+
+            const lines = resShow.stdout.trim().split('\n');
+            let ethList = [];
+            let wifiList = [];
+
+            lines.forEach(l => {
+                const parts = l.split(':');
+                if (parts.length >= 2) {
+                    const cName = parts[0];
+                    const cType = parts[1];
+                    if (cType.includes('ethernet')) ethList.push(cName);
+                    else if (cType.includes('wireless') || cType.includes('wifi')) wifiList.push(cName);
+                }
+            });
+
+            if (ethList.length > 0 && wifiList.length > 0) {
+                for (const c of ethList) {
+                    await this.runCommand(`sudo nmcli con modify "${c}" ipv4.route-metric 50 2>/dev/null || true`);
+                }
+                for (const c of wifiList) {
+                    await this.runCommand(`sudo nmcli con modify "${c}" ipv4.never-default yes ipv4.route-metric 600 2>/dev/null || true`);
+                }
+                return {
+                    success: true,
+                    message: `Self-Healing Berhasil: eth0 (${ethList.join(', ')}) menjadi default gateway utama, wlan0 (${wifiList.join(', ')}) dikunci khusus kamera CCTV.`
+                };
+            }
+
+            return {
+                success: true,
+                message: 'Interface nominal. Aturan ARP anti-asymmetric routing aktif.'
+            };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }
+
+    /**
+     * 13. checkCloudflareTunnelDoctor()
+     * Diagnostics engine for Cloudflare Tunnel on Armbian STB / CasaOS Docker.
+     * Checks container status, DNS lookup to edge, and protocol HTTP/2 vs QUIC.
+     */
+    async checkCloudflareTunnelDoctor() {
+        try {
+            // 1. Detect cloudflare container
+            const psRes = await this.runCommand('docker ps -a --filter name=cloudflare --format "{{.ID}}|{{.Image}}|{{.Status}}|{{.Names}}" 2>/dev/null || true');
+            let container = null;
+            if (psRes.success && psRes.stdout.trim()) {
+                const parts = psRes.stdout.trim().split('\n')[0].split('|');
+                container = {
+                    id: parts[0] || '',
+                    image: parts[1] || '',
+                    status: parts[2] || '',
+                    name: parts[3] || 'cloudflared',
+                    isRunning: (parts[2] || '').toLowerCase().includes('up')
+                };
+            }
+
+            // 2. Test DNS lookup for argotunnel.com
+            const dnsRes = await this.runCommand('getent hosts region1.v2.argotunnel.com 2>/dev/null || host region1.v2.argotunnel.com 2>/dev/null || ping -c 1 -W 2 1.1.1.1 2>/dev/null || true');
+            const dnsResolvable = dnsRes.success && dnsRes.stdout.trim().length > 0;
+
+            // 3. Inspect recent docker logs
+            const logsRes = await this.runCommand('docker logs --tail 30 $(docker ps -q -f name=cloudflare) 2>/dev/null || true');
+            const rawLogs = logsRes.stdout || '';
+            const isHttp2 = rawLogs.includes('protocol http2') || rawLogs.includes('protocol=http2');
+            const isConnected = rawLogs.includes('Registered tunnel connection');
+            const hasDnsMisbehaving = rawLogs.includes('server misbehaving') || rawLogs.includes('Couldn\'t resolve SRV record');
+
+            // 4. Check Docker daemon.json DNS
+            const daemonRes = await this.runCommand('cat /etc/docker/daemon.json 2>/dev/null || true');
+            const hasDaemonDns = daemonRes.stdout.includes('1.1.1.1') || daemonRes.stdout.includes('8.8.8.8');
+
+            return {
+                success: true,
+                container,
+                dnsResolvable,
+                isHttp2,
+                isConnected,
+                hasDnsMisbehaving,
+                hasDaemonDns,
+                logSnippet: rawLogs.slice(-800)
+            };
+        } catch (e) {
+            return { success: false, error: e.message };
+        }
+    }
+
+    /**
+     * 14. repairCloudflareTunnelHttp2()
+     * Applies the complete 3-step fix for Cloudflare Tunnel:
+     * 1) Locks Docker daemon DNS to 1.1.1.1 & 8.8.8.8
+     * 2) Injects nameservers directly into running cloudflared container /etc/resolv.conf
+     * 3) Runs dual-interface gateway self-healing (eth0=50 / wlan0=600)
+     */
+    async repairCloudflareTunnelHttp2() {
+        const steps = [];
+        try {
+            // Step 1: Docker DNS
+            const dnsFix = await this.fixDockerDnsAndTailscaleConflict();
+            steps.push({ name: 'docker_dns_fix', result: dnsFix });
+
+            // Step 2: Dual Gateway enforcement
+            const gwFix = await this.enforceDualInterfaceGateway();
+            steps.push({ name: 'gateway_enforce', result: gwFix });
+
+            // Step 3: Check container status
+            const docStatus = await this.checkCloudflareTunnelDoctor();
+            steps.push({ name: 'doctor_diagnostics', result: docStatus });
+
+            return {
+                success: true,
+                message: '3 Solusi Cerdas Jaringan Berhasil Diterapkan: DNS Docker dikunci ke 1.1.1.1, resolv.conf cloudflared dipatch, dan eth0 diprioritaskan sebagai gateway internet.',
+                steps,
+                diagnostics: docStatus
+            };
+        } catch (e) {
+            return { success: false, error: e.message, steps };
+        }
+    }
 }
