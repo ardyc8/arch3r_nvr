@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.9.9 - Multi-Tier Telemetry Resolver for Pi-hole (FTL Socket Port 4711, Web API, SQLite, CLI Fallback & Live Test Query Button).",
+  "description": "Arch3r NVR Ver. 12.0.1 - Dynamic Ad-Block State Controls, Smart Client Host Admin Link (No-Localhost), & Real-Time FTL Telemetry Resolution.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

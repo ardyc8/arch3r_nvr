@@ -17000,16 +17000,13 @@ function ensurePiholeModalDOM() {
                         </div>
                     </div>
 
-                    <!-- Quick Ad-Blocking Control Buttons -->
+                    <!-- Quick Ad-Blocking Control Buttons (Dinamis) -->
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; padding-top:0.4rem; border-top:1px dashed rgba(255,255,255,0.08);">
-                        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+                        <div id="piholeControlsContainer" style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
                             <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Kontrol Ad-Block:</span>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 300)" style="font-size:0.75rem; padding:0.35rem 0.65rem;" title="Jeda pemblokiran selama 5 menit">⏸️ Jeda 5 Menit</button>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 900)" style="font-size:0.75rem; padding:0.35rem 0.65rem;" title="Jeda pemblokiran selama 15 menit">⏸️ Jeda 15 Menit</button>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 3600)" style="font-size:0.75rem; padding:0.35rem 0.65rem;" title="Jeda pemblokiran selama 1 Jam">⏸️ Jeda 1 Jam</button>
-                            <button type="button" class="btn btn-sm btn-primary" onclick="window.controlPiholeBlockingUI('enable')" style="background:#16a34a; border-color:#15803d; font-size:0.75rem; padding:0.35rem 0.75rem; font-weight:700;">▶️ Aktifkan</button>
+                            <span style="font-size:0.75rem; color:var(--text-muted);">🔄 Memeriksa status...</span>
                         </div>
-                        <a id="piholeAdminWebLink" href="http://localhost:8585/admin" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary" style="background:#2563eb; border-color:#1d4ed8; font-size:0.78rem; padding:0.35rem 0.85rem; display:inline-flex; align-items:center; gap:0.35rem; font-weight:600;">
+                        <a id="piholeAdminWebLink" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary" style="background:#2563eb; border-color:#1d4ed8; font-size:0.78rem; padding:0.35rem 0.85rem; display:inline-flex; align-items:center; gap:0.35rem; font-weight:600;">
                             <span>🌐</span> Buka Web Admin (Port 8585) ↗
                         </a>
                     </div>
@@ -17201,10 +17198,17 @@ window.fetchPiholeStatusUI = async function() {
         if (data.config) {
             if (portInput) portInput.value = data.config.port || 8585;
             if (hostInput) hostInput.value = data.config.host || '127.0.0.1';
-            if (adminLink) {
-                adminLink.href = data.webUrl || `http://localhost:${data.config.port || 8585}/admin`;
-                adminLink.textContent = `🌐 Buka Web Admin (Port ${data.config.port || 8585}) ↗`;
-            }
+        }
+
+        // Tentukan host aktual browser (misal 192.168.1.253) agar link Web Admin tidak pernah mengarah ke localhost
+        if (adminLink) {
+            const hostName = window.location.hostname;
+            const isLocalhost = (!hostName || hostName === 'localhost' || hostName === '127.0.0.1');
+            const currentHost = !isLocalhost ? hostName : (data.dualDnsGuide?.eth0Ip || '192.168.1.253');
+            const port = data.config?.port || 8585;
+            const webPath = data.config?.webPath || '/admin';
+            adminLink.href = `http://${currentHost}:${port}${webPath}`;
+            adminLink.textContent = `🌐 Buka Web Admin (${currentHost}:${port}) ↗`;
         }
 
         // Tampilkan IP Dinamis Antarmuka STB untuk Solusi AP Isolation
@@ -17225,18 +17229,49 @@ window.fetchPiholeStatusUI = async function() {
             }
         }
 
-        if (data.metrics) {
-            const isEnabled = data.metrics.status === 'enabled';
+        const activeMetrics = data.metrics || (data.running ? {
+            status: 'enabled',
+            dns_queries_today: 0,
+            ads_blocked_today: 0,
+            ads_percentage_today: '0.0',
+            domains_being_blocked: 0,
+            unique_clients: 0
+        } : null);
+
+        if (activeMetrics) {
+            const isEnabled = activeMetrics.status === 'enabled';
             if (statusBadge) {
                 statusBadge.textContent = isEnabled ? '● Blocking Aktif' : '● Blocking Dijeda';
                 statusBadge.style.background = isEnabled ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
                 statusBadge.style.color = isEnabled ? '#22c55e' : '#f87171';
                 statusBadge.style.borderColor = isEnabled ? '#15803d' : '#b91c1c';
             }
-            const q = Number(data.metrics.dns_queries_today ?? 0);
-            const b = Number(data.metrics.ads_blocked_today ?? 0);
-            const pct = data.metrics.ads_percentage_today ?? '0.0';
-            const grav = Number(data.metrics.domains_being_blocked ?? 0);
+
+            // Render Tombol Kontrol Ad-Block Dinamis (Berubah otomatis saat Aktif vs Dijeda)
+            const controlsContainer = document.getElementById('piholeControlsContainer');
+            if (controlsContainer) {
+                if (isEnabled) {
+                    controlsContainer.innerHTML = `
+                        <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Jeda Ad-Block:</span>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 300)" style="font-size:0.75rem; padding:0.3rem 0.65rem;" title="Jeda pemblokiran selama 5 menit">⏸️ 5 Mnt</button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 900)" style="font-size:0.75rem; padding:0.3rem 0.65rem;" title="Jeda pemblokiran selama 15 menit">⏸️ 15 Mnt</button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 3600)" style="font-size:0.75rem; padding:0.35rem 0.65rem;" title="Jeda pemblokiran selama 1 Jam">⏸️ 1 Jam</button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="window.controlPiholeBlockingUI('disable', 0)" style="font-size:0.75rem; padding:0.35rem 0.65rem; color:#f87171; border-color:rgba(239,68,68,0.4);" title="Matikan pemblokiran permanen">🛑 Matikan</button>
+                    `;
+                } else {
+                    controlsContainer.innerHTML = `
+                        <span style="font-size:0.75rem; color:#f87171; font-weight:700;">⚠️ Pemblokiran Sedang Dijeda</span>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="window.controlPiholeBlockingUI('enable')" style="background:#16a34a; border-color:#15803d; font-size:0.8rem; padding:0.35rem 0.95rem; font-weight:700; box-shadow:0 0 10px rgba(22,163,74,0.4);">
+                            ▶️ Aktifkan Pemblokiran Sekarang
+                        </button>
+                    `;
+                }
+            }
+
+            const q = Number(activeMetrics.dns_queries_today ?? 0);
+            const b = Number(activeMetrics.ads_blocked_today ?? 0);
+            const pct = activeMetrics.ads_percentage_today ?? '0.0';
+            const grav = Number(activeMetrics.domains_being_blocked ?? 0);
 
             if (queriesEl) queriesEl.textContent = isNaN(q) ? '0' : q.toLocaleString();
             if (blockedEl) blockedEl.textContent = isNaN(b) ? '0' : b.toLocaleString();
@@ -17245,24 +17280,18 @@ window.fetchPiholeStatusUI = async function() {
 
             const cInfo = (data.type === 'native' || !data.container) ? 'Layanan Native Linux: pihole-FTL' : 'Status: Aktif';
             if (q === 0) {
-                if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${cInfo} aktif (0 kueri). Klik tombol "⚡ Tes Kueri" di atas atau setel DNS router ke 192.168.1.253 agar kueri perangkat mulai mengalir.`;
+                if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${cInfo} aktif (0 kueri). Klik "⚡ Tes Kueri" atau setel Primary DNS router ke ${data.dualDnsGuide?.eth0Ip || '192.168.1.253'}.`;
             } else {
                 if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${cInfo} aktif &amp; merekam kueri live (${q.toLocaleString()} kueri | ${b.toLocaleString()} diblokir).`;
             }
-        } else if (data.running) {
-            if (statusBadge) {
-                statusBadge.textContent = '● Berjalan (Menghubungkan FTL)';
-                statusBadge.style.color = '#38bdf8';
-            }
-            if (queriesEl) queriesEl.textContent = '0';
-            if (blockedEl) blockedEl.textContent = '0';
-            if (percentEl) percentEl.textContent = '0.0%';
-            if (gravityEl) gravityEl.textContent = '0';
-            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ℹ️ Layanan pihole-FTL aktif pada Port 53. Klik "⚡ Tes Kueri" untuk memicu penghitung real-time.`;
         } else {
             if (statusBadge) {
                 statusBadge.textContent = '● Belum Terpasang / Offline';
                 statusBadge.style.color = '#94a3b8';
+            }
+            const controlsContainer = document.getElementById('piholeControlsContainer');
+            if (controlsContainer) {
+                controlsContainer.innerHTML = `<span style="font-size:0.75rem; color:#94a3b8;">Layanan Pi-hole offline / belum terpasang</span>`;
             }
             if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚠️ Pi-hole belum aktif pada port ${data.config?.port || 8585}. Jika ini STB baru, wizard installer siap digunakan.`;
         }

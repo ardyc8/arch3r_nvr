@@ -1,5 +1,16 @@
 # Changelog
 
+## [Ver 12.0.1] - 2026-10-18
+### Dynamic Ad-Block State Controls & Client-Adaptive Web Admin Link (No-Localhost)
+- **Tombol Kontrol Ad-Block Dinamis Real-Time (`public/script.js`):**
+  - **Status Interaktif Nyata**: Menghilangkan tampilan tombol ganda yang membingungkan. Saat pemblokiran aktif (`status === 'enabled'`), UI menampilkan badge `🟢 Blocking Aktif` dan pilihan tombol `⏸️ Jeda 5 Mnt`, `⏸️ Jeda 15 Mnt`, `⏸️ 1 Jam`, dan `🛑 Matikan`.
+  - **Transisi Otomatis saat Dijeda**: Saat pemblokiran dijeda/dimatikan (`status === 'disabled'`), tombol otomatis berubah menjadi badge `🟡 Pemblokiran Dijeda` dan satu tombol utama berlampu hijau: `▶️ Aktifkan Pemblokiran Sekarang`.
+  - **Penyegaran Templat Awal**: Templat awal HTML kini menggunakan indikator pemuatan status (`🔄 Memeriksa status...`) sehingga tombol tidak pernah bertabrakan saat status belum dimuat.
+- **Link Web Admin Adaptif Client/Host (`public/script.js`):**
+  - **Pencegahan Hardcode `localhost`**: Tombol `🌐 Buka Web Admin` kini mendeteksi secara dinamis `window.location.hostname` dari browser perangkat pengakses (misal HP atau PC klien di LAN seperti `192.168.1.50`).
+  - **Akses Lintas Perangkat**: Mencegah kegagalan buka web admin saat diakses dari HP/PC lain karena link tidak lagi memaksa `localhost` jika dibuka bukan dari terminal lokal STB.
+- **Sinkronisasi Versi 12.0.1 Penuh**: Sinkronisasi nomor versi pada `package.json`, `metadata.json`, `public/version_sync.js`, dan `CHANGELOG.md`.
+
 ## [Ver 11.9.9] - 2026-10-18
 ### Multi-Tier Telemetry Resolver for Pi-hole (FTL Telnet Socket Port 4711, Web API, SQLite, CLI Fallback & Live Test Query Button)
 - **Multi-Tier Telemetry Engine (`addons/pihole-manager/lib/pihole_driver.js`):**
