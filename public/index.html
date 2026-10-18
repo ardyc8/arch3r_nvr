@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google" content="notranslate">
     <link rel="icon" href="/Archer.ico?v=2">
-    <title>Arch3r NVR Ver. 11.9.2 - Professional Multi-Tenant Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=11.9.2">
+    <title>Arch3r NVR Ver. 11.9.3 - Professional Multi-Tenant Dashboard</title>
+    <link rel="stylesheet" href="style.css?v=11.9.3">
     <meta name="theme-color" content="#0f172a">
     <script>
         // Sembunyikan layar login seketika jika mode Kiosk terdeteksi sebelum browser menggambar elemen DOM
@@ -2218,6 +2218,22 @@
                                 
                                 <div style="color:var(--text-muted);">Email Terdaftar:</div>
                                 <div id="aboutLicenseEmail">Memuat...</div>
+                            </div>
+                        </div>
+
+                        <!-- Card Informasi Alamat IP & Antarmuka Server NVR -->
+                        <div style="background:var(--surface); padding:1.25rem; border-radius:8px; border:1px solid var(--border);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                <h3 style="margin:0; font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
+                                    <span>🌐</span> Alamat IP & Antarmuka Server NVR (Port 3000)
+                                </h3>
+                                <span style="font-size:0.75rem; color:#94a3b8; font-family:monospace;">Host: <strong id="aboutServerHostname" style="color:#f8fafc;">localhost</strong></span>
+                            </div>
+                            <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                                Daftar interface jaringan aktif yang menjalankan server Arch3r NVR. Gunakan URL di bawah ini untuk mengakses dashboard secara lokal atau sebagai target Public Hostname pada Cloudflare Tunnel / CasaOS.
+                            </p>
+                            <div id="aboutNetworkInterfacesList" style="display:flex; flex-direction:column; gap:0.5rem;">
+                                <div style="color:var(--text-muted); font-size:0.82rem; padding:0.5rem; text-align:center;">Memuat data antarmuka jaringan server...</div>
                             </div>
                         </div>
                         

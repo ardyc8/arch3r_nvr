@@ -1,5 +1,19 @@
 # Changelog
 
+## [Ver 11.9.3] - 2026-10-18
+### Comprehensive Server IP & Port 3000 Interface Telemetry, Subnet & MAC Inspector, and Cloudflare Tunnel / Reverse Proxy Diagnostics
+- **Penyempurnaan Backend & Telemetri Antarmuka Jaringan (`server.js`):**
+  - **Fungsi `getActiveNetworkInterfacesInfo()`**: Mendeteksi seluruh antarmuka jaringan fisik non-internal (Ethernet `eth0`, Wi-Fi `wlan0`) secara in-memory melalui `os.networkInterfaces()`, menyaring loopback dan virtual bridge.
+  - **Inspeksi Lengkap IP, Subnet Mask, CIDR & MAC**: Memetakan secara detail setiap interface dengan alamat IPv4, Subnet Mask, notasi CIDR, MAC Address fisik STB, port server aktif (3000), dan URL akses langsung (`http://<ip>:3000`).
+  - **Deteksi Default Gateway Internet Otomatis**: Membaca routing table kernel Linux (`/proc/net/route`) untuk mengidentifikasi antarmuka mana yang menjadi pintu gerbang default internet (`0.0.0.0/0`), krusial untuk diagnosa koneksi outbound seperti Cloudflare Tunnel dan Tailscale.
+  - **Integrasi Endpoint `/api/about` & `/api/system/stats`**: Data interface dan IP server diperbarui secara berkala dan dikirimkan ke frontend secara real-time tanpa membebani resource STB.
+- **Tampilan Antarmuka Web Dashboard (`public/index.html` & `public/script.js`):**
+  - **Kartu "Alamat IP & Antarmuka Server NVR" pada Menu Informasi Sistem (`view-about`)**: Menyajikan daftar terstruktur bergaya enterprise dengan tipografi monospace tabular (`font-mono tabular-nums`), menampilkan nama interface, tipe (LAN/Wi-Fi), URL akses dashboard port 3000, IP, Subnet Mask/CIDR, MAC Address, serta penanda *Gateway Internet Utama*.
+  - **Rincian Jaringan pada Sidebar Widget Dropdown (`wNetBreakdown`)**: Memperkaya dropdown `🌐 Jaringan Total` di sidebar dengan kartu mini per interface yang menampilkan URL akses port 3000, IP/Mask, MAC, dan kecepatan real-time Rx/Tx.
+  - **Fungsi Dinamis `renderAboutNetworkInterfaces()`**: Memastikan pembaruan otomatis saat data diterima dari polling hardware atau saat membuka menu About NVR.
+- **Dokumentasi & Diagnosa Cloudflare Tunnel DOWN**: Memberikan panduan teknis konversi protokol tunnel ke HTTP/2 (`--protocol http2` pada TCP port 443) untuk menghindari pemblokiran UDP port 7844 (QUIC) oleh firewall ISP Indonesia, penyesuaian target service Docker, dan integrasi WebSocket.
+- **Sinkronisasi Versi 11.9.3 Penuh**: Sinkronisasi pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.9.2] - 2026-10-12
 ### Smart Subnet CIDR Normalization, Zero-Mask Route Detection, and Robust Kernel Diagnostics
 - **Normalisasi Cerdas Format CIDR & Subnet (`addons/network-manager/lib/nmcli_driver.js`):**

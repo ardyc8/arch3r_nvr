@@ -1388,18 +1388,39 @@ async function updateHardwareStats() {
                 if (wNetUp) wNetUp.textContent = data.network.txSpeedFormatted || '0 KB/s';
 
                 if (wNetBreakdown) {
-                    if (Array.isArray(data.network.interfaces) && data.network.interfaces.length > 0) {
+                    const ifaces = Array.isArray(data.network.interfaces) && data.network.interfaces.length > 0
+                        ? data.network.interfaces
+                        : (Array.isArray(data.network.serverIps) ? data.network.serverIps : []);
+
+                    if (ifaces.length > 0) {
                         let breakdownHtml = '';
-                        data.network.interfaces.forEach(iface => {
-                            const icon = iface.type === 'wifi' ? '📶' : '🔌';
+                        ifaces.forEach(iface => {
+                            const isWifi = iface.type === 'wifi';
+                            const icon = isWifi ? '📶' : '🔌';
+                            const typeLabel = isWifi ? 'Wi-Fi' : 'LAN';
+                            const gwTag = iface.isDefaultGateway ? ' <span style="color:#34d399; font-size:0.62rem; font-weight:700;">[Gateway]</span>' : '';
+                            const port = iface.port || 3000;
+                            const accessUrl = iface.accessUrl || `http://${iface.ip || '127.0.0.1'}:${port}`;
+
                             breakdownHtml += `
-                                <div style="display:flex; justify-content:space-between; align-items:center; padding:3px 6px; margin-bottom:3px; background:rgba(15,23,42,0.5); border-radius:4px; border:1px solid rgba(255,255,255,0.05);">
-                                    <span style="color:#e2e8f0; font-weight:600; font-size:0.68rem;">${icon} ${iface.name}</span>
-                                    <span style="font-size:0.68rem;"><span style="color:#38bdf8;">↓${iface.rxSpeedFormatted}</span> <span style="color:#60a5fa;">↑${iface.txSpeedFormatted}</span></span>
+                                <div style="padding:5px 7px; margin-bottom:5px; background:rgba(15,23,42,0.65); border-radius:5px; border:1px solid rgba(255,255,255,0.07); line-height:1.35;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                                        <span style="color:#f8fafc; font-weight:700; font-size:0.7rem;">${icon} ${iface.name} (${typeLabel})${gwTag}</span>
+                                        <span style="font-size:0.65rem; font-family:monospace;"><span style="color:#38bdf8;">↓${iface.rxSpeedFormatted || '0 KB/s'}</span> <span style="color:#60a5fa;">↑${iface.txSpeedFormatted || '0 KB/s'}</span></span>
+                                    </div>
+                                    <div style="font-size:0.67rem; color:#94a3b8; font-family:monospace; display:flex; flex-direction:column; gap:1px;">
+                                        <div><span style="color:#64748b;">URL:</span> <strong style="color:#38bdf8;">${accessUrl}</strong></div>
+                                        <div><span style="color:#64748b;">IP / Mask:</span> <span style="color:#cbd5e1;">${iface.ip || '-'}${iface.netmask ? ' / ' + iface.netmask : ''}</span></div>
+                                        <div><span style="color:#64748b;">MAC:</span> <span style="color:#94a3b8;">${iface.mac || 'N/A'}</span></div>
+                                    </div>
                                 </div>
                             `;
                         });
                         wNetBreakdown.innerHTML = breakdownHtml;
+
+                        if (typeof window.renderAboutNetworkInterfaces === 'function') {
+                            window.renderAboutNetworkInterfaces(ifaces, data.hostname);
+                        }
                     }
                 }
             }
@@ -6490,6 +6511,10 @@ async function fetchSystemSettings() {
                         elDays.style.color = '#ef4444';
                     }
                 }
+
+                if (Array.isArray(data.networkInterfaces)) {
+                    renderAboutNetworkInterfaces(data.networkInterfaces, data.hostname);
+                }
             } else {
                 if (elVersion && elVersion.textContent.includes('Memuat')) elVersion.textContent = 'Versi ' + (window.APP_VERSION || '10.8.4');
                 if (elStatus && elStatus.textContent.includes('Memuat')) elStatus.innerHTML = '<span style="color:#10b981; font-weight:600;">Sistem Aktif</span>';
@@ -6506,6 +6531,67 @@ async function fetchSystemSettings() {
         }
     }
     window.fetchAboutInfo = fetchAboutInfo;
+
+    function renderAboutNetworkInterfaces(interfaces, hostname) {
+        const listEl = document.getElementById('aboutNetworkInterfacesList');
+        const hostEl = document.getElementById('aboutServerHostname');
+        if (hostEl && hostname) hostEl.textContent = hostname;
+        if (!listEl) return;
+
+        if (!Array.isArray(interfaces) || interfaces.length === 0) {
+            listEl.innerHTML = `
+                <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:0.85rem; text-align:center; color:#94a3b8; font-size:0.85rem;">
+                    Tidak ada antarmuka fisik non-internal aktif. Server berjalan di port 3000 (<code>http://localhost:3000</code>).
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        interfaces.forEach(iface => {
+            const isWifi = iface.type === 'wifi';
+            const icon = isWifi ? '📶' : '🔌';
+            const typeName = isWifi ? 'Wi-Fi Nirkabel' : 'Ethernet LAN (Kabel)';
+            const gwBadge = iface.isDefaultGateway
+                ? '<span style="background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); padding:2px 8px; border-radius:4px; font-size:0.72rem; font-weight:600;">🌐 Gateway Internet Utama</span>'
+                : '';
+            const port = iface.port || 3000;
+            const accessUrl = iface.accessUrl || `http://${iface.ip || '127.0.0.1'}:${port}`;
+
+            html += `
+                <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:0.85rem 1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:0.4rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:1.1rem;">${icon}</span>
+                            <strong style="color:#f8fafc; font-size:0.95rem;">${iface.name}</strong>
+                            <span style="color:#94a3b8; font-size:0.78rem;">(${typeName})</span>
+                        </div>
+                        <div>${gwBadge}</div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.5rem 1rem; font-size:0.82rem;">
+                        <div>
+                            <span style="color:#64748b; font-size:0.73rem; display:block;">URL Akses Dashboard:</span>
+                            <code style="color:#38bdf8; font-weight:700; font-family:monospace; word-break:break-all;">${accessUrl}</code>
+                        </div>
+                        <div>
+                            <span style="color:#64748b; font-size:0.73rem; display:block;">Alamat IP:</span>
+                            <code style="color:#f1f5f9; font-weight:600; font-family:monospace;">${iface.ip || '-'}</code>
+                        </div>
+                        <div>
+                            <span style="color:#64748b; font-size:0.73rem; display:block;">Subnet Mask & CIDR:</span>
+                            <code style="color:#cbd5e1; font-family:monospace;">${iface.netmask || '-'} ${iface.cidr ? '(' + iface.cidr + ')' : ''}</code>
+                        </div>
+                        <div>
+                            <span style="color:#64748b; font-size:0.73rem; display:block;">MAC Address Fisik:</span>
+                            <code style="color:#94a3b8; font-family:monospace;">${iface.mac || 'N/A'}</code>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        listEl.innerHTML = html;
+    }
+    window.renderAboutNetworkInterfaces = renderAboutNetworkInterfaces;
 
     // --- ADMIN OTA SYSTEM & LINUX PIPELINE ---
     let adminUpdateData = null;

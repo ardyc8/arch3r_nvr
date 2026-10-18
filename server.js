@@ -2840,7 +2840,10 @@ app.get('/api/about', verifyToken, (req, res) => {
         licenseValid: licenseCheck.valid,
         licenseReason: licenseCheck.reason,
         licenseExpiresAt: licenseCheck.expiresAt || null,
-        registeredEmail: currentSettings.email || "-"
+        registeredEmail: currentSettings.email || "-",
+        hostname: os.hostname(),
+        serverPort: Number(process.env.PORT || 3000),
+        networkInterfaces: typeof getActiveNetworkInterfacesInfo === 'function' ? getActiveNetworkInterfacesInfo() : []
     });
 });
 
@@ -6178,19 +6181,76 @@ let cachedNetStats = {
     txSpeedFormatted: '0 KB/s',
     rxSpeedBytes: 0,
     txSpeedBytes: 0,
-    interfaces: []
+    interfaces: [],
+    serverIps: []
 };
 let lastNetSampleMap = new Map();
 
+function netmaskToCidr(netmask) {
+    if (!netmask) return '24';
+    try {
+        return String(netmask.split('.').reduce((c, o) => c + (Number(o).toString(2).match(/1/g) || []).length, 0));
+    } catch (_) {
+        return '24';
+    }
+}
+
+function getActiveNetworkInterfacesInfo() {
+    const nics = os.networkInterfaces();
+    const result = [];
+    const port = Number(process.env.PORT || 3000);
+
+    let defaultGatewayIface = '';
+    try {
+        if (fs.existsSync('/proc/net/route')) {
+            const routeContent = fs.readFileSync('/proc/net/route', 'utf8');
+            const lines = routeContent.split('\n');
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].trim().split(/\s+/);
+                if (cols.length >= 2 && cols[1] === '00000000') {
+                    defaultGatewayIface = cols[0];
+                    break;
+                }
+            }
+        }
+    } catch (_) {}
+
+    for (const [ifName, addrs] of Object.entries(nics)) {
+        if (!addrs || ifName === 'lo' || ifName.startsWith('docker') || ifName.startsWith('veth')) continue;
+        for (const addr of addrs) {
+            if (!addr.internal && addr.family === 'IPv4') {
+                const isWifi = ifName.includes('wlan') || ifName.includes('wifi') || ifName.includes('wl');
+                result.push({
+                    name: ifName,
+                    type: isWifi ? 'wifi' : 'ethernet',
+                    ip: addr.address,
+                    netmask: addr.netmask || '255.255.255.0',
+                    cidr: addr.cidr || `${addr.address}/${netmaskToCidr(addr.netmask)}`,
+                    mac: (addr.mac && addr.mac !== '00:00:00:00:00:00') ? addr.mac.toUpperCase() : 'N/A',
+                    port: port,
+                    accessUrl: `http://${addr.address}:${port}`,
+                    isDefaultGateway: (ifName === defaultGatewayIface)
+                });
+            }
+        }
+    }
+    return result;
+}
+
 function sampleNetworkStats() {
     try {
+        const activeNicsInfo = getActiveNetworkInterfacesInfo();
+        const activeNicMap = new Map();
+        activeNicsInfo.forEach(nic => {
+            if (!activeNicMap.has(nic.name)) activeNicMap.set(nic.name, nic);
+        });
+
         if (fs.existsSync('/proc/net/dev')) {
             const content = fs.readFileSync('/proc/net/dev', 'utf8');
             const lines = content.split('\n');
             const now = Date.now();
 
-            const nics = os.networkInterfaces();
-            const activeIfs = Object.keys(nics).filter(name => name !== 'lo' && nics[name].some(addr => !addr.internal && addr.family === 'IPv4'));
+            const activeIfs = activeNicsInfo.map(nic => nic.name);
 
             let totalAggregatedRxRate = 0;
             let totalAggregatedTxRate = 0;
@@ -6210,28 +6270,52 @@ function sampleNetworkStats() {
                 const tx = parseInt(cols[8], 10) || 0;
 
                 const lastSample = lastNetSampleMap.get(ifName);
+                let rxRate = 0;
+                let txRate = 0;
                 if (lastSample) {
                     const dt = (now - lastSample.time) / 1000;
                     if (dt > 0) {
-                        const rxRate = Math.max(0, (rx - lastSample.rx) / dt);
-                        const txRate = Math.max(0, (tx - lastSample.tx) / dt);
+                        rxRate = Math.max(0, (rx - lastSample.rx) / dt);
+                        txRate = Math.max(0, (tx - lastSample.tx) / dt);
 
                         totalAggregatedRxRate += rxRate;
                         totalAggregatedTxRate += txRate;
-
-                        const isWifi = ifName.includes('wlan') || ifName.includes('wifi') || ifName.includes('wl');
-                        interfaceList.push({
-                            name: ifName,
-                            type: isWifi ? 'wifi' : 'ethernet',
-                            rxSpeedFormatted: formatDataRate(rxRate),
-                            txSpeedFormatted: formatDataRate(txRate),
-                            rxSpeedBytes: Math.round(rxRate),
-                            txSpeedBytes: Math.round(txRate)
-                        });
                     }
                 }
                 lastNetSampleMap.set(ifName, { rx, tx, time: now });
+
+                const isWifi = ifName.includes('wlan') || ifName.includes('wifi') || ifName.includes('wl');
+                const nicMeta = activeNicMap.get(ifName) || {};
+
+                interfaceList.push({
+                    name: ifName,
+                    type: isWifi ? 'wifi' : 'ethernet',
+                    ip: nicMeta.ip || '',
+                    netmask: nicMeta.netmask || '',
+                    cidr: nicMeta.cidr || '',
+                    mac: nicMeta.mac || 'N/A',
+                    port: nicMeta.port || Number(process.env.PORT || 3000),
+                    accessUrl: nicMeta.accessUrl || `http://${nicMeta.ip || '127.0.0.1'}:${nicMeta.port || 3000}`,
+                    isDefaultGateway: !!nicMeta.isDefaultGateway,
+                    rxSpeedFormatted: formatDataRate(rxRate),
+                    txSpeedFormatted: formatDataRate(txRate),
+                    rxSpeedBytes: Math.round(rxRate),
+                    txSpeedBytes: Math.round(txRate)
+                });
             }
+
+            // If interfaceList from procfs missed any active NICs, append them
+            activeNicsInfo.forEach(nic => {
+                if (!interfaceList.some(i => i.name === nic.name)) {
+                    interfaceList.push({
+                        ...nic,
+                        rxSpeedFormatted: '0 KB/s',
+                        txSpeedFormatted: '0 KB/s',
+                        rxSpeedBytes: 0,
+                        txSpeedBytes: 0
+                    });
+                }
+            });
 
             cachedNetStats = {
                 interface: interfaceList.length > 0 ? interfaceList.map(i => i.name).join(' + ') : 'eth0',
@@ -6239,18 +6323,26 @@ function sampleNetworkStats() {
                 txSpeedFormatted: formatDataRate(totalAggregatedTxRate),
                 rxSpeedBytes: Math.round(totalAggregatedRxRate),
                 txSpeedBytes: Math.round(totalAggregatedTxRate),
-                interfaces: interfaceList
+                interfaces: interfaceList,
+                serverIps: activeNicsInfo
             };
         } else {
-            const ifaces = os.networkInterfaces();
-            let activeIf = 'eth0';
-            for (const name of Object.keys(ifaces)) {
-                if (name !== 'lo' && !name.startsWith('127.')) {
-                    activeIf = name;
-                    break;
-                }
-            }
-            cachedNetStats.interface = activeIf;
+            const fallbackList = activeNicsInfo.map(nic => ({
+                ...nic,
+                rxSpeedFormatted: '0 KB/s',
+                txSpeedFormatted: '0 KB/s',
+                rxSpeedBytes: 0,
+                txSpeedBytes: 0
+            }));
+            cachedNetStats = {
+                interface: fallbackList.length > 0 ? fallbackList.map(i => i.name).join(' + ') : 'eth0',
+                rxSpeedFormatted: '0 KB/s',
+                txSpeedFormatted: '0 KB/s',
+                rxSpeedBytes: 0,
+                txSpeedBytes: 0,
+                interfaces: fallbackList,
+                serverIps: activeNicsInfo
+            };
         }
     } catch(e) {}
 }

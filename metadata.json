@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.9.2 - Smart Subnet CIDR Normalization, Zero-Mask Route Detection, and Robust Kernel Diagnostics.",
+  "description": "Arch3r NVR Ver. 11.9.3 - Comprehensive Server IP & Port 3000 Interface Telemetry, Subnet & MAC Inspector, and Cloudflare Tunnel / Reverse Proxy Diagnostics.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -1,0 +1,6 @@
+{
+  "summary": "Revisi rencana implementasi: Analisis dan solusi komprehensif penyebab Cloudflare Tunnel DOWN pada STB Armbian (protokol QUIC vs HTTP2, DNS resolver, target IP container vs host, default gateway internet) serta integrasi tampilan informasi IP, Subnet, MAC, Port 3000, dan status Internet Gateway pada Web Dashboard Arch3r NVR.",
+  "updatedAt": "2026-10-18T08:39:42.262630131Z",
+  "requestFeedback": true,
+  "userFacing": true
+}
