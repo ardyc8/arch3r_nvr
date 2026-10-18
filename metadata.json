@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 11.9.7 - Native Pi-hole Hybrid Fail-Safe DNS Architecture (Primary STB + Secondary Cloudflare 1.1.1.1 Anti-Mati Internet), One-Click Router Config Copy, & Custom Port 8585.",
+  "description": "Arch3r NVR Ver. 11.9.9 - Multi-Tier Telemetry Resolver for Pi-hole (FTL Socket Port 4711, Web API, SQLite, CLI Fallback & Live Test Query Button).",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

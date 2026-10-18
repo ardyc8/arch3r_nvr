@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import net from 'net';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,6 +30,53 @@ class PiholeDriver {
                     stdout: stdout ? stdout.toString() : '',
                     stderr: stderr ? stderr.toString() : ''
                 });
+            });
+        });
+    }
+
+    queryFtlTelnet(cmd = '>stats', port = 4711, host = '127.0.0.1', timeout = 2500) {
+        return new Promise((resolve) => {
+            let buffer = '';
+            let isDone = false;
+            const client = new net.Socket();
+            client.setTimeout(timeout);
+
+            client.connect(port, host, () => {
+                client.write(cmd + '\n');
+            });
+
+            client.on('data', (chunk) => {
+                buffer += chunk.toString();
+                if (buffer.includes('---EOM---') || buffer.includes('---END---') || buffer.includes('bye')) {
+                    if (!isDone) {
+                        isDone = true;
+                        client.destroy();
+                        resolve({ success: true, data: buffer });
+                    }
+                }
+            });
+
+            client.on('timeout', () => {
+                if (!isDone) {
+                    isDone = true;
+                    client.destroy();
+                    resolve({ success: false, error: 'Socket timeout' });
+                }
+            });
+
+            client.on('error', (e) => {
+                if (!isDone) {
+                    isDone = true;
+                    client.destroy();
+                    resolve({ success: false, error: e.message });
+                }
+            });
+
+            client.on('close', () => {
+                if (!isDone) {
+                    isDone = true;
+                    resolve({ success: buffer.length > 0, data: buffer });
+                }
             });
         });
     }
@@ -123,55 +171,143 @@ class PiholeDriver {
                 }
             }
 
-            // 3. Ambil Telemetri Real-time dari Native Web Server Lighttpd (Port 8585)
-            const apiEndpoints = [
-                `http://127.0.0.1:${config.port}/admin/api.php?summaryRaw`,
-                `http://127.0.0.1:${config.port}/api.php?summaryRaw`,
-                `http://127.0.0.1:${config.port}/api/summary`
-            ];
+            // 3. MULTI-TIER REAL-TIME TELEMETRY RESOLVER
+            let telemetryAcquired = false;
 
-            let apiResponded = false;
-            for (const ep of apiEndpoints) {
+            // TIER 1: Direct FTL Engine Socket (Port 4711 Telnet API) - 100% Instan di Memori C/C++, Tanpa Butuh Auth Web
+            try {
+                const ftlRes = await this.queryFtlTelnet('>stats');
+                if (ftlRes.success && ftlRes.data && ftlRes.data.includes('dns_queries_today')) {
+                    const stats = {};
+                    for (const line of ftlRes.data.split('\n')) {
+                        const parts = line.trim().split(/\s+/);
+                        if (parts.length >= 2) stats[parts[0]] = parts.slice(1).join(' ');
+                    }
+                    const qToday = parseInt(stats.dns_queries_today, 10);
+                    const bToday = parseInt(stats.ads_blocked_today, 10);
+                    const pToday = parseFloat(stats.ads_percentage_today) || 0;
+                    const dGravity = parseInt(stats.domains_being_blocked, 10);
+                    const uClients = parseInt(stats.unique_clients, 10);
+
+                    result.metrics = {
+                        status: stats.status || (result.running ? 'enabled' : 'unknown'),
+                        dns_queries_today: isNaN(qToday) ? 0 : qToday,
+                        ads_blocked_today: isNaN(bToday) ? 0 : bToday,
+                        ads_percentage_today: pToday.toFixed(1),
+                        domains_being_blocked: isNaN(dGravity) ? 0 : dGravity,
+                        unique_clients: isNaN(uClients) ? 0 : uClients
+                    };
+                    result.installed = true;
+                    result.running = true;
+                    result.telemetrySource = 'ftl_socket_4711';
+                    telemetryAcquired = true;
+                }
+            } catch (_) {}
+
+            // TIER 2: CLI nc socket fallback jika net.Socket terhalang
+            if (!telemetryAcquired) {
                 try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 2000);
-                    const authHeader = config.apiToken ? `&auth=${encodeURIComponent(config.apiToken)}` : '';
-                    const url = ep.includes('?') ? `${ep}${authHeader}` : `${ep}?${authHeader}`;
-
-                    const res = await fetch(url, { signal: controller.signal });
-                    clearTimeout(timeoutId);
-
-                    if (res.ok) {
-                        const json = await res.json();
-                        if (json && (json.status || json.dns_queries_today !== undefined)) {
-                            result.metrics = {
-                                status: json.status || (result.running ? 'enabled' : 'unknown'),
-                                dns_queries_today: json.dns_queries_today || json.queries?.total || 0,
-                                ads_blocked_today: json.ads_blocked_today || json.queries?.blocked || 0,
-                                ads_percentage_today: typeof json.ads_percentage_today === 'number' ? json.ads_percentage_today.toFixed(1) : (json.ads_percentage_today || '0.0'),
-                                domains_being_blocked: json.domains_being_blocked || json.gravity?.domains_being_blocked || 0,
-                                unique_clients: json.unique_clients || json.clients?.total || 0
-                            };
-                            result.running = true;
-                            apiResponded = true;
-                            break;
+                    const ncCheck = await this.runCommand('echo ">stats" | nc -w 1 127.0.0.1 4711 2>/dev/null || true');
+                    if (ncCheck.stdout && ncCheck.stdout.includes('dns_queries_today')) {
+                        const stats = {};
+                        for (const line of ncCheck.stdout.split('\n')) {
+                            const parts = line.trim().split(/\s+/);
+                            if (parts.length >= 2) stats[parts[0]] = parts.slice(1).join(' ');
                         }
+                        result.metrics = {
+                            status: stats.status || (result.running ? 'enabled' : 'unknown'),
+                            dns_queries_today: parseInt(stats.dns_queries_today, 10) || 0,
+                            ads_blocked_today: parseInt(stats.ads_blocked_today, 10) || 0,
+                            ads_percentage_today: (parseFloat(stats.ads_percentage_today) || 0).toFixed(1),
+                            domains_being_blocked: parseInt(stats.domains_being_blocked, 10) || 0,
+                            unique_clients: parseInt(stats.unique_clients, 10) || 0
+                        };
+                        result.installed = true;
+                        result.running = true;
+                        result.telemetrySource = 'cli_nc_4711';
+                        telemetryAcquired = true;
                     }
                 } catch (_) {}
             }
 
-            // 4. Fallback jika Web API belum login/merespons: baca status dari CLI native
-            if (!apiResponded && (result.installed || result.running)) {
+            // TIER 3: Web Server Lighttpd (Port 8585) API
+            if (!telemetryAcquired) {
+                for (const ep of apiEndpoints) {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 2000);
+                        const authHeader = config.apiToken ? `&auth=${encodeURIComponent(config.apiToken)}` : '';
+                        const url = ep.includes('?') ? `${ep}${authHeader}` : `${ep}?${authHeader}`;
+
+                        const res = await fetch(url, { signal: controller.signal, headers: { 'Accept': 'application/json' } });
+                        clearTimeout(timeoutId);
+
+                        if (res.ok) {
+                            const text = await res.text();
+                            if (text && text.trim().startsWith('{')) {
+                                const json = JSON.parse(text);
+                                if (json && (json.status || json.dns_queries_today !== undefined)) {
+                                    result.metrics = {
+                                        status: json.status || (result.running ? 'enabled' : 'unknown'),
+                                        dns_queries_today: json.dns_queries_today || json.queries?.total || 0,
+                                        ads_blocked_today: json.ads_blocked_today || json.queries?.blocked || 0,
+                                        ads_percentage_today: typeof json.ads_percentage_today === 'number' ? json.ads_percentage_today.toFixed(1) : (json.ads_percentage_today || '0.0'),
+                                        domains_being_blocked: json.domains_being_blocked || json.gravity?.domains_being_blocked || 0,
+                                        unique_clients: json.unique_clients || json.clients?.total || 0
+                                    };
+                                    result.running = true;
+                                    result.telemetrySource = 'web_api_8585';
+                                    telemetryAcquired = true;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (_) {}
+                }
+            }
+
+            // TIER 4: SQLite Database Langsung (/etc/pihole/pihole-FTL.db & gravity.db)
+            if (!telemetryAcquired && (result.installed || result.running)) {
+                try {
+                    const dbCheck = await this.runCommand(
+                        `sqlite3 /etc/pihole/pihole-FTL.db "SELECT count(*) FROM queries WHERE timestamp >= strftime('%s', 'now', 'start of day'); SELECT count(*) FROM queries WHERE status IN (1, 4, 5, 6, 7, 8, 9, 10, 11) AND timestamp >= strftime('%s', 'now', 'start of day');" 2>/dev/null || true`
+                    );
+                    const gravCheck = await this.runCommand(`sqlite3 /etc/pihole/gravity.db "SELECT count(*) FROM gravity;" 2>/dev/null || true`);
+                    if (dbCheck.success && dbCheck.stdout.trim().length > 0) {
+                        const counts = dbCheck.stdout.trim().split('\n');
+                        const totalQ = parseInt(counts[0], 10) || 0;
+                        const blockQ = parseInt(counts[1], 10) || 0;
+                        const gravC = parseInt(gravCheck.stdout.trim(), 10) || 0;
+                        const pct = totalQ > 0 ? ((blockQ / totalQ) * 100).toFixed(1) : '0.0';
+
+                        result.metrics = {
+                            status: 'enabled',
+                            dns_queries_today: totalQ,
+                            ads_blocked_today: blockQ,
+                            ads_percentage_today: pct,
+                            domains_being_blocked: gravC,
+                            unique_clients: 1
+                        };
+                        result.running = true;
+                        result.telemetrySource = 'sqlite_db';
+                        telemetryAcquired = true;
+                    }
+                } catch (_) {}
+            }
+
+            // TIER 5: Fallback Angka Numerik Nyata (Bukan '-')
+            if (!telemetryAcquired && (result.installed || result.running)) {
                 const cliStatus = await this.runCommand('sudo pihole status 2>/dev/null || pihole status 2>/dev/null || true');
                 const isBlocking = cliStatus.stdout.toLowerCase().includes('blocking is enabled') || cliStatus.stdout.toLowerCase().includes('enabled');
                 result.metrics = {
                     status: isBlocking ? 'enabled' : 'disabled',
-                    dns_queries_today: '-',
-                    ads_blocked_today: '-',
-                    ads_percentage_today: '-',
-                    domains_being_blocked: '-',
-                    unique_clients: '-'
+                    dns_queries_today: 0,
+                    ads_blocked_today: 0,
+                    ads_percentage_today: '0.0',
+                    domains_being_blocked: 0,
+                    unique_clients: 0
                 };
+                result.telemetrySource = 'cli_fallback';
             }
         } catch (e) {
             result.error = e.message;

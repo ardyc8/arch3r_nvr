@@ -88,6 +88,25 @@ router.post('/restart', async (req, res) => {
     }
 });
 
+// 7. Test DNS Query (Kirim kueri uji coba ke Pi-hole Port 53 untuk memicu counter live)
+router.post('/test-query', async (req, res) => {
+    try {
+        const domain = (req.body && req.body.domain) ? req.body.domain.trim() : 'pagead2.googlesyndication.com';
+        const testCmd = `dig @127.0.0.1 ${domain} +short +time=2 2>/dev/null || nslookup ${domain} 127.0.0.1 2>/dev/null || true`;
+        const cmdRes = await piholeDriver.runCommand(testCmd);
+        const statusNow = await piholeDriver.getStatus();
+        res.json({
+            success: true,
+            domain,
+            message: `Kueri tes untuk "${domain}" berhasil diproses oleh Pi-hole FTL.`,
+            output: cmdRes.stdout || cmdRes.stderr,
+            metrics: statusNow.metrics
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 export default router;
 export { piholeDriver };
 

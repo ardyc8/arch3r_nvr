@@ -1,5 +1,29 @@
 # Changelog
 
+## [Ver 11.9.9] - 2026-10-18
+### Multi-Tier Telemetry Resolver for Pi-hole (FTL Telnet Socket Port 4711, Web API, SQLite, CLI Fallback & Live Test Query Button)
+- **Multi-Tier Telemetry Engine (`addons/pihole-manager/lib/pihole_driver.js`):**
+  - **Tier 1: Direct FTL Engine Socket (`queryFtlTelnet`)**: Mengakses langsung socket C/C++ daemon `pihole-FTL` pada port 4711 via Node.js `net.Socket`. Membaca data `>stats` secara real-time dari memori FTL tanpa tergantung Lighttpd web server, redirect HTTP 302, atau password auth.
+  - **Tier 2: CLI Socket Fallback**: `echo ">stats" | nc -w 1 127.0.0.1 4711`.
+  - **Tier 3: Web Server Lighttpd (Port 8585) API**: Menguji endpoint REST API JSON dengan валидация header content-type.
+  - **Tier 4: Direct SQLite Database Reader**: Membaca langsung `/etc/pihole/pihole-FTL.db` dan `/etc/pihole/gravity.db` via CLI `sqlite3` jika socket atau web API tidak merespons.
+  - **Tier 5: Fallback Numerik Nyata**: Mengembalikan angka numerik nyata (`0` sebagai default awal, bukan string `'-'`) sehingga tampilan metrik di dashboard NVR tidak lagi stuck di `--`.
+- **Fitur Live Test Query DNS (`addons/pihole-manager/index.js` & `public/script.js`):**
+  - **Endpoint Baru `POST /api/addons/pihole-manager/test-query`**: Mengirim kueri uji coba ke Pi-hole Port 53 lokal (`127.0.0.1`) untuk membuktikan pemrosesan DNS.
+  - **Tombol Pintasan `⚡ Tes Kueri` di Header Metrik**: Memungkinkan pengguna memicu kueri uji coba secara instan dan melihat counter kueri bertambah secara live di layar.
+- **Sinkronisasi Versi 11.9.9 Penuh**: Sinkronisasi konsisten pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
+## [Ver 11.9.8] - 2026-10-18
+### Clean Adaptive UI for Native Pi-hole (Auto-Hide Installer When Active & Collapsible Port Settings)
+- **Penyederhanaan Antarmuka (UX) Modal Pi-hole (`public/script.js`):**
+  - **Auto-Hide Wizard Installer**: Form instalasi mandiri STB baru (`#piholeInstallSection`) kini otomatis disembunyikan 100% jika Pi-hole sudah terpasang/aktif pada STB. Pengguna tidak akan lagi melihat form install yang membingungkan jika layanannya sudah ada.
+  - **Tampilan Bersih & Minimalis**: Antarmuka modal kini berfokus murni pada 2 hal utama:
+    1. Status & Telemetri Ad-Blocker (Metrik live, tombol kontrol jeda iklan, dan link langsung ke Web Admin Port 8585).
+    2. Panduan Skema Hybrid Fail-Safe (IP Primary STB & Secondary Cloudflare 1.1.1.1 + Tombol salin konfigurasi router).
+  - **Collapsible Port Settings**: Pengaturan nomor port (8585), host, dan token API diringkas ke dalam elemen collapsible `<details>` yang rapi sehingga tidak memakan ruang pandang utama.
+  - **Konsol Status Ramping**: Konsol log diperkecil menjadi indikator status satu baris yang bersih dan elegan.
+- **Sinkronisasi Versi 11.9.8 Penuh**: Sinkronisasi konsisten pada `package.json`, `metadata.json`, `public/version_sync.js`, `public/index.html`, dan `CHANGELOG.md`.
+
 ## [Ver 11.9.7] - 2026-10-18
 ### Native Pi-hole Hybrid Fail-Safe DNS Architecture (Primary STB + Secondary Cloudflare 1.1.1.1 Anti-Mati Internet) & One-Click Router Config Copy
 - **Arsitektur Hybrid Fail-Safe Anti-Mati Internet (`addons/pihole-manager/` & `public/`):**

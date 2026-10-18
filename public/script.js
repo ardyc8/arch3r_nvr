@@ -16970,9 +16970,14 @@ function ensurePiholeModalDOM() {
                         <strong style="color:#f87171; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
                             <span>📊</span> Status &amp; Telemetri Pi-hole Real-Time
                         </strong>
-                        <span id="piholeStatusBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:4px 11px; font-weight:700; border-radius:6px;">
-                            Memuat Status...
-                        </span>
+                        <div style="display:flex; align-items:center; gap:0.45rem;">
+                            <button type="button" onclick="window.testPiholeDnsQueryUI()" class="btn btn-sm btn-secondary" style="font-size:0.72rem; padding:0.25rem 0.6rem; border-color:#38bdf8; color:#38bdf8;" title="Kirim 1 kueri uji coba ke Pi-hole Port 53 untuk memicu counter live">
+                                ⚡ Tes Kueri
+                            </button>
+                            <span id="piholeStatusBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:4px 11px; font-weight:700; border-radius:6px;">
+                                Memuat Status...
+                            </span>
+                        </div>
                     </div>
 
                     <!-- 4 Grid Metrics -->
@@ -17071,62 +17076,70 @@ function ensurePiholeModalDOM() {
                     </div>
                 </div>
 
-                <!-- 3. PENGATURAN KUSTOMISASI PORT (DEFAULT 8585) & API TOKEN -->
-                <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
-                    <strong style="color:#f8fafc; font-size:0.9rem; display:block; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.5rem;">
-                        ⚙️ Pengaturan Kustomisasi Port &amp; Integrasi Addon
-                    </strong>
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; margin-bottom:0.85rem;">
-                        <div>
-                            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Port Web Admin Pi-hole:</label>
-                            <input type="number" id="piholeConfigPort" value="8585" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.5rem; border-radius:6px; font-size:0.85rem; font-family:monospace; box-sizing:border-box;">
+                <!-- 3. PENGATURAN KUSTOMISASI PORT (COLLAPSIBLE / RINGKAS) -->
+                <details id="piholeAdvancedConfigDetails" style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0.65rem 0.9rem;">
+                    <summary style="cursor:pointer; font-size:0.8rem; color:#94a3b8; font-weight:600; display:flex; justify-content:space-between; align-items:center; user-select:none;">
+                        <span style="display:flex; align-items:center; gap:0.4rem;">
+                            <span>⚙️</span> Pengaturan Port &amp; Integrasi Lanjutan (Opsional)
+                        </span>
+                        <span style="font-size:0.7rem; color:var(--text-muted);">Buka / Tutup ▾</span>
+                    </summary>
+                    <div style="margin-top:0.75rem; border-top:1px solid rgba(255,255,255,0.06); padding-top:0.75rem;">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:0.75rem; margin-bottom:0.75rem;">
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Port Web Admin Pi-hole:</label>
+                                <input type="number" id="piholeConfigPort" value="8585" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.82rem; font-family:monospace; box-sizing:border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Host IP Service:</label>
+                                <input type="text" id="piholeConfigHost" value="127.0.0.1" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.82rem; font-family:monospace; box-sizing:border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">API Token (Opsional):</label>
+                                <input type="password" id="piholeConfigToken" placeholder="Kosongkan jika default" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.82rem; font-family:monospace; box-sizing:border-box;">
+                            </div>
                         </div>
-                        <div>
-                            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">Host IP Service:</label>
-                            <input type="text" id="piholeConfigHost" value="127.0.0.1" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.5rem; border-radius:6px; font-size:0.85rem; font-family:monospace; box-sizing:border-box;">
-                        </div>
-                        <div>
-                            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.25rem;">API Token / Password Hash (Opsional):</label>
-                            <input type="password" id="piholeConfigToken" placeholder="Kosongkan jika default" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.5rem; border-radius:6px; font-size:0.85rem; font-family:monospace; box-sizing:border-box;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                            <button type="button" onclick="window.togglePiholeInstallerManualUI()" style="background:transparent; border:none; color:#f59e0b; font-size:0.75rem; cursor:pointer; text-decoration:underline;">
+                                📦 Butuh Pasang di STB Baru? Buka Wizard Installer
+                            </button>
+                            <button type="button" onclick="window.savePiholeConfigUI()" class="btn btn-primary" style="background:#2563eb; font-size:0.78rem; padding:0.35rem 0.9rem; font-weight:600;">
+                                💾 Simpan Port
+                            </button>
                         </div>
                     </div>
-                    <div style="display:flex; justify-content:flex-end;">
-                        <button type="button" onclick="window.savePiholeConfigUI()" class="btn btn-primary" style="background:#2563eb; font-size:0.82rem; padding:0.45rem 1.1rem; font-weight:600;">
-                            💾 Simpan Perubahan Port
-                        </button>
-                    </div>
-                </div>
+                </details>
 
-                <!-- 4. INSTALLER MANDIRI NATIVE ARMBIAN (UNTUK STB BARU) -->
-                <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.3); border-radius:10px; padding:1.1rem;">
+                <!-- 4. INSTALLER MANDIRI NATIVE ARMBIAN (HANYA MUNCUL JIKA BELUM TERPASANG DI STB BARU) -->
+                <div id="piholeInstallSection" style="display:none; background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.3); border-radius:10px; padding:1.1rem;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
                         <strong style="color:#fbbf24; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
                             <span>📦</span> Installer 1-Klik: Pasang Pi-hole Native di STB Baru (Non-Docker)
                         </strong>
                         <span style="font-size:0.72rem; color:#f59e0b; background:rgba(245,158,11,0.15); padding:2px 8px; border-radius:4px; border:1px solid rgba(245,158,11,0.3);">
-                            Murni Native (~25MB RAM)
+                            Khusus STB Baru Kosong (~25MB RAM)
                         </span>
                     </div>
                     <p style="font-size:0.78rem; color:var(--text-muted); margin:0 0 0.75rem 0; line-height:1.45;">
-                        Jika Anda berpindah STB Armbian atau memasang unit baru yang belum memiliki Pi-hole, gunakan wizard ini. Sistem otomatis mengatasi bentrok <code>systemd-resolved</code> pada port 53, menginstal skrip resmi Pi-hole secara unattended langsung di Linux Host, dan mengonfigurasi Lighttpd di port 8585 tanpa perantara Docker.
+                        Jika unit STB ini masih baru dan belum memiliki Pi-hole, gunakan wizard ini. Sistem otomatis mengatasi bentrok port 53 dan mengonfigurasi Lighttpd di port 8585 secara native.
                     </p>
                     <div style="display:flex; gap:0.65rem; align-items:center; flex-wrap:wrap;">
                         <div style="flex:1; min-width:180px;">
                             <input type="text" id="piholeInstallPassword" value="arch3r123" placeholder="Password Web Admin" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem 0.65rem; border-radius:6px; font-size:0.82rem; font-family:monospace; box-sizing:border-box;">
                         </div>
                         <button type="button" onclick="window.installPiholeNativeUI()" class="btn btn-primary" style="background:#d97706; border-color:#b45309; font-weight:700; font-size:0.82rem; padding:0.45rem 1.1rem; display:flex; align-items:center; gap:0.35rem;">
-                            <span>🚀</span> Pasang Pi-hole Native (Port 8585)
+                            <span>🚀</span> Pasang Sekarang (Port 8585)
                         </button>
                     </div>
                 </div>
 
-                <!-- 5. KONSOL LOG STATUS -->
-                <div style="background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:0.75rem; font-family:monospace; font-size:0.75rem; color:#94a3b8;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
-                        <span style="color:#cbd5e1; font-weight:700;">📋 Log Status Pi-hole:</span>
+                <!-- 5. KONSOL LOG STATUS MINI -->
+                <div style="background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:0.6rem 0.85rem; font-family:monospace; font-size:0.73rem; color:#94a3b8;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                        <span style="color:#cbd5e1; font-weight:700;">📋 Status Layanan Pi-hole:</span>
                         <span id="piholeDnsListenerBadge" style="color:#10b981; font-size:0.7rem;">Port 53: Cek...</span>
                     </div>
-                    <div id="piholeLogBox" style="max-height:80px; overflow-y:auto; line-height:1.4; color:#38bdf8; word-break:break-word;">
+                    <div id="piholeLogBox" style="max-height:45px; overflow-y:auto; line-height:1.35; color:#38bdf8; word-break:break-word;">
                         [READY] Memuat modul Pi-hole DNS Sinkhole &amp; Ad-Blocker...
                     </div>
                 </div>
@@ -17220,28 +17233,84 @@ window.fetchPiholeStatusUI = async function() {
                 statusBadge.style.color = isEnabled ? '#22c55e' : '#f87171';
                 statusBadge.style.borderColor = isEnabled ? '#15803d' : '#b91c1c';
             }
-            if (queriesEl) queriesEl.textContent = Number(data.metrics.dns_queries_today || 0).toLocaleString();
-            if (blockedEl) blockedEl.textContent = Number(data.metrics.ads_blocked_today || 0).toLocaleString();
-            if (percentEl) percentEl.textContent = `${data.metrics.ads_percentage_today || 0}%`;
-            if (gravityEl) gravityEl.textContent = Number(data.metrics.domains_being_blocked || 0).toLocaleString();
+            const q = Number(data.metrics.dns_queries_today ?? 0);
+            const b = Number(data.metrics.ads_blocked_today ?? 0);
+            const pct = data.metrics.ads_percentage_today ?? '0.0';
+            const grav = Number(data.metrics.domains_being_blocked ?? 0);
+
+            if (queriesEl) queriesEl.textContent = isNaN(q) ? '0' : q.toLocaleString();
+            if (blockedEl) blockedEl.textContent = isNaN(b) ? '0' : b.toLocaleString();
+            if (percentEl) percentEl.textContent = `${pct}%`;
+            if (gravityEl) gravityEl.textContent = isNaN(grav) ? '0' : grav.toLocaleString();
 
             const cInfo = (data.type === 'native' || !data.container) ? 'Layanan Native Linux: pihole-FTL' : 'Status: Aktif';
-            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ Telemetri Pi-hole terhubung (${cInfo}) pada Port ${data.config?.port || 8585}.`;
+            if (q === 0) {
+                if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${cInfo} aktif (0 kueri). Klik tombol "⚡ Tes Kueri" di atas atau setel DNS router ke 192.168.1.253 agar kueri perangkat mulai mengalir.`;
+            } else {
+                if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${cInfo} aktif &amp; merekam kueri live (${q.toLocaleString()} kueri | ${b.toLocaleString()} diblokir).`;
+            }
         } else if (data.running) {
             if (statusBadge) {
-                statusBadge.textContent = '● Berjalan (Menghubungkan API)';
+                statusBadge.textContent = '● Berjalan (Menghubungkan FTL)';
                 statusBadge.style.color = '#38bdf8';
             }
-            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ℹ️ Layanan Pi-hole aktif namun API web belum siap. Buka Web Admin untuk login.`;
+            if (queriesEl) queriesEl.textContent = '0';
+            if (blockedEl) blockedEl.textContent = '0';
+            if (percentEl) percentEl.textContent = '0.0%';
+            if (gravityEl) gravityEl.textContent = '0';
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ℹ️ Layanan pihole-FTL aktif pada Port 53. Klik "⚡ Tes Kueri" untuk memicu penghitung real-time.`;
         } else {
             if (statusBadge) {
                 statusBadge.textContent = '● Belum Terpasang / Offline';
                 statusBadge.style.color = '#94a3b8';
             }
-            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚠️ Pi-hole belum terdeteksi aktif pada port ${data.config?.port || 8585}. Gunakan "Installer 1-Klik" di bawah jika ini STB baru.`;
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚠️ Pi-hole belum aktif pada port ${data.config?.port || 8585}. Jika ini STB baru, wizard installer siap digunakan.`;
+        }
+
+        // SEMBUNYIKAN INSTALLER OTOMATIS JIKA SUDAH TERPASANG / BERJALAN
+        const installSection = document.getElementById('piholeInstallSection');
+        const isPiholeActive = !!(data.installed || data.running || (data.metrics && data.metrics.status));
+        if (installSection) {
+            installSection.style.display = isPiholeActive ? 'none' : 'block';
         }
     } catch (e) {
         if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ❌ Gagal mengambil status Pi-hole: ${e.message}`;
+    }
+};
+
+window.testPiholeDnsQueryUI = async function() {
+    const logBox = document.getElementById('piholeLogBox');
+    if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ⚡ Mengirim kueri uji coba ke Pi-hole Port 53...`;
+    if (typeof showToast === 'function') showToast('⚡ Mengirim kueri uji coba ke Pi-hole DNS Port 53...', 'info');
+
+    try {
+        const fetchFn = (typeof authFetch === 'function') ? authFetch : fetch;
+        const res = await fetchFn('/api/addons/pihole-manager/test-query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain: 'pagead2.googlesyndication.com' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof showToast === 'function') showToast('✅ Kueri uji coba berhasil dihitung Pi-hole FTL!', 'success');
+            if (logBox) logBox.innerHTML = `[${new Date().toLocaleTimeString('id-ID')}] ✅ ${data.message}`;
+            await window.fetchPiholeStatusUI();
+        } else {
+            alert('Gagal tes kueri: ' + (data.error || 'Error'));
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+};
+
+window.togglePiholeInstallerManualUI = function() {
+    const installSec = document.getElementById('piholeInstallSection');
+    if (installSec) {
+        const isHidden = (installSec.style.display === 'none' || !installSec.style.display);
+        installSec.style.display = isHidden ? 'block' : 'none';
+        if (isHidden) {
+            installSec.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 };
 
