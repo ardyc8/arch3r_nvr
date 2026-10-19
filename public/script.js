@@ -15227,6 +15227,30 @@ let currentNetMgrConnections = null;
 let customNetMgrRoutes = JSON.parse(localStorage.getItem('arch3r_netmgr_camera_routes') || '[]');
 let scannedWifiNetworksList = [];
 
+window.switchNetMgrTab = function(tabId) {
+    const tabs = ['bridge', 'wifi', 'interfaces', 'camera'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`netMgrTabBtn_${t}`);
+        const content = document.getElementById(`netMgrTabContent_${t}`);
+        if (btn) {
+            if (t === tabId) {
+                btn.style.background = (t === 'bridge') ? 'rgba(16,185,129,0.25)' : 'rgba(59,130,246,0.25)';
+                btn.style.borderColor = (t === 'bridge') ? '#059669' : '#2563eb';
+                btn.style.color = (t === 'bridge') ? '#34d399' : '#60a5fa';
+                btn.style.fontWeight = '700';
+            } else {
+                btn.style.background = 'rgba(255,255,255,0.03)';
+                btn.style.borderColor = 'rgba(255,255,255,0.08)';
+                btn.style.color = '#94a3b8';
+                btn.style.fontWeight = '600';
+            }
+        }
+        if (content) {
+            content.style.display = (t === tabId) ? 'block' : 'none';
+        }
+    });
+};
+
 function ensureNetMgrModalDOM() {
     let modal = document.getElementById('netMgrModalOverlay');
     if (!modal) {
@@ -15249,285 +15273,288 @@ function ensureNetMgrModalDOM() {
     modal.style.padding = '1rem';
     modal.style.boxSizing = 'border-box';
 
-    // Inject fresh, complete DOM structure directly from script.js
+    // Inject fresh, clean TABBED DOM structure
     modal.innerHTML = `
-        <div style="background:var(--surface, #1e293b); border:1px solid var(--border, #334155); border-radius:12px; width:100%; max-width:780px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.9); overflow:hidden;">
+        <div style="background:var(--surface, #1e293b); border:1px solid var(--border, #334155); border-radius:12px; width:100%; max-width:820px; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.9); overflow:hidden;">
             <!-- Modal Header -->
-            <div style="padding:1rem 1.25rem; background:rgba(15,23,42,0.95); border-bottom:1px solid var(--border, #334155); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+            <div style="padding:0.9rem 1.25rem; background:rgba(15,23,42,0.95); border-bottom:1px solid var(--border, #334155); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
                 <div>
-                    <h3 style="margin:0; font-size:1.15rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
-                        <span>🌐</span> Armbian Network Manager &amp; arch3rBridge (nmcli)
+                    <h3 style="margin:0; font-size:1.1rem; color:#f8fafc; display:flex; align-items:center; gap:0.5rem;">
+                        <span>🌐</span> Armbian Network Manager &amp; arch3rBridge
                     </h3>
                     <div style="font-size:0.75rem; color:var(--text-muted, #94a3b8); margin-top:2px;">
-                        Manajer Wi-Fi Bebas SSH, arch3rBridge (Proxy-ARP Relay Anti-Lockout), Prioritas Metric (50/500), &amp; Pengikatan Rute Kamera
+                        Pusat Kendali Dual Internet, Wi-Fi STB, Interface OS, &amp; Rute Kamera
                     </div>
                 </div>
                 <button type="button" class="btn-icon" onclick="window.closeNetMgrModal()" style="font-size:1.2rem; cursor:pointer; background:transparent; border:none; color:var(--text-muted, #94a3b8);" title="Tutup Modal">✖</button>
             </div>
 
-            <!-- Modal Body (Scrollable) -->
+            <!-- Tab Navigation Bar -->
+            <div style="padding:0.5rem 1.25rem; background:rgba(15,23,42,0.85); border-bottom:1px solid var(--border, #334155); display:flex; gap:0.4rem; overflow-x:auto; flex-wrap:nowrap;">
+                <button type="button" id="netMgrTabBtn_bridge" onclick="window.switchNetMgrTab('bridge')" style="padding:0.5rem 0.85rem; border-radius:6px; font-size:0.8rem; font-weight:700; border:1px solid #059669; background:rgba(16,185,129,0.25); color:#34d399; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
+                    <span>⚡</span> 1. arch3rBridge (Dual Internet PBR)
+                </button>
+                <button type="button" id="netMgrTabBtn_wifi" onclick="window.switchNetMgrTab('wifi')" style="padding:0.5rem 0.85rem; border-radius:6px; font-size:0.8rem; font-weight:600; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:#94a3b8; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
+                    <span>📶</span> 2. Sambungan Wi-Fi
+                </button>
+                <button type="button" id="netMgrTabBtn_interfaces" onclick="window.switchNetMgrTab('interfaces')" style="padding:0.5rem 0.85rem; border-radius:6px; font-size:0.8rem; font-weight:600; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:#94a3b8; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
+                    <span>🔌</span> 3. Interface OS &amp; Metrics
+                </button>
+                <button type="button" id="netMgrTabBtn_camera" onclick="window.switchNetMgrTab('camera')" style="padding:0.5rem 0.85rem; border-radius:6px; font-size:0.8rem; font-weight:600; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.03); color:#94a3b8; cursor:pointer; display:flex; align-items:center; gap:0.35rem; white-space:nowrap;">
+                    <span>🎯</span> 4. Rute Kamera &amp; Fitur Cerdas
+                </button>
+            </div>
+
+            <!-- Modal Body (Tab Content) -->
             <div style="padding:1.25rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:1.25rem;">
                 
-                <!-- FITUR 1: PEMINDAI & SAMBUNGAN WI-FI STB (BEBAS SSH) -->
-                <div style="background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.3); border-radius:10px; padding:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <span style="font-size:1.2rem;">📶</span>
-                            <strong style="color:#60a5fa; font-size:0.95rem;">Manajer &amp; Sambungan Wi-Fi STB (Bebas SSH)</strong>
-                        </div>
-                        <button type="button" onclick="window.scanWifiNetworksUI()" class="btn btn-sm btn-primary" style="background:#2563eb; border-color:#3b82f6; font-size:0.78rem; padding:0.35rem 0.75rem; display:flex; align-items:center; gap:0.3rem;">
-                            <span>🔍</span> Pindai Sinyal Wi-Fi Sekitar
-                        </button>
-                    </div>
-
-                    <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
-                        Pindai sinyal Wi-Fi di sekitar STB Linux Armbian dan sambungkan ke router secara langsung dari Web UI tanpa perlu membuka SSH Terminal.
-                    </p>
-
-                    <!-- Form Sambung Cepat Wi-Fi -->
-                    <div id="wifiQuickConnectFormBox" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem; background:rgba(0,0,0,0.25); padding:0.85rem; border-radius:8px; border:1px solid var(--border, #334155);">
-                        <div>
-                            <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Nama Wi-Fi (SSID):</label>
-                            <input type="text" id="wifiSsidInput" placeholder="Pilih dari daftar atau ketik SSID" style="width:100%; background:#0f172a !important; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; caret-color:#38bdf8 !important; border:1px solid var(--border, #334155); padding:0.5rem 0.65rem; border-radius:6px; font-size:0.85rem; font-family:sans-serif; box-sizing:border-box; pointer-events:auto !important; user-select:text !important;" onkeydown="if(event.key==='Enter') window.connectWifiNetworkUI()">
-                        </div>
-                        <div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">Password Wi-Fi:</label>
-                                <span id="wifiPasswordCounterBadge" style="font-size:0.7rem; color:#38bdf8; font-family:monospace;">(0 karakter)</span>
+                <!-- TAB 1: ARCH3RBRIDGE (DUAL INTERNET PBR ROUTING) -->
+                <div id="netMgrTabContent_bridge" style="display:block;">
+                    <div style="background:linear-gradient(145deg, rgba(16,185,129,0.08) 0%, rgba(6,78,59,0.15) 100%); border:1px solid rgba(16,185,129,0.35); border-radius:10px; padding:1.15rem; box-shadow:0 4px 14px rgba(0,0,0,0.25);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <span style="font-size:1.25rem;">⚡</span>
+                                <div>
+                                    <strong style="color:#34d399; font-size:0.95rem;">arch3rBridge &mdash; Solusi Dual Internet LAN &amp; Wi-Fi (PBR)</strong>
+                                    <span onclick="window.toggleNetMgrHelp('helpArch3rBridge')" title="Klik untuk panduan lengkap fungsi arch3rBridge" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(52,211,153,0.15); border:1px solid #059669; color:#34d399; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:6px;">?</span>
+                                </div>
                             </div>
-                            <div style="position:relative; display:flex; align-items:center; gap:0.3rem;">
-                                <input type="text" id="wifiPasswordInput" placeholder="Ketik Password (Kosong jika Open)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="window.updateWifiPasswordCounter(this.value)" onkeydown="if(event.key==='Enter') window.connectWifiNetworkUI()" style="width:100%; background:#0f172a !important; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; caret-color:#38bdf8 !important; border:1px solid var(--border, #334155); padding:0.5rem 0.65rem; border-radius:6px; font-size:0.85rem; font-family:monospace; box-sizing:border-box; pointer-events:auto !important; user-select:text !important;">
-                                <button type="button" id="btnToggleWifiPwdVisibility" onclick="window.toggleWifiPasswordVisibility()" style="background:rgba(255,255,255,0.08); border:1px solid var(--border, #334155); color:#94a3b8; cursor:pointer; font-size:0.8rem; padding:0.45rem 0.6rem; border-radius:6px; white-space:nowrap;" title="Sembunyikan / Tampilkan Teks Password">👁️</button>
-                                <button type="button" onclick="window.promptWifiPasswordDialog()" style="background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.4); color:#60a5fa; cursor:pointer; font-size:0.78rem; padding:0.45rem 0.6rem; border-radius:6px; white-space:nowrap; font-weight:600;" title="Input Password lewat Kotak Dialog Browser (Sangat berguna untuk remote STB / TV)">⌨️ Prompt</button>
-                            </div>
+                            <span id="arch3rBridgeBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:4px 11px; font-weight:700; border-radius:6px;">
+                                ⚪ INAKTIF
+                            </span>
                         </div>
-                        <div style="display:flex; align-items:flex-end;">
-                            <button type="button" onclick="window.connectWifiNetworkUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.82rem; padding:0.5rem 1rem; width:100%; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
-                                <span>🚀</span> Sambungkan STB
+
+                        <!-- Tooltip Box arch3rBridge -->
+                        <div id="helpArch3rBridge" style="display:none; background:rgba(6,78,59,0.4); border:1px solid #059669; border-radius:6px; padding:0.75rem 0.95rem; font-size:0.78rem; color:#d1fae5; line-height:1.5; margin-bottom:0.85rem;">
+                            💡 <strong>Apa fungsi arch3rBridge?</strong><br>
+                            Fitur ini khusus diaktifkan jika kabel LAN (.253) dan Wi-Fi (.252) Anda terhubung bersamaan ke internet.<br>
+                            <strong>Sistem akan secara otomatis:</strong>
+                            <ul style="margin:4px 0 4px 1.2rem; padding:0;">
+                                <li>Memasang <strong>Policy-Based Routing (PBR)</strong>: Memisahkan tabel routing LAN dan Wi-Fi agar tidak bentrok.</li>
+                                <li>Mengaktifkan <strong>Proxy-ARP &amp; rp_filter=0</strong> agar paket Wi-Fi dan LAN keduanya bisa diakses dari HP / PC.</li>
+                            </ul>
+                        </div>
+
+                        <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
+                            Solusi tuntas untuk penggunaan <strong>LAN &amp; Wi-Fi bersamaan</strong> tanpa terputus. Cukup klik tombol di bawah untuk mengaktifkan seluruh aturan routing otomatis.
+                        </p>
+
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.85rem; align-items:center;">
+                            <button type="button" id="btnToggleArch3rBridgeUI" onclick="window.toggleArch3rBridgeUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.83rem; padding:0.5rem 1.25rem; display:flex; align-items:center; gap:0.4rem; box-shadow:0 2px 8px rgba(16,185,129,0.3);">
+                                <span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP &amp; PBR)
+                            </button>
+                            <button type="button" onclick="window.checkArch3rBridgeStatusUI()" class="btn btn-secondary" style="font-size:0.83rem; padding:0.5rem 0.95rem; display:flex; align-items:center; gap:0.4rem;">
+                                <span>🔄</span> Cek Status Kernel
                             </button>
                         </div>
-                    </div>
 
-                    <!-- Daftar Wi-Fi Terdeteksi -->
-                    <div style="font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.4rem; display:flex; justify-content:space-between; align-items:center;">
-                        <span>Daftar Sinyal Wi-Fi Terdeteksi:</span>
-                        <span id="wifiScanCountBadge" style="font-size:0.7rem; color:#94a3b8;">Klik "Pindai Sinyal" untuk mencari</span>
-                    </div>
-                    <div id="wifiScannedListContainer" style="display:flex; flex-direction:column; gap:0.45rem; max-height:160px; overflow-y:auto;">
-                        <div style="color:#64748b; font-size:0.8rem; text-align:center; padding:0.8rem; background:rgba(0,0,0,0.2); border-radius:6px;">
-                            Tekan tombol <strong>"Pindai Sinyal Wi-Fi Sekitar"</strong> di atas untuk melihat daftar jaringan.
+                        <!-- Log Output Feedback arch3rBridge -->
+                        <div id="arch3rBridgeLogBox" style="font-family:monospace; font-size:0.75rem; background:#070b12; border:1px solid #1e293b; border-radius:6px; padding:0.65rem 0.85rem; color:#34d399; max-height:130px; overflow-y:auto; line-height:1.45; word-break:break-word;">
+                            [SYSTEM] Siap mengeksekusi arch3rBridge (Proxy-ARP &amp; PBR). Klik "Aktifkan arch3rBridge" untuk menghubungkan LAN &amp; Wi-Fi secara transparan.
                         </div>
                     </div>
                 </div>
 
-                <!-- FITUR 2: ARCH3RBRIDGE (BYPASS ISOLASI ROUTER ISP - ZERO-LOCKOUT PROXY-ARP & PBR) -->
-                <div style="background:linear-gradient(145deg, rgba(16,185,129,0.08) 0%, rgba(6,78,59,0.15) 100%); border:1px solid rgba(16,185,129,0.35); border-radius:10px; padding:1.15rem; box-shadow:0 4px 14px rgba(0,0,0,0.25);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <span style="font-size:1.25rem;">⚡</span>
+                <!-- TAB 2: SAMBUNGAN WI-FI STB -->
+                <div id="netMgrTabContent_wifi" style="display:none;">
+                    <div style="background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.3); border-radius:10px; padding:1.1rem; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <span style="font-size:1.2rem;">📶</span>
+                                <strong style="color:#60a5fa; font-size:0.95rem;">Manajer &amp; Sambungan Wi-Fi STB (Bebas SSH)</strong>
+                            </div>
+                            <button type="button" onclick="window.scanWifiNetworksUI()" class="btn btn-sm btn-primary" style="background:#2563eb; border-color:#3b82f6; font-size:0.78rem; padding:0.35rem 0.75rem; display:flex; align-items:center; gap:0.3rem;">
+                                <span>🔍</span> Pindai Sinyal Wi-Fi Sekitar
+                            </button>
+                        </div>
+
+                        <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
+                            Pindai sinyal Wi-Fi di sekitar STB Linux Armbian dan sambungkan ke router secara langsung dari Web UI.
+                        </p>
+
+                        <!-- Form Sambung Cepat Wi-Fi -->
+                        <div id="wifiQuickConnectFormBox" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem; background:rgba(0,0,0,0.25); padding:0.85rem; border-radius:8px; border:1px solid var(--border, #334155);">
                             <div>
-                                <strong style="color:#34d399; font-size:0.95rem;">arch3rBridge &mdash; Solusi B (Universal Source-Based PBR &amp; Proxy-ARP)</strong>
-                                <span onclick="window.toggleNetMgrHelp('helpArch3rBridge')" title="Klik untuk panduan lengkap fungsi arch3rBridge" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(52,211,153,0.15); border:1px solid #059669; color:#34d399; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:6px;">?</span>
+                                <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Nama Wi-Fi (SSID):</label>
+                                <input type="text" id="wifiSsidInput" placeholder="Pilih dari daftar atau ketik SSID" style="width:100%; background:#0f172a !important; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; caret-color:#38bdf8 !important; border:1px solid var(--border, #334155); padding:0.5rem 0.65rem; border-radius:6px; font-size:0.85rem; font-family:sans-serif; box-sizing:border-box; pointer-events:auto !important; user-select:text !important;" onkeydown="if(event.key==='Enter') window.connectWifiNetworkUI()">
                             </div>
-                        </div>
-                        <span id="arch3rBridgeBadge" class="badge" style="background:rgba(100,116,139,0.2); border:1px solid #64748b; color:#94a3b8; font-size:0.75rem; padding:4px 11px; font-weight:700; border-radius:6px;">
-                            ⚪ INAKTIF
-                        </span>
-                    </div>
-
-                    <!-- Tooltip Box arch3rBridge -->
-                    <div id="helpArch3rBridge" style="display:none; background:rgba(6,78,59,0.4); border:1px solid #059669; border-radius:6px; padding:0.75rem 0.95rem; font-size:0.78rem; color:#d1fae5; line-height:1.5; margin-bottom:0.85rem;">
-                        💡 <strong>Apa yang dilakukan oleh arch3rBridge?</strong><br>
-                        Saat laptop/HP tersambung ke Wi-Fi dan STB memiliki kabel LAN + Wi-Fi di subnet yang sama (misal 192.168.1.x), router ISP sering memblokir paket balasan dari LAN ke Wi-Fi (AP Isolation).<br>
-                        <strong>arch3rBridge mengatasinya secara otomatis:</strong>
-                        <ul style="margin:4px 0 4px 1.2rem; padding:0;">
-                            <li>Menghidupkan <strong>Policy-Based Routing (PBR / Solusi B)</strong>: Setiap paket masuk ke Wi-Fi (192.168.1.252) selalu dibalas melalui Wi-Fi, dan LAN (192.168.1.253) melalui LAN.</li>
-                            <li>Mengaktifkan <strong>Proxy-ARP Relay</strong> &amp; <code>rp_filter=0</code> untuk seluruh klien (192.168.1.0/24) tanpa perlu input IP satu per satu.</li>
-                            <li><strong>Zero Lock-out</strong>: Tidak merusak IP address, tidak menggantung interface fisik, dan 100% aman dieksekusi secara remote.</li>
-                        </ul>
-                    </div>
-
-                    <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
-                        Solusi tuntas untuk kendala <strong>STB tidak bisa di-ping / SSH / Web UI dari laptop</strong> karena isolasi port router ISP. Menggunakan Policy-Based Routing (ip rule) otomatis untuk seluruh subnet 192.168.1.0/24.
-                    </p>
-
-                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.85rem; align-items:center;">
-                        <button type="button" id="btnToggleArch3rBridgeUI" onclick="window.toggleArch3rBridgeUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.83rem; padding:0.5rem 1.25rem; display:flex; align-items:center; gap:0.4rem; box-shadow:0 2px 8px rgba(16,185,129,0.3);">
-                            <span>⚡</span> Aktifkan arch3rBridge (Proxy-ARP &amp; PBR)
-                        </button>
-                        <button type="button" onclick="window.checkArch3rBridgeStatusUI()" class="btn btn-secondary" style="font-size:0.83rem; padding:0.5rem 0.95rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>🔄</span> Cek Status Kernel
-                        </button>
-                    </div>
-
-                    <!-- Log Output Feedback arch3rBridge -->
-                    <div id="arch3rBridgeLogBox" style="font-family:monospace; font-size:0.75rem; background:#070b12; border:1px solid #1e293b; border-radius:6px; padding:0.65rem 0.85rem; color:#34d399; max-height:130px; overflow-y:auto; line-height:1.45; word-break:break-word;">
-                        [SYSTEM] Siap mengeksekusi arch3rBridge (Proxy-ARP &amp; PBR). Klik "Aktifkan arch3rBridge" untuk menghubungkan LAN &amp; Wi-Fi secara transparan.
-                    </div>
-                </div>
-
-                <!-- FITUR 3: DAFTAR KONEKSI NMCLI AKTIF & ROUTE METRICS -->
-                <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
-                        <strong style="color:#f8fafc; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>🔌</span> Interface NetworkManager (nmcli) &amp; Prioritas Route Metrics
-                        </strong>
-                        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
-                            <button type="button" onclick="window.fetchNetMgrConnections()" class="btn btn-sm btn-secondary" style="font-size:0.78rem; padding:0.35rem 0.65rem;" title="Segarkan Interface">
-                                🔄
-                            </button>
-                            <button type="button" onclick="window.autoHealNetworkStackUI()" class="btn btn-sm btn-primary" style="background:#7c3aed; border-color:#6d28d9; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:700; display:flex; align-items:center; gap:0.3rem;" title="Perbaiki interface duplikat, bersihkan ghost Netplan, dan kunci Wi-Fi Anti-Drop">
-                                🛡️ Perbaiki &amp; Bersihkan Interface
-                            </button>
-                            <button type="button" onclick="window.restoreAndActivateLanUI('eth0')" class="btn btn-sm btn-primary" style="background:#059669; border-color:#047857; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:700;" title="Pulihkan interface fisik eth0 jika terlepas/unmanaged/dikuasai bridge lama">
-                                🔌 Pulihkan LAN
-                            </button>
-                            <button type="button" onclick="window.purgeInactiveNetMgrProfiles()" class="btn btn-sm btn-secondary" style="background:rgba(239,68,68,0.12); color:#f87171; border-color:#dc2626; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:600;" title="Hapus profil duplikat / ghost lama seperti Wired connection tak terpakai atau netplan-br0">
-                                🧹 Bersihkan Ghost
-                            </button>
-                            <button type="button" onclick="window.setupNetMgrMetrics()" class="btn btn-sm btn-primary" style="background:#2563eb; font-size:0.78rem; padding:0.35rem 0.75rem;">
-                                ⚡ Metrics (50/500)
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="netMgrInterfacesContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem; margin-bottom:0.5rem;">
-                        <div style="color:#38bdf8; font-size:0.8rem; padding:0.8rem; text-align:center;">⏳ Membaca koneksi nmcli...</div>
-                    </div>
-                </div>
-
-                <!-- FITUR 4: STATIC ROUTE CAMERA / SUBNET BINDING & BYPASS AP ISOLATION ROUTER -->
-                <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem;">
-                        <strong style="color:#f8fafc; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
-                            <span>🎯</span> Pengikatan Static Route &amp; Bypass AP Isolation Router ISP
-                            <span onclick="window.toggleNetMgrHelp('helpStaticRoute')" title="Klik untuk penjelasan fungsi Bypass AP Isolation & Pengikatan Static Route" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(56,189,248,0.15); border:1px solid #0284c7; color:#38bdf8; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:2px;">?</span>
-                        </strong>
-                        <span style="font-size:0.7rem; color:#34d399; background:rgba(16,185,129,0.12); padding:2px 8px; border-radius:4px; border:1px solid rgba(16,185,129,0.3);">⚡ Instant Kernel (/32)</span>
-                    </div>
-
-                    <!-- Tooltip Box Static Route & AP Isolation -->
-                    <div id="helpStaticRoute" style="display:none; background:rgba(12,74,110,0.35); border:1px solid #0284c7; border-radius:6px; padding:0.65rem 0.85rem; font-size:0.78rem; color:#bae6fd; line-height:1.45; margin-bottom:0.75rem;">
-                        💡 <strong>Solusi AP Isolation Router ISP:</strong> Jika kamera Wi-Fi tidak bisa diping atau RTSP timeout karena router ISP mengisolasi port kabel LAN dan Wi-Fi, arahkan target IP (misal <code>192.168.1.59</code> atau <code>192.168.1.0/24</code>) ke <strong>Wi-Fi (wlan0)</strong>. Sistem akan langsung menyuntikkan rute host (<code>/32</code>) ke kernel Linux STB secara instan tanpa restart koneksi (zero-downtime) dan menguncinya di NetworkManager agar tidak hilang saat STB di-reboot.
-                    </div>
-
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem;">
-                        <div>
-                            <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Pilih Kamera Terdaftar:</label>
-                            <select id="netMgrCamSelect" onchange="window.onNetMgrCamSelectChange(this.value)" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem;">
-                                <option value="">-- Pilih Kamera Terdaftar --</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">IP / CIDR Subnet Target:</label>
-                            <input type="text" id="netMgrCamIpInput" placeholder="192.168.1.59 atau 192.168.1.0/24" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem; font-family:monospace; box-sizing:border-box;">
-                        </div>
-                        <div>
-                            <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Target Interface:</label>
-                            <select id="netMgrTargetInterfaceSelect" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem;">
-                                <option value="wifi" selected>📶 Wi-Fi (wlan0) - Bypass AP Isolation</option>
-                                <option value="lan">🔌 Ethernet (eth0) - Jalur Kabel LAN</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.85rem;">
-                        <button type="button" onclick="window.addNetMgrRoute()" class="btn btn-primary" style="flex:1; background:#0284c7; border-color:#0369a1; font-weight:600; font-size:0.82rem; padding:0.45rem 1rem;">
-                            ➕ Ikat Rute (Kernel &amp; NM)
-                        </button>
-                        <button type="button" onclick="window.diagnoseNetMgrRoute()" class="btn btn-secondary" style="background:#0f766e; border-color:#0d9488; color:#fff; font-weight:600; font-size:0.82rem; padding:0.45rem 0.9rem;" title="Tes rute kernel aktif dan cek ping respon target">
-                            🔍 Cek Jalur &amp; Ping
-                        </button>
-                        <button type="button" onclick="window.bindAllCamerasToInterface()" class="btn btn-primary" style="flex:1; background:#7c3aed; border-color:#6d28d9; font-weight:700; font-size:0.82rem; padding:0.45rem 1rem;" title="Ikat seluruh kamera yang terdaftar di NVR ke interface terpilih secara otomatis">
-                            ⚡ Ikat SEMUA Kamera Sekaligus
-                        </button>
-                    </div>
-
-                    <div style="font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.4rem;">Daftar Static Route Kamera Aktif:</div>
-                    <div id="netMgrCameraRoutesContainer" style="display:flex; flex-direction:column; gap:0.5rem; max-height:140px; overflow-y:auto;">
-                        <div style="color:#64748b; font-size:0.8rem; text-align:center; padding:0.5rem;">Belum ada static route ditambahkan.</div>
-                    </div>
-                </div>
-
-                <!-- FITUR 5: 3 FITUR CERDAS & CLOUDFLARE DOCKER DOCTOR (ARMBIAN STB) -->
-                <div style="background:rgba(30,58,138,0.12); border:1px solid rgba(59,130,246,0.35); border-radius:10px; padding:1.1rem; box-shadow:0 4px 14px rgba(0,0,0,0.25);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <span style="font-size:1.25rem;">🛡️</span>
                             <div>
-                                <strong style="color:#60a5fa; font-size:0.95rem;">3 Fitur Cerdas: Gateway Anti-Bentrok, Docker DNS &amp; Cloudflare HTTP/2 Doctor</strong>
-                                <span onclick="window.toggleNetMgrHelp('helpSmartFeatures')" title="Klik untuk panduan lengkap 3 fitur cerdas" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(59,130,246,0.15); border:1px solid #3b82f6; color:#60a5fa; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:6px;">?</span>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                                    <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8);">Password Wi-Fi:</label>
+                                    <span id="wifiPasswordCounterBadge" style="font-size:0.7rem; color:#38bdf8; font-family:monospace;">(0 karakter)</span>
+                                </div>
+                                <div style="position:relative; display:flex; align-items:center; gap:0.3rem;">
+                                    <input type="text" id="wifiPasswordInput" placeholder="Ketik Password (Kosong jika Open)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="window.updateWifiPasswordCounter(this.value)" onkeydown="if(event.key==='Enter') window.connectWifiNetworkUI()" style="width:100%; background:#0f172a !important; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; caret-color:#38bdf8 !important; border:1px solid var(--border, #334155); padding:0.5rem 0.65rem; border-radius:6px; font-size:0.85rem; font-family:monospace; box-sizing:border-box; pointer-events:auto !important; user-select:text !important;">
+                                    <button type="button" id="btnToggleWifiPwdVisibility" onclick="window.toggleWifiPasswordVisibility()" style="background:rgba(255,255,255,0.08); border:1px solid var(--border, #334155); color:#94a3b8; cursor:pointer; font-size:0.8rem; padding:0.45rem 0.6rem; border-radius:6px; white-space:nowrap;" title="Sembunyikan / Tampilkan Teks Password">👁️</button>
+                                    <button type="button" onclick="window.promptWifiPasswordDialog()" style="background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.4); color:#60a5fa; cursor:pointer; font-size:0.78rem; padding:0.45rem 0.6rem; border-radius:6px; white-space:nowrap; font-weight:600;" title="Input Password lewat Kotak Dialog Browser">⌨️ Prompt</button>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:flex-end;">
+                                <button type="button" onclick="window.connectWifiNetworkUI()" class="btn btn-primary" style="background:#10b981; border-color:#059669; font-weight:700; font-size:0.82rem; padding:0.5rem 1rem; width:100%; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                                    <span>🚀</span> Sambungkan STB
+                                </button>
                             </div>
                         </div>
-                        <span id="smartFeaturesStatusBadge" class="badge" style="background:rgba(16,185,129,0.15); border:1px solid #059669; color:#34d399; font-size:0.75rem; padding:4px 11px; font-weight:700; border-radius:6px;">
-                            ● Siap Digunakan
-                        </span>
-                    </div>
 
-                    <!-- Tooltip Box 3 Smart Features -->
-                    <div id="helpSmartFeatures" style="display:none; background:rgba(15,23,42,0.85); border:1px solid #3b82f6; border-radius:6px; padding:0.75rem 0.95rem; font-size:0.78rem; color:#bae6fd; line-height:1.5; margin-bottom:0.85rem;">
-                        💡 <strong>Mengapa 3 Fitur Ini Dibutuhkan pada Armbian STB?</strong>
-                        <ul style="margin:4px 0 4px 1.2rem; padding:0;">
-                            <li><strong>1. Kunci Gateway LAN:</strong> Memprioritaskan eth0 (metric 50) untuk koneksi internet keluar dan mengunci wlan0 (metric 600, never-default: yes) khusus stream kamera CCTV, mencegah paket bentrok jika kedua interface berada di IP subnet yang sama (192.168.1.x).</li>
-                            <li><strong>2. Perbaiki DNS Docker:</strong> Mengunci daemon Docker ke 1.1.1.1 &amp; 8.8.8.8 serta mempatch container cloudflared agar terbebas dari error <code>server misbehaving</code> akibat Tailscale MagicDNS atau DNS filter ISP.</li>
-                            <li><strong>3. Cloudflare HTTP/2 Doctor:</strong> Memverifikasi resolusi domain tunnel dan memastikan container berjalan dengan protokol HTTP/2 (menghindari pemblokiran UDP 7844 QUIC oleh ISP).</li>
-                        </ul>
-                    </div>
-
-                    <p style="font-size:0.8rem; color:var(--text-muted, #94a3b8); margin:0 0 0.85rem 0; line-height:1.45;">
-                        Eksekusi perbaikan jaringan satu per satu atau jalankan solusi terpadu sekali klik untuk mengoptimalkan koneksi remote Cloudflare Tunnel &amp; CasaOS STB.
-                    </p>
-
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.65rem; margin-bottom:0.85rem;">
-                        <button type="button" onclick="window.healDualInterfaceGatewayUI()" class="btn btn-secondary" style="background:rgba(59,130,246,0.1); border-color:#2563eb; color:#93c5fd; font-size:0.8rem; padding:0.55rem 0.85rem; font-weight:600; text-align:left; display:flex; flex-direction:column; gap:2px;">
-                            <span style="font-weight:700; color:#60a5fa;">🌐 1. Kunci Gateway LAN</span>
-                            <span style="font-size:0.7rem; color:#94a3b8;">eth0=50 / wlan0=600 never-default</span>
-                        </button>
-                        <button type="button" onclick="window.fixDockerDnsUI()" class="btn btn-secondary" style="background:rgba(168,85,247,0.1); border-color:#9333ea; color:#d8b4fe; font-size:0.8rem; padding:0.55rem 0.85rem; font-weight:600; text-align:left; display:flex; flex-direction:column; gap:2px;">
-                            <span style="font-weight:700; color:#c084fc;">🐳 2. Perbaiki DNS Docker</span>
-                            <span style="font-size:0.7rem; color:#94a3b8;">Kunci 1.1.1.1 &amp; patch resolv.conf</span>
-                        </button>
-                        <button type="button" onclick="window.checkCloudflareTunnelDoctorUI()" class="btn btn-secondary" style="background:rgba(245,158,11,0.1); border-color:#d97706; color:#fde68a; font-size:0.8rem; padding:0.55rem 0.85rem; font-weight:600; text-align:left; display:flex; flex-direction:column; gap:2px;">
-                            <span style="font-weight:700; color:#fbbf24;">☁️ 3. Cloudflare Doctor</span>
-                            <span style="font-size:0.7rem; color:#94a3b8;">Cek status SRV &amp; protokol HTTP/2</span>
-                        </button>
-                    </div>
-
-                    <div style="display:flex; justify-content:flex-end;">
-                        <button type="button" onclick="window.repairCloudflareTunnelHttp2UI()" class="btn btn-primary" style="background:#2563eb; border-color:#1d4ed8; font-weight:700; font-size:0.82rem; padding:0.45rem 1.1rem; display:flex; align-items:center; gap:0.4rem; box-shadow:0 2px 8px rgba(37,99,235,0.3);">
-                            <span>🚀</span> Jalankan 3 Solusi Sekaligus (1-Klik)
-                        </button>
+                        <!-- Daftar Wi-Fi Terdeteksi -->
+                        <div style="font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.4rem; display:flex; justify-content:space-between; align-items:center;">
+                            <span>Daftar Sinyal Wi-Fi Terdeteksi:</span>
+                            <span id="wifiScanCountBadge" style="font-size:0.7rem; color:#94a3b8;">Klik "Pindai Sinyal" untuk mencari</span>
+                        </div>
+                        <div id="wifiScannedListContainer" style="display:flex; flex-direction:column; gap:0.45rem; max-height:220px; overflow-y:auto;">
+                            <div style="color:#64748b; font-size:0.8rem; text-align:center; padding:0.8rem; background:rgba(0,0,0,0.2); border-radius:6px;">
+                                Tekan tombol <strong>"Pindai Sinyal Wi-Fi Sekitar"</strong> di atas untuk melihat daftar jaringan.
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- KOTAK LOG KONSOL DIAGNOSTIK KERNEL & NMCLI -->
-                <div id="netMgrDiagnosticsBox" style="background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:0.85rem; font-family:monospace; font-size:0.75rem; color:#94a3b8;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.35rem;">
-                        <span style="color:#cbd5e1; font-weight:700;">📋 Status &amp; Log Sinkronisasi Kernel STB:</span>
+                <!-- TAB 3: INTERFACE OS & METRICS -->
+                <div id="netMgrTabContent_interfaces" style="display:none;">
+                    <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+                            <strong style="color:#f8fafc; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
+                                <span>🔌</span> Interface NetworkManager (nmcli) &amp; Route Metrics
+                            </strong>
+                            <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+                                <button type="button" onclick="window.fetchNetMgrConnections()" class="btn btn-sm btn-secondary" style="font-size:0.78rem; padding:0.35rem 0.65rem;" title="Segarkan Interface">
+                                    🔄
+                                </button>
+                                <button type="button" onclick="window.autoHealNetworkStackUI()" class="btn btn-sm btn-primary" style="background:#7c3aed; border-color:#6d28d9; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:700; display:flex; align-items:center; gap:0.3rem;" title="Perbaiki interface duplikat, bersihkan ghost Netplan, dan kunci Wi-Fi Anti-Drop">
+                                    🛡️ Perbaiki Interface
+                                </button>
+                                <button type="button" onclick="window.restoreAndActivateLanUI('eth0')" class="btn btn-sm btn-primary" style="background:#059669; border-color:#047857; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:700;" title="Pulihkan interface fisik eth0">
+                                    🔌 Pulihkan LAN
+                                </button>
+                                <button type="button" onclick="window.purgeInactiveNetMgrProfiles()" class="btn btn-sm btn-secondary" style="background:rgba(239,68,68,0.12); color:#f87171; border-color:#dc2626; font-size:0.78rem; padding:0.35rem 0.75rem; font-weight:600;" title="Hapus profil ghost">
+                                    🧹 Bersihkan Ghost
+                                </button>
+                                <button type="button" onclick="window.setupNetMgrMetrics()" class="btn btn-sm btn-primary" style="background:#2563eb; font-size:0.78rem; padding:0.35rem 0.75rem;">
+                                    ⚡ Metrics (50/500)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="netMgrInterfacesContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem; margin-bottom:0.5rem;">
+                            <div style="color:#38bdf8; font-size:0.8rem; padding:0.8rem; text-align:center;">⏳ Membaca koneksi nmcli...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: RUTE KAMERA & FITUR CERDAS -->
+                <div id="netMgrTabContent_camera" style="display:none; flex-direction:column; gap:1rem;">
+                    <!-- Static Route Camera -->
+                    <div style="background:rgba(0,0,0,0.25); border:1px solid var(--border, #334155); border-radius:10px; padding:1.1rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem;">
+                            <strong style="color:#f8fafc; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
+                                <span>🎯</span> Pengikatan Static Route Kamera
+                                <span onclick="window.toggleNetMgrHelp('helpStaticRoute')" title="Klik untuk penjelasan fungsi Static Route" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(56,189,248,0.15); border:1px solid #0284c7; color:#38bdf8; font-size:0.75rem; font-weight:700; cursor:pointer; user-select:none; margin-left:2px;">?</span>
+                            </strong>
+                            <span style="font-size:0.7rem; color:#34d399; background:rgba(16,185,129,0.12); padding:2px 8px; border-radius:4px; border:1px solid rgba(16,185,129,0.3);">⚡ Instant Kernel (/32)</span>
+                        </div>
+
+                        <!-- Tooltip Box Static Route -->
+                        <div id="helpStaticRoute" style="display:none; background:rgba(12,74,110,0.35); border:1px solid #0284c7; border-radius:6px; padding:0.65rem 0.85rem; font-size:0.78rem; color:#bae6fd; line-height:1.45; margin-bottom:0.75rem;">
+                            💡 <strong>Guna Static Route Kamera:</strong> Arahkan IP kamera spesifik ke interface Wi-Fi (wlan0) atau LAN (eth0) secara langsung tanpa terputus.
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem;">
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Pilih Kamera Terdaftar:</label>
+                                <select id="netMgrCamSelect" onchange="window.onNetMgrCamSelectChange(this.value)" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem;">
+                                    <option value="">-- Pilih Kamera Terdaftar --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">IP / CIDR Subnet Target:</label>
+                                <input type="text" id="netMgrCamIpInput" placeholder="192.168.1.59 atau 192.168.1.0/24" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem; font-family:monospace; box-sizing:border-box;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text-muted, #94a3b8); display:block; margin-bottom:0.25rem;">Target Interface:</label>
+                                <select id="netMgrTargetInterfaceSelect" style="width:100%; background:#0f172a; color:#fff; border:1px solid var(--border, #334155); padding:0.45rem; border-radius:6px; font-size:0.8rem;">
+                                    <option value="wifi" selected>📶 Wi-Fi (wlan0)</option>
+                                    <option value="lan">🔌 Ethernet (eth0)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.85rem;">
+                            <button type="button" onclick="window.addNetMgrRoute()" class="btn btn-primary" style="flex:1; background:#0284c7; border-color:#0369a1; font-weight:600; font-size:0.82rem; padding:0.45rem 1rem;">
+                                ➕ Ikat Rute
+                            </button>
+                            <button type="button" onclick="window.diagnoseNetMgrRoute()" class="btn btn-secondary" style="background:#0f766e; border-color:#0d9488; color:#fff; font-weight:600; font-size:0.82rem; padding:0.45rem 0.9rem;" title="Tes rute kernel & ping">
+                                🔍 Cek Ping
+                            </button>
+                            <button type="button" onclick="window.bindAllCamerasToInterface()" class="btn btn-primary" style="flex:1; background:#7c3aed; border-color:#6d28d9; font-weight:700; font-size:0.82rem; padding:0.45rem 1rem;" title="Ikat seluruh kamera sekaligus">
+                                ⚡ Ikat SEMUA Kamera
+                            </button>
+                        </div>
+
+                        <div style="font-size:0.78rem; font-weight:600; color:#cbd5e1; margin-bottom:0.4rem;">Daftar Static Route Kamera Aktif:</div>
+                        <div id="netMgrCameraRoutesContainer" style="display:flex; flex-direction:column; gap:0.5rem; max-height:120px; overflow-y:auto;">
+                            <div style="color:#64748b; font-size:0.8rem; text-align:center; padding:0.5rem;">Belum ada static route ditambahkan.</div>
+                        </div>
+                    </div>
+
+                    <!-- 3 Fitur Cerdas -->
+                    <div style="background:rgba(30,58,138,0.12); border:1px solid rgba(59,130,246,0.35); border-radius:10px; padding:1.1rem; box-shadow:0 4px 14px rgba(0,0,0,0.25); margin-top:0.75rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem; flex-wrap:wrap; gap:0.5rem;">
+                            <strong style="color:#60a5fa; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
+                                <span>🛡️</span> 3 Fitur Cerdas: Gateway LAN, Docker DNS &amp; Cloudflare
+                            </strong>
+                            <span id="smartFeaturesStatusBadge" class="badge" style="background:rgba(16,185,129,0.15); border:1px solid #059669; color:#34d399; font-size:0.75rem; padding:4px 11px; font-weight:700; border-radius:6px;">
+                                ● Siap
+                            </span>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.65rem; margin-bottom:0.85rem;">
+                            <button type="button" onclick="window.healDualInterfaceGatewayUI()" class="btn btn-secondary" style="background:rgba(59,130,246,0.1); border-color:#2563eb; color:#93c5fd; font-size:0.8rem; padding:0.5rem 0.75rem; font-weight:600; text-align:left;">
+                                🌐 1. Kunci Gateway LAN
+                            </button>
+                            <button type="button" onclick="window.fixDockerDnsUI()" class="btn btn-secondary" style="background:rgba(168,85,247,0.1); border-color:#9333ea; color:#d8b4fe; font-size:0.8rem; padding:0.5rem 0.75rem; font-weight:600; text-align:left;">
+                                🐳 2. DNS Docker Fix
+                            </button>
+                            <button type="button" onclick="window.checkCloudflareTunnelDoctorUI()" class="btn btn-secondary" style="background:rgba(245,158,11,0.1); border-color:#d97706; color:#fde68a; font-size:0.8rem; padding:0.5rem 0.75rem; font-weight:600; text-align:left;">
+                                ☁️ 3. Cloudflare Doctor
+                            </button>
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end;">
+                            <button type="button" onclick="window.repairCloudflareTunnelHttp2UI()" class="btn btn-primary" style="background:#2563eb; border-color:#1d4ed8; font-weight:700; font-size:0.82rem; padding:0.45rem 1.1rem; display:flex; align-items:center; gap:0.4rem;">
+                                <span>🚀</span> Jalankan 3 Solusi Sekaligus (1-Klik)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KOTAK LOG KONSOL DIAGNOSTIK KERNEL & NMCLI (SELALU TAMPIL DI BAWAH SEMUA TAB) -->
+                <div id="netMgrDiagnosticsBox" style="background:#090d16; border:1px solid #1e293b; border-radius:8px; padding:0.75rem 0.85rem; font-family:monospace; font-size:0.75rem; color:#94a3b8;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem; border-bottom:1px solid rgba(255,255,255,0.06); padding-bottom:0.25rem;">
+                        <span style="color:#cbd5e1; font-weight:700;">📋 Log Status Kernel STB:</span>
                         <span id="netMgrSyncStatusBadge" style="color:#10b981; font-size:0.7rem;">● Ready</span>
                     </div>
-                    <div id="netMgrDiagnosticsLog" style="max-height:85px; overflow-y:auto; line-height:1.45; word-break:break-word; color:#38bdf8;">
-                        [READY] Antarmuka jaringan siap dikonfigurasi. Klik "Terapkan Perubahan" untuk menyinkronkan profil nmcli &amp; tabel routing ke kernel.
+                    <div id="netMgrDiagnosticsLog" style="max-height:75px; overflow-y:auto; line-height:1.4; word-break:break-word; color:#38bdf8;">
+                        [READY] Antarmuka jaringan siap dikonfigurasi.
                     </div>
                 </div>
 
             </div>
 
             <!-- Modal Footer -->
-            <div style="padding:1rem 1.25rem; background:rgba(15,23,42,0.98); border-top:1px solid var(--border, #334155); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
-                <div style="display:flex; flex-direction:column; gap:2px;">
-                    <div style="font-size:0.75rem; color:#94a3b8;">
-                        💡 <strong>Catatan:</strong> Tombol ini merestart profil NetworkManager &amp; menyinkronkan rute ke kernel OS.
+            <div style="padding:0.85rem 1.25rem; background:rgba(15,23,42,0.98); border-top:1px solid var(--border, #334155); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                <div style="display:flex; flex-direction:column; gap:1px;">
+                    <div style="font-size:0.73rem; color:#94a3b8;">
+                        💡 Tombol di samping khusus merefresh/merestart profil OS (nmcli).
                     </div>
-                    <div style="font-size:0.7rem; color:#64748b;">
-                        Jika Anda ingin menembus isolasi router ISP, gunakan <strong>arch3rBridge</strong> di atas.
+                    <div style="font-size:0.68rem; color:#64748b;">
+                        Untuk dual internet LAN &amp; Wi-Fi tanpa terputus, gunakan <strong>Tab 1 (arch3rBridge)</strong>.
                     </div>
                 </div>
                 <div style="display:flex; gap:0.5rem; align-items:center;">
-                    <button type="button" id="btnApplyNetMgrChanges" class="btn btn-primary" onclick="window.applyNetMgrChanges()" style="background:#16a34a; border-color:#15803d; font-weight:700; font-size:0.85rem; padding:0.55rem 1.25rem; display:flex; align-items:center; gap:0.45rem; box-shadow:0 2px 8px rgba(22,163,74,0.3);">
-                        <span id="btnApplyNetMgrSpinner">🚀</span> <span id="btnApplyNetMgrLabel">Terapkan Perubahan &amp; Restart nmcli</span>
+                    <button type="button" id="btnApplyNetMgrChanges" class="btn btn-primary" onclick="window.applyNetMgrChanges()" style="background:#16a34a; border-color:#15803d; font-weight:700; font-size:0.82rem; padding:0.5rem 1.1rem; display:flex; align-items:center; gap:0.4rem; box-shadow:0 2px 8px rgba(22,163,74,0.3);">
+                        <span id="btnApplyNetMgrSpinner">🚀</span> <span id="btnApplyNetMgrLabel">Terapkan Perubahan nmcli</span>
                     </button>
-                    <button type="button" class="btn btn-secondary" onclick="window.closeNetMgrModal()" style="font-size:0.85rem; padding:0.55rem 1.1rem;">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeNetMgrModal()" style="font-size:0.82rem; padding:0.5rem 1rem;">
                         Tutup
                     </button>
                 </div>
@@ -15538,6 +15565,7 @@ function ensureNetMgrModalDOM() {
 
 window.openNetMgrModal = function() {
     ensureNetMgrModalDOM();
+    window.switchNetMgrTab('bridge');
     const modal = document.getElementById('netMgrModalOverlay');
     if (modal) {
         modal.classList.add('active');

@@ -1,5 +1,21 @@
 # Changelog
 
+## [Ver 12.0.5] - 2026-10-19
+### Fixed Template Literal Syntax Error in Network Manager Modal
+- **Perbaikan Syntax Error Backticks (`public/script.js`):**
+  - **Penyebab**: Terdapat karakter backtick (`` `wlan0` ``, `` `eth0` ``, dan `` `nmcli` ``) yang belum di-escape di dalam string template literal HTML `modal.innerHTML = ` ... `` pada baris 15458 & 15547.
+  - **Solusi**: Mengganti karakter backtick tersebut dengan tanda kurung biasa `(wlan0)`, `(eth0)`, dan `(nmcli)`.
+
+## [Ver 12.0.4] - 2026-10-19
+### Redesigned Tabbed Navigation UI for Armbian Network Manager
+- **Struktur Antarmuka Modal Berbasis 4-Tab (`public/script.js`):**
+  - **Penyederhanaan UI**: Mengubah tata letak modal Network Manager yang sebelumnya menumpuk panjang menjadi 4 Tab bersih dan terpisah:
+    1. **`⚡ 1. arch3rBridge (Dual Internet PBR)`**: Fokus khusus untuk mengaktifkan/mematikan PBR routing dual internet (LAN + Wi-Fi).
+    2. **`📶 2. Sambungan Wi-Fi`**: Pindai sinyal radio sekitar & sambungkan STB ke router tanpa SSH.
+    3. **`🔌 3. Interface OS & Metrics`**: Status antarmuka fisik (`eth0`/`wlan0`), pembersihan profil ghost, & prioritas metric (50/500).
+    4. **`🎯 4. Rute Kamera & Fitur Cerdas`**: Pengikatan static route kamera CCTV & 3 Fitur Cerdas (Docker DNS/Cloudflare Doctor).
+  - **Navigasi Tab Ringan**: Menambahkan fungsi `switchNetMgrTab()` tanpa re-render DOM sehingga transisi antar tab instan dan halus.
+
 ## [Ver 12.0.3] - 2026-10-19
 ### Precision Wi-Fi Profile Matcher & Active Interface Verification in Network Manager
 - **Perbaikan Resolusi Nama Profil Wi-Fi (`addons/network-manager/lib/nmcli_driver.js`):**
