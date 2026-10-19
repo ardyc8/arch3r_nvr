@@ -1223,12 +1223,14 @@ export class ArmbianNetworkManager {
             await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" connection.autoconnect yes 2>/dev/null || true`);
             await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" connection.autoconnect-priority 100 2>/dev/null || true`);
             await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" connection.autoconnect-retries 0 2>/dev/null || true`);
-            // D. Set secondary route metric (500) so Wi-Fi does not conflict with LAN
-            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" ipv4.route-metric 500 2>/dev/null || true`);
+            // D. Set secondary route metric (200) and allow default route for dual internet access
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" ipv4.route-metric 200 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" ipv4.never-default no 2>/dev/null || true`);
+            await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" ipv4.dns "1.1.1.1 8.8.8.8" 2>/dev/null || true`);
             // E. Set ipv4.may-fail yes so boot does not block if Wi-Fi AP is temporarily offline
             await this.runCommand(`nmcli connection modify "${currentWifiProfile.name}" ipv4.may-fail yes 2>/dev/null || true`);
 
-            actionsTaken.push(`Kunci Wi-Fi Anti-Drop ("${currentWifiProfile.name}"): interface-name=wlan0, powersave=disabled, autoconnect-priority=100, retries=infinite(0), metric=500`);
+            actionsTaken.push(`Kunci Wi-Fi Anti-Drop ("${currentWifiProfile.name}"): interface-name=wlan0, powersave=disabled, autoconnect-priority=100, retries=infinite(0), metric=200, never-default=no, dns=1.1.1.1 8.8.8.8`);
         } else {
             warnings.push('Tidak ditemukan profil Wi-Fi aktif untuk dikunci.');
         }
@@ -1707,16 +1709,16 @@ export class ArmbianNetworkManager {
                 }
             });
 
-            if (ethList.length > 0 && wifiList.length > 0) {
+            if (ethList.length > 0 || wifiList.length > 0) {
                 for (const c of ethList) {
-                    await this.runCommand(`sudo nmcli con modify "${c}" ipv4.route-metric 50 2>/dev/null || true`);
+                    await this.runCommand(`sudo nmcli con modify "${c}" ipv4.never-default no ipv4.route-metric 100 ipv4.dns "1.1.1.1 8.8.8.8" 2>/dev/null || true`);
                 }
                 for (const c of wifiList) {
-                    await this.runCommand(`sudo nmcli con modify "${c}" ipv4.never-default yes ipv4.route-metric 600 2>/dev/null || true`);
+                    await this.runCommand(`sudo nmcli con modify "${c}" ipv4.never-default no ipv4.route-metric 200 ipv4.dns "1.1.1.1 8.8.8.8" 2>/dev/null || true`);
                 }
                 return {
                     success: true,
-                    message: `Self-Healing Berhasil: eth0 (${ethList.join(', ')}) menjadi default gateway utama, wlan0 (${wifiList.join(', ')}) dikunci khusus kamera CCTV.`
+                    message: `Dual-Gateway Healing Berhasil: eth0 (${ethList.join(', ') || 'eth0'}) metric 100, wlan0 (${wifiList.join(', ') || 'wlan0'}) metric 200 (Internet Aktif di LAN & Wi-Fi + DNS 1.1.1.1 / 8.8.8.8).`
                 };
             }
 
