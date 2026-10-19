@@ -46,7 +46,19 @@ get_subnet() {
 
 get_gw() {
   local iface="$1"
-  ip route show dev "$iface" 2>/dev/null | grep 'default via' | awk '{print $3}' | head -n1
+  local gw
+  gw=$(ip route show dev "$iface" 2>/dev/null | grep 'default via' | awk '{print $3}' | head -n1)
+  if [ -z "$gw" ]; then
+    gw=$(ip route show 2>/dev/null | grep 'default via' | awk '{print $3}' | head -n1)
+  fi
+  if [ -z "$gw" ]; then
+    local ip_addr
+    ip_addr=$(get_ip "$iface")
+    if [ -n "$ip_addr" ]; then
+      gw="$(echo "$ip_addr" | cut -d. -f1-3).1"
+    fi
+  fi
+  echo "$gw"
 }
 
 enable_bridge() {

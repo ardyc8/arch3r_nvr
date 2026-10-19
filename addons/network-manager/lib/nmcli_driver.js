@@ -18,7 +18,12 @@ export class ArmbianNetworkManager {
      */
     async runCommand(cmd) {
         try {
-            const fullCmd = `${this.sudoPrefix}${cmd}`;
+            const isRoot = typeof process.getuid === 'function' ? process.getuid() === 0 : false;
+            let prefix = this.sudoPrefix;
+            if (!isRoot && !prefix && !cmd.startsWith('sudo ')) {
+                prefix = 'sudo ';
+            }
+            const fullCmd = `${prefix}${cmd}`;
             const { stdout, stderr } = await execAsync(fullCmd, {
                 timeout: this.timeoutMs,
                 env: { ...process.env, PATH: `${process.env.PATH}:/usr/sbin:/sbin:/usr/bin` }
@@ -1359,6 +1364,19 @@ export class ArmbianNetworkManager {
                     const subMatch = line.match(/^([0-9.]+\/\d+)\s+/);
                     if (subMatch && !subnet) subnet = subMatch[1];
                 }
+            }
+
+            // Fallback gateway calculation if wlan0/eth0 is not the primary default route in main table
+            if (!gateway) {
+                const globalGwRes = await this.runCommand('ip route show | grep "default via"');
+                if (globalGwRes.success && globalGwRes.stdout) {
+                    const gwMatch = globalGwRes.stdout.match(/default via ([0-9.]+)/);
+                    if (gwMatch) gateway = gwMatch[1];
+                }
+            }
+            if (!gateway && ip) {
+                const ipParts = ip.split('.').map(Number);
+                gateway = `${ipParts[0]}.${ipParts[1]}.${ipParts[2]}.1`;
             }
 
             // Fallback subnet calculation if not explicitly in routing table

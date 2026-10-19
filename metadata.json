@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 12.0.1 - Dynamic Ad-Block State Controls, Smart Client Host Admin Link (No-Localhost), & Real-Time FTL Telemetry Resolution.",
+  "description": "Arch3r NVR Ver. 12.0.2 - Dual-Interface ISP Router PBR Gateway Resolution, Auto-Sudo Permission Healing, & Transparent Proxy-ARP Fix.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

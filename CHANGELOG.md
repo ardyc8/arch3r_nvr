@@ -1,5 +1,13 @@
 # Changelog
 
+## [Ver 12.0.2] - 2026-10-19
+### Dual-Interface ISP Router PBR Gateway Resolution & Auto-Sudo Permission Healing
+- **Perbaikan Bug PBR Table Blackhole (`addons/network-manager/arch3r_bridge.sh` & `lib/nmcli_driver.js`):**
+  - **Penyebab Teridentifikasi**: Sebelumnya saat Wi-Fi (`wlan0`) bukan rute default utama di tabel kernel main, fungsi `get_gw("wlan0")` menghasilkan string kosong (`null`). Akibatnya, tabel routing PBR Wi-Fi (Tabel 100) dibuat *tanpa default gateway*, menyebabkan seluruh paket balasan Wi-Fi dibuang oleh kernel ("blackholed").
+  - **Solusi Gateway Fallback**: Memperbarui `get_gw()` dan `getInterfaceNetworkInfo()` agar secara cerdas mencari default gateway global sistem atau mengkalkulasi subnet router `.1` (misal `192.168.1.1`).
+- **Peningkatan Hak Akses Exec (`addons/network-manager/index.js` & `lib/nmcli_driver.js`):**
+  - **Auto-Sudo Detection**: Menambahkan pemeriksaan `process.getuid()` dan mengabaikan pembatasan `useSudo: false`. Jika proses Node.js tidak berjalan sebagai `root`, eksekusi `sysctl`, `iptables`, dan `ip rule` otomatis menggunakan `sudo` agar tidak gagal akibat *Permission Denied*.
+
 ## [Ver 12.0.1] - 2026-10-18
 ### Dynamic Ad-Block State Controls & Client-Adaptive Web Admin Link (No-Localhost)
 - **Tombol Kontrol Ad-Block Dinamis Real-Time (`public/script.js`):**
