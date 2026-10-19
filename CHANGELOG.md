@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 12.0.9] - 2026-10-19
+### Fix Superadmin OTA Endpoints & Universal API JSON Guard
+- **Perbaikan Endpoint Superadmin Update & Settings (`server.js`):**
+  - **Pendaftaran Route `/api/superadmin/update` (GET & POST)**: Menambahkan endpoint yang dipanggil oleh konsol `superadmin.js` (`window.checkOtaUpdate` & `window.runOtaPipeline`). Menghilangkan error parsing `Unexpected token '<', "<!DOCTYPE "... is not valid JSON`.
+  - **Pendaftaran Route `/api/superadmin/settings` (GET & POST)**: Menambahkan endpoint untuk membaca dan menyimpan konfigurasi URL GitHub OTA, Branch, Token, serta Lisensi dan Relay P2P secara persisten.
+  - **Universal API 404 Guard (`app.all('/api/*', ...)` )**: Menambahkan middleware khusus di sebelum static files agar seluruh request API yang tidak ditemukan atau error selalu mengembalikan format JSON valid (`{ success: false, error: ... }`) dan tidak pernah merespons dengan dokumen HTML `<!DOCTYPE html>`.
+
 ## [Ver 12.0.8] - 2026-10-19
 ### OTA Check Query Param Forwarding & Dynamic GitHub Update Resolution
 - **Peningkatan Endpoint OTA Check (`server.js`):**

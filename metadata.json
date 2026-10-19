@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 12.0.8 - OTA Check Query Param Forwarding & Dynamic GitHub Update Resolution.",
+  "description": "Arch3r NVR Ver. 12.0.9 - Superadmin OTA Update Endpoints & Universal API JSON Guard.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
