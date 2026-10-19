@@ -1,5 +1,13 @@
 # Changelog
 
+## [Ver 12.0.3] - 2026-10-19
+### Precision Wi-Fi Profile Matcher & Active Interface Verification in Network Manager
+- **Perbaikan Resolusi Nama Profil Wi-Fi (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Penyebab Teridentifikasi**: Saat memanggil `applyChanges()` untuk SSID Wi-Fi seperti `W_CTV`, fungsi `resolveConnectionProfileName` sebelumnya langsung mengembalikan profil Wi-Fi pertama yang ditemukannya (`"W"`). Hal ini menyebabkan eksekusi `sudo nmcli connection up "W"` gagal dengan pesan error.
+  - **Solusi Hierarki Pencarian**: Memperbarui `resolveConnectionProfileName` dengan skema pencarian presisi bertingkat (A: Exact Match, B: Substring Match `netplan-wlan0-SSID`, C: Device Match `wlan0`, D: Active Type Match). Mencegah salah urai SSID Wi-Fi ke profil yang tidak valid.
+- **Pemeriksaan Interface IP Aktif Fallback (`addons/network-manager/lib/nmcli_driver.js`):**
+  - **Validasi Koneksi Berjalan**: Memperbarui `bringUpOrReapply()` agar memeriksa ketersediaan IP aktif pada `wlan0`/`eth0` (`ip -4 addr show`). Jika interface sudah terhubung dan memiliki IP, sistem melaporkan status sukses tanpa memicu pesan error palsu pada UI.
+
 ## [Ver 12.0.2] - 2026-10-19
 ### Dual-Interface ISP Router PBR Gateway Resolution & Auto-Sudo Permission Healing
 - **Perbaikan Bug PBR Table Blackhole (`addons/network-manager/arch3r_bridge.sh` & `lib/nmcli_driver.js`):**

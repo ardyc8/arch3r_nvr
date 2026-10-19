@@ -447,41 +447,57 @@ export class ArmbianNetworkManager {
         if (!nameOrDevice) return '';
         const clean = this.sanitizeParam(nameOrDevice);
 
-        // 1. If clean is already a valid connection name or UUID, verify directly
+        // 1. If clean is already a valid exact connection name or UUID, verify directly
         const verifyCmd = await this.runCommand(`nmcli -g connection.id connection show "${clean}"`);
-        if (verifyCmd.success && verifyCmd.stdout) {
+        if (verifyCmd.success && verifyCmd.stdout && verifyCmd.stdout.trim()) {
             return verifyCmd.stdout.trim();
         }
 
-        // 2. Query device show to get active connection profile attached to that device (e.g. wlan0, wlan1, eth0)
+        // 2. Query device show if clean is a device name (e.g. wlan0, eth0)
         const devCmd = await this.runCommand(`nmcli -g GENERAL.CONNECTION device show "${clean}"`);
         if (devCmd.success && devCmd.stdout && devCmd.stdout.trim() !== '--' && devCmd.stdout.trim() !== '') {
             return devCmd.stdout.trim();
         }
 
-        // 3. Scan all connections matching the device or preferred type
-        const connRes = await this.runCommand('nmcli -t -f NAME,TYPE,DEVICE connection show');
+        // 3. Scan all connections in nmcli
+        const connRes = await this.runCommand('nmcli -t -f NAME,TYPE,DEVICE,STATE connection show');
         if (connRes.success && connRes.stdout) {
             const lines = connRes.stdout.split('\n').filter(l => l.trim().length > 0);
+            const profiles = [];
+
             for (const line of lines) {
                 const parts = line.split(/(?<!\\):/);
                 if (parts.length >= 3) {
                     const cName = parts[0].replace(/\\:/g, ':').trim();
                     const cType = parts[1].trim().toLowerCase();
                     const cDev = parts[2].trim();
-
-                    // If device matches exactly
-                    if (cDev && (cDev === clean || cDev.startsWith(clean))) return cName;
-
-                    // If preferred type matches (e.g. wifi)
-                    if (preferredType === 'wifi' && (cType.includes('wifi') || cType.includes('wireless'))) {
-                        return cName;
-                    }
-                    if (preferredType === 'lan' && (cType.includes('ethernet') || cType.includes('802-3-ethernet'))) {
-                        return cName;
-                    }
+                    const cState = parts[3] ? parts[3].trim() : '';
+                    profiles.push({ name: cName, type: cType, dev: cDev, state: cState });
                 }
             }
+
+            // Priority A: Exact match on connection name
+            const exactMatch = profiles.find(p => p.name.toLowerCase() === clean.toLowerCase());
+            if (exactMatch) return exactMatch.name;
+
+            // Priority B: Profile name contains clean (e.g. netplan-wlan0-W_CTV or W_CTV)
+            const subMatch = profiles.find(p => p.name.toLowerCase().includes(clean.toLowerCase()));
+            if (subMatch) return subMatch.name;
+
+            // Priority C: Matches device name exactly (e.g. wlan0)
+            const devMatch = profiles.find(p => p.dev && (p.dev === clean || p.dev.startsWith(clean)));
+            if (devMatch) return devMatch.name;
+
+            // Priority D: Active profile matching preferredType (wifi or lan)
+            const activeTypeMatch = profiles.find(p => {
+                const isWifi = p.type.includes('wifi') || p.type.includes('wireless');
+                const isLan = p.type.includes('ethernet') || p.type.includes('802-3-ethernet');
+                const isActive = p.dev && p.dev !== '--';
+                if (preferredType === 'wifi') return isWifi && isActive;
+                if (preferredType === 'lan') return isLan && isActive;
+                return false;
+            });
+            if (activeTypeMatch) return activeTypeMatch.name;
         }
 
         return clean;
@@ -864,6 +880,19 @@ export class ArmbianNetworkManager {
                     success: true,
                     method: 'already_active',
                     message: `Connection "${connName}" is active and routes are loaded.`
+                };
+            }
+
+            // 3. Fallback: Check if interface wlan0 or eth0 already has an active IPv4 address assigned
+            const checkDev = device || (connName.toLowerCase().includes('wifi') || connName.toLowerCase().includes('w_') || connName.toLowerCase().includes('wlan') ? 'wlan0' : 'eth0');
+            const ipCheck = await this.runCommand(`ip -4 addr show dev ${checkDev} 2>/dev/null | grep 'inet '`);
+            if (ipCheck.success && ipCheck.stdout && ipCheck.stdout.trim()) {
+                return {
+                    connection: connName,
+                    device: checkDev,
+                    success: true,
+                    method: 'interface_active_ip',
+                    message: `Interface "${checkDev}" (${connName}) is connected and active with IP: ${ipCheck.stdout.trim()}`
                 };
             }
 

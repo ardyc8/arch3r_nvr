@@ -1,6 +1,6 @@
 {
   "name": "Arch3r NVR Ver. 10.8.1",
-  "description": "Arch3r NVR Ver. 12.0.2 - Dual-Interface ISP Router PBR Gateway Resolution, Auto-Sudo Permission Healing, & Transparent Proxy-ARP Fix.",
+  "description": "Arch3r NVR Ver. 12.0.3 - Precision Wi-Fi Profile Matcher & Active Interface Verification in Network Manager.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
