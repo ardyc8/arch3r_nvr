@@ -1808,7 +1808,7 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
     try {
         const dbData = getNvrDb();
         const otaUrl = dbData.super_settings?.ota_github_url || "";
-        const result = await checkSystemUpdate(otaUrl);
+        const result = await checkSystemUpdate(otaUrl, req.query || {});
         res.json(result);
     } catch(e) {
         res.status(500).json({ error: e.message });

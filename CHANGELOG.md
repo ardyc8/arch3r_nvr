@@ -1,5 +1,11 @@
 # Changelog
 
+## [Ver 12.0.8] - 2026-10-19
+### OTA Check Query Param Forwarding & Dynamic GitHub Update Resolution
+- **Peningkatan Endpoint OTA Check (`server.js`):**
+  - **Penerusan Query Options (`/api/system/ota/check`)**: Menambahkan penerusan `req.query` ke fungsi `checkSystemUpdate(otaUrl, req.query)` sehingga opsi kustom seperti `?branch=main`, `?simulate=true`, dan `?token=...` dapat digunakan langsung dari Web UI / API.
+  - **Resolusi Status Update**: Menyempurnakan logika perbandingan versi semver agar mendeteksi versi lokal dan remote secara presisi.
+
 ## [Ver 12.0.7] - 2026-10-19
 ### Simultaneous Dual Internet (LAN & Wi-Fi) Gateway Resolution & DNS Self-Healing
 - **Perbaikan Rute Internet Bersamaan di LAN & Wi-Fi (`addons/network-manager/lib/nmcli_driver.js`):**
