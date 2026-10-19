@@ -1808,87 +1808,10 @@ app.get('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res
     try {
         const dbData = getNvrDb();
         const otaUrl = dbData.super_settings?.ota_github_url || "";
-        const result = await checkSystemUpdate(otaUrl, { ...req.query, ...req.body });
+        const result = await checkSystemUpdate(otaUrl);
         res.json(result);
     } catch(e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-app.post('/api/system/ota/check', verifyToken, requireSuperadmin, async (req, res) => {
-    try {
-        const dbData = getNvrDb();
-        const otaUrl = dbData.super_settings?.ota_github_url || "";
-        const result = await checkSystemUpdate(otaUrl, { ...req.query, ...req.body });
-        res.json(result);
-    } catch(e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-app.all(['/api/superadmin/update', '/api/superadmin/update/check'], verifyToken, requireSuperadmin, async (req, res) => {
-    try {
-        const dbData = getNvrDb();
-        const otaUrl = dbData.super_settings?.ota_github_url || "";
-        const bodyPayload = req.body || {};
-        const queryPayload = req.query || {};
-        const combined = { ...queryPayload, ...bodyPayload };
-
-        if (combined.type === 'execute' || combined.type === 'apply') {
-            sysLog('WARN', `[OTA] Superadmin pipeline execution triggered via /api/superadmin/update`, 'SYSTEM');
-            const result = await executeSystemUpdate(combined.steps || combined);
-            return res.json(result);
-        } else {
-            const result = await checkSystemUpdate(otaUrl, combined);
-            return res.json(result);
-        }
-    } catch(e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-app.get('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) => {
-    try {
-        const dbData = getNvrDb();
-        res.json({ success: true, settings: dbData.super_settings || {} });
-    } catch(e) {
-        res.status(500).json({ success: false, error: e.message });
-    }
-});
-
-app.post('/api/superadmin/settings', verifyToken, requireSuperadmin, (req, res) => {
-    try {
-        const dbData = getNvrDb();
-        if (!dbData.super_settings) dbData.super_settings = {};
-
-        const updates = req.body || {};
-        if (updates.ota_github_url !== undefined) dbData.super_settings.ota_github_url = updates.ota_github_url;
-        if (updates.ota_branch !== undefined) dbData.super_settings.ota_branch = updates.ota_branch;
-        if (updates.ota_github_token !== undefined) dbData.super_settings.ota_github_token = updates.ota_github_token;
-        if (updates.license !== undefined) dbData.super_settings.license = updates.license;
-        if (updates.email !== undefined) dbData.super_settings.email = updates.email;
-        if (updates.p2p_relay !== undefined) dbData.super_settings.p2p_relay = updates.p2p_relay;
-
-        saveNvrDb(dbData);
-        sysLog('INFO', `[Superadmin] Settings updated via /api/superadmin/settings`, 'SECURITY');
-
-        const curMid = getMachineId();
-        const curLicense = dbData.super_settings.license || '';
-        const curEmail = dbData.super_settings.email || '';
-        let licVal = null;
-        if (curLicense) {
-            licVal = validateLicenseToken(curLicense, curEmail, curMid);
-        }
-
-        res.json({
-            success: true,
-            message: 'Konfigurasi superadmin berhasil disimpan.',
-            settings: dbData.super_settings,
-            licenseValid: licVal ? licVal.valid : false,
-            licenseReason: licVal ? licVal.reason : 'Belum ada lisensi.'
-        });
-    } catch(e) {
-        res.status(500).json({ success: false, error: e.message });
+        res.status(500).json({ error: e.message });
     }
 });
 
@@ -1899,7 +1822,7 @@ app.post('/api/system/ota/apply', verifyToken, requireSuperadmin, async (req, re
         const result = await executeSystemUpdate(steps);
         res.json(result);
     } catch(e) {
-        res.status(500).json({ success: false, error: e.message });
+        res.status(500).json({ error: e.message });
     }
 });
 
@@ -1937,9 +1860,7 @@ app.get(['/', '/index.html', '/superadmin.html', '/admin.html'], (req, res, next
             console.error('[VersionSync] Error serving synchronized HTML:', syncErr.message);
         }
     }
-// Universal API 404 Guard: Ensures ALL /api/* requests return JSON errors instead of HTML pages
-app.all('/api/*', (req, res) => {
-    res.status(404).json({ success: false, error: `Endpoint API tidak ditemukan: ${req.method} ${req.path}` });
+    next();
 });
 
 app.use(express.static(publicDir));
@@ -8996,14 +8917,14 @@ function runAutonomousNetworkSelfHealing() {
                 }
             });
 
-            if (ethList.length > 0 || wifiList.length > 0) {
+            if (ethList.length > 0 && wifiList.length > 0) {
                 ethList.forEach(c => {
-                    exec(`nmcli con modify "${c}" ipv4.never-default no ipv4.route-metric 100 ipv4.dns "1.1.1.1 8.8.8.8" 2>/dev/null || true`, () => {});
+                    exec(`nmcli con modify "${c}" ipv4.route-metric 50 2>/dev/null || true`, () => {});
                 });
                 wifiList.forEach(c => {
-                    exec(`nmcli con modify "${c}" ipv4.never-default no ipv4.route-metric 200 ipv4.dns "1.1.1.1 8.8.8.8" 2>/dev/null || true`, () => {});
+                    exec(`nmcli con modify "${c}" ipv4.never-default yes ipv4.route-metric 600 2>/dev/null || true`, () => {});
                 });
-                sysLog('INFO', `[Self-Healing] Dual-interface terkonfigurasi: LAN (metric 100) & Wi-Fi (metric 200) aktif bersamaan dengan DNS fallback.`, 'NETWORK');
+                sysLog('INFO', `[Self-Healing] Dual-interface terdeteksi: eth0 dikunci sebagai default gateway (metric 50) dan wlan0 dikunci khusus kamera (never-default: yes).`, 'NETWORK');
             }
         });
     } catch (_) {}

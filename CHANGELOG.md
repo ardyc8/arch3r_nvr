@@ -1,25 +1,5 @@
 # Changelog
 
-## [Ver 12.0.9] - 2026-10-19
-### Fix Superadmin OTA Endpoints & Universal API JSON Guard
-- **Perbaikan Endpoint Superadmin Update & Settings (`server.js`):**
-  - **Pendaftaran Route `/api/superadmin/update` (GET & POST)**: Menambahkan endpoint yang dipanggil oleh konsol `superadmin.js` (`window.checkOtaUpdate` & `window.runOtaPipeline`). Menghilangkan error parsing `Unexpected token '<', "<!DOCTYPE "... is not valid JSON`.
-  - **Pendaftaran Route `/api/superadmin/settings` (GET & POST)**: Menambahkan endpoint untuk membaca dan menyimpan konfigurasi URL GitHub OTA, Branch, Token, serta Lisensi dan Relay P2P secara persisten.
-  - **Universal API 404 Guard (`app.all('/api/*', ...)` )**: Menambahkan middleware khusus di sebelum static files agar seluruh request API yang tidak ditemukan atau error selalu mengembalikan format JSON valid (`{ success: false, error: ... }`) dan tidak pernah merespons dengan dokumen HTML `<!DOCTYPE html>`.
-
-## [Ver 12.0.8] - 2026-10-19
-### OTA Check Query Param Forwarding & Dynamic GitHub Update Resolution
-- **Peningkatan Endpoint OTA Check (`server.js`):**
-  - **Penerusan Query Options (`/api/system/ota/check`)**: Menambahkan penerusan `req.query` ke fungsi `checkSystemUpdate(otaUrl, req.query)` sehingga opsi kustom seperti `?branch=main`, `?simulate=true`, dan `?token=...` dapat digunakan langsung dari Web UI / API.
-  - **Resolusi Status Update**: Menyempurnakan logika perbandingan versi semver agar mendeteksi versi lokal dan remote secara presisi.
-
-## [Ver 12.0.7] - 2026-10-19
-### Simultaneous Dual Internet (LAN & Wi-Fi) Gateway Resolution & DNS Self-Healing
-- **Perbaikan Rute Internet Bersamaan di LAN & Wi-Fi (`addons/network-manager/lib/nmcli_driver.js`):**
-  - **Penghapusan Constraint `never-default yes`**: Mengubah pengaturan profil Wi-Fi dari `ipv4.never-default yes` menjadi `ipv4.never-default no` di `enforceDualInterfaceGateway()` dan `autoHealNetworkStack()` agar antarmuka Wi-Fi (`wlan0`) diizinkan mengakses internet secara aktif.
-  - **Skema Prioritas Gateway Metric (LAN=100 / Wi-Fi=200)**: Mengatur `ipv4.route-metric 100` pada LAN dan `ipv4.route-metric 200` pada Wi-Fi. Jika LAN terhubung ke router yang tidak memiliki akses internet (misalnya switch CCTV lokal), paket internet STB secara otomatis berpindah tanpa putus melalui Wi-Fi (`.252`).
-  - **Injeksi DNS Publik Fallback (`1.1.1.1` & `8.8.8.8`)**: Mengunci server DNS publik pada kedua profil NetworkManager agar resolusi nama domain (internet) selalu normal dari kabel LAN maupun Wi-Fi.
-
 ## [Ver 12.0.6] - 2026-10-19
 ### ARP Flux Prevention, Wi-Fi Power Save Off, & PBR Destination Rule
 - **Pencegahan ARP Flux & Wi-Fi Sleep (`addons/network-manager/arch3r_bridge.sh` & `lib/nmcli_driver.js`):**
