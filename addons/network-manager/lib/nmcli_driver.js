@@ -1475,6 +1475,12 @@ export class ArmbianNetworkManager {
             'sysctl -w net.ipv4.conf.all.rp_filter=0',
             `sysctl -w net.ipv4.conf.${lanDevice}.rp_filter=0`,
             `sysctl -w net.ipv4.conf.${wifiDevice}.rp_filter=0`,
+            'sysctl -w net.ipv4.conf.all.arp_ignore=1',
+            'sysctl -w net.ipv4.conf.all.arp_announce=2',
+            `sysctl -w net.ipv4.conf.${lanDevice}.arp_ignore=1`,
+            `sysctl -w net.ipv4.conf.${lanDevice}.arp_announce=2`,
+            `sysctl -w net.ipv4.conf.${wifiDevice}.arp_ignore=1`,
+            `sysctl -w net.ipv4.conf.${wifiDevice}.arp_announce=2`,
             'sysctl -w net.ipv4.conf.all.send_redirects=0',
             'sysctl -w net.ipv4.conf.all.accept_redirects=0'
         ];
@@ -1484,9 +1490,13 @@ export class ArmbianNetworkManager {
             steps.push({ step: 'kernel_proxy_arp', cmd: sCmd, ...resSysctl });
         }
 
-        // 3. Bi-directional IPTables Forwarding & Full MASQUERADE NAT between LAN and Wi-Fi
-        // (Guarantees IP cameras without default gateway or with static IPs reply directly)
+        // Disable Wi-Fi power saving so STB radio stays awake for incoming ICMP pings
+        await this.runCommand(`iw dev ${wifiDevice} set power_save off 2>/dev/null || iwconfig ${wifiDevice} power off 2>/dev/null || true`);
+
+        // 3. Bi-directional IPTables Forwarding, ICMP Input & Full MASQUERADE NAT between LAN and Wi-Fi
         const iptablesCmds = [
+            `iptables -C INPUT -i ${wifiDevice} -p icmp -j ACCEPT 2>/dev/null || iptables -I INPUT -i ${wifiDevice} -p icmp -j ACCEPT`,
+            `iptables -C INPUT -i ${lanDevice} -p icmp -j ACCEPT 2>/dev/null || iptables -I INPUT -i ${lanDevice} -p icmp -j ACCEPT`,
             `iptables -C FORWARD -i ${lanDevice} -o ${wifiDevice} -j ACCEPT 2>/dev/null || iptables -A FORWARD -i ${lanDevice} -o ${wifiDevice} -j ACCEPT`,
             `iptables -C FORWARD -i ${wifiDevice} -o ${lanDevice} -j ACCEPT 2>/dev/null || iptables -A FORWARD -i ${wifiDevice} -o ${lanDevice} -j ACCEPT`,
             `iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT`,
@@ -1514,6 +1524,7 @@ export class ArmbianNetworkManager {
                 'while ip rule del lookup 100 2>/dev/null; do :; done',
                 'ip route flush table 100 2>/dev/null || true',
                 `ip rule add from ${wifiInfo.ip} lookup 100 priority 1000`,
+                `ip rule add to ${wifiInfo.ip} lookup 100 priority 999`,
                 wifiInfo.subnet ? `ip route replace ${wifiInfo.subnet} dev ${wifiDevice} proto static scope link table 100` : '',
                 wifiInfo.gateway ? `ip route replace default via ${wifiInfo.gateway} dev ${wifiDevice} proto static table 100` : ''
             ].filter(Boolean);

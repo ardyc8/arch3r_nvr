@@ -79,8 +79,8 @@ enable_bridge() {
   echo "   - LAN  ($LAN_IF)  : IP=${lan_ip:-'Belum Ada IP'} | Subnet=${lan_sub:-'N/A'} | GW=${lan_gw:-'192.168.1.1'}"
   echo "   - Wi-Fi ($WIFI_IF) : IP=${wifi_ip:-'Belum Ada IP'} | Subnet=${wifi_sub:-'N/A'} | GW=${wifi_gw:-'192.168.1.1'}"
 
-  # 2. Kernel Tweaks (Zero-Lockout Proxy-ARP, Forwarding, Matikan rp_filter)
-  echo "🔧 Menyetel parameter kernel sysctl..."
+  # 2. Kernel Tweaks (Zero-Lockout Proxy-ARP, Forwarding, Matikan rp_filter, Cegah ARP Flux)
+  echo "🔧 Menyetel parameter kernel sysctl & Wi-Fi Power Save..."
   sysctl -w net.ipv4.ip_forward=1 >/dev/null
   sysctl -w net.ipv4.conf.all.proxy_arp=1 >/dev/null
   sysctl -w "net.ipv4.conf.${LAN_IF}.proxy_arp=1" >/dev/null 2>&1 || true
@@ -91,11 +91,27 @@ enable_bridge() {
   sysctl -w net.ipv4.conf.default.rp_filter=0 >/dev/null
   sysctl -w "net.ipv4.conf.${LAN_IF}.rp_filter=0" >/dev/null 2>&1 || true
   sysctl -w "net.ipv4.conf.${WIFI_IF}.rp_filter=0" >/dev/null 2>&1 || true
+
+  # Cegah ARP Flux (Bentrok MAC Address LAN & Wi-Fi pada subnet 192.168.1.0/24)
+  sysctl -w net.ipv4.conf.all.arp_ignore=1 >/dev/null
+  sysctl -w net.ipv4.conf.all.arp_announce=2 >/dev/null
+  sysctl -w net.ipv4.conf.default.arp_ignore=1 >/dev/null
+  sysctl -w net.ipv4.conf.default.arp_announce=2 >/dev/null
+  sysctl -w "net.ipv4.conf.${LAN_IF}.arp_ignore=1" >/dev/null 2>&1 || true
+  sysctl -w "net.ipv4.conf.${LAN_IF}.arp_announce=2" >/dev/null 2>&1 || true
+  sysctl -w "net.ipv4.conf.${WIFI_IF}.arp_ignore=1" >/dev/null 2>&1 || true
+  sysctl -w "net.ipv4.conf.${WIFI_IF}.arp_announce=2" >/dev/null 2>&1 || true
+
   sysctl -w net.ipv4.conf.all.send_redirects=0 >/dev/null
   sysctl -w net.ipv4.conf.all.accept_redirects=0 >/dev/null
 
-  # 3. IPTables Forwarding & NAT MASQUERADE
-  echo "🛡️ Memasang aturan IPTables Forwarding & NAT..."
+  # Matikan Power Saving Chip Wi-Fi STB agar selalu merespon ICMP Ping
+  iw dev "$WIFI_IF" set power_save off 2>/dev/null || iwconfig "$WIFI_IF" power off 2>/dev/null || true
+
+  # 3. IPTables Forwarding, INPUT ICMP & NAT MASQUERADE
+  echo "🛡️ Memasang aturan IPTables Forwarding, ICMP Ping & NAT..."
+  iptables -C INPUT -i "$WIFI_IF" -p icmp -j ACCEPT 2>/dev/null || iptables -I INPUT -i "$WIFI_IF" -p icmp -j ACCEPT
+  iptables -C INPUT -i "$LAN_IF" -p icmp -j ACCEPT 2>/dev/null || iptables -I INPUT -i "$LAN_IF" -p icmp -j ACCEPT
   iptables -C FORWARD -i "$LAN_IF" -o "$WIFI_IF" -j ACCEPT 2>/dev/null || iptables -A FORWARD -i "$LAN_IF" -o "$WIFI_IF" -j ACCEPT
   iptables -C FORWARD -i "$WIFI_IF" -o "$LAN_IF" -j ACCEPT 2>/dev/null || iptables -A FORWARD -i "$WIFI_IF" -o "$LAN_IF" -j ACCEPT
   iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
@@ -108,6 +124,7 @@ enable_bridge() {
     while ip rule del lookup "$TABLE_WIFI" 2>/dev/null; do :; done
     ip route flush table "$TABLE_WIFI" 2>/dev/null || true
     ip rule add from "$wifi_ip" lookup "$TABLE_WIFI" priority 1000
+    ip rule add to "$wifi_ip" lookup "$TABLE_WIFI" priority 999
 
     if [ -n "$wifi_sub" ]; then
       ip route replace "$wifi_sub" dev "$WIFI_IF" proto static scope link table "$TABLE_WIFI"

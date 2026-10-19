@@ -1,5 +1,12 @@
 # Changelog
 
+## [Ver 12.0.6] - 2026-10-19
+### ARP Flux Prevention, Wi-Fi Power Save Off, & PBR Destination Rule
+- **Pencegahan ARP Flux & Wi-Fi Sleep (`addons/network-manager/arch3r_bridge.sh` & `lib/nmcli_driver.js`):**
+  - **Penanganan ARP Flux**: Menambahkan parameter kernel `arp_ignore=1` dan `arp_announce=2` pada `eth0` dan `wlan0` agar sistem tidak membingungkan balasan MAC address antar antarmuka di subnet yang sama (`192.168.1.0/24`).
+  - **Penonaktifan Wi-Fi Power Saving**: Menambahkan eksekusi `iw dev wlan0 set power_save off` agar chip Wi-Fi STB tidak tidur/idle dan selalu merespon paket ICMP Ping dari luar.
+  - **PBR Rules Destination Injection**: Menambahkan aturan `ip rule add to $wifi_ip lookup 100` dan aturan `iptables INPUT -p icmp ACCEPT` untuk memastikan paket yang ditujukan ke IP Wi-Fi (`.252`) langsung diterima dan di-route dengan tepat.
+
 ## [Ver 12.0.5] - 2026-10-19
 ### Fixed Template Literal Syntax Error in Network Manager Modal
 - **Perbaikan Syntax Error Backticks (`public/script.js`):**
